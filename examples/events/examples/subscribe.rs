@@ -1,9 +1,8 @@
 use std::sync::Arc;
 
+use ethers::prelude::*;
 use eyre::Result;
 use serde::{Deserialize, Serialize};
-
-use ethers::prelude::*;
 
 const WSS_URL: &str = "wss://mainnet.infura.io/ws/v3/REDACTED_INFURA_PROJECT_ID";
 

@@ -4,7 +4,7 @@
 //! This allows to interact with the network in real-time without the need for HTTP
 //! polling.
 
-use ethers::prelude::*;
+use NeoRust::prelude::*;
 
 const WSS_URL: &str = "wss://mainnet.infura.io/ws/v3/REDACTED_INFURA_PROJECT_ID";
 
@@ -12,7 +12,7 @@ const WSS_URL: &str = "wss://mainnet.infura.io/ws/v3/REDACTED_INFURA_PROJECT_ID"
 async fn main() -> eyre::Result<()> {
     // A Ws provider can be created from a ws(s) URI.
     // In case of wss you must add the "rustls" or "openssl" feature
-    // to the ethers library dependency in `Cargo.toml`.
+    // to the library dependency in `Cargo.toml`.
     let provider = Provider::<Ws>::connect(WSS_URL).await?;
 
     let mut stream = provider.subscribe_blocks().await?.take(1);

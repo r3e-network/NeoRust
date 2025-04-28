@@ -1,5 +1,6 @@
 use clap::{Parser, Subcommand};
 use commands::{
+	blockchain::{handle_blockchain_command, BlockchainArgs},
 	defi::{handle_defi_command, DefiArgs},
 	neofs::{handle_neofs_command, NeoFSArgs},
 	network::{handle_network_command, CliState, NetworkArgs},
@@ -65,6 +66,9 @@ enum Commands {
 
 	/// DeFi commands for interacting with Neo DeFi protocols
 	DeFi(DefiArgs),
+
+	/// Blockchain commands for interacting with the Neo blockchain
+	Blockchain(BlockchainArgs),
 }
 
 /// Initialize a new configuration file
@@ -128,6 +132,14 @@ async fn main() -> Result<(), CliError> {
 				defi_state.network_type = Some(network_type.clone());
 			}
 			handle_defi_command(args, &mut defi_state).await
+		},
+		Commands::Blockchain(args) => {
+			// Create a new wallet::CliState and copy over the network_type
+			let mut blockchain_state = commands::wallet::CliState::default();
+			if let Some(network_type) = &state.network_type {
+				blockchain_state.network_type = Some(network_type.clone());
+			}
+			handle_blockchain_command(args, &mut blockchain_state).await
 		},
 	}
 }

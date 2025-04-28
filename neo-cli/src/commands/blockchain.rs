@@ -19,6 +19,30 @@ pub struct BlockchainArgs {
 
 #[derive(Subcommand, Debug)]
 pub enum BlockchainCommands {
+	/// Get blockchain information
+	Info,
+
+	/// Get current blockchain height
+	Height,
+
+	/// Get block details by index or hash
+	Block {
+		/// Block index
+		#[arg(long)]
+		index: Option<u32>,
+
+		/// Block hash
+		#[arg(long)]
+		hash: Option<String>,
+	},
+
+	/// Get asset information
+	Asset {
+		/// Asset ID or symbol
+		#[arg(long)]
+		id: String,
+	},
+
 	/// Export blockchain data
 	Export {
 		/// Path to save the exported data
@@ -32,13 +56,6 @@ pub enum BlockchainCommands {
 		/// End block index (inclusive, if not specified, exports to the latest block)
 		#[arg(short, long)]
 		end: Option<u32>,
-	},
-
-	/// Show block details
-	ShowBlock {
-		/// Block hash or index
-		#[arg(short, long)]
-		identifier: String,
 	},
 
 	/// Show transaction information
@@ -63,9 +80,21 @@ pub async fn handle_blockchain_command(
 	state: &mut crate::commands::wallet::CliState,
 ) -> Result<(), CliError> {
 	match args.command {
+		BlockchainCommands::Info => get_blockchain_info(state).await,
+		BlockchainCommands::Height => get_blockchain_height(state).await,
+		BlockchainCommands::Block { index, hash } => {
+			if let Some(idx) = index {
+				show_block_by_index(idx, state).await
+			} else if let Some(h) = hash {
+				show_block(h, state).await
+			} else {
+				print_error("Either --index or --hash must be specified");
+				Err(CliError::Input("Missing block identifier".to_string()))
+			}
+		},
+		BlockchainCommands::Asset { id } => get_asset_info(id, state).await,
 		BlockchainCommands::Export { path, start, end } =>
 			export_blockchain(path, start, end, state).await,
-		BlockchainCommands::ShowBlock { identifier } => show_block(identifier, state).await,
 		BlockchainCommands::ShowTx { hash } => show_transaction(hash, state).await,
 		BlockchainCommands::ShowContract { hash } => show_contract(hash, state).await,
 	}
@@ -140,6 +169,101 @@ async fn export_blockchain(
 	}
 
 	print_success(&format!("Blockchain data exported to: {:?} ({} blocks)", path, exported));
+	Ok(())
+}
+
+async fn get_blockchain_info(state: &mut crate::commands::wallet::CliState) -> Result<(), CliError> {
+	if state.rpc_client.is_none() {
+		print_error("No RPC client is connected. Please connect to a node first.");
+		return Err(CliError::Network("No RPC client is connected".to_string()));
+	}
+
+	print_info("Fetching blockchain information...");
+
+	let rpc_client = state.rpc_client.as_ref().unwrap();
+
+	// Get basic blockchain info
+	let block_count = rpc_client
+		.get_block_count()
+		.await
+		.map_err(|e| CliError::Network(format!("Failed to get block count: {}", e)))?;
+
+	let version = rpc_client
+		.get_version()
+		.await
+		.map_err(|e| CliError::Network(format!("Failed to get node version: {}", e)))?;
+
+	// Display blockchain information
+	println!("\nBlockchain Information:");
+	println!("---------------------");
+	println!("Network: {}", version.protocol.as_ref().unwrap().network);
+	println!("Node Version: {}", version.user_agent);
+	println!("Block Height: {}", block_count - 1);
+	println!("Protocol Configuration:");
+	// println!("  - Magic: 0x{:x}", version.protocol.unwrap().magic);
+	println!("  - Max Transactions per Block: {}", version.protocol.as_ref().unwrap().max_transactions_per_block);
+	println!("  - Address Version: {}", version.protocol.as_ref().unwrap().address_version);
+	// println!("  - State Root Enabled: {}", version.protocol.state_root_enabled);
+
+	Ok(())
+}
+
+async fn get_blockchain_height(state: &mut crate::commands::wallet::CliState) -> Result<(), CliError> {
+	if state.rpc_client.is_none() {
+		print_error("No RPC client is connected. Please connect to a node first.");
+		return Err(CliError::Network("No RPC client is connected".to_string()));
+	}
+
+	print_info("Fetching current blockchain height...");
+
+	let rpc_client = state.rpc_client.as_ref().unwrap();
+
+	// Get block count (height + 1)
+	let block_count = rpc_client
+		.get_block_count()
+		.await
+		.map_err(|e| CliError::Network(format!("Failed to get block count: {}", e)))?;
+
+	// Display height
+	println!("\nCurrent block height: {}", block_count - 1);
+
+	Ok(())
+}
+
+async fn get_asset_info(
+	id: String,
+	state: &mut crate::commands::wallet::CliState,
+) -> Result<(), CliError> {
+	if state.rpc_client.is_none() {
+		print_error("No RPC client is connected. Please connect to a node first.");
+		return Err(CliError::Network("No RPC client is connected".to_string()));
+	}
+
+	print_info(&format!("Fetching asset information for: {}", id));
+
+	let rpc_client = state.rpc_client.as_ref().unwrap();
+
+	// Get asset info - this is a simplified implementation
+	// In a real implementation, you would need to handle both asset IDs and symbols
+	println!("\nAsset Information:");
+	println!("------------------");
+	println!("Asset ID: {}", id);
+
+	// For NEO and GAS, show hardcoded information for demonstration
+	if id == "NEO" || id == "neo" {
+		println!("Symbol: NEO");
+		println!("Type: Token");
+		println!("Precision: 0");
+		println!("Owner: Neo Foundation");
+	} else if id == "GAS" || id == "gas" {
+		println!("Symbol: GAS");
+		println!("Type: Token");
+		println!("Precision: 8");
+		println!("Owner: Neo Foundation");
+	} else {
+		println!("Unknown asset or custom token. Please provide a valid asset ID.");
+	}
+
 	Ok(())
 }
 

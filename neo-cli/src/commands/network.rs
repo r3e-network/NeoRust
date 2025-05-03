@@ -6,7 +6,7 @@ use crate::{
     },
 };
 use clap::{Args, Subcommand};
-use neo3::neo_clients::{HttpProvider, RpcClient};
+use neo3::{neo_clients::{HttpProvider, RpcClient}, providers::APITrait};
 use url::Url;
 
 /// Arguments for the network command
@@ -124,11 +124,11 @@ async fn connect_to_node(
 
     // Create an HTTP provider and RPC client
     let url = Url::parse(&rpc_url).map_err(|e| {
-        CliError::ConnectionError(format!("Failed to parse URL: {}", e))
+        CliError::Network(format!("Failed to parse URL: {}", e))
     })?;
 
     let http_provider = HttpProvider::new(url).map_err(|e| {
-        CliError::ConnectionError(format!("Failed to create HTTP provider: {:?}", e))
+        CliError::Network(format!("Failed to create HTTP provider: {:?}", e))
     })?;
 
     let rpc_client = RpcClient::new(http_provider);
@@ -157,7 +157,7 @@ async fn connect_to_node(
         }
         Err(e) => {
             print_error(&format!("Failed to connect to {}: {}", address, e));
-            Err(CliError::ConnectionError(format!("Failed to connect to node: {}", e)))
+            Err(CliError::Network(format!("Failed to connect to node: {}", e)))
         }
     }
 }

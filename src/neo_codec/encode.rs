@@ -30,9 +30,8 @@ impl NeoSerializable for H160 {
 	where
 		Self: Sized,
 	{
-		reader
-			.read_bytes(NeoConstants::HASH160_SIZE as usize)
-			.map(|bytes| H160::from_slice(&bytes))
+		let bytes = reader.read_bytes(NeoConstants::HASH160_SIZE as usize)?;
+		H160::from_slice(&bytes).map_err(|_| CodecError::InvalidData("Invalid H160 data".to_string()))
 	}
 
 	fn to_array(&self) -> Vec<u8> {
@@ -54,9 +53,8 @@ impl NeoSerializable for H256 {
 	where
 		Self: Sized,
 	{
-		reader
-			.read_bytes(NeoConstants::HASH256_SIZE as usize)
-			.map(|bytes| H256::from_slice(&bytes))
+		let bytes = reader.read_bytes(NeoConstants::HASH256_SIZE as usize)?;
+		H256::from_slice(&bytes).map_err(|_| CodecError::InvalidData("Invalid H256 data".to_string()))
 	}
 
 	fn to_array(&self) -> Vec<u8> {

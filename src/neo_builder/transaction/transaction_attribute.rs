@@ -16,8 +16,6 @@ use crate::{
 	neo_types::{Bytes, TypeError},
 	var_size,
 };
-use ethereum_types::H256;
-use serde::{Deserialize, Serialize};
 
 use super::oracle_response_code::OracleResponseCode;
 

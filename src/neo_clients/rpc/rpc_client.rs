@@ -34,7 +34,6 @@ use crate::{
 	builder::{Signer, Transaction, TransactionSendToken},
 	codec::NeoSerializable,
 	config::NEOCONFIG,
-	neo_clients::rpc::rpc_client::sealed::Sealed,
 	neo_protocol::*,
 	neo_types::ScriptHashExtension,
 	prelude::Base64Encode,
@@ -207,7 +206,7 @@ impl<P: JsonRpcProvider> APITrait for RpcClient<P> {
 	/// - Returns: The request object
 	async fn get_block(&self, block_hash: H256, full_tx: bool) -> Result<NeoBlock, ProviderError> {
 		Ok(if full_tx {
-			self.request("getblock", [block_hash.to_value(), 1.to_value()].to_vec()).await?
+			self.request("getblock", [block_hash.to_value(), 1.to_value()]).await?
 		} else {
 			self.get_block_header(block_hash).await?
 		})
@@ -643,8 +642,7 @@ impl<P: JsonRpcProvider> APITrait for RpcClient<P> {
 	) -> Result<InvocationResult, ProviderError> {
 		let signers: Vec<TransactionSigner> =
 			signers.into_iter().map(|signer| signer.into()).collect::<Vec<_>>();
-		let hex_bytes = hex
-			.from_hex()
+		let hex_bytes = hex::decode(&hex)
 			.map_err(|e| ProviderError::ParseError(format!("Failed to parse hex: {}", e)))?;
 		let script_base64 = serde_json::to_value(hex_bytes.to_base64())?;
 		let signers_json = serde_json::to_value(&signers)?;
@@ -805,7 +803,7 @@ impl<P: JsonRpcProvider> APITrait for RpcClient<P> {
 		let signer_addresses: Vec<String> =
 			signers.into_iter().map(|signer| signer.to_address()).collect();
 		let params = json!([
-			txHash.0.to_hex(),
+			hex::encode(txHash.0),
 			signer_addresses,
 			extra_fee.map_or("".to_string(), |fee| fee.to_string())
 		]);
@@ -817,7 +815,7 @@ impl<P: JsonRpcProvider> APITrait for RpcClient<P> {
 	/// - Parameter txHash: The transaction hash
 	/// - Returns: The request object
 	async fn get_application_log(&self, tx_hash: H256) -> Result<ApplicationLog, ProviderError> {
-		self.request("getapplicationlog", vec![tx_hash.0.to_hex().to_value()]).await
+		self.request("getapplicationlog", vec![hex::encode(tx_hash.0).to_value()]).await
 	}
 
 	/// Gets the balance of all NEP-17 token assets in the specified script hash.
@@ -961,7 +959,7 @@ impl<P: JsonRpcProvider> APITrait for RpcClient<P> {
 		self.request(
 			"getproof",
 			json!([
-				root_hash.0.to_hex(),
+				hex::encode(root_hash.0),
 				contract_hash.to_hex(),
 				Base64Encode::to_base64(&key.to_string())
 			]),
@@ -975,7 +973,7 @@ impl<P: JsonRpcProvider> APITrait for RpcClient<P> {
 	///   - proof: The proof data of the state root
 	/// - Returns: The request object
 	async fn verify_proof(&self, root_hash: H256, proof: &str) -> Result<String, ProviderError> {
-		let params = json!([root_hash.0.to_hex(), Base64Encode::to_base64(&proof.to_string())]);
+		let params = json!([hex::encode(root_hash.0), Base64Encode::to_base64(&proof.to_string())]);
 		self.request("verifyproof", params).await
 	}
 
@@ -1000,7 +998,7 @@ impl<P: JsonRpcProvider> APITrait for RpcClient<P> {
 		self.request(
 			"getstate",
 			json!([
-				root_hash.0.to_hex(),
+				hex::encode(root_hash.0),
 				contract_hash.to_hex(),
 				Base64Encode::to_base64(&key.to_string())
 			]), //key.to_base64()],
@@ -1027,13 +1025,13 @@ impl<P: JsonRpcProvider> APITrait for RpcClient<P> {
 		count: Option<u32>,
 	) -> Result<States, ProviderError> {
 		let mut params = json!([
-			root_hash.0.to_hex(),
+			hex::encode(root_hash.0),
 			contract_hash.to_hex(),
 			Base64Encode::to_base64(&key_prefix.to_string())
 		]);
 		if let (Some(start_key), Some(count)) = (start_key, count) {
 			params = json!([
-				root_hash.0.to_hex(),
+				hex::encode(root_hash.0),
 				contract_hash.to_hex(),
 				Base64Encode::to_base64(&key_prefix.to_string()),
 				Base64Encode::to_base64(&start_key.to_string()),
@@ -1041,7 +1039,7 @@ impl<P: JsonRpcProvider> APITrait for RpcClient<P> {
 			]);
 		} else if let Some(count) = count {
 			params = json!([
-				root_hash.0.to_hex(),
+				hex::encode(root_hash.0),
 				contract_hash.to_hex(),
 				Base64Encode::to_base64(&key_prefix.to_string()),
 				"".to_string(),
@@ -1049,19 +1047,13 @@ impl<P: JsonRpcProvider> APITrait for RpcClient<P> {
 			]);
 		} else if let Some(start_key) = start_key {
 			params = json!([
-				root_hash.0.to_hex(),
+				hex::encode(root_hash.0),
 				contract_hash.to_hex(),
 				Base64Encode::to_base64(&key_prefix.to_string()),
 				Base64Encode::to_base64(&start_key.to_string()),
 			]);
 		}
 
-		// if let Some(start_key) = start_key {
-		// 	params.push(start_key.to_value())
-		// }
-		// if let Some(count) = count {
-		// 	params.push(count.to_value())
-		// }
 		self.request("findstates", params).await
 	}
 
@@ -1118,8 +1110,7 @@ impl<P: JsonRpcProvider> APITrait for RpcClient<P> {
 	) -> Result<InvocationResult, ProviderError> {
 		let signers: Vec<TransactionSigner> =
 			signers.into_iter().map(|signer| signer.into()).collect::<Vec<_>>();
-		let hex_bytes = hex
-			.from_hex()
+		let hex_bytes = hex::decode(&hex)
 			.map_err(|e| ProviderError::ParseError(format!("Failed to parse hex: {}", e)))?;
 		let script_base64 = serde_json::to_value(hex_bytes.to_base64())?;
 		let signers_json = serde_json::to_value(&signers)?;

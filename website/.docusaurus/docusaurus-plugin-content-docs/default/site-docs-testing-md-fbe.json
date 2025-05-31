@@ -1,0 +1,20 @@
+{
+  "id": "testing",
+  "title": "Testing Documentation",
+  "description": "This document outlines the testing strategy and testing practices for the Neo Rust Website.",
+  "source": "@site/docs/testing.md",
+  "sourceDirName": ".",
+  "slug": "/testing",
+  "permalink": "/docs/testing",
+  "draft": false,
+  "unlisted": false,
+  "editUrl": "https://github.com/R3E-Network/NeoRust/tree/main/website/docs/testing.md",
+  "tags": [],
+  "version": "current",
+  "frontMatter": {},
+  "sidebar": "tutorialSidebar",
+  "previous": {
+    "title": "Your First Neo Wallet",
+    "permalink": "/docs/getting-started/first-wallet"
+  }
+}

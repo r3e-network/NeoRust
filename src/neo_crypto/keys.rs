@@ -76,9 +76,9 @@ use p256::{
 };
 use primitive_types::U256;
 use rand_core::OsRng;
-use rustc_serialize::hex::{FromHex, ToHex};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use signature::{hazmat::PrehashSigner, SignerMut, Verifier};
+use crate::neo_crypto::utils::{FromHexString, ToHexString};
 
 #[cfg_attr(feature = "substrate", serde(crate = "serde_substrate"))]
 #[derive(Debug, Clone)]
@@ -218,7 +218,7 @@ impl Secp256r1PublicKey {
 	/// - Returns: The encoded public key in compressed format as hexadecimal without a prefix
 	pub fn get_encoded_compressed_hex(&self) -> String {
 		let encoded = self.get_encoded(true);
-		encoded.to_hex()
+		encoded.to_hex_string()
 	}
 
 	/// Constructs a `Secp256r1PublicKey` from a hexadecimal string representation.
@@ -231,7 +231,7 @@ impl Secp256r1PublicKey {
 	/// - Returns: An `Option<Secp256r1PublicKey>`.
 	pub fn from_encoded(encoded: &str) -> Option<Self> {
 		let encoded = &encoded.replace("0x", "");
-		let encoded = encoded.from_hex().ok()?;
+		let encoded = encoded.from_hex_string().ok()?;
 
 		Secp256r1PublicKey::from_bytes(encoded.as_slice()).ok()
 	}

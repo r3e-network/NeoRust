@@ -5,10 +5,10 @@ use crate::{
 	codec::{Decoder, Encoder, NeoSerializable},
 	crypto::Secp256r1PublicKey,
 	neo_codec::VarSizeTrait,
+	neo_crypto::utils::{FromHexString, ToHexString},
 	ScriptHashExtension,
 };
 use primitive_types::H160;
-use rustc_serialize::hex::{FromHex, ToHex};
 use serde::{ser::SerializeStruct, Deserialize, Deserializer, Serialize, Serializer};
 use serde_json::Value;
 
@@ -59,7 +59,7 @@ impl Serialize for WitnessCondition {
 			},
 			WitnessCondition::ScriptHash(ref hash) => {
 				state.serialize_field("type", "ScriptHash")?;
-				state.serialize_field("hash", &hash.to_hex())?;
+				state.serialize_field("hash", &hash.to_hex_string())?;
 			},
 			WitnessCondition::Group(ref key) | WitnessCondition::CalledByGroup(ref key) => {
 				state.serialize_field(
@@ -70,14 +70,14 @@ impl Serialize for WitnessCondition {
 						"CalledByGroup"
 					},
 				)?;
-				state.serialize_field("group", &key.get_encoded(true).to_hex())?;
+				state.serialize_field("group", &key.get_encoded(true).to_hex_string())?;
 			},
 			WitnessCondition::CalledByEntry => {
 				state.serialize_field("type", "CalledByEntry")?;
 			},
 			WitnessCondition::CalledByContract(ref hash) => {
 				state.serialize_field("type", "CalledByContract")?;
-				state.serialize_field("hash", &hash.to_hex())?;
+				state.serialize_field("hash", &hash.to_hex_string())?;
 			},
 			WitnessCondition::CalledByGroup(ref key) => {
 				state.serialize_field("type", "CalledByGroup")?;
@@ -129,13 +129,16 @@ where
 			let group = v["group"]
 				.as_str()
 				.ok_or(serde::de::Error::custom("Expected a string for Group/CalledByGroup"))?;
+			let group_bytes = group.from_hex_string().map_err(|e| {
+				serde::de::Error::custom(format!("Failed to decode hex: {}", e))
+			})?;
 			let condition = if v["type"] == "Group" {
 				WitnessCondition::Group(
-					Secp256r1PublicKey::from_bytes(&group.from_hex().unwrap()).unwrap(),
+					Secp256r1PublicKey::from_bytes(&group_bytes).unwrap(),
 				)
 			} else {
 				WitnessCondition::CalledByGroup(
-					Secp256r1PublicKey::from_bytes(&group.from_hex().unwrap()).unwrap(),
+					Secp256r1PublicKey::from_bytes(&group_bytes).unwrap(),
 				)
 			};
 			Ok(condition)
@@ -145,7 +148,12 @@ where
 			let hash = v["hash"]
 				.as_str()
 				.ok_or(serde::de::Error::custom("Expected a string for CalledByContract"))?;
-			Ok(WitnessCondition::CalledByContract(H160::from_slice(&hash.from_hex().unwrap())))
+			let hash_bytes = hash.from_hex_string().map_err(|e| {
+				serde::de::Error::custom(format!("Failed to decode hex: {}", e))
+			})?;
+			Ok(WitnessCondition::CalledByContract(H160::from_slice(&hash_bytes).map_err(|e| {
+				serde::de::Error::custom(format!("Failed to create H160: {:?}", e))
+			})?))
 		},
 		_ => Err(serde::de::Error::custom("Unknown WitnessCondition type")),
 	}

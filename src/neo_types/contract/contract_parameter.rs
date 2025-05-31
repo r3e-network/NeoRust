@@ -560,8 +560,10 @@ impl ContractParameter {
 			ParameterValue::H160(h) => {
 				let bytes = h.from_hex_string()
 					.map_err(|e| format!("Failed to decode hex: {}", e))?;
-				H160::from_slice(&bytes)
-					.map_err(|e| format!("Failed to create H160: {:?}", e))
+				match H160::from_slice(&bytes) {
+					Ok(hash) => Ok(hash),
+					Err(e) => Err(format!("Failed to create H160: {:?}", e)),
+				}
 			},
 			_ => Err(format!("Cannot convert {:?} to H160", self)),
 		}
@@ -572,8 +574,8 @@ impl ContractParameter {
 	}
 
 	pub fn to_h256(&self) -> Result<H256, String> {
-		match self {
-			ParameterValue::H256(h) => {
+		match &self.value {
+			Some(ParameterValue::H256(h)) => {
 				let bytes = h.from_hex_string()
 					.map_err(|e| format!("Failed to decode hex: {}", e))?;
 				if bytes.len() != 32 {
@@ -716,8 +718,10 @@ impl ParameterValue {
 			ParameterValue::H160(h) => {
 				let bytes = h.from_hex_string()
 					.map_err(|e| format!("Failed to decode hex: {}", e))?;
-				H160::from_slice(&bytes)
-					.map_err(|e| format!("Failed to create H160: {:?}", e))
+				match H160::from_slice(&bytes) {
+					Ok(hash) => Ok(hash),
+					Err(e) => Err(format!("Failed to create H160: {:?}", e)),
+				}
 			},
 			_ => Err(format!("Cannot convert {:?} to H160", self)),
 		}

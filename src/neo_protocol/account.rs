@@ -81,9 +81,9 @@ use std::{
 };
 
 use primitive_types::H160;
-use rustc_serialize::hex::ToHex;
 use serde_derive::{Deserialize, Serialize};
 use signature::{hazmat::PrehashSigner, Error, SignerMut};
+use crate::neo_crypto::utils::ToHexString;
 
 use crate::{
 	neo_builder::VerificationScript,
@@ -436,7 +436,7 @@ impl AccountTrait for Account {
 		))?;
 
 		let encrypted_private_key = get_nep2_from_private_key(
-			key_pair.private_key.to_raw_bytes().to_hex().as_str(),
+			&key_pair.private_key.to_raw_bytes().to_hex_string(),
 			password,
 		)
 		.map_err(|e| Self::Error::IllegalState(format!("Failed to encrypt private key: {}", e)))?;

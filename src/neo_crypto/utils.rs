@@ -1,18 +1,25 @@
 use crate::crypto::{
 	CryptoError, PrivateKeyExtension, PublicKeyExtension, Secp256r1PrivateKey, Secp256r1PublicKey,
 };
-use rustc_serialize::hex::ToHex;
+use hex;
+use base64;
 
 /// Convert a private key to a public key.
 pub fn private_key_to_public_key(private_key: &Secp256r1PrivateKey) -> Secp256r1PublicKey {
 	private_key.to_public_key()
 }
 
-/// Convert a private key to hex format.
+/// Converts a private key to its hexadecimal string representation.
 ///
-/// Returns the private key as a hex encoded string.
-pub fn private_key_to_hex(private_key: &Secp256r1PrivateKey) -> String {
-	private_key.to_raw_bytes().to_vec().to_hex()
+/// # Arguments
+///
+/// * `private_key` - The private key to convert
+///
+/// # Returns
+///
+/// A hexadecimal string representation of the private key
+pub fn private_key_to_hex_string(private_key: &Secp256r1PrivateKey) -> String {
+	hex::encode(private_key.to_raw_bytes().to_vec())
 }
 
 /// Convert a private key in hex format to a Secp256r1PrivateKey.
@@ -26,11 +33,17 @@ pub fn private_key_from_hex(hex: &str) -> Result<Secp256r1PrivateKey, CryptoErro
 	Ok(secret_key)
 }
 
-/// Convert a public key to hex format.
+/// Converts a public key to its hexadecimal string representation.
 ///
-/// Returns the public key as a hex encoded string.
-pub fn public_key_to_hex(public_key: &Secp256r1PublicKey) -> String {
-	public_key.to_vec().to_hex()
+/// # Arguments
+///
+/// * `public_key` - The public key bytes to convert
+///
+/// # Returns
+///
+/// A hexadecimal string representation of the public key
+pub fn public_key_to_hex_string(public_key: &[u8]) -> String {
+	hex::encode(public_key.to_vec())
 }
 
 /// Convert a public key in hex format to a Secp256r1PublicKey.
@@ -69,3 +82,60 @@ macro_rules! impl_to_array32 {
 
 impl_to_array32!(Vec<u8>);
 impl_to_array32!(&[u8]);
+
+/// Trait to add hex encoding functionality to byte arrays and vectors
+pub trait ToHexString {
+	fn to_hex_string(&self) -> String;
+}
+
+impl ToHexString for [u8] {
+	fn to_hex_string(&self) -> String {
+		hex::encode(self)
+	}
+}
+
+impl ToHexString for Vec<u8> {
+	fn to_hex_string(&self) -> String {
+		hex::encode(self)
+	}
+}
+
+impl<const N: usize> ToHexString for [u8; N] {
+	fn to_hex_string(&self) -> String {
+		hex::encode(self)
+	}
+}
+
+/// Trait to add hex decoding functionality to strings
+pub trait FromHexString {
+	fn from_hex_string(&self) -> Result<Vec<u8>, hex::FromHexError>;
+}
+
+impl FromHexString for str {
+	fn from_hex_string(&self) -> Result<Vec<u8>, hex::FromHexError> {
+		hex::decode(self)
+	}
+}
+
+impl FromHexString for String {
+	fn from_hex_string(&self) -> Result<Vec<u8>, hex::FromHexError> {
+		hex::decode(self)
+	}
+}
+
+/// Trait to add base64 decoding functionality to strings
+pub trait FromBase64String {
+	fn from_base64_string(&self) -> Result<Vec<u8>, base64::DecodeError>;
+}
+
+impl FromBase64String for str {
+	fn from_base64_string(&self) -> Result<Vec<u8>, base64::DecodeError> {
+		base64::decode(self)
+	}
+}
+
+impl FromBase64String for String {
+	fn from_base64_string(&self) -> Result<Vec<u8>, base64::DecodeError> {
+		base64::decode(self)
+	}
+}

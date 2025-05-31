@@ -63,7 +63,6 @@ use crate::{
 	vec_to_array32,
 };
 use aes::cipher::{block_padding::NoPadding, BlockDecryptMut, BlockEncryptMut, KeyInit};
-use rustc_serialize::hex::FromHex;
 use scrypt::{scrypt, Params};
 
 type Aes256EcbEnc = ecb::Encryptor<aes::Aes256>;

@@ -90,3 +90,7 @@ pub use crate::neo_fs; // NeoFS distributed storage
 
 // Re-export ValueExtension
 pub use crate::neo_types::ValueExtension;
+
+// === Utility Traits ===
+// Hex and base64 encoding/decoding utilities
+pub use crate::neo_crypto::utils::{FromBase64String, FromHexString, ToHexString};

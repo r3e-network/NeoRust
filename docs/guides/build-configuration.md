@@ -14,6 +14,53 @@ Regular security audits are essential for maintaining a secure codebase. Use `ca
 cargo audit
 ```
 
+### Current Status
+
+**✅ Fixed Vulnerabilities:**
+- **protobuf**: Updated from 3.2.0 to 3.7.2 (RUSTSEC-2024-0437)
+- **rustc-serialize**: Removed vulnerable dependency (RUSTSEC-2022-0004)
+- **rust-crypto**: Removed vulnerable dependency (RUSTSEC-2022-0011)
+- **json**: Removed unmaintained dependency (RUSTSEC-2022-0081)
+- **instant**: Replaced with web-time for better WASM support (RUSTSEC-2024-0384)
+
+**🔄 In Progress:**
+- Migrating hex encoding/decoding from rustc-serialize to hex crate
+- Updating base64 functionality to use modern base64 crate
+- Fixing compilation errors related to hex functionality migration
+
+**⚠️ Remaining Issues:**
+- **ring 0.16.20**: AES overflow checking issue (RUSTSEC-2025-0009) - requires ring upgrade
+- Some compilation errors remain during hex functionality migration
+
+### Migration Progress
+
+The codebase is currently being migrated from vulnerable dependencies to secure alternatives:
+
+1. **Hex Functionality**: Migrating from `rustc-serialize::hex` to `hex` crate
+   - ✅ Added new utility traits: `ToHexString`, `FromHexString`
+   - ✅ Updated core crypto utilities
+   - 🔄 Updating remaining files (51 compilation errors remaining)
+
+2. **Base64 Functionality**: Migrating from `rustc-serialize::base64` to `base64` crate
+   - ✅ Added `FromBase64String` utility trait
+   - 🔄 Updating method calls throughout codebase
+
+### Build Commands
+
+```bash
+# Check for compilation errors
+cargo check --all-features
+
+# Run security audit
+cargo audit
+
+# Build for production (no mock features)
+cargo build --release
+
+# Build for development (with mock features)
+cargo build --features "mock-hsm"
+```
+
 ### Common Vulnerabilities Found
 
 Based on recent audits, the following vulnerabilities have been identified:

@@ -5,6 +5,27 @@ All notable changes to NeoRust will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.3] - 2025-05-31
+
+### Added
+- Comprehensive release workflow for automated multi-platform binary builds
+- Support for Linux (x86_64, ARM64), macOS (Intel, Apple Silicon), and Windows (64-bit, 32-bit)
+- Automatic crate publishing to crates.io on release
+- Complete documentation website with Docusaurus and beautiful Neo branding
+- Placeholder SVG images for all documentation sections
+
+### Fixed
+- CLI build paths in release workflow (now builds from neo-cli directory)
+- Netlify deployment configuration with correct build commands
+- TailwindCSS configuration conflicts causing PostCSS errors
+- Missing image assets in documentation with proper SVG placeholders
+- Release workflow binary preparation and upload paths
+
+### Changed
+- Updated release workflow to exclude website building as requested
+- Improved error handling in automated release process
+- Enhanced documentation with comprehensive release workflow guide
+
 ## [0.2.0] - 2025-05-31
 
 ### Added

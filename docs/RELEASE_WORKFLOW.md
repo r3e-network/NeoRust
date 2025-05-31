@@ -29,15 +29,15 @@ The workflow builds binaries for the following platforms:
 1. **Update version numbers** in all relevant files:
    ```bash
    # Update main Cargo.toml
-   sed -i 's/version = "0.2.0"/version = "0.3.0"/g' Cargo.toml
+   sed -i 's/version = "0.2.3"/version = "0.3.0"/g' Cargo.toml
    
    # Update CLI Cargo.toml
-   sed -i 's/version = "0.2.0"/version = "0.3.0"/g' neo-cli/Cargo.toml
-   sed -i 's/neo3.*version = "0.2.0"/neo3 = { path = "..", version = "0.3.0" }/g' neo-cli/Cargo.toml
+   sed -i 's/version = "0.2.3"/version = "0.3.0"/g' neo-cli/Cargo.toml
+   sed -i 's/neo3.*version = "0.2.3"/neo3 = { path = "..", version = "0.3.0" }/g' neo-cli/Cargo.toml
    
    # Update GUI Cargo.toml
-   sed -i 's/version = "0.2.0"/version = "0.3.0"/g' neo-gui/Cargo.toml
-   sed -i 's/neo3.*version = "0.2.0"/neo3 = { path = "..", version = "0.3.0" }/g' neo-gui/Cargo.toml
+   sed -i 's/version = "0.2.3"/version = "0.3.0"/g' neo-gui/Cargo.toml
+   sed -i 's/neo3.*version = "0.2.3"/neo3 = { path = "..", version = "0.3.0" }/g' neo-gui/Cargo.toml
    ```
 
 2. **Update CHANGELOG.md** with the new version:
@@ -207,9 +207,9 @@ Here's a complete example of releasing version 0.3.0:
 
 ```bash
 # 1. Update version numbers
-sed -i 's/version = "0.2.0"/version = "0.3.0"/g' Cargo.toml
-sed -i 's/version = "0.2.0"/version = "0.3.0"/g' neo-cli/Cargo.toml
-sed -i 's/neo3.*version = "0.2.0"/neo3 = { path = "..", version = "0.3.0" }/g' neo-cli/Cargo.toml
+sed -i 's/version = "0.2.3"/version = "0.3.0"/g' Cargo.toml
+sed -i 's/version = "0.2.3"/version = "0.3.0"/g' neo-cli/Cargo.toml
+sed -i 's/neo3.*version = "0.2.3"/neo3 = { path = "..", version = "0.3.0" }/g' neo-cli/Cargo.toml
 
 # 2. Update CHANGELOG.md (manually edit the file)
 

@@ -9,16 +9,18 @@ use crate::neo_crypto::utils::ToHexString;
 // Replace prelude imports with specific types
 use crate::{
 	neo_builder::{
-		transaction::{Signer, Transaction, TransactionBuilder},
 		BuilderError, CallFlags, ScriptBuilder,
 	},
-	neo_clients::{JsonRpcProvider, ProviderError, RpcClient},
+	neo_clients::{JsonRpcProvider, ProviderError, RpcClient, APITrait},
 	neo_contract::{ContractError, NeoIterator},
 	neo_types::{
 		Bytes, ContractManifest, ContractParameter, ContractParameterType, InvocationResult, OpCode, ScriptHash, StackItem,
 	},
 	ScriptHashExtension,
 };
+
+// Import transaction types from the correct modules
+use crate::neo_builder::{Signer, Transaction, TransactionBuilder};
 
 #[async_trait]
 pub trait SmartContractTrait<'a>: Send + Sync {

@@ -1,11 +1,11 @@
 use std::path::PathBuf;
 
+use neo3 as neo;
 use neo3::{
 	neo_protocol::account::Account,
 	neo_wallets::{Wallet, WalletBackup, WalletTrait},
 	prelude::{NeoNetwork, ScryptParamsDef},
 };
-use neo3 as neo;
 
 /// This example demonstrates how to manage wallets in the Neo N3 blockchain.
 /// It covers wallet creation, account management, wallet backup and recovery.
@@ -76,4 +76,3 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 	println!("\nWallet management example completed successfully!");
 	Ok(())
 }
-

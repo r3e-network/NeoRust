@@ -1,8 +1,8 @@
 use crate::crypto::{
 	CryptoError, PrivateKeyExtension, PublicKeyExtension, Secp256r1PrivateKey, Secp256r1PublicKey,
 };
-use hex;
 use base64;
+use hex;
 
 /// Convert a private key to a public key.
 pub fn private_key_to_public_key(private_key: &Secp256r1PrivateKey) -> Secp256r1PublicKey {

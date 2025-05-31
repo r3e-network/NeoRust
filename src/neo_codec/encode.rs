@@ -31,7 +31,8 @@ impl NeoSerializable for H160 {
 		Self: Sized,
 	{
 		let bytes = reader.read_bytes(NeoConstants::HASH160_SIZE as usize)?;
-		<H160 as crate::neo_types::ScriptHashExtension>::from_slice(&bytes).map_err(|_| CodecError::InvalidFormat)
+		<H160 as crate::neo_types::ScriptHashExtension>::from_slice(&bytes)
+			.map_err(|_| CodecError::InvalidFormat)
 	}
 
 	fn to_array(&self) -> Vec<u8> {

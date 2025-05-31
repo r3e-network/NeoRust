@@ -72,7 +72,10 @@ impl ScriptReader {
 						// Fixed size operand
 						result.push_str(&format!(
 							" {}",
-							reader.read_bytes(size.size().clone() as usize).unwrap().to_hex_string()
+							reader
+								.read_bytes(size.size().clone() as usize)
+								.unwrap()
+								.to_hex_string()
 						));
 					} else if size.prefix_size().clone() > 0 {
 						// Variable size operand with prefix
@@ -131,7 +134,8 @@ mod tests {
 	#[test]
 	fn test_convert_to_op_code_string() {
 		// Test script in hexadecimal format
-		let script = hex::decode("0c0548656c6c6f0c05576f726c642150419bf667ce41e63f18841140").unwrap();
+		let script =
+			hex::decode("0c0548656c6c6f0c05576f726c642150419bf667ce41e63f18841140").unwrap();
 
 		// Expected output after conversion
 		let expected_op_code_string = "PUSHDATA1 5 48656c6c6f\nPUSHDATA1 5 576f726c64\nNOP\nSWAP\nSYSCALL 9bf667ce\nSYSCALL e63f1884\nPUSH1\nRET\n";

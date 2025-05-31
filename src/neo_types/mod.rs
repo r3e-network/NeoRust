@@ -69,11 +69,11 @@
 //! assert_eq!(json_value, json!(123));
 //! ```
 
+use crate::neo_crypto::utils::FromBase64String;
 use base64::{engine::general_purpose, Engine};
 pub use log::*;
 use primitive_types::H256;
 use serde_derive::{Deserialize, Serialize};
-use crate::neo_crypto::utils::FromBase64String;
 
 // Re-export everything from these modules
 pub use address::*;
@@ -236,8 +236,8 @@ pub fn to_checksum(addr: &ScriptHash, chain_id: Option<u8>) -> String {
 
 #[cfg(test)]
 mod tests {
-	use hex;
 	use crate::neo_crypto::utils::FromBase64String;
+	use hex;
 
 	use super::*;
 

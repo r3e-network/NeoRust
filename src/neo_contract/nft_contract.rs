@@ -61,7 +61,7 @@ impl<'a, P: JsonRpcProvider> TokenTrait<'a, P> for NftContract<'a, P> {
 		// NFT contracts don't typically resolve NNS text records
 		// Return an error indicating this operation is not supported
 		Err(ContractError::UnsupportedOperation(
-			"NNS text record resolution is not supported for NFT contracts".to_string()
+			"NNS text record resolution is not supported for NFT contracts".to_string(),
 		))
 	}
 }

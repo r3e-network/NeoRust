@@ -1,9 +1,9 @@
 use crate::{
 	errors::CliError,
 	utils_core::{
-		create_table, display_key_value, format_number, print_error, print_info, print_section_header,
-		print_success, print_warning, prompt_input, prompt_password, prompt_yes_no, status_indicator,
-		with_loading,
+		create_table, display_key_value, format_number, print_error, print_info,
+		print_section_header, print_success, print_warning, prompt_input, prompt_password,
+		prompt_yes_no, status_indicator, with_loading,
 	},
 };
 use neo3::{
@@ -16,6 +16,8 @@ use std::{collections::HashMap, path::PathBuf, str::FromStr};
 // Use neo3 types directly
 use async_trait::async_trait;
 use clap::{Args, Subcommand};
+use colored::*;
+use comfy_table::{Cell, Color};
 use neo3::{
 	neo_clients::{APITrait, HttpProvider, JsonRpcProvider, ProviderError, RpcClient},
 	neo_protocol::{
@@ -27,8 +29,6 @@ use neo3::{
 };
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use std::fmt::Debug;
-use colored::*;
-use comfy_table::{Cell, Color};
 
 // Create a wrapper for neo3's Wallet for CLI operations
 #[derive(Clone)]
@@ -99,7 +99,13 @@ pub struct CliState {
 
 impl Default for CliState {
 	fn default() -> Self {
-		Self { wallet: None, rpc_client: None, network_type: None, current_network: None, networks: Vec::new() }
+		Self {
+			wallet: None,
+			rpc_client: None,
+			network_type: None,
+			current_network: None,
+			networks: Vec::new(),
+		}
 	}
 }
 
@@ -148,7 +154,7 @@ pub enum WalletCommands {
 		/// Path to save the wallet
 		#[arg(short, long, help = "Path to save the wallet file")]
 		path: Option<PathBuf>,
-		
+
 		/// Wallet name
 		#[arg(short, long, help = "Name for the wallet")]
 		name: Option<String>,
@@ -180,7 +186,7 @@ pub enum WalletCommands {
 		/// Number of addresses to create
 		#[arg(short, long, default_value = "1", help = "Number of addresses to create")]
 		count: u16,
-		
+
 		/// Label for the address
 		#[arg(short, long, help = "Label for the new address")]
 		label: Option<String>,
@@ -192,7 +198,7 @@ pub enum WalletCommands {
 		/// WIF string or path to a file containing WIF keys
 		#[arg(short, long, help = "WIF private key or file path")]
 		wif_or_file: String,
-		
+
 		/// Label for the imported account
 		#[arg(short, long, help = "Label for the imported account")]
 		label: Option<String>,
@@ -208,7 +214,7 @@ pub enum WalletCommands {
 		/// Address to export (if not specified, exports all)
 		#[arg(short, long, help = "Specific address to export")]
 		address: Option<String>,
-		
+
 		/// Export format (wif, json, csv)
 		#[arg(short, long, default_value = "wif", help = "Export format")]
 		format: String,
@@ -244,7 +250,7 @@ pub enum WalletCommands {
 		/// Sender address (if not specified, uses the first account)
 		#[arg(short, long, help = "Sender address")]
 		from: Option<String>,
-		
+
 		/// Transaction fee
 		#[arg(short, long, help = "Network fee for the transaction")]
 		fee: Option<String>,
@@ -260,7 +266,7 @@ pub enum WalletCommands {
 		/// Only show this token (NEO, GAS, or script hash)
 		#[arg(short, long, help = "Specific token to display")]
 		token: Option<String>,
-		
+
 		/// Show detailed balance information
 		#[arg(short, long, help = "Show detailed balance information")]
 		detailed: bool,
@@ -284,53 +290,27 @@ pub enum WalletCommands {
 }
 
 /// Handle wallet command with comprehensive functionality
-pub async fn handle_wallet_command(
-	args: WalletArgs,
-	state: &mut CliState,
-) -> Result<(), CliError> {
+pub async fn handle_wallet_command(args: WalletArgs, state: &mut CliState) -> Result<(), CliError> {
 	match args.command {
-		WalletCommands::Create { path, name } => {
-			handle_create_wallet(path, name, state).await
-		},
-		WalletCommands::Open { path } => {
-			handle_open_wallet(path, state).await
-		},
-		WalletCommands::Close => {
-			handle_close_wallet(state).await
-		},
-		WalletCommands::List => {
-			handle_list_addresses(state).await
-		},
-		WalletCommands::Info => {
-			handle_wallet_info(state).await
-		},
-		WalletCommands::CreateAddress { count, label } => {
-			handle_create_address(count, label, state).await
-		},
-		WalletCommands::Import { wif_or_file, label } => {
-			handle_import_key(wif_or_file, label, state).await
-		},
-		WalletCommands::Export { path, address, format } => {
-			handle_export_key(path, address, format, state).await
-		},
-		WalletCommands::Gas { address } => {
-			handle_show_gas(address, state).await
-		},
-		WalletCommands::Password => {
-			handle_change_password(state).await
-		},
-		WalletCommands::Send { asset, to, amount, from, fee } => {
-			handle_transfer(asset, to, amount, from, fee, state).await
-		},
-		WalletCommands::Balance { address, token, detailed } => {
-			handle_balance(address, token, detailed, state).await
-		},
-		WalletCommands::Backup { path } => {
-			handle_backup_wallet(path, state).await
-		},
-		WalletCommands::Restore { path } => {
-			handle_restore_wallet(path, state).await
-		},
+		WalletCommands::Create { path, name } => handle_create_wallet(path, name, state).await,
+		WalletCommands::Open { path } => handle_open_wallet(path, state).await,
+		WalletCommands::Close => handle_close_wallet(state).await,
+		WalletCommands::List => handle_list_addresses(state).await,
+		WalletCommands::Info => handle_wallet_info(state).await,
+		WalletCommands::CreateAddress { count, label } =>
+			handle_create_address(count, label, state).await,
+		WalletCommands::Import { wif_or_file, label } =>
+			handle_import_key(wif_or_file, label, state).await,
+		WalletCommands::Export { path, address, format } =>
+			handle_export_key(path, address, format, state).await,
+		WalletCommands::Gas { address } => handle_show_gas(address, state).await,
+		WalletCommands::Password => handle_change_password(state).await,
+		WalletCommands::Send { asset, to, amount, from, fee } =>
+			handle_transfer(asset, to, amount, from, fee, state).await,
+		WalletCommands::Balance { address, token, detailed } =>
+			handle_balance(address, token, detailed, state).await,
+		WalletCommands::Backup { path } => handle_backup_wallet(path, state).await,
+		WalletCommands::Restore { path } => handle_restore_wallet(path, state).await,
 	}
 }
 
@@ -354,19 +334,19 @@ async fn handle_create_wallet(
 		let overwrite = prompt_yes_no(&format!(
 			"Wallet file '{}' already exists. Overwrite?",
 			wallet_path.display()
-		)).map_err(|e| CliError::Io(e))?;
-		
+		))
+		.map_err(|e| CliError::Io(e))?;
+
 		if !overwrite {
 			print_warning("Wallet creation cancelled");
 			return Ok(());
 		}
 	}
 
-	let password = prompt_password("Enter password for the new wallet")
-		.map_err(|e| CliError::Io(e))?;
-	
-	let confirm_password = prompt_password("Confirm password")
-		.map_err(|e| CliError::Io(e))?;
+	let password =
+		prompt_password("Enter password for the new wallet").map_err(|e| CliError::Io(e))?;
+
+	let confirm_password = prompt_password("Confirm password").map_err(|e| CliError::Io(e))?;
 
 	if password != confirm_password {
 		return Err(CliError::Wallet("Passwords do not match".to_string()));
@@ -377,10 +357,10 @@ async fn handle_create_wallet(
 		wallet.password = Some(password);
 		wallet.path = Some(wallet_path.clone());
 		wallet
-	}).await;
+	})
+	.await;
 
-	wallet.save_to_file(wallet_path.clone())
-		.map_err(|e| CliError::Wallet(e))?;
+	wallet.save_to_file(wallet_path.clone()).map_err(|e| CliError::Wallet(e))?;
 
 	state.wallet = Some(wallet);
 
@@ -412,18 +392,17 @@ async fn handle_open_wallet(path: PathBuf, state: &mut CliState) -> Result<(), C
 		return Err(CliError::Wallet(format!("Wallet file not found: {}", path.display())));
 	}
 
-	let password = prompt_password("Enter wallet password")
-		.map_err(|e| CliError::Io(e))?;
+	let password = prompt_password("Enter wallet password").map_err(|e| CliError::Io(e))?;
 
-	let wallet = with_loading("Opening wallet...", async {
-		Wallet::open_wallet(&path, &password)
-	}).await.map_err(|e| CliError::Wallet(e))?;
+	let wallet = with_loading("Opening wallet...", async { Wallet::open_wallet(&path, &password) })
+		.await
+		.map_err(|e| CliError::Wallet(e))?;
 
 	state.wallet = Some(wallet);
 
 	display_key_value("Wallet Path", &path.display().to_string());
 	display_key_value("Status", "Opened Successfully");
-	
+
 	if let Some(wallet) = &state.wallet {
 		display_key_value("Accounts", &wallet.accounts.len().to_string());
 	}
@@ -445,7 +424,9 @@ async fn handle_close_wallet(state: &mut CliState) -> Result<(), CliError> {
 
 /// List all addresses in the wallet
 async fn handle_list_addresses(state: &CliState) -> Result<(), CliError> {
-	let wallet = state.wallet.as_ref()
+	let wallet = state
+		.wallet
+		.as_ref()
 		.ok_or_else(|| CliError::Wallet("No wallet open".to_string()))?;
 
 	print_section_header("Wallet Addresses");
@@ -481,7 +462,9 @@ async fn handle_list_addresses(state: &CliState) -> Result<(), CliError> {
 
 /// Show detailed wallet information
 async fn handle_wallet_info(state: &CliState) -> Result<(), CliError> {
-	let wallet = state.wallet.as_ref()
+	let wallet = state
+		.wallet
+		.as_ref()
 		.ok_or_else(|| CliError::Wallet("No wallet open".to_string()))?;
 
 	print_section_header("Wallet Information");
@@ -489,10 +472,14 @@ async fn handle_wallet_info(state: &CliState) -> Result<(), CliError> {
 	let mut table = create_table();
 	table.add_row(vec![
 		Cell::new("File Path").fg(Color::Cyan),
-		Cell::new(wallet.path.as_ref()
-			.map(|p| p.display().to_string())
-			.unwrap_or_else(|| "Not saved".to_string())
-		).fg(Color::Green),
+		Cell::new(
+			wallet
+				.path
+				.as_ref()
+				.map(|p| p.display().to_string())
+				.unwrap_or_else(|| "Not saved".to_string()),
+		)
+		.fg(Color::Green),
 	]);
 	table.add_row(vec![
 		Cell::new("Total Accounts").fg(Color::Cyan),
@@ -513,17 +500,30 @@ async fn handle_wallet_info(state: &CliState) -> Result<(), CliError> {
 }
 
 // Placeholder implementations for remaining functions
-async fn handle_create_address(_count: u16, _label: Option<String>, _state: &mut CliState) -> Result<(), CliError> {
+async fn handle_create_address(
+	_count: u16,
+	_label: Option<String>,
+	_state: &mut CliState,
+) -> Result<(), CliError> {
 	print_info("🚧 Create address functionality will be implemented");
 	Ok(())
 }
 
-async fn handle_import_key(_wif_or_file: String, _label: Option<String>, _state: &mut CliState) -> Result<(), CliError> {
+async fn handle_import_key(
+	_wif_or_file: String,
+	_label: Option<String>,
+	_state: &mut CliState,
+) -> Result<(), CliError> {
 	print_info("🚧 Import key functionality will be implemented");
 	Ok(())
 }
 
-async fn handle_export_key(_path: Option<PathBuf>, _address: Option<String>, _format: String, _state: &CliState) -> Result<(), CliError> {
+async fn handle_export_key(
+	_path: Option<PathBuf>,
+	_address: Option<String>,
+	_format: String,
+	_state: &CliState,
+) -> Result<(), CliError> {
 	print_info("🚧 Export key functionality will be implemented");
 	Ok(())
 }
@@ -538,12 +538,24 @@ async fn handle_change_password(_state: &mut CliState) -> Result<(), CliError> {
 	Ok(())
 }
 
-async fn handle_transfer(_asset: String, _to: String, _amount: String, _from: Option<String>, _fee: Option<String>, _state: &mut CliState) -> Result<(), CliError> {
+async fn handle_transfer(
+	_asset: String,
+	_to: String,
+	_amount: String,
+	_from: Option<String>,
+	_fee: Option<String>,
+	_state: &mut CliState,
+) -> Result<(), CliError> {
 	print_info("🚧 Transfer functionality will be implemented");
 	Ok(())
 }
 
-async fn handle_balance(_address: Option<String>, _token: Option<String>, _detailed: bool, _state: &CliState) -> Result<(), CliError> {
+async fn handle_balance(
+	_address: Option<String>,
+	_token: Option<String>,
+	_detailed: bool,
+	_state: &CliState,
+) -> Result<(), CliError> {
 	print_info("🚧 Balance functionality will be implemented");
 	Ok(())
 }

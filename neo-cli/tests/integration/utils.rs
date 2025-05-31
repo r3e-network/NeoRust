@@ -1,5 +1,7 @@
 use assert_cmd::prelude::*;
+use hex;
 use predicates::prelude::*;
+use sha2::{Digest, Sha256};
 use std::{
 	fs,
 	io::Write,
@@ -7,8 +9,6 @@ use std::{
 	process::{Command, Output},
 };
 use tempfile::{NamedTempFile, TempDir};
-use sha2::{Digest, Sha256};
-use hex;
 
 pub struct CliTest {
 	/// Temporary directory for test files

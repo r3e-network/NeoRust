@@ -12,8 +12,8 @@ use neo3::{
 	},
 	codec::{Encoder, NeoSerializable},
 	neo_clients::APITrait,
-	neo_types::{ContractManifest, NefFile},
 	neo_protocol::AccountTrait,
+	neo_types::{ContractManifest, NefFile},
 	prelude::*,
 };
 use primitive_types::H160;
@@ -249,24 +249,29 @@ async fn deploy_contract(
 
 	// Sign the transaction with the account's private key
 	print_info("Signing transaction with account's private key...");
-	
+
 	// Decrypt the account's private key using the password
 	let mut account_clone = account_obj.clone();
-	account_clone.decrypt_private_key(&password)
+	account_clone
+		.decrypt_private_key(&password)
 		.map_err(|e| CliError::Wallet(format!("Failed to decrypt private key: {}", e)))?;
-	
+
 	// Get the key pair from the decrypted account
-	let key_pair = account_clone.key_pair().as_ref()
+	let key_pair = account_clone
+		.key_pair()
+		.as_ref()
 		.ok_or_else(|| CliError::Wallet("No key pair available after decryption".to_string()))?
 		.clone();
-	
+
 	// Create a witness for the transaction
-	let tx_hash = tx.get_hash_data().await
+	let tx_hash = tx
+		.get_hash_data()
+		.await
 		.map_err(|e| CliError::Transaction(format!("Failed to get transaction hash: {}", e)))?;
-	
+
 	let witness = neo3::builder::Witness::create(tx_hash, &key_pair)
 		.map_err(|e| CliError::Transaction(format!("Failed to create witness: {}", e)))?;
-	
+
 	// Add the witness to the transaction
 	tx.add_witness(witness);
 
@@ -443,24 +448,29 @@ async fn update_contract(
 
 	// Sign the transaction with the account's private key
 	print_info("Signing transaction with account's private key...");
-	
+
 	// Decrypt the account's private key using the password
 	let mut account_clone = account_obj.clone();
-	account_clone.decrypt_private_key(&password)
+	account_clone
+		.decrypt_private_key(&password)
 		.map_err(|e| CliError::Wallet(format!("Failed to decrypt private key: {}", e)))?;
-	
+
 	// Get the key pair from the decrypted account
-	let key_pair = account_clone.key_pair().as_ref()
+	let key_pair = account_clone
+		.key_pair()
+		.as_ref()
 		.ok_or_else(|| CliError::Wallet("No key pair available after decryption".to_string()))?
 		.clone();
-	
+
 	// Create a witness for the transaction
-	let tx_hash = tx.get_hash_data().await
+	let tx_hash = tx
+		.get_hash_data()
+		.await
 		.map_err(|e| CliError::Transaction(format!("Failed to get transaction hash: {}", e)))?;
-	
+
 	let witness = neo3::builder::Witness::create(tx_hash, &key_pair)
 		.map_err(|e| CliError::Transaction(format!("Failed to create witness: {}", e)))?;
-	
+
 	// Add the witness to the transaction
 	tx.add_witness(witness);
 
@@ -642,24 +652,29 @@ async fn invoke_contract(
 
 		// Sign the transaction with the account's private key
 		print_info("Signing transaction with account's private key...");
-		
+
 		// Decrypt the account's private key using the password
 		let mut account_clone = account_obj.clone();
-		account_clone.decrypt_private_key(&password)
+		account_clone
+			.decrypt_private_key(&password)
 			.map_err(|e| CliError::Wallet(format!("Failed to decrypt private key: {}", e)))?;
-		
+
 		// Get the key pair from the decrypted account
-		let key_pair = account_clone.key_pair().as_ref()
+		let key_pair = account_clone
+			.key_pair()
+			.as_ref()
 			.ok_or_else(|| CliError::Wallet("No key pair available after decryption".to_string()))?
 			.clone();
-		
+
 		// Create a witness for the transaction
-		let tx_hash = tx.get_hash_data().await
+		let tx_hash = tx
+			.get_hash_data()
+			.await
 			.map_err(|e| CliError::Transaction(format!("Failed to get transaction hash: {}", e)))?;
-		
+
 		let witness = neo3::builder::Witness::create(tx_hash, &key_pair)
 			.map_err(|e| CliError::Transaction(format!("Failed to create witness: {}", e)))?;
-		
+
 		// Add the witness to the transaction
 		tx.add_witness(witness);
 

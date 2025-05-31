@@ -3,17 +3,17 @@ use std::{
 	hash::{Hash, Hasher},
 };
 
+use crate::neo_crypto::utils::FromBase64String;
 use getset::{Getters, Setters};
 use primitive_types::{H160, H256};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use crate::neo_crypto::utils::FromBase64String;
 
 use crate::{
 	builder::TransactionError,
 	codec::{Decoder, Encoder, NeoSerializable},
-	prelude::Base64Encode,
 	neo_types::{Bytes, TypeError},
+	prelude::Base64Encode,
 	var_size,
 };
 

@@ -24,10 +24,10 @@ use crate::{
 	crypto::{HashableForVec, Secp256r1Signature},
 	var_size,
 };
+use hex;
 use num_bigint::BigInt;
 use num_traits::{ToPrimitive, Zero};
 use p256::pkcs8::der::Encode;
-use hex;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Getters, Setters, Serialize, Deserialize)]
 pub struct VerificationScript {
@@ -358,11 +358,10 @@ mod tests {
 			InteropService::SystemCryptoCheckSig.hash()
 		);
 
-		let verification = VerificationScript::from(
-			hex::decode(&script).map_err(|e| {
+		let verification =
+			VerificationScript::from(hex::decode(&script).map_err(|e| {
 				BuilderError::InvalidScript(format!("Failed to decode hex: {}", e))
-			})?
-		);
+			})?);
 		assert!(verification.is_single_sig());
 
 		Ok(())
@@ -384,11 +383,10 @@ mod tests {
 			InteropService::SystemCryptoCheckMultiSig.hash()
 		);
 
-		let verification = VerificationScript::from(
-			hex::decode(&script).map_err(|e| {
+		let verification =
+			VerificationScript::from(hex::decode(&script).map_err(|e| {
 				BuilderError::InvalidScript(format!("Failed to decode hex: {}", e))
-			})?
-		);
+			})?);
 		assert!(verification.is_multi_sig());
 
 		Ok(())
@@ -396,9 +394,8 @@ mod tests {
 
 	#[test]
 	fn test_fail_is_multi_sig_too_short() -> Result<(), BuilderError> {
-		let script = hex::decode("a89429c3be9f").map_err(|e| {
-			BuilderError::InvalidScript(format!("Failed to decode hex: {}", e))
-		})?;
+		let script = hex::decode("a89429c3be9f")
+			.map_err(|e| BuilderError::InvalidScript(format!("Failed to decode hex: {}", e)))?;
 		let verification = VerificationScript::from(script);
 		assert!(!verification.is_multi_sig());
 
@@ -417,11 +414,10 @@ mod tests {
 			OpCode::Syscall.to_hex_string(),
 		);
 
-		let verification = VerificationScript::from(
-			hex::decode(&script).map_err(|e| {
+		let verification =
+			VerificationScript::from(hex::decode(&script).map_err(|e| {
 				BuilderError::InvalidScript(format!("Failed to decode hex: {}", e))
-			})?
-		);
+			})?);
 		assert!(!verification.is_multi_sig());
 
 		Ok(())
@@ -576,11 +572,10 @@ mod tests {
 			InteropService::SystemCryptoCheckSig.hash()
 		);
 
-		let verification = VerificationScript::from(
-			hex::decode(&script).map_err(|e| {
+		let verification =
+			VerificationScript::from(hex::decode(&script).map_err(|e| {
 				BuilderError::InvalidScript(format!("Failed to decode hex: {}", e))
-			})?
-		);
+			})?);
 
 		let keys = verification.get_public_keys().unwrap();
 
@@ -612,11 +607,10 @@ mod tests {
 			InteropService::SystemCryptoCheckMultiSig.hash()
 		);
 
-		let verification = VerificationScript::from(
-			hex::decode(&script).map_err(|e| {
+		let verification =
+			VerificationScript::from(hex::decode(&script).map_err(|e| {
 				BuilderError::InvalidScript(format!("Failed to decode hex: {}", e))
-			})?
-		);
+			})?);
 
 		let keys = verification.get_public_keys()?;
 

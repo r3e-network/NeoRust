@@ -1,9 +1,14 @@
 use crate::{
-	codec::NeoSerializable, crypto::Secp256r1PublicKey, deserialize_map, neo_contract::Role,
-	neo_types::script_hash::ScriptHashExtension, serialize_map, Base64Encode,
-	ContractParameterType, NNSName, NefFile, ValueExtension,
+	codec::NeoSerializable,
+	crypto::Secp256r1PublicKey,
+	deserialize_map,
+	neo_contract::Role,
+	neo_crypto::utils::{FromBase64String, FromHexString, ToHexString},
+	neo_types::{script_hash::ScriptHashExtension, ScriptHash, TypeError},
+	serialize_map, Base64Encode, ContractParameterType, NNSName, NefFile, ValueExtension,
 };
 use getset::Getters;
+use hex;
 use primitive_types::{H160, H256};
 use serde::{
 	de,
@@ -15,15 +20,12 @@ use serde_json::Value;
 use sha3::Digest;
 use std::{
 	collections::HashMap,
+	convert::TryInto,
 	fmt,
 	hash::{Hash, Hasher},
-	convert::TryInto,
 	str::FromStr,
 };
 use strum_macros::{Display, EnumString};
-use crate::neo_crypto::utils::{FromBase64String, FromHexString, ToHexString};
-use crate::neo_types::{TypeError, ScriptHash};
-use hex;
 
 #[derive(Debug, PartialEq, Eq, Hash, Serialize, Deserialize, Clone)]
 pub struct ContractParameter2 {
@@ -346,14 +348,12 @@ impl ContractParameter {
 	/// Safely extracts a public key from the parameter
 	pub fn as_public_key(&self) -> Result<Secp256r1PublicKey, String> {
 		match &self.value {
-			Some(ParameterValue::PublicKey(bytes)) => {
+			Some(ParameterValue::PublicKey(bytes)) =>
 				Secp256r1PublicKey::from_bytes(bytes.as_bytes())
-					.map_err(|_| "Invalid public key bytes".to_string())
-			},
-			Some(ParameterValue::ByteArray(bytes)) => {
+					.map_err(|_| "Invalid public key bytes".to_string()),
+			Some(ParameterValue::ByteArray(bytes)) =>
 				Secp256r1PublicKey::from_bytes(bytes.as_bytes())
-					.map_err(|_| "Invalid public key bytes".to_string())
-			},
+					.map_err(|_| "Invalid public key bytes".to_string()),
 			_ => Err(format!(
 				"Invalid type for public key conversion. Expected PublicKey or ByteArray, got {:?}",
 				self.typ
@@ -533,9 +533,8 @@ impl ContractParameter {
 
 	pub fn to_byte_array(&self) -> Result<Vec<u8>, String> {
 		match &self.value {
-			Some(ParameterValue::ByteArray(b)) => b
-				.from_base64_string()
-				.map_err(|e| format!("Failed to decode base64: {}", e)),
+			Some(ParameterValue::ByteArray(b)) =>
+				b.from_base64_string().map_err(|e| format!("Failed to decode base64: {}", e)),
 			_ => Err(format!("Cannot convert {:?} to Vec<u8>", self)),
 		}
 	}
@@ -558,8 +557,8 @@ impl ContractParameter {
 	pub fn to_h160(&self) -> Result<H160, String> {
 		match &self.value {
 			Some(ParameterValue::H160(h)) => {
-				let bytes = h.from_hex_string()
-					.map_err(|e| format!("Failed to decode hex: {}", e))?;
+				let bytes =
+					h.from_hex_string().map_err(|e| format!("Failed to decode hex: {}", e))?;
 				if bytes.len() != 20 {
 					return Err("Invalid H160 length".to_string());
 				}
@@ -578,8 +577,8 @@ impl ContractParameter {
 	pub fn to_h256(&self) -> Result<H256, String> {
 		match &self.value {
 			Some(ParameterValue::H256(h)) => {
-				let bytes = h.from_hex_string()
-					.map_err(|e| format!("Failed to decode hex: {}", e))?;
+				let bytes =
+					h.from_hex_string().map_err(|e| format!("Failed to decode hex: {}", e))?;
 				if bytes.len() != 32 {
 					return Err("Invalid H256 length".to_string());
 				}
@@ -701,9 +700,8 @@ impl ParameterValue {
 
 	pub fn to_byte_array(&self) -> Result<Vec<u8>, String> {
 		match self {
-			ParameterValue::ByteArray(b) => b
-				.from_base64_string()
-				.map_err(|e| format!("Failed to decode base64: {}", e)),
+			ParameterValue::ByteArray(b) =>
+				b.from_base64_string().map_err(|e| format!("Failed to decode base64: {}", e)),
 			_ => Err(format!("Cannot convert {:?} to Vec<u8>", self)),
 		}
 	}
@@ -718,8 +716,8 @@ impl ParameterValue {
 	pub fn to_h160(&self) -> Result<H160, String> {
 		match self {
 			ParameterValue::H160(h) => {
-				let bytes = h.from_hex_string()
-					.map_err(|e| format!("Failed to decode hex: {}", e))?;
+				let bytes =
+					h.from_hex_string().map_err(|e| format!("Failed to decode hex: {}", e))?;
 				if bytes.len() != 20 {
 					return Err("Invalid H160 length".to_string());
 				}
@@ -734,8 +732,8 @@ impl ParameterValue {
 	pub fn to_h256(&self) -> Result<H256, String> {
 		match self {
 			ParameterValue::H256(h) => {
-				let bytes = h.from_hex_string()
-					.map_err(|e| format!("Failed to decode hex: {}", e))?;
+				let bytes =
+					h.from_hex_string().map_err(|e| format!("Failed to decode hex: {}", e))?;
 				if bytes.len() != 32 {
 					return Err("Invalid H256 length".to_string());
 				}

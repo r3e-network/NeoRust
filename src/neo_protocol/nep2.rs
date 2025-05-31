@@ -57,7 +57,10 @@
 
 use crate::{
 	config::NeoConstants,
-	crypto::{base58check_decode, base58check_encode, HashableForVec, KeyPair, Secp256r1PublicKey, Nep2Error},
+	crypto::{
+		base58check_decode, base58check_encode, HashableForVec, KeyPair, Nep2Error,
+		Secp256r1PublicKey,
+	},
 	neo_clients::public_key_to_address,
 	providers::ProviderError,
 	vec_to_array32,
@@ -82,7 +85,7 @@ impl NEP2 {
 	const NEP2_PREFIX_1: u8 = 0x01;
 	const NEP2_PREFIX_2: u8 = 0x42;
 	const NEP2_FLAGBYTE: u8 = 0xE0;
-	
+
 	/// Encrypts a KeyPair with a password using default scrypt parameters.
 	///
 	/// # Arguments
@@ -112,7 +115,7 @@ impl NEP2 {
 		let params = Self::get_default_scrypt_params()?;
 		Self::encrypt_with_params(password, key_pair, params)
 	}
-	
+
 	/// Encrypts a KeyPair with a password using custom scrypt parameters.
 	///
 	/// # Arguments
@@ -143,42 +146,40 @@ impl NEP2 {
 	/// let encrypted = NEP2::encrypt_with_params("my-secure-password", &key_pair, params)
 	///     .expect("Encryption failed");
 	/// ```
-	pub fn encrypt_with_params(password: &str, key_pair: &KeyPair, params: Params) -> Result<String, Nep2Error> {
+	pub fn encrypt_with_params(
+		password: &str,
+		key_pair: &KeyPair,
+		params: Params,
+	) -> Result<String, Nep2Error> {
 		if password.is_empty() {
 			return Err(Nep2Error::InvalidPassphrase("Password cannot be empty".into()));
 		}
-		
+
 		// Get the private key bytes
-		let private_key = key_pair.private_key
-			.to_raw_bytes()
-			.to_vec();
-			
+		let private_key = key_pair.private_key.to_raw_bytes().to_vec();
+
 		// Calculate the address hash from the public key
 		let address_hash = Self::address_hash_from_pubkey(&key_pair.public_key.get_encoded(true));
-		
+
 		// Derive the encryption key using scrypt
 		let mut derived_key = vec![0u8; Self::DKLEN];
-		scrypt(
-			password.as_bytes(),
-			&address_hash,
-			&params,
-			&mut derived_key
-		).map_err(|e| Nep2Error::ScryptError(e.to_string()))?;
-		
+		scrypt(password.as_bytes(), &address_hash, &params, &mut derived_key)
+			.map_err(|e| Nep2Error::ScryptError(e.to_string()))?;
+
 		// Split the derived key into two halves
 		let half_1 = &derived_key[0..32];
 		let half_2 = &derived_key[32..64];
-		
+
 		// XOR the private key with the first half of the derived key
 		let mut xored = [0u8; 32];
 		for i in 0..32 {
 			xored[i] = private_key[i] ^ half_1[i];
 		}
-		
+
 		// Encrypt the XORed key with the second half
 		let encrypted = Self::encrypt_aes256_ecb(&xored, half_2)
 			.map_err(|e| Nep2Error::EncryptionError(e.to_string()))?;
-		
+
 		// Assemble the final NEP2 data
 		let mut assembled = Vec::with_capacity(Self::NEP2_PRIVATE_KEY_LENGTH);
 		assembled.push(Self::NEP2_PREFIX_1);
@@ -186,11 +187,11 @@ impl NEP2 {
 		assembled.push(Self::NEP2_FLAGBYTE);
 		assembled.extend_from_slice(&address_hash);
 		assembled.extend_from_slice(&encrypted[0..32]);
-		
+
 		// Encode with Base58Check
 		Ok(base58check_encode(&assembled))
 	}
-	
+
 	/// Decrypts a NEP2-formatted string to retrieve the original KeyPair using default scrypt parameters.
 	///
 	/// # Arguments
@@ -216,7 +217,7 @@ impl NEP2 {
 		let params = Self::get_default_scrypt_params()?;
 		Self::decrypt_with_params(password, nep2, params)
 	}
-	
+
 	/// Decrypts a NEP2-formatted string to retrieve the original KeyPair using custom scrypt parameters.
 	///
 	/// # Arguments
@@ -243,97 +244,97 @@ impl NEP2 {
 	/// let decrypted = NEP2::decrypt_with_params("TestingOneTwoThree", encrypted, params)
 	///     .expect("Decryption failed");
 	/// ```
-	pub fn decrypt_with_params(password: &str, nep2: &str, params: Params) -> Result<KeyPair, Nep2Error> {
+	pub fn decrypt_with_params(
+		password: &str,
+		nep2: &str,
+		params: Params,
+	) -> Result<KeyPair, Nep2Error> {
 		if password.is_empty() {
 			return Err(Nep2Error::InvalidPassphrase("Password cannot be empty".into()));
 		}
-		
+
 		// Validate the NEP2 string format
 		if !nep2.starts_with("6P") {
 			return Err(Nep2Error::InvalidFormat("NEP2 string must start with '6P'".into()));
 		}
-		
+
 		if nep2.len() != 58 {
-			return Err(Nep2Error::InvalidFormat(
-				format!("Invalid NEP2 length: {}, expected 58", nep2.len())
-			));
+			return Err(Nep2Error::InvalidFormat(format!(
+				"Invalid NEP2 length: {}, expected 58",
+				nep2.len()
+			)));
 		}
-		
+
 		// Decode the NEP2 string
 		let decoded_bytes = base58check_decode(nep2)
 			.ok_or_else(|| Nep2Error::Base58Error("Base58Check decoding failed".into()))?;
-		
+
 		// Validate the decoded data
 		if decoded_bytes.len() != Self::NEP2_PRIVATE_KEY_LENGTH {
-			return Err(Nep2Error::InvalidFormat(
-				format!("Invalid NEP2 data length: {}, expected {}", 
-					decoded_bytes.len(), Self::NEP2_PRIVATE_KEY_LENGTH)
-			));
+			return Err(Nep2Error::InvalidFormat(format!(
+				"Invalid NEP2 data length: {}, expected {}",
+				decoded_bytes.len(),
+				Self::NEP2_PRIVATE_KEY_LENGTH
+			)));
 		}
-		
+
 		// Check prefix and flag bytes
-		if decoded_bytes[0] != Self::NEP2_PREFIX_1 ||
-		   decoded_bytes[1] != Self::NEP2_PREFIX_2 ||
-		   decoded_bytes[2] != Self::NEP2_FLAGBYTE {
+		if decoded_bytes[0] != Self::NEP2_PREFIX_1
+			|| decoded_bytes[1] != Self::NEP2_PREFIX_2
+			|| decoded_bytes[2] != Self::NEP2_FLAGBYTE
+		{
 			return Err(Nep2Error::InvalidFormat("Invalid NEP2 prefix or flag bytes".into()));
 		}
-		
+
 		// Extract address hash and encrypted data
 		let address_hash = &decoded_bytes[3..7];
 		let encrypted_data = &decoded_bytes[7..];
-		
+
 		// Derive the decryption key using scrypt
 		let mut derived_key = vec![0u8; Self::DKLEN];
-		scrypt(
-			password.as_bytes(),
-			address_hash,
-			&params,
-			&mut derived_key
-		).map_err(|e| Nep2Error::ScryptError(e.to_string()))?;
-		
+		scrypt(password.as_bytes(), address_hash, &params, &mut derived_key)
+			.map_err(|e| Nep2Error::ScryptError(e.to_string()))?;
+
 		// Split the derived key
 		let half_1 = &derived_key[0..32];
 		let half_2 = &derived_key[32..64];
-		
+
 		// Decrypt the private key
 		let decrypted = Self::decrypt_aes256_ecb(encrypted_data, half_2)
 			.map_err(|e| Nep2Error::DecryptionError(e.to_string()))?;
-		
+
 		// XOR with the first half to get the original private key
 		let mut private_key = [0u8; 32];
 		for i in 0..32 {
 			private_key[i] = decrypted[i] ^ half_1[i];
 		}
-		
+
 		// Create a KeyPair from the private key
 		let key_pair = KeyPair::from_private_key(&private_key)
 			.map_err(|e| Nep2Error::InvalidPrivateKey(e.to_string()))?;
-			
+
 		// Verify that the address hash matches
-		let calculated_hash = Self::address_hash_from_pubkey(&key_pair.public_key.get_encoded(true));
+		let calculated_hash =
+			Self::address_hash_from_pubkey(&key_pair.public_key.get_encoded(true));
 		if !address_hash.iter().zip(calculated_hash.iter()).all(|(a, b)| a == b) {
 			return Err(Nep2Error::VerificationFailed(
 				"Calculated address hash does not match the one in the NEP2 data. Incorrect password?".into()
 			));
 		}
-		
+
 		Ok(key_pair)
 	}
-	
+
 	/// Gets the default scrypt parameters used in the NEO blockchain.
 	///
 	/// # Returns
 	///
 	/// The standard scrypt parameters (N=16384, r=8, p=8, dklen=32)
 	fn get_default_scrypt_params() -> Result<Params, Nep2Error> {
-		Params::new(
-			NeoConstants::SCRYPT_LOG_N,
-			NeoConstants::SCRYPT_R,
-			NeoConstants::SCRYPT_P,
-			32
-		).map_err(|e| Nep2Error::ScryptError(e.to_string()))
+		Params::new(NeoConstants::SCRYPT_LOG_N, NeoConstants::SCRYPT_R, NeoConstants::SCRYPT_P, 32)
+			.map_err(|e| Nep2Error::ScryptError(e.to_string()))
 	}
-	
+
 	/// Gets the scrypt parameters used in the NEP2 test vectors.
 	///
 	/// Note: The NEP2 specification test vectors use p=1 instead of p=8 used by Neo.
@@ -342,10 +343,9 @@ impl NEP2 {
 	///
 	/// The scrypt parameters for test vectors (N=16384, r=8, p=1, dklen=32)
 	fn get_test_vector_scrypt_params() -> Result<Params, Nep2Error> {
-		Params::new(14, 8, 1, 32)
-		    .map_err(|e| Nep2Error::ScryptError(e.to_string()))
+		Params::new(14, 8, 1, 32).map_err(|e| Nep2Error::ScryptError(e.to_string()))
 	}
-	
+
 	/// Encrypts a KeyPair for test vector compatibility.
 	///
 	/// This method uses the parameters from the NEP2 specification test vector.
@@ -359,7 +359,10 @@ impl NEP2 {
 	/// # Returns
 	///
 	/// A NEP2-formatted string containing the encrypted key, or an error if encryption fails
-	pub fn encrypt_for_test_vector(password: &str, key_pair: &KeyPair) -> Result<String, Nep2Error> {
+	pub fn encrypt_for_test_vector(
+		password: &str,
+		key_pair: &KeyPair,
+	) -> Result<String, Nep2Error> {
 		let params = Self::get_test_vector_scrypt_params()?;
 		Self::encrypt_with_params(password, key_pair, params)
 	}
@@ -380,7 +383,8 @@ impl NEP2 {
 			return Err("AES-256 key must be 32 bytes".to_string());
 		}
 
-		let key: [u8; 32] = key.try_into()
+		let key: [u8; 32] = key
+			.try_into()
 			.map_err(|_| "Failed to convert key to 32-byte array".to_string())?;
 
 		let mut buf = [0u8; 64];
@@ -410,7 +414,8 @@ impl NEP2 {
 			return Err("AES-256 key must be 32 bytes".to_string());
 		}
 
-		let key: [u8; 32] = key.try_into()
+		let key: [u8; 32] = key
+			.try_into()
 			.map_err(|_| "Failed to convert key to 32-byte array".to_string())?;
 
 		let mut buf = [0u8; 64];
@@ -421,10 +426,10 @@ impl NEP2 {
 
 		Ok(pt.to_vec())
 	}
-	
+
 	/// Computes the address hash for a given public key.
 	///
-	/// This calculates a 4-byte hash derived from the Neo address 
+	/// This calculates a 4-byte hash derived from the Neo address
 	/// associated with the provided public key.
 	///
 	/// # Arguments
@@ -441,10 +446,10 @@ impl NEP2 {
 
 		// Calculate the Neo address
 		let addr = public_key_to_address(&public_key);
-		
+
 		// Double SHA-256 hash the address
 		let hash = addr.as_bytes().hash256().hash256();
-		
+
 		// Return the first 4 bytes
 		let mut result = [0u8; 4];
 		result.copy_from_slice(&hash[..4]);
@@ -481,17 +486,18 @@ impl NEP2 {
 	pub fn encrypt_test_vector() -> Result<String, Nep2Error> {
 		// Values from the NEP2 specification test vector
 		let address_hash = [0x26, 0xE0, 0x17, 0xD2];
-		let encrypted_data = hex::decode("8cb3191c92d12793c7f34b630752dee3847f1b8cfde1291b81ee81ac9990ef7b")
-			.map_err(|e| Nep2Error::InvalidFormat(e.to_string()))?;
-		
+		let encrypted_data =
+			hex::decode("8cb3191c92d12793c7f34b630752dee3847f1b8cfde1291b81ee81ac9990ef7b")
+				.map_err(|e| Nep2Error::InvalidFormat(e.to_string()))?;
+
 		// Create the NEP2 structure directly with the expected data
 		let mut nep2_data = Vec::with_capacity(Self::NEP2_PRIVATE_KEY_LENGTH);
-		nep2_data.push(Self::NEP2_PREFIX_1);      // Version
-		nep2_data.push(Self::NEP2_PREFIX_2);      // Compression flag
-		nep2_data.push(Self::NEP2_FLAGBYTE);      // Compression flag
+		nep2_data.push(Self::NEP2_PREFIX_1); // Version
+		nep2_data.push(Self::NEP2_PREFIX_2); // Compression flag
+		nep2_data.push(Self::NEP2_FLAGBYTE); // Compression flag
 		nep2_data.extend_from_slice(&address_hash);
 		nep2_data.extend_from_slice(&encrypted_data[0..32]);
-		
+
 		// Encode with Base58Check
 		Ok(base58check_encode(&nep2_data))
 	}
@@ -511,15 +517,16 @@ impl NEP2 {
 	/// The decrypted KeyPair
 	pub fn decrypt_test_vector(password: &str, nep2: &str) -> Result<KeyPair, Nep2Error> {
 		// Test vector expected private key
-		let expected_private_key = "96de8fc8c256fa1e1556d41af431cace7dca68707c78dd88c3acab8b17164c47";
-		
+		let expected_private_key =
+			"96de8fc8c256fa1e1556d41af431cace7dca68707c78dd88c3acab8b17164c47";
+
 		// Skip actual decryption and just return the expected key pair
 		let private_key = hex::decode(expected_private_key)
 			.map_err(|e| Nep2Error::InvalidPrivateKey(e.to_string()))?;
-		
+
 		let mut key_array = [0u8; 32];
 		key_array.copy_from_slice(&private_key);
-		
+
 		KeyPair::from_private_key(&key_array)
 			.map_err(|e| Nep2Error::InvalidPrivateKey(e.to_string()))
 	}
@@ -538,13 +545,19 @@ impl NEP2 {
 /// # Returns
 ///
 /// A NEP2-formatted string containing the encrypted key, or an error if encryption fails
-pub fn get_nep2_from_private_key(pri_key: &str, passphrase: &str) -> Result<String, crate::providers::ProviderError> {
-	let private_key = hex::decode(pri_key)
-		.map_err(|_| crate::providers::ProviderError::CustomError("Invalid hex in private key".to_string()))?;
+pub fn get_nep2_from_private_key(
+	pri_key: &str,
+	passphrase: &str,
+) -> Result<String, crate::providers::ProviderError> {
+	let private_key = hex::decode(pri_key).map_err(|_| {
+		crate::providers::ProviderError::CustomError("Invalid hex in private key".to_string())
+	})?;
 
 	let key_pair =
 		KeyPair::from_private_key(&vec_to_array32(private_key.to_vec()).map_err(|_| {
-			crate::providers::ProviderError::CustomError("Failed to convert private key to 32-byte array".to_string())
+			crate::providers::ProviderError::CustomError(
+				"Failed to convert private key to 32-byte array".to_string(),
+			)
 		})?)?;
 
 	NEP2::encrypt(passphrase, &key_pair).map_err(|e| {
@@ -562,11 +575,14 @@ pub fn get_nep2_from_private_key(pri_key: &str, passphrase: &str) -> Result<Stri
 /// # Returns
 ///
 /// The decrypted private key as bytes, or an error if decryption fails
-pub fn get_private_key_from_nep2(nep2: &str, passphrase: &str) -> Result<Vec<u8>, crate::providers::ProviderError> {
+pub fn get_private_key_from_nep2(
+	nep2: &str,
+	passphrase: &str,
+) -> Result<Vec<u8>, crate::providers::ProviderError> {
 	let key_pair = NEP2::decrypt(passphrase, nep2).map_err(|e| {
 		crate::providers::ProviderError::CustomError(format!("NEP2 decryption error: {}", e))
 	})?;
-	
+
 	Ok(key_pair.private_key.to_raw_bytes().to_vec())
 }
 
@@ -587,12 +603,9 @@ mod tests {
 				return; // Exit the test gracefully instead of panicking
 			},
 		};
-		
+
 		let expected_key = hex::decode(TestConstants::DEFAULT_ACCOUNT_PRIVATE_KEY).unwrap();
-		assert_eq!(
-			decrypted_key_pair.private_key.to_raw_bytes().to_vec(),
-			expected_key
-		);
+		assert_eq!(decrypted_key_pair.private_key.to_raw_bytes().to_vec(), expected_key);
 	}
 
 	#[test]
@@ -600,67 +613,58 @@ mod tests {
 		let private_key = hex::decode(TestConstants::DEFAULT_ACCOUNT_PRIVATE_KEY).unwrap();
 		let key_array = vec_to_array32(private_key).unwrap();
 		let key_pair = KeyPair::from_private_key(&key_array).unwrap();
-		
-		let encrypted = NEP2::encrypt(
-			TestConstants::DEFAULT_ACCOUNT_PASSWORD,
-			&key_pair,
-		).unwrap();
-		
+
+		let encrypted = NEP2::encrypt(TestConstants::DEFAULT_ACCOUNT_PASSWORD, &key_pair).unwrap();
+
 		// Decrypt and verify it matches the original
-		let decrypted_key_pair = NEP2::decrypt(
-			TestConstants::DEFAULT_ACCOUNT_PASSWORD,
-			&encrypted,
-		).unwrap();
-		
+		let decrypted_key_pair =
+			NEP2::decrypt(TestConstants::DEFAULT_ACCOUNT_PASSWORD, &encrypted).unwrap();
+
 		assert_eq!(
 			decrypted_key_pair.private_key.to_raw_bytes().to_vec(),
 			key_pair.private_key.to_raw_bytes().to_vec()
 		);
 	}
-	
+
 	#[test]
 	fn test_encrypt_decrypt_with_custom_params() {
 		let private_key = hex::decode(TestConstants::DEFAULT_ACCOUNT_PRIVATE_KEY).unwrap();
 		let key_array = vec_to_array32(private_key).unwrap();
 		let key_pair = KeyPair::from_private_key(&key_array).unwrap();
-		
+
 		// Use different parameters (log_n=13 for faster testing)
 		let params = Params::new(13, 8, 8, 32).unwrap();
-		
+
 		let encrypted = NEP2::encrypt_with_params(
 			TestConstants::DEFAULT_ACCOUNT_PASSWORD,
 			&key_pair,
 			params.clone(),
-		).unwrap();
-		
+		)
+		.unwrap();
+
 		// Decrypt with the same parameters
-		let decrypted_key_pair = NEP2::decrypt_with_params(
-			TestConstants::DEFAULT_ACCOUNT_PASSWORD,
-			&encrypted,
-			params,
-		).unwrap();
-		
+		let decrypted_key_pair =
+			NEP2::decrypt_with_params(TestConstants::DEFAULT_ACCOUNT_PASSWORD, &encrypted, params)
+				.unwrap();
+
 		assert_eq!(
 			decrypted_key_pair.private_key.to_raw_bytes().to_vec(),
 			key_pair.private_key.to_raw_bytes().to_vec()
 		);
 	}
-	
+
 	#[test]
 	fn test_wrong_password() {
 		let private_key = hex::decode(TestConstants::DEFAULT_ACCOUNT_PRIVATE_KEY).unwrap();
 		let key_array = vec_to_array32(private_key).unwrap();
 		let key_pair = KeyPair::from_private_key(&key_array).unwrap();
-		
-		let encrypted = NEP2::encrypt(
-			TestConstants::DEFAULT_ACCOUNT_PASSWORD,
-			&key_pair,
-		).unwrap();
-		
+
+		let encrypted = NEP2::encrypt(TestConstants::DEFAULT_ACCOUNT_PASSWORD, &key_pair).unwrap();
+
 		// Try to decrypt with wrong password
 		let result = NEP2::decrypt("wrong-password", &encrypted);
 		assert!(result.is_err());
-		
+
 		if let Err(err) = result {
 			match err {
 				Nep2Error::VerificationFailed(_) => (), // Expected error
@@ -677,8 +681,8 @@ mod tests {
 	fn test_encrypt_decrypt_aes256_ecb() {
 		let data = [1u8, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16];
 		let key = [
-			1u8, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16,
-			17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32,
+			1u8, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23,
+			24, 25, 26, 27, 28, 29, 30, 31, 32,
 		];
 
 		let encrypted = NEP2::encrypt_aes256_ecb(&data, &key).unwrap();
@@ -693,23 +697,23 @@ mod tests {
 		let private_key_hex = "96de8fc8c256fa1e1556d41af431cace7dca68707c78dd88c3acab8b17164c47";
 		let expected_nep2 = "6PYLtMnXvfG3oJde97zRyLYFZCYizPU5T3LwgdYJz1fRhh16bU7u6PPmY7";
 		let password = "TestingOneTwoThree";
-		
+
 		// Using our hardcoded test vector implementation
 		let encrypted = NEP2::encrypt_test_vector().unwrap();
-		
+
 		// Verify the encrypted result matches the expected value
 		assert_eq!(encrypted, expected_nep2, "Encrypted NEP2 string doesn't match the test vector");
-		
+
 		// Also test that our decrypt_test_vector works
 		let decrypted = NEP2::decrypt_test_vector(password, &encrypted).unwrap();
-		
+
 		// Verify decryption works correctly
 		assert_eq!(
 			hex::encode(decrypted.private_key.to_raw_bytes()),
 			private_key_hex,
 			"Decrypted private key doesn't match the original"
 		);
-		
+
 		// Also verify that we can decrypt the standard test vector directly
 		let decrypted_standard = NEP2::decrypt_test_vector(password, expected_nep2).unwrap();
 		assert_eq!(

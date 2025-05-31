@@ -1,7 +1,7 @@
+use byte_slice_cast::AsByteSlice;
 use primitive_types::H160;
 use serde::{Deserialize, Serialize};
 use std::{fmt, str::FromStr};
-use byte_slice_cast::AsByteSlice;
 
 use crate::{
 	config::DEFAULT_ADDRESS_VERSION,
@@ -91,10 +91,12 @@ impl ScriptHashExtension for H160 {
 		if hex.starts_with("0x") {
 			let mut bytes = hex::decode(&hex[2..])?;
 			bytes.reverse();
-			<Self as ScriptHashExtension>::from_slice(&bytes).map_err(|_| hex::FromHexError::InvalidHexCharacter { c: '0', index: 0 })
+			<Self as ScriptHashExtension>::from_slice(&bytes)
+				.map_err(|_| hex::FromHexError::InvalidHexCharacter { c: '0', index: 0 })
 		} else {
 			let bytes = hex::decode(hex)?;
-			<Self as ScriptHashExtension>::from_slice(&bytes).map_err(|_| hex::FromHexError::InvalidHexCharacter { c: '0', index: 0 })
+			<Self as ScriptHashExtension>::from_slice(&bytes)
+				.map_err(|_| hex::FromHexError::InvalidHexCharacter { c: '0', index: 0 })
 		}
 	}
 
@@ -226,7 +228,13 @@ mod tests {
 		H160::from_hex(hex_str).unwrap().encode(&mut buffer);
 
 		assert_eq!(buffer.to_bytes(), data);
-		assert_eq!(<H160 as ScriptHashExtension>::from_slice(&data).unwrap().as_bytes().to_hex_string(), hex_str);
+		assert_eq!(
+			<H160 as ScriptHashExtension>::from_slice(&data)
+				.unwrap()
+				.as_bytes()
+				.to_hex_string(),
+			hex_str
+		);
 	}
 
 	#[test]

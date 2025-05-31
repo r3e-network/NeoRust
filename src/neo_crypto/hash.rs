@@ -1,6 +1,6 @@
-use sha2::{Digest, Sha256, Sha512};
-use ripemd::{Ripemd160, Digest as RipemdDigest};
 use hmac::{Hmac, Mac};
+use ripemd::{Digest as RipemdDigest, Ripemd160};
+use sha2::{Digest, Sha256, Sha512};
 
 pub trait HashableForVec {
 	fn hash256(&self) -> Vec<u8>;
@@ -26,7 +26,7 @@ impl HashableForVec for [u8] {
 		let mut sha256 = Sha256::new();
 		sha256.update(self);
 		let sha_result = sha256.finalize();
-		
+
 		let mut ripemd = Ripemd160::new();
 		ripemd.update(&sha_result);
 		ripemd.finalize().to_vec()
@@ -34,8 +34,7 @@ impl HashableForVec for [u8] {
 
 	fn hmac_sha512(&self, key: &[u8]) -> Vec<u8> {
 		type HmacSha512 = Hmac<Sha512>;
-		let mut mac = HmacSha512::new_from_slice(key)
-			.expect("HMAC can take key of any size");
+		let mut mac = HmacSha512::new_from_slice(key).expect("HMAC can take key of any size");
 		mac.update(self);
 		mac.finalize().into_bytes().to_vec()
 	}

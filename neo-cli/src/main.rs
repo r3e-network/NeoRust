@@ -8,20 +8,20 @@ use commands::{
 	network::{handle_network_command, NetworkArgs, NetworkConfig},
 	nft::{handle_nft_command, NftArgs},
 	tools::{handle_tools_command, ToolsArgs},
-	wallet::{handle_wallet_command, WalletArgs, CliState},
+	wallet::{handle_wallet_command, CliState, WalletArgs},
 };
 use errors::CliError;
-use std::path::PathBuf;
-use tokio;
 use neo3::neo_clients::{HttpProvider, RpcClient};
-use std::process;
+use std::{path::PathBuf, process};
+use tokio;
 
 // Import the utils_core module
 mod utils_core;
 
 // Re-export utility functions
 pub use utils_core::{
-	ensure_account_loaded, print_error, print_info, print_success, print_warning, prompt_password, prompt_yes_no,
+	ensure_account_loaded, print_error, print_info, print_success, print_warning, prompt_password,
+	prompt_yes_no,
 };
 
 // Import config functions
@@ -33,7 +33,7 @@ mod errors;
 mod utils;
 
 /// Neo CLI - A comprehensive command-line interface for the Neo N3 blockchain
-/// 
+///
 /// This tool provides access to all Neo blockchain functionality including
 /// wallet management, smart contracts, DeFi operations, NFTs, and more.
 #[derive(Parser, Debug)]
@@ -77,11 +77,11 @@ enum Commands {
 		/// Path to save the configuration file
 		#[arg(short, long, help = "Custom path for config file")]
 		path: Option<PathBuf>,
-		
+
 		/// Network to configure (mainnet, testnet, local)
 		#[arg(short, long, default_value = "testnet", help = "Default network")]
 		network: String,
-		
+
 		/// Force overwrite existing config
 		#[arg(short, long, help = "Overwrite existing configuration")]
 		force: bool,
@@ -134,18 +134,15 @@ enum Commands {
 
 /// Initialize a new configuration file with enhanced options
 async fn handle_init_command(
-	path: Option<PathBuf>, 
-	network: String, 
-	force: bool
+	path: Option<PathBuf>,
+	network: String,
+	force: bool,
 ) -> Result<(), CliError> {
 	print_info("🚀 Initializing Neo CLI configuration...");
 
 	// Check if config already exists
-	let config_path = if let Some(custom_path) = &path {
-		custom_path.clone()
-	} else {
-		get_config_path()?
-	};
+	let config_path =
+		if let Some(custom_path) = &path { custom_path.clone() } else { get_config_path()? };
 
 	if config_path.exists() && !force {
 		print_warning(&format!(
@@ -165,7 +162,7 @@ async fn handle_init_command(
 		_ => {
 			print_error(&format!("Invalid network: {}. Use mainnet, testnet, or local", network));
 			return Err(CliError::Config("Invalid network specified".to_string()));
-		}
+		},
 	}
 
 	if let Some(custom_path) = path {
@@ -221,9 +218,8 @@ async fn handle_config_command(show_path: bool) -> Result<(), CliError> {
 	print_info(&format!("📁 Configuration file: {}", config_path.display()));
 
 	if config_path.exists() {
-		let config_content = std::fs::read_to_string(&config_path)
-			.map_err(|e| CliError::Io(e))?;
-		
+		let config_content = std::fs::read_to_string(&config_path).map_err(|e| CliError::Io(e))?;
+
 		println!("\n{}", "Current Configuration:".bright_green().bold());
 		println!("{}", config_content);
 	} else {
@@ -283,38 +279,16 @@ async fn main() -> Result<(), CliError> {
 
 	// Handle commands
 	match cli.command {
-		Commands::Init { path, network, force } => {
-			handle_init_command(path, network, force).await
-		},
-		Commands::Wallet(args) => {
-			handle_wallet_command(args, &mut state).await
-		},
-		Commands::Contract(args) => {
-			handle_contract_command(args, &mut state).await
-		},
-		Commands::Network(args) => {
-			handle_network_command(args, &mut state).await
-		},
-		Commands::DeFi(args) => {
-			handle_defi_command(args, &mut state).await
-		},
-		Commands::Nft(args) => {
-			handle_nft_command(args, &mut state).await
-		},
-		Commands::NeoFS(args) => {
-			handle_neofs_command(args, &mut state).await
-		},
-		Commands::Tools(args) => {
-			handle_tools_command(args, &mut state).await
-		},
-		Commands::Version => {
-			handle_version_command()
-		},
-		Commands::Config { path } => {
-			handle_config_command(path).await
-		},
-		Commands::Fs(args) => {
-			handle_fs_command(args, &mut state).await
-		},
+		Commands::Init { path, network, force } => handle_init_command(path, network, force).await,
+		Commands::Wallet(args) => handle_wallet_command(args, &mut state).await,
+		Commands::Contract(args) => handle_contract_command(args, &mut state).await,
+		Commands::Network(args) => handle_network_command(args, &mut state).await,
+		Commands::DeFi(args) => handle_defi_command(args, &mut state).await,
+		Commands::Nft(args) => handle_nft_command(args, &mut state).await,
+		Commands::NeoFS(args) => handle_neofs_command(args, &mut state).await,
+		Commands::Tools(args) => handle_tools_command(args, &mut state).await,
+		Commands::Version => handle_version_command(),
+		Commands::Config { path } => handle_config_command(path).await,
+		Commands::Fs(args) => handle_fs_command(args, &mut state).await,
 	}
 }

@@ -2,6 +2,7 @@ use crate::{
 	builder::{BuilderError, CallFlags, InteropService},
 	codec::Encoder,
 	crypto::Secp256r1PublicKey,
+	neo_crypto::utils::{FromHexString, ToHexString},
 	Bytes, ContractParameter, ContractParameterType, OpCode, ParameterValue, ScriptHashExtension,
 };
 use futures_util::future::ok;
@@ -9,6 +10,7 @@ use getset::{Getters, Setters};
 use num_bigint::BigInt;
 use num_traits::{Signed, ToPrimitive};
 use primitive_types::H160;
+use serde::{Deserialize, Serialize};
 use std::{
 	cmp::PartialEq,
 	collections::HashMap,
@@ -17,8 +19,6 @@ use std::{
 	str::FromStr,
 };
 use tokio::io::AsyncWriteExt;
-use crate::neo_crypto::utils::{FromHexString, ToHexString};
-use serde::{Deserialize, Serialize};
 
 /// A builder for constructing Neo smart contract scripts.
 ///
@@ -799,7 +799,7 @@ mod tests {
 		let script = ScriptBuilder::build_verification_script(&public_key);
 
 		let expected = hex::decode(
-			"0c2103b4af8efe55d98b44eedfcfaa39642fd5d53ad543d18d3cc2db5880970a4654f641627d5b52"
+			"0c2103b4af8efe55d98b44eedfcfaa39642fd5d53ad543d18d3cc2db5880970a4654f641627d5b52",
 		)
 		.unwrap();
 

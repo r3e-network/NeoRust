@@ -144,12 +144,11 @@ impl PartialEq for KeyPair {
 #[cfg(test)]
 mod tests {
 	use crate::{config::TestConstants, crypto::KeyPair, ScriptHash, ScriptHashExtension};
-	use rustc_serialize::hex::FromHex;
+	use hex;
 
 	#[test]
 	fn test_public_key_wif() {
-		let private_key = "c7134d6fd8e73d819e82755c64c93788d8db0961929e025a53363c4cc02a6962"
-			.from_hex()
+		let private_key = hex::decode("c7134d6fd8e73d819e82755c64c93788d8db0961929e025a53363c4cc02a6962")
 			.unwrap();
 		let private_key_arr: &[u8; 32] = private_key.as_slice().try_into().unwrap();
 		let key_pair = KeyPair::from_private_key(private_key_arr).unwrap();
@@ -161,7 +160,7 @@ mod tests {
 
 	#[test]
 	fn test_address() {
-		let private_key = TestConstants::DEFAULT_ACCOUNT_PRIVATE_KEY.from_hex().unwrap();
+		let private_key = hex::decode(TestConstants::DEFAULT_ACCOUNT_PRIVATE_KEY).unwrap();
 		let private_key_arr: &[u8; 32] = private_key.as_slice().try_into().unwrap();
 		let key_pair = KeyPair::from_private_key(private_key_arr).unwrap();
 		assert_eq!(key_pair.get_address(), TestConstants::DEFAULT_ACCOUNT_ADDRESS);
@@ -169,7 +168,7 @@ mod tests {
 
 	#[test]
 	fn test_script_hash() {
-		let private_key = TestConstants::DEFAULT_ACCOUNT_PRIVATE_KEY.from_hex().unwrap();
+		let private_key = hex::decode(TestConstants::DEFAULT_ACCOUNT_PRIVATE_KEY).unwrap();
 		let private_key_arr: &[u8; 32] = private_key.as_slice().try_into().unwrap();
 		let key_pair = KeyPair::from_private_key(private_key_arr).unwrap();
 		assert_eq!(

@@ -12,6 +12,9 @@ use elliptic_curve::pkcs8::der::Encode;
 use primitive_types::H160;
 use serde::{Deserialize, Serialize, Serializer};
 use std::hash::{Hash, Hasher};
+use std::{collections::HashSet, ops::Deref};
+
+use lazy_static::lazy_static;
 
 /// Represents the type of signer in the NEO blockchain.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -573,7 +576,6 @@ mod tests {
 
 	use lazy_static::lazy_static;
 	use primitive_types::H160;
-	use rustc_serialize::hex::{FromHex, ToHex};
 
 	use crate::{
 		builder::{
@@ -594,8 +596,8 @@ mod tests {
 				.unwrap()
 				.get_script_hash()
 		};
-		pub static ref SCRIPT_HASH1: H160 = H160::from_script(&"d802a401".from_hex().unwrap());
-		pub static ref SCRIPT_HASH2: H160 = H160::from_script(&"c503b112".from_hex().unwrap());
+		pub static ref SCRIPT_HASH1: H160 = H160::from_script(&hex::decode("d802a401").unwrap());
+		pub static ref SCRIPT_HASH2: H160 = H160::from_script(&hex::decode("c503b112").unwrap());
 		pub static ref GROUP_PUB_KEY1: Secp256r1PublicKey = Secp256r1PublicKey::from_encoded(
 			"0306d3e7f18e6dd477d34ce3cfeca172a877f3c907cc6c2b66c295d1fcc76ff8f7",
 		)
@@ -799,8 +801,8 @@ mod tests {
 		AccountSigner::global(&SCRIPT_HASH.deref().into()).unwrap().encode(&mut buffer);
 
 		let expected =
-			format!("{}{:02x}", SCRIPT_HASH.as_bytes().to_hex(), WitnessScope::Global.byte_repr());
-		assert_eq!(buffer.to_bytes().to_hex(), expected);
+			format!("{}{:02x}", hex::encode(SCRIPT_HASH.as_bytes()), WitnessScope::Global.byte_repr());
+		assert_eq!(hex::encode(buffer.to_bytes()), expected);
 	}
 
 	#[test]
@@ -810,13 +812,13 @@ mod tests {
 
 		let expected = format!(
 			"{}{:02x}02{}{}",
-			SCRIPT_HASH.as_bytes().to_hex(),
+			hex::encode(SCRIPT_HASH.as_bytes()),
 			WitnessScope::CustomContracts.byte_repr(),
-			SCRIPT_HASH1.as_bytes().to_hex(),
-			SCRIPT_HASH2.as_bytes().to_hex()
+			hex::encode(SCRIPT_HASH1.as_bytes()),
+			hex::encode(SCRIPT_HASH2.as_bytes())
 		);
 
-		assert_eq!(signer.to_array(), expected.from_hex().unwrap());
+		assert_eq!(signer.to_array(), hex::decode(&expected).unwrap());
 	}
 
 	#[test]
@@ -828,13 +830,13 @@ mod tests {
 
 		let expected = format!(
 			"{}{:02x}02{}{}",
-			SCRIPT_HASH.as_bytes().to_hex(),
+			hex::encode(SCRIPT_HASH.as_bytes()),
 			WitnessScope::CustomGroups.byte_repr(),
 			GROUP_PUB_KEY1.get_encoded_compressed_hex().trim_start_matches("0x").to_string(),
 			GROUP_PUB_KEY2.get_encoded_compressed_hex().trim_start_matches("0x").to_string(),
 		);
 
-		assert_eq!(signer.to_array(), expected.from_hex().unwrap());
+		assert_eq!(signer.to_array(), hex::decode(&expected).unwrap());
 	}
 
 	#[test]
@@ -852,28 +854,28 @@ mod tests {
 
 		let expected = format!(
 			"{}{}{}{}{}{}{}{}{}{}{}{}",
-			SCRIPT_HASH.as_bytes().to_hex(),
+			hex::encode(SCRIPT_HASH.as_bytes()),
 			"71",
 			"02",
-			SCRIPT_HASH1.as_bytes().to_hex(),
-			SCRIPT_HASH2.as_bytes().to_hex(),
+			hex::encode(SCRIPT_HASH1.as_bytes()),
+			hex::encode(SCRIPT_HASH2.as_bytes()),
 			"02",
 			GROUP_PUB_KEY1.get_encoded_compressed_hex().trim_start_matches("0x").to_string(),
 			GROUP_PUB_KEY2.get_encoded_compressed_hex().trim_start_matches("0x").to_string(),
 			"01",
 			"01",
 			"28",
-			SCRIPT_HASH1.as_bytes().to_hex()
+			hex::encode(SCRIPT_HASH1.as_bytes())
 		);
 
-		assert_eq!(signer.to_array(), expected.from_hex().unwrap());
+		assert_eq!(signer.to_array(), hex::decode(&expected).unwrap());
 	}
 
 	#[test]
 	fn test_fail_deserialize_too_many_contracts() {
-		let mut serialized = format!("{}1111", SCRIPT_HASH.as_bytes().to_hex());
+		let mut serialized = format!("{}1111", hex::encode(SCRIPT_HASH.as_bytes()));
 		for _ in 0..=17 {
-			serialized.push_str(&SCRIPT_HASH1.as_bytes().to_hex());
+			serialized.push_str(&hex::encode(SCRIPT_HASH1.as_bytes()));
 		}
 		let mut data = hex::decode(&serialized).unwrap();
 		data.insert(0, 1);
@@ -888,7 +890,7 @@ mod tests {
 
 	#[test]
 	fn test_fail_deserialize_too_many_contract_groups() {
-		let mut serialized = format!("{}2111", SCRIPT_HASH.as_bytes().to_hex());
+		let mut serialized = format!("{}2111", hex::encode(SCRIPT_HASH.as_bytes()));
 		for _ in 0..=17 {
 			serialized.push_str(
 				&GROUP_PUB_KEY1.get_encoded_compressed_hex().trim_start_matches("0x").to_string(),
@@ -907,11 +909,11 @@ mod tests {
 
 	#[test]
 	fn test_fail_deserialize_too_many_rules() {
-		let mut serialized = format!("{}4111", SCRIPT_HASH.as_bytes().to_hex());
+		let mut serialized = format!("{}4111", hex::encode(SCRIPT_HASH.as_bytes()));
 		for _ in 0..=17 {
 			serialized.push_str("01");
 			serialized.push_str("28");
-			serialized.push_str(&SCRIPT_HASH1.as_bytes().to_hex());
+			serialized.push_str(&hex::encode(SCRIPT_HASH1.as_bytes()));
 		}
 		let mut data = hex::decode(&serialized).unwrap();
 		data.insert(0, 1);
@@ -1066,41 +1068,41 @@ mod tests {
 
 		let expected = format!(
 			"{}{}{}{}{}{}{}{}{}{}{}{}",
-			SCRIPT_HASH.as_bytes().to_hex(),
+			hex::encode(SCRIPT_HASH.as_bytes()),
 			"71",
 			"02",
-			SCRIPT_HASH1.as_bytes().to_hex(),
-			SCRIPT_HASH2.as_bytes().to_hex(),
+			hex::encode(SCRIPT_HASH1.as_bytes()),
+			hex::encode(SCRIPT_HASH2.as_bytes()),
 			"02",
 			GROUP_PUB_KEY1.get_encoded_compressed_hex().trim_start_matches("0x").to_string(),
 			GROUP_PUB_KEY2.get_encoded_compressed_hex().trim_start_matches("0x").to_string(),
 			"01",
 			"01",
 			"28",
-			SCRIPT_HASH1.as_bytes().to_hex()
+			hex::encode(SCRIPT_HASH1.as_bytes())
 		);
 
-		assert_eq!(signer.to_array(), expected.from_hex().unwrap());
+		assert_eq!(signer.to_array(), hex::decode(&expected).unwrap());
 	}
 
 	#[test]
 	fn test_deserialize() {
 		let data_str = format!(
 			"{}{}{}{}{}{}{}{}{}{}{}{}",
-			SCRIPT_HASH.as_bytes().to_hex(),
+			hex::encode(SCRIPT_HASH.as_bytes()),
 			"71",
 			"02",
-			SCRIPT_HASH1.as_bytes().to_hex(),
-			SCRIPT_HASH2.as_bytes().to_hex(),
+			hex::encode(SCRIPT_HASH1.as_bytes()),
+			hex::encode(SCRIPT_HASH2.as_bytes()),
 			"02",
 			GROUP_PUB_KEY1.get_encoded_compressed_hex().trim_start_matches("0x").to_string(),
 			GROUP_PUB_KEY2.get_encoded_compressed_hex().trim_start_matches("0x").to_string(),
 			"01",
 			"01",
 			"28",
-			SCRIPT_HASH1.as_bytes().to_hex()
+			hex::encode(SCRIPT_HASH1.as_bytes())
 		);
-		let mut serialized = data_str.from_hex().unwrap();
+		let mut serialized = hex::decode(&data_str).unwrap();
 		serialized.insert(0, 1);
 
 		let signer = Signer::from_bytes(&serialized).unwrap();

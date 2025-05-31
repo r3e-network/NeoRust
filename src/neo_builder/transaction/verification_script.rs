@@ -429,12 +429,11 @@ mod tests {
 
 	#[test]
 	fn test_fail_is_multi_sig_abrupt_end() -> Result<(), BuilderError> {
-		let script = format!(
+		let script = hex::decode(&format!(
 			"{}{}2102028a99826edc0c97d18e22b6932373d908d323aa7f92656a77ec26e8861699ef",
 			OpCode::Push2.to_hex_string(),
 			OpCode::PushData1.to_hex_string(),
-		)
-		.from_hex()
+		))
 		.map_err(|e| BuilderError::InvalidScript(format!("Failed to decode hex: {}", e)))?;
 
 		let verification = VerificationScript::from(script);
@@ -445,7 +444,7 @@ mod tests {
 
 	#[test]
 	fn test_fail_is_multi_sig_wrong_push_data() -> Result<(), BuilderError> {
-		let script = format!(
+		let script = hex::decode(&format!(
 			"{}{}{}{}{}{}{}{}3073b3bb",
 			OpCode::Push2.to_hex_string(),
 			OpCode::PushData1.to_hex_string(),
@@ -455,8 +454,7 @@ mod tests {
 			OpCode::Push2.to_hex_string(),
 			OpCode::PushNull.to_hex_string(),
 			OpCode::Syscall.to_hex_string(),
-		)
-		.from_hex()
+		))
 		.map_err(|e| BuilderError::InvalidScript(format!("Failed to decode hex: {}", e)))?;
 
 		let verification = VerificationScript::from(script);
@@ -467,7 +465,7 @@ mod tests {
 
 	#[test]
 	fn test_fail_is_multi_sig_n_greater_than_m() -> Result<(), BuilderError> {
-		let script = format!(
+		let script = hex::decode(&format!(
 			"{}{}{}{}{}{}{}{}3073b3bb",
 			OpCode::Push3.to_hex_string(),
 			OpCode::PushData1.to_hex_string(),
@@ -477,8 +475,7 @@ mod tests {
 			OpCode::Push2.to_hex_string(),
 			OpCode::PushNull.to_hex_string(),
 			OpCode::Syscall.to_hex_string()
-		)
-		.from_hex()
+		))
 		.map_err(|e| BuilderError::InvalidScript(format!("Failed to decode hex: {}", e)))?;
 
 		let verification = VerificationScript::from(script);
@@ -489,7 +486,7 @@ mod tests {
 
 	#[test]
 	fn test_fail_is_multi_sig_m_incorrect() -> Result<(), BuilderError> {
-		let script = format!(
+		let script = hex::decode(&format!(
 			"{}{}{}{}{}{}{}{}3073b3bb",
 			OpCode::Push2.to_hex_string(),
 			OpCode::PushData1.to_hex_string(),
@@ -499,8 +496,7 @@ mod tests {
 			OpCode::Push3.to_hex_string(),
 			OpCode::PushNull.to_hex_string(),
 			OpCode::Syscall.to_hex_string()
-		)
-		.from_hex()
+		))
 		.map_err(|e| BuilderError::InvalidScript(format!("Failed to decode hex: {}", e)))?;
 
 		let verification = VerificationScript::from(script);
@@ -511,7 +507,7 @@ mod tests {
 
 	#[test]
 	fn test_fail_is_multi_sig_missing_push_null() -> Result<(), BuilderError> {
-		let script = format!(
+		let script = hex::decode(&format!(
 			"{}{}{}{}{}{}{}3073b3bb",
 			OpCode::Push2.to_hex_string(),
 			OpCode::PushData1.to_hex_string(),
@@ -520,8 +516,7 @@ mod tests {
 			"21031d8e1630ce640966967bc6d95223d21f44304133003140c3b52004dc981349c9",
 			OpCode::Push2.to_hex_string(),
 			OpCode::Syscall.to_hex_string()
-		)
-		.from_hex()
+		))
 		.map_err(|e| BuilderError::InvalidScript(format!("Failed to decode hex: {}", e)))?;
 
 		let verification = VerificationScript::from(script);
@@ -532,7 +527,7 @@ mod tests {
 
 	#[test]
 	fn test_fail_is_multi_sig_missing_syscall() -> Result<(), BuilderError> {
-		let script = format!(
+		let script = hex::decode(&format!(
 			"{}{}{}{}{}{}{}3073b3bb",
 			OpCode::Push2.to_hex_string(),
 			OpCode::PushData1.to_hex_string(),
@@ -541,8 +536,7 @@ mod tests {
 			"21031d8e1630ce640966967bc6d95223d21f44304133003140c3b52004dc981349c9",
 			OpCode::Push2.to_hex_string(),
 			OpCode::PushNull.to_hex_string()
-		)
-		.from_hex()
+		))
 		.map_err(|e| BuilderError::InvalidScript(format!("Failed to decode hex: {}", e)))?;
 
 		let verification = VerificationScript::from(script);
@@ -553,7 +547,7 @@ mod tests {
 
 	#[test]
 	fn test_fail_is_multi_sig_wrong_interop_service() -> Result<(), BuilderError> {
-		let script = format!(
+		let script = hex::decode(&format!(
 			"{}{}{}{}{}{}{}{}103ab300",
 			OpCode::Push2.to_hex_string(),
 			OpCode::PushData1.to_hex_string(),
@@ -563,8 +557,7 @@ mod tests {
 			OpCode::Push3.to_hex_string(),
 			OpCode::PushNull.to_hex_string(),
 			OpCode::Syscall.to_hex_string()
-		)
-		.from_hex()
+		))
 		.map_err(|e| BuilderError::InvalidScript(format!("Failed to decode hex: {}", e)))?;
 
 		let verification = VerificationScript::from(script);

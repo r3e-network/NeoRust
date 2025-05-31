@@ -73,7 +73,7 @@ use crate::{
 	neo_clients::{APITrait, JsonRpcProvider, RpcClient},
 	neo_codec::{Decoder, Encoder, NeoSerializable, VarSizeTrait},
 	neo_config::{NeoConstants, NEOCONFIG},
-	neo_crypto::{HashableForVec, Secp256r1PublicKey},
+	neo_crypto::{HashableForVec, Secp256r1PublicKey, utils::ToHexString},
 	neo_protocol::{AccountTrait, NeoNetworkFee},
 };
 

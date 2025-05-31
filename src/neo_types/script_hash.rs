@@ -116,7 +116,7 @@ impl ScriptHashExtension for H160 {
 		let mut rev = [0u8; 20];
 		rev.clone_from_slice(hash);
 		rev.reverse();
-		Ok(Self::from_slice(&rev))
+		Self::from_slice(&rev)
 	}
 
 	fn to_address(&self) -> String {

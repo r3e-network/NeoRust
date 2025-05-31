@@ -76,21 +76,14 @@ pub enum SignerError {
 	#[error(transparent)]
 	WalletError(#[from] WalletError),
 
-	/// Represents errors that occur when converting from hexadecimal strings to binary data.
-	/// This could be used when parsing keys, addresses, or any other data represented in hex format.
-	#[error(transparent)]
-	FromHexError(#[from] FromHexError),
-
 	/// Covers general cryptographic errors such as failures in hashing, signature generation,
 	/// or encryption/decryption processes.
 	#[error(transparent)]
 	CryptoError(#[from] CryptoError),
 
-	/// Error that occurs when decoding from hexadecimal representation fails using
-	/// `rustc_serialize` library. It specifically indicates a problem with hex decoding,
-	/// likely due to an invalid character or incorrect string length.
-	#[error(transparent)]
-	RustcFromHexError(#[from] rustc_serialize::hex::FromHexError),
+	/// An error for hex decoding issues.
+	#[error("Hex decoding error: {0}")]
+	RustcFromHexError(#[from] hex::FromHexError),
 
 	/// Indicates a failure related to type conversion or coercion.
 	/// This variant is useful for signaling issues when trying to convert between incompatible types,

@@ -81,7 +81,7 @@ mod error;
 pub mod hash;
 mod key_pair;
 mod keys;
-mod utils;
+pub mod utils;
 mod wif;
 
 // Re-export important types

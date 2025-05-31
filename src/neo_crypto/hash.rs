@@ -1,11 +1,6 @@
-use crypto::{
-	digest::Digest,
-	hmac::Hmac,
-	mac::Mac,
-	ripemd160::Ripemd160,
-	sha2::{Sha256, Sha512},
-};
-use rustc_serialize::hex::FromHex;
+use sha2::{Digest, Sha256, Sha512};
+use ripemd::{Ripemd160, Digest as RipemdDigest};
+use hmac::{Hmac, Mac};
 
 pub trait HashableForVec {
 	fn hash256(&self) -> Vec<u8>;
@@ -17,77 +12,50 @@ pub trait HashableForVec {
 impl HashableForVec for [u8] {
 	fn hash256(&self) -> Vec<u8> {
 		let mut hasher = Sha256::new();
-		hasher.input(self);
-		let mut res = vec![0u8; 32];
-		hasher.result(&mut res);
-		res
+		hasher.update(self);
+		hasher.finalize().to_vec()
 	}
 
 	fn ripemd160(&self) -> Vec<u8> {
 		let mut hasher = Ripemd160::new();
-		hasher.input(self);
-		let mut res = vec![0u8; 20];
-		hasher.result(&mut res);
-
-		res
+		hasher.update(self);
+		hasher.finalize().to_vec()
 	}
 
 	fn sha256_ripemd160(&self) -> Vec<u8> {
 		let mut sha256 = Sha256::new();
-		sha256.input(self);
-		let mut res = vec![0u8; 32];
-		sha256.result(&mut res);
-		let mut hasher = Ripemd160::new();
-		hasher.input(&res);
-		let mut res = vec![0u8; 20];
-		hasher.result(&mut res);
-		res
+		sha256.update(self);
+		let sha_result = sha256.finalize();
+		
+		let mut ripemd = Ripemd160::new();
+		ripemd.update(&sha_result);
+		ripemd.finalize().to_vec()
 	}
 
 	fn hmac_sha512(&self, key: &[u8]) -> Vec<u8> {
-		let mut hmac = Hmac::new(Sha512::new(), key);
-
-		hmac.input(self);
-		let res = hmac.result();
-		res.code().to_vec()
+		type HmacSha512 = Hmac<Sha512>;
+		let mut mac = HmacSha512::new_from_slice(key)
+			.expect("HMAC can take key of any size");
+		mac.update(self);
+		mac.finalize().into_bytes().to_vec()
 	}
 }
 
 impl HashableForVec for Vec<u8> {
 	fn hash256(&self) -> Vec<u8> {
-		let mut hasher = Sha256::new();
-		hasher.input(self);
-		let mut res = vec![0u8; 32];
-		hasher.result(&mut res);
-		res
+		self.as_slice().hash256()
 	}
 
 	fn ripemd160(&self) -> Vec<u8> {
-		let mut hasher = Ripemd160::new();
-		hasher.input(self);
-		let mut res = vec![0u8; 20];
-		hasher.result(&mut res);
-		res
+		self.as_slice().ripemd160()
 	}
 
 	fn sha256_ripemd160(&self) -> Vec<u8> {
-		let mut sha256 = Sha256::new();
-		sha256.input(self);
-		let mut res = vec![0u8; 32];
-		sha256.result(&mut res);
-		let mut hasher = Ripemd160::new();
-		hasher.input(&res);
-		let mut res = vec![0u8; 20];
-		hasher.result(&mut res);
-		res
+		self.as_slice().sha256_ripemd160()
 	}
 
 	fn hmac_sha512(&self, key: &[u8]) -> Vec<u8> {
-		let mut hmac = Hmac::new(Sha512::new(), key);
-
-		hmac.input(self);
-		let res = hmac.result();
-		res.code().to_vec()
+		self.as_slice().hmac_sha512(key)
 	}
 }
 
@@ -102,6 +70,7 @@ pub trait HashableForString {
 	fn hmac_sha512(&self, key: &str) -> String;
 	fn hash160(&self) -> String;
 }
+
 impl HashableForString for String {
 	fn hash256(&self) -> String {
 		hex_encode(&self.as_bytes().hash256())

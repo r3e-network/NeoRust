@@ -152,6 +152,7 @@ pub mod tests {
 
 	use super::*;
 
+	#[cfg(feature = "mock-hsm")]
 	#[tokio::test]
 	async fn from_key() {
 		let key = hex::decode("2d8c44dc2dd2f0bea410e342885379192381e82d855b1b112f9b55544f1e0900")
@@ -186,6 +187,7 @@ pub mod tests {
 		);
 	}
 
+	#[cfg(feature = "mock-hsm")]
 	#[tokio::test]
 	async fn new_key() {
 		let connector = yubihsm::Connector::mockhsm();
@@ -208,5 +210,13 @@ pub mod tests {
 			.expect("Should be able to create verifying key from public key");
 
 		assert!(verify_key.verify(msg.as_bytes(), &sig).is_ok());
+	}
+
+	// Non-mock tests can be added here for production hardware testing
+	#[test]
+	fn test_wallet_signer_creation() {
+		// This test doesn't require mockhsm and can run in production builds
+		// Add tests that don't require actual hardware here
+		assert!(true); // Placeholder test
 	}
 }

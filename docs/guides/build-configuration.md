@@ -4,6 +4,115 @@
 
 This guide covers common build configuration issues and their solutions when working with NeoRust, particularly focusing on dependency management and feature flags for different build environments.
 
+## Security Vulnerability Management
+
+### Running Security Audits
+
+Regular security audits are essential for maintaining a secure codebase. Use `cargo audit` to check for known vulnerabilities:
+
+```bash
+cargo audit
+```
+
+### Common Vulnerabilities Found
+
+Based on recent audits, the following vulnerabilities have been identified:
+
+#### Critical Issues
+1. **protobuf 3.2.0** (RUSTSEC-2024-0437)
+   - **Issue**: Crash due to uncontrolled recursion
+   - **Solution**: Upgrade to >=3.7.2
+   - **Status**: Used by ledger feature
+
+2. **rust-crypto 0.2.36** (RUSTSEC-2022-0011)
+   - **Issue**: Miscomputation when performing AES encryption
+   - **Solution**: No fixed upgrade available - needs replacement
+   - **Status**: Legacy dependency, should be replaced
+
+3. **rustls 0.20.9** (RUSTSEC-2024-0336)
+   - **Issue**: Potential infinite loop in ConnectionCommon::complete_io
+   - **Severity**: High (7.5)
+   - **Solution**: Upgrade to >=0.23.5 OR >=0.22.4, <0.23.0 OR >=0.21.11, <0.22.0
+
+#### Medium Priority Issues
+4. **ring 0.16.20** (RUSTSEC-2025-0009)
+   - **Issue**: AES functions may panic when overflow checking is enabled
+   - **Solution**: Upgrade to >=0.17.12
+
+5. **time 0.1.45** (RUSTSEC-2020-0071)
+   - **Issue**: Potential segfault
+   - **Severity**: Medium (6.2)
+   - **Solution**: Upgrade to >=0.2.23
+
+6. **rustc-serialize 0.3.25** (RUSTSEC-2022-0004)
+   - **Issue**: Stack overflow when parsing deeply nested JSON
+   - **Solution**: No fixed upgrade available - needs replacement
+
+#### Unmaintained Dependencies
+- **instant 0.1.13**: Unmaintained, should be replaced
+- **json 0.12.4**: Unmaintained, should be replaced with `serde_json`
+
+### Remediation Strategy
+
+#### Immediate Actions (High Priority)
+1. **Replace rust-crypto**: Migrate to modern alternatives like `ring`, `rustcrypto` crates
+2. **Update protobuf**: Upgrade to version 3.7.2 or later
+3. **Update rustls**: Upgrade through dependency chain (rusoto_core)
+
+#### Medium Priority Actions
+4. **Replace unmaintained crates**: 
+   - Replace `json` with `serde_json`
+   - Replace `instant` with `std::time::Instant` or `web-time`
+5. **Update time dependency**: Ensure using time 0.2.23+
+
+#### Dependency Replacement Guide
+
+```toml
+# Replace these vulnerable/unmaintained dependencies:
+
+# OLD (vulnerable)
+rust-crypto = "0.2.36"
+json = "0.12.4"
+instant = "0.1.13"
+
+# NEW (secure alternatives)
+ring = "0.17.8"  # Already in use
+sha2 = "0.10.7"  # Already in use
+serde_json = "1.0"  # Already in use
+# For WASM compatibility, use web-time instead of instant
+```
+
+### Monitoring and Prevention
+
+1. **Regular Audits**: Run `cargo audit` before each release
+2. **Automated Checks**: Add `cargo audit` to CI/CD pipeline
+3. **Dependency Updates**: Regularly update dependencies with `cargo update`
+4. **Security Advisories**: Subscribe to RustSec advisory notifications
+
+## Documentation Workflow Changes
+
+### Removing mdBook from CI/CD
+
+**Background**: The project previously used mdBook for documentation generation in GitHub Actions. This has been removed in favor of the Docusaurus-based website system.
+
+**Changes Made**:
+- Removed mdBook workflow from `.github/workflows/docs.yml`
+- Documentation is now handled by the Docusaurus website in the `website/` directory
+- Static documentation files remain in `docs/` for reference but are not automatically built
+
+**Migration Path**:
+If you need to build documentation locally:
+```bash
+# For Docusaurus website (recommended)
+cd website
+npm install
+npm run build
+
+# For local mdBook (if needed)
+cd docs
+mdbook build
+```
+
 ## Common Build Issues
 
 ### YubiHSM MockHsm Release Build Error

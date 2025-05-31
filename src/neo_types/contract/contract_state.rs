@@ -66,9 +66,10 @@ impl ContractIdentifiers {
 		if result.stack.is_empty() {
 			return Err("InvocationResult has empty stack".to_string());
 		}
-		
+
 		let stack_item = &result.stack[0];
-		ContractState::contract_identifiers(stack_item)
-			.map_err(|e| format!("Failed to convert InvocationResult to ContractIdentifiers: {}", e))
+		ContractState::contract_identifiers(stack_item).map_err(|e| {
+			format!("Failed to convert InvocationResult to ContractIdentifiers: {}", e)
+		})
 	}
 }

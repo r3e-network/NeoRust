@@ -6,12 +6,12 @@ use crate::{
 		print_warning, prompt_input, status_indicator, with_loading,
 	},
 };
+use base64::{engine::general_purpose, Engine as _};
 use clap::{Args, Subcommand};
 use colored::*;
 use comfy_table::{Cell, Color};
-use base64::{Engine as _, engine::general_purpose};
+use ripemd::Ripemd160;
 use sha2::{Digest, Sha256};
-use ripemd::{Ripemd160};
 
 #[derive(Args, Debug)]
 pub struct ToolsArgs {
@@ -27,11 +27,11 @@ pub enum ToolsCommands {
 		/// Input data
 		#[arg(short, long, help = "Data to encode")]
 		input: String,
-		
+
 		/// Encoding format (base64, hex, base58)
 		#[arg(short, long, default_value = "base64", help = "Encoding format")]
 		format: String,
-		
+
 		/// Input format (text, hex, file)
 		#[arg(long, default_value = "text", help = "Input data format")]
 		input_format: String,
@@ -43,11 +43,11 @@ pub enum ToolsCommands {
 		/// Encoded data
 		#[arg(short, long, help = "Data to decode")]
 		input: String,
-		
+
 		/// Decoding format (base64, hex, base58)
 		#[arg(short, long, default_value = "base64", help = "Decoding format")]
 		format: String,
-		
+
 		/// Output format (text, hex, file)
 		#[arg(long, default_value = "text", help = "Output data format")]
 		output_format: String,
@@ -59,15 +59,15 @@ pub enum ToolsCommands {
 		/// Input data
 		#[arg(short, long, help = "Data to hash")]
 		input: String,
-		
+
 		/// Hash algorithm (sha256, ripemd160, sha1, md5)
 		#[arg(short, long, default_value = "sha256", help = "Hash algorithm")]
 		algorithm: String,
-		
+
 		/// Input format (text, hex, file)
 		#[arg(long, default_value = "text", help = "Input data format")]
 		input_format: String,
-		
+
 		/// Output format (hex, base64)
 		#[arg(long, default_value = "hex", help = "Output format")]
 		output_format: String,
@@ -79,11 +79,11 @@ pub enum ToolsCommands {
 		/// Input data
 		#[arg(short, long, help = "Data to convert")]
 		input: String,
-		
+
 		/// Source format
 		#[arg(short, long, help = "Source format")]
 		from: String,
-		
+
 		/// Target format
 		#[arg(short, long, help = "Target format")]
 		to: String,
@@ -95,7 +95,7 @@ pub enum ToolsCommands {
 		/// Public key (hex format)
 		#[arg(short, long, help = "Public key in hex format")]
 		pubkey: String,
-		
+
 		/// Address version (3 for N3)
 		#[arg(short, long, default_value = "53", help = "Address version")]
 		version: u8,
@@ -123,7 +123,7 @@ pub enum ToolsCommands {
 		/// Number of bytes to generate
 		#[arg(short, long, default_value = "32", help = "Number of random bytes")]
 		bytes: usize,
-		
+
 		/// Output format (hex, base64, base58)
 		#[arg(short, long, default_value = "hex", help = "Output format")]
 		format: String,
@@ -135,11 +135,11 @@ pub enum ToolsCommands {
 		/// Message that was signed
 		#[arg(short, long, help = "Original message")]
 		message: String,
-		
+
 		/// Signature to verify
 		#[arg(short, long, help = "Signature in hex format")]
 		signature: String,
-		
+
 		/// Public key for verification
 		#[arg(short, long, help = "Public key in hex format")]
 		pubkey: String,
@@ -151,11 +151,11 @@ pub enum ToolsCommands {
 		/// Transaction size in bytes
 		#[arg(short, long, help = "Transaction size in bytes")]
 		size: u64,
-		
+
 		/// Network fee per byte
 		#[arg(short, long, default_value = "1000", help = "Network fee per byte")]
 		fee_per_byte: u64,
-		
+
 		/// System fee
 		#[arg(short, long, default_value = "0", help = "System fee")]
 		system_fee: u64,
@@ -167,7 +167,7 @@ pub enum ToolsCommands {
 		/// JSON data to format
 		#[arg(short, long, help = "JSON data to format")]
 		input: String,
-		
+
 		/// Compact output
 		#[arg(short, long, help = "Compact JSON output")]
 		compact: bool,
@@ -175,44 +175,25 @@ pub enum ToolsCommands {
 }
 
 /// Handle tools command with comprehensive functionality
-pub async fn handle_tools_command(
-	args: ToolsArgs,
-	_state: &mut CliState,
-) -> Result<(), CliError> {
+pub async fn handle_tools_command(args: ToolsArgs, _state: &mut CliState) -> Result<(), CliError> {
 	match args.command {
-		ToolsCommands::Encode { input, format, input_format } => {
-			handle_encode(input, format, input_format).await
-		},
-		ToolsCommands::Decode { input, format, output_format } => {
-			handle_decode(input, format, output_format).await
-		},
-		ToolsCommands::Hash { input, algorithm, input_format, output_format } => {
-			handle_hash(input, algorithm, input_format, output_format).await
-		},
-		ToolsCommands::Convert { input, from, to } => {
-			handle_convert(input, from, to).await
-		},
-		ToolsCommands::Address { pubkey, version } => {
-			handle_address_generation(pubkey, version).await
-		},
-		ToolsCommands::ValidateAddress { address } => {
-			handle_validate_address(address).await
-		},
-		ToolsCommands::ScriptHash { script } => {
-			handle_script_hash(script).await
-		},
-		ToolsCommands::Random { bytes, format } => {
-			handle_random_generation(bytes, format).await
-		},
-		ToolsCommands::VerifySignature { message, signature, pubkey } => {
-			handle_verify_signature(message, signature, pubkey).await
-		},
-		ToolsCommands::CalculateFee { size, fee_per_byte, system_fee } => {
-			handle_calculate_fee(size, fee_per_byte, system_fee).await
-		},
-		ToolsCommands::FormatJson { input, compact } => {
-			handle_format_json(input, compact).await
-		},
+		ToolsCommands::Encode { input, format, input_format } =>
+			handle_encode(input, format, input_format).await,
+		ToolsCommands::Decode { input, format, output_format } =>
+			handle_decode(input, format, output_format).await,
+		ToolsCommands::Hash { input, algorithm, input_format, output_format } =>
+			handle_hash(input, algorithm, input_format, output_format).await,
+		ToolsCommands::Convert { input, from, to } => handle_convert(input, from, to).await,
+		ToolsCommands::Address { pubkey, version } =>
+			handle_address_generation(pubkey, version).await,
+		ToolsCommands::ValidateAddress { address } => handle_validate_address(address).await,
+		ToolsCommands::ScriptHash { script } => handle_script_hash(script).await,
+		ToolsCommands::Random { bytes, format } => handle_random_generation(bytes, format).await,
+		ToolsCommands::VerifySignature { message, signature, pubkey } =>
+			handle_verify_signature(message, signature, pubkey).await,
+		ToolsCommands::CalculateFee { size, fee_per_byte, system_fee } =>
+			handle_calculate_fee(size, fee_per_byte, system_fee).await,
+		ToolsCommands::FormatJson { input, compact } => handle_format_json(input, compact).await,
 	}
 }
 
@@ -228,9 +209,7 @@ async fn handle_encode(
 	let data = match input_format.as_str() {
 		"text" => input.as_bytes().to_vec(),
 		"hex" => hex::decode(&input).map_err(|e| CliError::InvalidInput(e.to_string()))?,
-		"file" => {
-			std::fs::read(&input).map_err(|e| CliError::Io(e))?
-		},
+		"file" => std::fs::read(&input).map_err(|e| CliError::Io(e))?,
 		_ => return Err(CliError::InvalidInput("Invalid input format".to_string())),
 	};
 
@@ -279,15 +258,14 @@ async fn handle_decode(
 
 	// Decode data
 	let decoded = match format.as_str() {
-		"base64" => general_purpose::STANDARD.decode(&input)
+		"base64" => general_purpose::STANDARD
+			.decode(&input)
 			.map_err(|e| CliError::InvalidInput(e.to_string()))?,
-		"hex" => hex::decode(&input)
-			.map_err(|e| CliError::InvalidInput(e.to_string()))?,
+		"hex" => hex::decode(&input).map_err(|e| CliError::InvalidInput(e.to_string()))?,
 		"base58" => {
 			// Placeholder for base58 decoding
 			if input.starts_with("base58:") {
-				hex::decode(&input[7..])
-					.map_err(|e| CliError::InvalidInput(e.to_string()))?
+				hex::decode(&input[7..]).map_err(|e| CliError::InvalidInput(e.to_string()))?
 			} else {
 				return Err(CliError::InvalidInput("Invalid base58 format".to_string()));
 			}
@@ -383,10 +361,7 @@ async fn handle_hash(
 		Cell::new("Hash Size").fg(Color::Cyan),
 		Cell::new(format!("{} bytes", hash_bytes.len())).fg(Color::Yellow),
 	]);
-	table.add_row(vec![
-		Cell::new("Hash").fg(Color::Cyan),
-		Cell::new(&hash_output).fg(Color::Blue),
-	]);
+	table.add_row(vec![Cell::new("Hash").fg(Color::Cyan), Cell::new(&hash_output).fg(Color::Blue)]);
 
 	println!("{}", table);
 	print_success("✅ Hash generated successfully!");
@@ -395,10 +370,7 @@ async fn handle_hash(
 }
 
 /// Generate random data
-async fn handle_random_generation(
-	bytes: usize,
-	format: String,
-) -> Result<(), CliError> {
+async fn handle_random_generation(bytes: usize, format: String) -> Result<(), CliError> {
 	print_section_header("Random Data Generation");
 
 	use rand::RngCore;
@@ -473,21 +445,16 @@ async fn handle_calculate_fee(
 }
 
 /// Format JSON data
-async fn handle_format_json(
-	input: String,
-	compact: bool,
-) -> Result<(), CliError> {
+async fn handle_format_json(input: String, compact: bool) -> Result<(), CliError> {
 	print_section_header("JSON Formatting");
 
 	let parsed: serde_json::Value = serde_json::from_str(&input)
 		.map_err(|e| CliError::InvalidInput(format!("Invalid JSON: {}", e)))?;
 
 	let formatted = if compact {
-		serde_json::to_string(&parsed)
-			.map_err(|e| CliError::InvalidInput(e.to_string()))?
+		serde_json::to_string(&parsed).map_err(|e| CliError::InvalidInput(e.to_string()))?
 	} else {
-		serde_json::to_string_pretty(&parsed)
-			.map_err(|e| CliError::InvalidInput(e.to_string()))?
+		serde_json::to_string_pretty(&parsed).map_err(|e| CliError::InvalidInput(e.to_string()))?
 	};
 
 	let mut table = create_table();
@@ -530,7 +497,11 @@ async fn handle_script_hash(_script: String) -> Result<(), CliError> {
 	Ok(())
 }
 
-async fn handle_verify_signature(_message: String, _signature: String, _pubkey: String) -> Result<(), CliError> {
+async fn handle_verify_signature(
+	_message: String,
+	_signature: String,
+	_pubkey: String,
+) -> Result<(), CliError> {
 	print_info("🚧 Signature verification functionality will be implemented");
 	Ok(())
-} 
+}

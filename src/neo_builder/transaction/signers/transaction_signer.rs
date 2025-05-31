@@ -9,9 +9,9 @@ use crate::{
 	neo_types::{deserialize_vec_public_key_option, serialize_vec_public_key_option},
 	serialize_scopes, serialize_script_hash, serialize_vec_script_hash_option,
 };
+use lazy_static::lazy_static;
 use primitive_types::H160;
 use serde::{Deserialize, Serialize};
-use lazy_static::lazy_static;
 
 lazy_static! {
 	static ref EMPTY_CONTRACTS: Vec<H160> = Vec::new();

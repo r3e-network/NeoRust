@@ -11,8 +11,11 @@ use crate::{
 use elliptic_curve::pkcs8::der::Encode;
 use primitive_types::H160;
 use serde::{Deserialize, Serialize, Serializer};
-use std::hash::{Hash, Hasher};
-use std::{collections::HashSet, ops::Deref};
+use std::{
+	collections::HashSet,
+	hash::{Hash, Hasher},
+	ops::Deref,
+};
 
 use lazy_static::lazy_static;
 
@@ -366,16 +369,20 @@ impl Signer {
 	pub fn to_account_signer(self) -> Result<AccountSigner, String> {
 		match self {
 			Signer::AccountSigner(account_signer) => Ok(account_signer),
-			_ => Err("Cannot convert ContractSigner or TransactionSigner into AccountSigner".to_string()),
+			_ =>
+				Err("Cannot convert ContractSigner or TransactionSigner into AccountSigner"
+					.to_string()),
 		}
 	}
 
 	/// Safely converts to ContractSigner
 	pub fn to_contract_signer(self) -> Result<ContractSigner, String> {
 		match self {
-			Signer::AccountSigner(_) => Err("Cannot convert AccountSigner into ContractSigner".to_string()),
+			Signer::AccountSigner(_) =>
+				Err("Cannot convert AccountSigner into ContractSigner".to_string()),
 			Signer::ContractSigner(contract_signer) => Ok(contract_signer),
-			Signer::TransactionSigner(_) => Err("Cannot convert TransactionSigner into ContractSigner".to_string()),
+			Signer::TransactionSigner(_) =>
+				Err("Cannot convert TransactionSigner into ContractSigner".to_string()),
 		}
 	}
 }
@@ -412,7 +419,10 @@ impl Into<AccountSigner> for Signer {
 				// Return a default AccountSigner as fallback
 				AccountSigner::none_hash160(primitive_types::H160::zero()).unwrap_or_else(|_| {
 					// If even the default creation fails, create one with a valid account
-					let account = crate::neo_protocol::Account::from_wif("L1WMhxazScMhUrdv34JqQb1HFSQmWeN2Kpc1R9JGKwL7CDNP21uR").unwrap();
+					let account = crate::neo_protocol::Account::from_wif(
+						"L1WMhxazScMhUrdv34JqQb1HFSQmWeN2Kpc1R9JGKwL7CDNP21uR",
+					)
+					.unwrap();
 					AccountSigner::new(&account, crate::builder::WitnessScope::None)
 				})
 			},
@@ -800,8 +810,11 @@ mod tests {
 
 		AccountSigner::global(&SCRIPT_HASH.deref().into()).unwrap().encode(&mut buffer);
 
-		let expected =
-			format!("{}{:02x}", hex::encode(SCRIPT_HASH.as_bytes()), WitnessScope::Global.byte_repr());
+		let expected = format!(
+			"{}{:02x}",
+			hex::encode(SCRIPT_HASH.as_bytes()),
+			WitnessScope::Global.byte_repr()
+		);
 		assert_eq!(hex::encode(buffer.to_bytes()), expected);
 	}
 

@@ -64,6 +64,7 @@ use crate::{
 	codec::{Decoder, Encoder, NeoSerializable},
 	config::NeoConstants,
 	crypto::CryptoError,
+	neo_crypto::utils::{FromHexString, ToHexString},
 };
 use elliptic_curve::zeroize::Zeroize;
 use p256::{
@@ -78,7 +79,6 @@ use primitive_types::U256;
 use rand_core::OsRng;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use signature::{hazmat::PrehashSigner, SignerMut, Verifier};
-use crate::neo_crypto::utils::{FromHexString, ToHexString};
 
 #[cfg_attr(feature = "substrate", serde(crate = "serde_substrate"))]
 #[derive(Debug, Clone)]
@@ -246,7 +246,6 @@ impl Secp256r1PublicKey {
 }
 
 impl Secp256r1PrivateKey {
-	
 	/// Generates a new private key using the provided random number generator (RNG).
 	///
 	/// - Parameter rng: A mutable reference to an `OsRng` instance.
@@ -360,10 +359,10 @@ impl Secp256r1Signature {
 	pub fn from_scalars(r: &[u8; 32], s: &[u8; 32]) -> Result<Self, CryptoError> {
 		let r_field: FieldBytes = (*r).into();
 		let s_field: FieldBytes = (*s).into();
-		
+
 		let signature = Signature::from_scalars(r_field, s_field)
 			.map_err(|_| CryptoError::SignatureVerificationError)?;
-		
+
 		Ok(Self { inner: signature })
 	}
 
@@ -564,8 +563,10 @@ impl From<Vec<u8>> for Secp256r1PublicKey {
 			eprintln!("Warning: Failed to create public key from bytes: {}", e);
 			// Return a default/zero public key as fallback
 			// Using a known valid compressed public key (generator point)
-			Secp256r1PublicKey::from_encoded("036b17d1f2e12c4247f8bce6e563a440f277037d812deb33a0f4a13945d898c296")
-				.expect("Generator point should always be valid")
+			Secp256r1PublicKey::from_encoded(
+				"036b17d1f2e12c4247f8bce6e563a440f277037d812deb33a0f4a13945d898c296",
+			)
+			.expect("Generator point should always be valid")
 		})
 	}
 }
@@ -783,4 +784,3 @@ mod tests {
 		assert!(public_key.verify(&hashed_msg, &expected_signature).is_ok());
 	}
 }
-

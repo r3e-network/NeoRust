@@ -1,10 +1,12 @@
 use crate::errors::CliError;
 use colored::*;
+use comfy_table::{presets::UTF8_FULL, Attribute, Cell, Color, ContentArrangement, Table};
 use dialoguer::{theme::ColorfulTheme, Confirm, Input, Password, Select};
 use indicatif::{ProgressBar, ProgressStyle};
-use std::io::{self, Write};
-use std::time::Duration;
-use comfy_table::{Table, Cell, Color, Attribute, ContentArrangement, presets::UTF8_FULL};
+use std::{
+	io::{self, Write},
+	time::Duration,
+};
 
 /// Print an informational message with icon
 pub fn print_info(message: &str) {
@@ -133,7 +135,7 @@ pub fn display_key_value_colored(key: &str, value: &str, key_color: Color, value
 		Color::Cyan => key.bright_cyan(),
 		_ => key.bright_white(),
 	};
-	
+
 	let value_colored = match value_color {
 		Color::Red => value.bright_red(),
 		Color::Green => value.bright_green(),
@@ -143,7 +145,7 @@ pub fn display_key_value_colored(key: &str, value: &str, key_color: Color, value
 		Color::Cyan => value.bright_cyan(),
 		_ => value.bright_white(),
 	};
-	
+
 	println!("{}: {}", key_colored.bold(), value_colored);
 }
 
@@ -164,12 +166,12 @@ pub fn format_bytes(bytes: u64) -> String {
 	const UNITS: &[&str] = &["B", "KB", "MB", "GB", "TB"];
 	let mut size = bytes as f64;
 	let mut unit_index = 0;
-	
+
 	while size >= 1024.0 && unit_index < UNITS.len() - 1 {
 		size /= 1024.0;
 		unit_index += 1;
 	}
-	
+
 	if unit_index == 0 {
 		format!("{} {}", size as u64, UNITS[unit_index])
 	} else {
@@ -183,7 +185,7 @@ pub fn format_duration(seconds: u64) -> String {
 	let hours = (seconds % 86400) / 3600;
 	let minutes = (seconds % 3600) / 60;
 	let secs = seconds % 60;
-	
+
 	if days > 0 {
 		format!("{}d {}h {}m {}s", days, hours, minutes, secs)
 	} else if hours > 0 {
@@ -243,14 +245,15 @@ where
 /// Display error details in a formatted way
 pub fn display_error_details(error: &dyn std::error::Error) {
 	print_error(&format!("Error: {}", error));
-	
+
 	let mut source = error.source();
 	let mut level = 1;
-	
+
 	while let Some(err) = source {
-		println!("{}{} Caused by: {}", 
-			"  ".repeat(level), 
-			"└─".bright_red(), 
+		println!(
+			"{}{} Caused by: {}",
+			"  ".repeat(level),
+			"└─".bright_red(),
 			err.to_string().bright_red()
 		);
 		source = err.source();

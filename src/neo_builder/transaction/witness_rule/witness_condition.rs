@@ -129,13 +129,11 @@ where
 			let group = v["group"]
 				.as_str()
 				.ok_or(serde::de::Error::custom("Expected a string for Group/CalledByGroup"))?;
-			let group_bytes = group.from_hex_string().map_err(|e| {
-				serde::de::Error::custom(format!("Failed to decode hex: {}", e))
-			})?;
+			let group_bytes = group
+				.from_hex_string()
+				.map_err(|e| serde::de::Error::custom(format!("Failed to decode hex: {}", e)))?;
 			let condition = if v["type"] == "Group" {
-				WitnessCondition::Group(
-					Secp256r1PublicKey::from_bytes(&group_bytes).unwrap(),
-				)
+				WitnessCondition::Group(Secp256r1PublicKey::from_bytes(&group_bytes).unwrap())
 			} else {
 				WitnessCondition::CalledByGroup(
 					Secp256r1PublicKey::from_bytes(&group_bytes).unwrap(),
@@ -148,9 +146,9 @@ where
 			let hash = v["hash"]
 				.as_str()
 				.ok_or(serde::de::Error::custom("Expected a string for CalledByContract"))?;
-			let hash_bytes = hash.from_hex_string().map_err(|e| {
-				serde::de::Error::custom(format!("Failed to decode hex: {}", e))
-			})?;
+			let hash_bytes = hash
+				.from_hex_string()
+				.map_err(|e| serde::de::Error::custom(format!("Failed to decode hex: {}", e)))?;
 			if hash_bytes.len() != 20 {
 				return Err(serde::de::Error::custom("Invalid H160 length"));
 			}

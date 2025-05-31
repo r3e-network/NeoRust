@@ -11,8 +11,8 @@ use serde::{Deserialize, Serialize};
 use crate::{
 	crypto::{base58check_decode, base58check_encode, HashableForVec, Secp256r1PublicKey},
 	neo_crypto::utils::{FromHexString, ToHexString},
-	neo_types::{ScriptHash, ScriptHashExtension, StringExt, TypeError},
 	neo_error::NeoError,
+	neo_types::{ScriptHash, ScriptHashExtension, StringExt, TypeError},
 	prelude::Bytes,
 };
 
@@ -161,6 +161,6 @@ mod tests {
 
 pub fn from_script_hash(script_hash: &H160) -> Result<String, NeoError> {
 	Err(NeoError::UnsupportedOperation(
-		"Address conversion from script hash not yet implemented".to_string()
+		"Address conversion from script hash not yet implemented".to_string(),
 	))
 }

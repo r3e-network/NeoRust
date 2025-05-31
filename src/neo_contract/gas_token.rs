@@ -73,7 +73,7 @@ impl<'a, P: JsonRpcProvider> TokenTrait<'a, P> for GasToken<'a, P> {
 
 	async fn resolve_nns_text_record(&self, _name: &NNSName) -> Result<H160, ContractError> {
 		Err(ContractError::UnsupportedOperation(
-			"GAS token does not support NNS text record resolution".to_string()
+			"GAS token does not support NNS text record resolution".to_string(),
 		))
 	}
 }

@@ -12,7 +12,7 @@ use clap::{Args, Subcommand};
 use colored::*;
 use comfy_table::{Cell, Color};
 use neo3::{
-	neo_clients::{HttpProvider, JsonRpcProvider, RpcClient, APITrait},
+	neo_clients::{APITrait, HttpProvider, JsonRpcProvider, RpcClient},
 	neo_protocol::{NeoBlock, Peers},
 	prelude::*,
 };
@@ -59,15 +59,20 @@ pub enum NetworkCommands {
 		/// Network name
 		#[arg(short, long, help = "Name for the network")]
 		name: String,
-		
+
 		/// RPC URL
 		#[arg(short, long, help = "RPC endpoint URL")]
 		url: String,
-		
+
 		/// Network type
-		#[arg(short, long, default_value = "custom", help = "Network type (mainnet, testnet, custom)")]
+		#[arg(
+			short,
+			long,
+			default_value = "custom",
+			help = "Network type (mainnet, testnet, custom)"
+		)]
 		network_type: String,
-		
+
 		/// Chain ID
 		#[arg(short, long, help = "Chain ID for the network")]
 		chain_id: Option<u32>,
@@ -108,30 +113,15 @@ pub async fn handle_network_command(
 	state: &mut CliState,
 ) -> Result<(), CliError> {
 	match args.command {
-		NetworkCommands::Connect { network } => {
-			handle_connect_network(network, state).await
-		},
-		NetworkCommands::Status => {
-			handle_network_status(state).await
-		},
-		NetworkCommands::List => {
-			handle_list_networks(state).await
-		},
-		NetworkCommands::Add { name, url, network_type, chain_id } => {
-			handle_add_network(name, url, network_type, chain_id, state).await
-		},
-		NetworkCommands::Remove { name } => {
-			handle_remove_network(name, state).await
-		},
-		NetworkCommands::Peers => {
-			handle_show_peers(state).await
-		},
-		NetworkCommands::Block { height } => {
-			handle_show_block(height, state).await
-		},
-		NetworkCommands::Ping { network } => {
-			handle_ping_network(network, state).await
-		},
+		NetworkCommands::Connect { network } => handle_connect_network(network, state).await,
+		NetworkCommands::Status => handle_network_status(state).await,
+		NetworkCommands::List => handle_list_networks(state).await,
+		NetworkCommands::Add { name, url, network_type, chain_id } =>
+			handle_add_network(name, url, network_type, chain_id, state).await,
+		NetworkCommands::Remove { name } => handle_remove_network(name, state).await,
+		NetworkCommands::Peers => handle_show_peers(state).await,
+		NetworkCommands::Block { height } => handle_show_block(height, state).await,
+		NetworkCommands::Ping { network } => handle_ping_network(network, state).await,
 	}
 }
 
@@ -155,7 +145,9 @@ async fn handle_connect_network(
 			}
 		} else {
 			// Find by name
-			state.networks.iter()
+			state
+				.networks
+				.iter()
 				.find(|n| n.name.to_lowercase().contains(&network_name.to_lowercase()))
 				.cloned()
 				.ok_or_else(|| CliError::Network(format!("Network '{}' not found", network_name)))?
@@ -163,18 +155,20 @@ async fn handle_connect_network(
 	} else {
 		// Interactive selection
 		let network_names: Vec<&str> = state.networks.iter().map(|n| n.name.as_str()).collect();
-		let selection = prompt_select("Select a network:", &network_names)
-			.map_err(|e| CliError::Io(e))?;
+		let selection =
+			prompt_select("Select a network:", &network_names).map_err(|e| CliError::Io(e))?;
 		state.networks[selection].clone()
 	};
 
 	// Test connection
 	let client = with_loading("Testing connection...", async {
-		let url = Url::parse(&target_network.rpc_url)
-			.map_err(|e| format!("Invalid RPC URL: {}", e))?;
+		let url =
+			Url::parse(&target_network.rpc_url).map_err(|e| format!("Invalid RPC URL: {}", e))?;
 		let provider = HttpProvider::new(url).unwrap();
 		Ok::<_, String>(RpcClient::new(provider))
-	}).await.map_err(|e| CliError::Network(e))?;
+	})
+	.await
+	.map_err(|e| CliError::Network(e))?;
 
 	// Try to get block count to verify connection
 	match client.get_block_count().await {
@@ -209,7 +203,7 @@ async fn handle_connect_network(
 		},
 		Err(e) => {
 			return Err(CliError::Network(format!("Failed to connect: {}", e)));
-		}
+		},
 	}
 
 	Ok(())
@@ -219,19 +213,26 @@ async fn handle_connect_network(
 async fn handle_network_status(state: &CliState) -> Result<(), CliError> {
 	print_section_header("Network Status");
 
-	let network = state.current_network.as_ref()
+	let network = state
+		.current_network
+		.as_ref()
 		.ok_or_else(|| CliError::Network("No network connected".to_string()))?;
 
-	let client = state.rpc_client.as_ref()
+	let client = state
+		.rpc_client
+		.as_ref()
 		.ok_or_else(|| CliError::Network("No RPC client available".to_string()))?;
 
 	let (block_count, version) = with_loading("Fetching network information...", async {
 		let block_count = client.get_block_count().await.unwrap_or(0);
-		let version = client.get_version().await
+		let version = client
+			.get_version()
+			.await
 			.map(|v| format!("{:?}", v))
 			.unwrap_or_else(|_| "Unknown".to_string());
 		(block_count, version)
-	}).await;
+	})
+	.await;
 
 	let mut table = create_table();
 	table.add_row(vec![
@@ -286,9 +287,8 @@ async fn handle_list_networks(state: &CliState) -> Result<(), CliError> {
 	]);
 
 	for network in &state.networks {
-		let is_current = state.current_network.as_ref()
-			.map(|n| n.name == network.name)
-			.unwrap_or(false);
+		let is_current =
+			state.current_network.as_ref().map(|n| n.name == network.name).unwrap_or(false);
 
 		table.add_row(vec![
 			Cell::new(&network.name).fg(if is_current { Color::Green } else { Color::White }),
@@ -300,7 +300,8 @@ async fn handle_list_networks(state: &CliState) -> Result<(), CliError> {
 				format!("{} Default", status_indicator("info"))
 			} else {
 				format!("{} Available", status_indicator("info"))
-			}).fg(if is_current { Color::Green } else { Color::White }),
+			})
+			.fg(if is_current { Color::Green } else { Color::White }),
 		]);
 	}
 
@@ -327,11 +328,12 @@ async fn handle_add_network(
 
 	// Test the connection first
 	let client = with_loading("Testing network connection...", async {
-		let url = Url::parse(&url)
-			.map_err(|e| format!("Invalid RPC URL: {}", e))?;
+		let url = Url::parse(&url).map_err(|e| format!("Invalid RPC URL: {}", e))?;
 		let provider = HttpProvider::new(url).unwrap();
 		Ok::<_, String>(RpcClient::new(provider))
-	}).await.map_err(|e| CliError::Network(e))?;
+	})
+	.await
+	.map_err(|e| CliError::Network(e))?;
 
 	let actual_chain_id = match client.get_version().await {
 		Ok(version) => {
@@ -339,16 +341,16 @@ async fn handle_add_network(
 			chain_id.unwrap_or(0)
 		},
 		Err(e) => {
-			let proceed = prompt_yes_no(&format!(
-				"Failed to connect to network ({}). Add anyway?", e
-			)).map_err(|e| CliError::Io(e))?;
-			
+			let proceed =
+				prompt_yes_no(&format!("Failed to connect to network ({}). Add anyway?", e))
+					.map_err(|e| CliError::Io(e))?;
+
 			if !proceed {
 				print_warning("Network addition cancelled");
 				return Ok(());
 			}
 			chain_id.unwrap_or(0)
-		}
+		},
 	};
 
 	let new_network = NetworkConfig {
@@ -362,10 +364,7 @@ async fn handle_add_network(
 	state.networks.push(new_network);
 
 	let mut table = create_table();
-	table.add_row(vec![
-		Cell::new("Name").fg(Color::Cyan),
-		Cell::new(&name).fg(Color::Green),
-	]);
+	table.add_row(vec![Cell::new("Name").fg(Color::Cyan), Cell::new(&name).fg(Color::Green)]);
 	table.add_row(vec![
 		Cell::new("Status").fg(Color::Cyan),
 		Cell::new(format!("{} Added Successfully", status_indicator("success"))).fg(Color::Green),
@@ -381,7 +380,10 @@ async fn handle_add_network(
 async fn handle_remove_network(name: String, state: &mut CliState) -> Result<(), CliError> {
 	print_section_header("Removing Network");
 
-	let network_index = state.networks.iter().position(|n| n.name == name)
+	let network_index = state
+		.networks
+		.iter()
+		.position(|n| n.name == name)
 		.ok_or_else(|| CliError::Network(format!("Network '{}' not found", name)))?;
 
 	let network = &state.networks[network_index];
@@ -393,8 +395,8 @@ async fn handle_remove_network(name: String, state: &mut CliState) -> Result<(),
 	}
 
 	// Confirm removal
-	let confirm = prompt_yes_no(&format!("Remove network '{}'?", name))
-		.map_err(|e| CliError::Io(e))?;
+	let confirm =
+		prompt_yes_no(&format!("Remove network '{}'?", name)).map_err(|e| CliError::Io(e))?;
 
 	if !confirm {
 		print_warning("Network removal cancelled");
@@ -423,10 +425,7 @@ async fn handle_ping_network(_network: Option<String>, _state: &CliState) -> Res
 	Ok(())
 }
 
-async fn connect_to_network(
-	network_index: usize,
-	state: &mut CliState,
-) -> Result<(), CliError> {
+async fn connect_to_network(network_index: usize, state: &mut CliState) -> Result<(), CliError> {
 	let target_network = &state.networks[network_index];
 
 	print_info(&format!("Connecting to {} network...", target_network.name));
@@ -441,7 +440,10 @@ async fn connect_to_network(
 	// Test the connection
 	match client.get_block_count().await {
 		Ok(block_count) => {
-			print_success(&format!("Connected to {} (block: {})", target_network.name, block_count));
+			print_success(&format!(
+				"Connected to {} (block: {})",
+				target_network.name, block_count
+			));
 			state.rpc_client = Some(client);
 			state.current_network = Some(target_network.clone());
 		},
@@ -458,8 +460,8 @@ async fn test_network_connection(url: String) -> Result<(), CliError> {
 	print_info(&format!("Testing connection to {}...", url));
 
 	// Parse URL properly
-	let parsed_url = Url::parse(&url)
-		.map_err(|e| CliError::Network(format!("Invalid RPC URL: {}", e)))?;
+	let parsed_url =
+		Url::parse(&url).map_err(|e| CliError::Network(format!("Invalid RPC URL: {}", e)))?;
 
 	let provider = HttpProvider::new(parsed_url).unwrap();
 	let client = RpcClient::new(provider);

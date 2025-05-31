@@ -1,0 +1,23 @@
+{
+  "id": "nft-operations",
+  "title": "NFT Operations",
+  "description": "🎨 NFT Operations",
+  "source": "@site/gui/nft-operations.md",
+  "sourceDirName": ".",
+  "slug": "/nft-operations",
+  "permalink": "/gui/nft-operations",
+  "draft": false,
+  "unlisted": false,
+  "tags": [],
+  "version": "current",
+  "frontMatter": {},
+  "sidebar": "guiSidebar",
+  "previous": {
+    "title": "Wallet Management",
+    "permalink": "/gui/wallet-management"
+  },
+  "next": {
+    "title": "Developer Tools",
+    "permalink": "/gui/developer-tools"
+  }
+}

@@ -5,6 +5,29 @@ All notable changes to NeoRust will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.0] - 2025-05-31
+
+### Added
+- Comprehensive documentation website with Docusaurus
+- Complete GUI, CLI, and SDK documentation with beautiful design
+- Getting started guides for installation, quick start, and first wallet
+- Detailed NFT operations guide with minting, trading, and portfolio management
+- Developer tools documentation with encoding, hashing, and cryptographic utilities
+- Complete CLI commands reference with examples and usage patterns
+- Professional website design with Neo branding and responsive layout
+
+### Changed
+- Major codebase cleanup removing temporary status and documentation files
+- Updated all version numbers from 0.1.9 to 0.2.0 across all packages
+- Improved project organization and structure
+- Enhanced documentation quality and completeness
+
+### Removed
+- Temporary documentation status files (DOCUMENTATION_WEBSITE_STATUS.md, etc.)
+- Implementation status tracking files
+- Improvement plan documents
+- Production status files
+
 ## [0.1.9] - 2025-03-05
 
 ### Added

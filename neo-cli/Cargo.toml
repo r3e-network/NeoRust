@@ -1,6 +1,6 @@
 [package]
 name = "neo-cli"
-version = "0.2.0"
+version = "0.2.3"
 edition = "2021"
 description = "Command-line interface for the NeoRust SDK"
 authors = ["R3E Network (c) 2020-2025"]
@@ -19,7 +19,7 @@ files = []
 neofs = []
 
 [dependencies]
-neo3 = { path = "..", version = "0.2.0" }
+neo3 = { path = "..", version = "0.2.3" }
 clap = { version = "4.4", features = ["derive", "env", "unicode", "wrap_help"] }
 tokio = { version = "1.35.1", features = ["full"] }
 serde = "1.0.195"

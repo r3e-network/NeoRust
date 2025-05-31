@@ -325,3 +325,22 @@ let block_count = client.get_block_count().await?;
 ```
 
 ## 🔧 Advanced Usage
+
+### 🛠️ **Troubleshooting**
+
+#### Common Build Issues
+If you encounter build errors, especially related to `yubihsm` or `MockHsm`, see our [Build Configuration Guide](docs/guides/build-configuration.md) for solutions.
+
+**Quick fix for MockHsm release build error:**
+```bash
+# Use the mock-hsm feature only for development
+cargo build --features "mock-hsm"  # Development
+cargo build --release              # Production (no mock features)
+```
+
+#### Getting Help
+- **Documentation**: [Build Configuration Guide](docs/guides/build-configuration.md)
+- **Issues**: [GitHub Issues](https://github.com/R3E-Network/NeoRust/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/R3E-Network/NeoRust/discussions)
+
+### 🚀 **Production Deployment**

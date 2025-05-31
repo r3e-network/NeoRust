@@ -5,6 +5,23 @@ All notable changes to NeoRust will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- New `mock-hsm` feature flag for development and testing with YubiHSM mock functionality
+- Comprehensive [Build Configuration Guide](docs/guides/build-configuration.md) for dependency management
+- Documentation for handling environment-specific build configurations
+
+### Fixed
+- **YubiHSM MockHsm Release Build Error**: Resolved compilation error where MockHsm was included in release builds
+  - Removed `mockhsm` feature from default YubiHSM dependency configuration
+  - Added optional `mock-hsm` feature flag for development builds
+  - Updated documentation with troubleshooting guide for build configuration issues
+
+### Changed
+- YubiHSM dependency now uses `["http", "usb"]` features by default (production-safe)
+- Mock functionality now requires explicit `mock-hsm` feature flag activation
+
 ## [0.2.3] - 2025-05-31
 
 ### Added

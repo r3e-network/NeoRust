@@ -1,0 +1,148 @@
+.features {
+  display: flex;
+  align-items: center;
+  padding: 4rem 0;
+  width: 100%;
+  background: white;
+}
+
+.featuresTitle {
+  font-size: 2.5rem;
+  font-weight: 700;
+  text-align: center;
+  margin-bottom: 1rem;
+  color: #1e293b;
+}
+
+.featuresSubtitle {
+  font-size: 1.125rem;
+  text-align: center;
+  color: #64748b;
+  margin-bottom: 3rem;
+  max-width: 600px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.featureSvg {
+  height: 120px;
+  width: 120px;
+  margin: 0 auto 1.5rem auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+  border-radius: 50%;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 6px rgba(34, 197, 94, 0.1);
+}
+
+.featureSvg:hover {
+  transform: translateY(-5px) scale(1.05);
+  box-shadow: 0 10px 25px rgba(34, 197, 94, 0.2);
+}
+
+.featureIcon {
+  font-size: 3rem;
+  color: white;
+  font-weight: 600;
+}
+
+.featureTitle {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin-bottom: 1rem;
+  color: #1e293b;
+}
+
+.featureDescription {
+  color: #64748b;
+  line-height: 1.6;
+  font-size: 0.95rem;
+}
+
+/* Feature card hover effects */
+.features .col {
+  margin-bottom: 2rem;
+  transition: transform 0.3s ease;
+}
+
+.features .col:hover {
+  transform: translateY(-5px);
+}
+
+/* Responsive design */
+@media screen and (max-width: 996px) {
+  .features {
+    padding: 2rem 0;
+  }
+  
+  .featuresTitle {
+    font-size: 2rem;
+  }
+  
+  .featuresSubtitle {
+    font-size: 1rem;
+    margin-bottom: 2rem;
+  }
+  
+  .featureSvg {
+    height: 100px;
+    width: 100px;
+  }
+  
+  .featureIcon {
+    font-size: 2.5rem;
+  }
+}
+
+@media screen and (max-width: 768px) {
+  .features {
+    padding: 1.5rem 0;
+  }
+  
+  .featuresTitle {
+    font-size: 1.75rem;
+  }
+  
+  .featureSvg {
+    height: 80px;
+    width: 80px;
+  }
+  
+  .featureIcon {
+    font-size: 2rem;
+  }
+  
+  .featureTitle {
+    font-size: 1.125rem;
+  }
+  
+  .featureDescription {
+    font-size: 0.875rem;
+  }
+}
+
+/* Animation */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.features .col {
+  animation: fadeInUp 0.8s ease-out;
+  animation-fill-mode: both;
+}
+
+.features .col:nth-child(1) { animation-delay: 0.1s; }
+.features .col:nth-child(2) { animation-delay: 0.2s; }
+.features .col:nth-child(3) { animation-delay: 0.3s; }
+.features .col:nth-child(4) { animation-delay: 0.4s; }
+.features .col:nth-child(5) { animation-delay: 0.5s; }
+.features .col:nth-child(6) { animation-delay: 0.6s; } 

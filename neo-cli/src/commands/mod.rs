@@ -1,11 +1,14 @@
-pub mod network;
-pub use network::NetworkArgs;
-pub mod fs;
-pub use fs::FSArgs;
-pub mod neofs;
-pub use neofs::NeoFSArgs;
-pub mod defi;
-pub use defi::DefiArgs;
 pub mod blockchain;
 pub mod contract;
+pub mod defi;
+pub mod fs;
+pub mod neofs;
+pub mod network;
+pub mod nft;
+pub mod tools;
 pub mod wallet;
+
+pub use wallet::*;
+pub use nft::*;
+pub use tools::*;
+pub use network::*;

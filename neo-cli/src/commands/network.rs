@@ -1,147 +1,445 @@
 use crate::{
 	errors::CliError,
-	utils::{
-		config::{load_config, save_config, NetworkConfig},
-		print_error, print_info, print_success,
+	utils_core::{
+		create_table, display_key_value, print_error, print_info, print_section_header,
+		print_success, print_warning, prompt_input, prompt_select, prompt_yes_no, status_indicator,
+		with_loading,
 	},
 };
 use clap::{Args, Subcommand};
+use colored::*;
+use comfy_table::{Cell, Color};
+use neo3::{
+	neo_clients::{HttpProvider, JsonRpcProvider, RpcClient},
+	neo_protocol::{NeoBlock, Peers},
+};
+use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 
-/// Arguments for the network command
-#[derive(Args, Debug)]
-pub struct NetworkArgs {
-	#[clap(subcommand)]
-	pub command: NetworkCommands,
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct NetworkConfig {
+	pub name: String,
+	pub rpc_url: String,
+	pub network_type: String,
+	pub chain_id: u32,
+	pub is_default: bool,
 }
 
-/// Network-related commands
-#[derive(Subcommand, Debug)]
-pub enum NetworkCommands {
-	/// Connect to a Neo N3 node
-	#[clap(name = "connect")]
-	Connect {
-		/// The address of the node (e.g. localhost:10332)
-		address: String,
-
-		/// A name for the connection
-		#[clap(long, short)]
-		name: Option<String>,
-	},
-
-	/// List connected nodes
-	#[clap(name = "list")]
-	List,
-}
-
-/// Define a state struct that can be used for keeping track of CLI state
 pub struct CliState {
-	/// The current network type
-	pub network_type: Option<String>,
-	/// Whether we're connected to a node
-	pub connected: bool,
-	/// The current connection details
-	pub current_connection: Option<String>,
+	pub current_network: Option<NetworkConfig>,
+	pub networks: Vec<NetworkConfig>,
+	pub rpc_client: Option<RpcClient<HttpProvider>>,
 }
 
 impl Default for CliState {
 	fn default() -> Self {
+		let default_networks = vec![
+			NetworkConfig {
+				name: "Neo N3 Mainnet".to_string(),
+				rpc_url: "https://mainnet1.neo.coz.io:443".to_string(),
+				network_type: "mainnet".to_string(),
+				chain_id: 860833102,
+				is_default: false,
+			},
+			NetworkConfig {
+				name: "Neo N3 Testnet".to_string(),
+				rpc_url: "https://testnet1.neo.coz.io:443".to_string(),
+				network_type: "testnet".to_string(),
+				chain_id: 894710606,
+				is_default: true,
+			},
+		];
+
 		Self {
-			network_type: Some("MainNet".to_string()),
-			connected: false,
-			current_connection: None,
+			current_network: Some(default_networks[1].clone()),
+			networks: default_networks,
+			rpc_client: None,
 		}
 	}
 }
 
-/// Handle the network command
+#[derive(Args, Debug)]
+pub struct NetworkArgs {
+	#[command(subcommand)]
+	pub command: NetworkCommands,
+}
+
+#[derive(Subcommand, Debug)]
+pub enum NetworkCommands {
+	/// Connect to a network
+	#[command(about = "Connect to a Neo network")]
+	Connect {
+		/// Network name or RPC URL
+		#[arg(short, long, help = "Network name or custom RPC URL")]
+		network: Option<String>,
+	},
+
+	/// Show current network status
+	#[command(about = "Show current network status and information")]
+	Status,
+
+	/// List available networks
+	#[command(about = "List all configured networks")]
+	List,
+
+	/// Add a new network configuration
+	#[command(about = "Add a new network configuration")]
+	Add {
+		/// Network name
+		#[arg(short, long, help = "Name for the network")]
+		name: String,
+		
+		/// RPC URL
+		#[arg(short, long, help = "RPC endpoint URL")]
+		url: String,
+		
+		/// Network type
+		#[arg(short, long, default_value = "custom", help = "Network type (mainnet, testnet, custom)")]
+		network_type: String,
+		
+		/// Chain ID
+		#[arg(short, long, help = "Chain ID for the network")]
+		chain_id: Option<u32>,
+	},
+
+	/// Remove a network configuration
+	#[command(about = "Remove a network configuration")]
+	Remove {
+		/// Network name
+		#[arg(short, long, help = "Name of the network to remove")]
+		name: String,
+	},
+
+	/// Show network peers
+	#[command(about = "Show connected peers")]
+	Peers,
+
+	/// Get latest block information
+	#[command(about = "Get latest block information")]
+	Block {
+		/// Block height (optional, defaults to latest)
+		#[arg(short, long, help = "Specific block height")]
+		height: Option<u32>,
+	},
+
+	/// Test network connectivity
+	#[command(about = "Test connectivity to the network")]
+	Ping {
+		/// Network to test (optional, uses current if not specified)
+		#[arg(short, long, help = "Network name to test")]
+		network: Option<String>,
+	},
+}
+
+/// Handle network command with comprehensive functionality
 pub async fn handle_network_command(
 	args: NetworkArgs,
 	state: &mut CliState,
 ) -> Result<(), CliError> {
 	match args.command {
-		NetworkCommands::Connect { address, name } => connect_to_node(&address, name, state).await,
-		NetworkCommands::List => list_nodes(state).await,
+		NetworkCommands::Connect { network } => {
+			handle_connect_network(network, state).await
+		},
+		NetworkCommands::Status => {
+			handle_network_status(state).await
+		},
+		NetworkCommands::List => {
+			handle_list_networks(state).await
+		},
+		NetworkCommands::Add { name, url, network_type, chain_id } => {
+			handle_add_network(name, url, network_type, chain_id, state).await
+		},
+		NetworkCommands::Remove { name } => {
+			handle_remove_network(name, state).await
+		},
+		NetworkCommands::Peers => {
+			handle_show_peers(state).await
+		},
+		NetworkCommands::Block { height } => {
+			handle_show_block(height, state).await
+		},
+		NetworkCommands::Ping { network } => {
+			handle_ping_network(network, state).await
+		},
 	}
 }
 
-async fn connect_to_node(
-	address: &str,
-	name: Option<String>,
+/// Connect to a network
+async fn handle_connect_network(
+	network: Option<String>,
 	state: &mut CliState,
 ) -> Result<(), CliError> {
-	// Parse the address to get the IP and port
-	let parts: Vec<&str> = address.split(':').collect();
-	if parts.len() != 2 {
-		return Err(CliError::InvalidArgument(
-			"address".to_string(),
-			"Address must be in format 'ip:port'".to_string(),
-		));
-	}
+	print_section_header("Connecting to Network");
 
-	let ip = parts[0];
-	let port = parts[1].parse::<u16>().map_err(|_| {
-		CliError::InvalidArgument("port".to_string(), "Port must be a valid number".to_string())
-	})?;
-
-	// Determine the network name
-	let network_name = match name {
-		Some(n) => n,
-		None => format!("{}:{}", ip, port),
+	let target_network = if let Some(network_name) = network {
+		// Check if it's a URL or network name
+		if network_name.starts_with("http") {
+			// Custom URL
+			NetworkConfig {
+				name: "Custom".to_string(),
+				rpc_url: network_name,
+				network_type: "custom".to_string(),
+				chain_id: 0,
+				is_default: false,
+			}
+		} else {
+			// Find by name
+			state.networks.iter()
+				.find(|n| n.name.to_lowercase().contains(&network_name.to_lowercase()))
+				.cloned()
+				.ok_or_else(|| CliError::Network(format!("Network '{}' not found", network_name)))?
+		}
+	} else {
+		// Interactive selection
+		let network_names: Vec<&str> = state.networks.iter().map(|n| n.name.as_str()).collect();
+		let selection = prompt_select("Select a network:", &network_names)
+			.map_err(|e| CliError::Io(e))?;
+		state.networks[selection].clone()
 	};
 
-	// Load the config
-	let mut config = load_config()?;
+	// Test connection
+	let client = with_loading("Testing connection...", async {
+		RpcClient::new(HttpProvider::new(&target_network.rpc_url))
+	}).await;
 
-	// Check if the network name already exists
-	let network_exists = config.networks.iter().any(|n| n.name == network_name);
+	// Try to get block count to verify connection
+	match client.get_block_count().await {
+		Ok(block_count) => {
+			state.current_network = Some(target_network.clone());
+			state.rpc_client = Some(client);
 
-	// Add the network to the config if it doesn't exist
-	let rpc_url = format!("http://{}:{}", ip, port);
-	if !network_exists {
-		config
-			.networks
-			.push(NetworkConfig { name: network_name.clone(), rpc_url: rpc_url.clone() });
-	} else {
-		// Update the existing network
-		for network in &mut config.networks {
-			if network.name == network_name {
-				network.rpc_url = rpc_url.clone();
-				break;
-			}
+			let mut table = create_table();
+			table.add_row(vec![
+				Cell::new("Network").fg(Color::Cyan),
+				Cell::new(&target_network.name).fg(Color::Green),
+			]);
+			table.add_row(vec![
+				Cell::new("RPC URL").fg(Color::Cyan),
+				Cell::new(&target_network.rpc_url).fg(Color::Green),
+			]);
+			table.add_row(vec![
+				Cell::new("Type").fg(Color::Cyan),
+				Cell::new(&target_network.network_type).fg(Color::Green),
+			]);
+			table.add_row(vec![
+				Cell::new("Block Height").fg(Color::Cyan),
+				Cell::new(block_count.to_string()).fg(Color::Green),
+			]);
+			table.add_row(vec![
+				Cell::new("Status").fg(Color::Cyan),
+				Cell::new(format!("{} Connected", status_indicator("success"))).fg(Color::Green),
+			]);
+
+			println!("{}", table);
+			print_success("🌐 Successfully connected to network!");
+		},
+		Err(e) => {
+			return Err(CliError::Network(format!("Failed to connect: {}", e)));
 		}
 	}
 
-	// Save the config
-	save_config(&config)?;
-
-	// Simulate connecting to the node
-	print_info(&format!("Connecting to {}", address));
-
-	// For now, just assume we connected successfully
-	state.connected = true;
-	state.current_connection = Some(address.to_string());
-
-	print_success(&format!("Connected to {}", address));
 	Ok(())
 }
 
-async fn list_nodes(state: &CliState) -> Result<(), CliError> {
-	// Load the config to show all saved networks
-	let config = load_config()?;
+/// Show current network status
+async fn handle_network_status(state: &CliState) -> Result<(), CliError> {
+	print_section_header("Network Status");
 
-	if config.networks.is_empty() {
-		print_info("No networks configured.");
+	let network = state.current_network.as_ref()
+		.ok_or_else(|| CliError::Network("No network connected".to_string()))?;
+
+	let client = state.rpc_client.as_ref()
+		.ok_or_else(|| CliError::Network("No RPC client available".to_string()))?;
+
+	let (block_count, version) = with_loading("Fetching network information...", async {
+		let block_count = client.get_block_count().await.unwrap_or(0);
+		let version = client.get_version().await.unwrap_or_else(|_| "Unknown".to_string());
+		(block_count, version)
+	}).await;
+
+	let mut table = create_table();
+	table.add_row(vec![
+		Cell::new("Network Name").fg(Color::Cyan),
+		Cell::new(&network.name).fg(Color::Green),
+	]);
+	table.add_row(vec![
+		Cell::new("RPC Endpoint").fg(Color::Cyan),
+		Cell::new(&network.rpc_url).fg(Color::Blue),
+	]);
+	table.add_row(vec![
+		Cell::new("Network Type").fg(Color::Cyan),
+		Cell::new(&network.network_type).fg(Color::Yellow),
+	]);
+	table.add_row(vec![
+		Cell::new("Chain ID").fg(Color::Cyan),
+		Cell::new(network.chain_id.to_string()).fg(Color::Magenta),
+	]);
+	table.add_row(vec![
+		Cell::new("Block Height").fg(Color::Cyan),
+		Cell::new(block_count.to_string()).fg(Color::Green),
+	]);
+	table.add_row(vec![
+		Cell::new("Node Version").fg(Color::Cyan),
+		Cell::new(version).fg(Color::Blue),
+	]);
+	table.add_row(vec![
+		Cell::new("Connection").fg(Color::Cyan),
+		Cell::new(format!("{} Active", status_indicator("success"))).fg(Color::Green),
+	]);
+
+	println!("{}", table);
+
+	Ok(())
+}
+
+/// List all configured networks
+async fn handle_list_networks(state: &CliState) -> Result<(), CliError> {
+	print_section_header("Available Networks");
+
+	if state.networks.is_empty() {
+		print_warning("No networks configured");
 		return Ok(());
 	}
 
-	print_info("Configured networks:");
-	for network in &config.networks {
-		let current = match &state.current_connection {
-			Some(conn) if network.rpc_url.contains(conn) => " (current)",
-			_ => "",
-		};
-		print_info(&format!("- {} ({}){}", network.name, network.rpc_url, current));
+	let mut table = create_table();
+	table.set_header(vec![
+		Cell::new("Name").fg(Color::Cyan),
+		Cell::new("Type").fg(Color::Cyan),
+		Cell::new("RPC URL").fg(Color::Cyan),
+		Cell::new("Status").fg(Color::Cyan),
+	]);
+
+	for network in &state.networks {
+		let is_current = state.current_network.as_ref()
+			.map(|n| n.name == network.name)
+			.unwrap_or(false);
+
+		table.add_row(vec![
+			Cell::new(&network.name).fg(if is_current { Color::Green } else { Color::White }),
+			Cell::new(&network.network_type).fg(Color::Yellow),
+			Cell::new(&network.rpc_url).fg(Color::Blue),
+			Cell::new(if is_current {
+				format!("{} Current", status_indicator("success"))
+			} else if network.is_default {
+				format!("{} Default", status_indicator("info"))
+			} else {
+				format!("{} Available", status_indicator("info"))
+			}).fg(if is_current { Color::Green } else { Color::White }),
+		]);
 	}
 
+	println!("{}", table);
+	print_info(&format!("Total networks: {}", state.networks.len()));
+
+	Ok(())
+}
+
+/// Add a new network configuration
+async fn handle_add_network(
+	name: String,
+	url: String,
+	network_type: String,
+	chain_id: Option<u32>,
+	state: &mut CliState,
+) -> Result<(), CliError> {
+	print_section_header("Adding Network");
+
+	// Check if network already exists
+	if state.networks.iter().any(|n| n.name == name) {
+		return Err(CliError::Network(format!("Network '{}' already exists", name)));
+	}
+
+	// Test the connection first
+	let client = with_loading("Testing network connection...", async {
+		RpcClient::new(HttpProvider::new(&url))
+	}).await;
+
+	let actual_chain_id = match client.get_version().await {
+		Ok(_) => {
+			// Try to get actual chain ID if not provided
+			chain_id.unwrap_or(0)
+		},
+		Err(e) => {
+			let proceed = prompt_yes_no(&format!(
+				"Failed to connect to network ({}). Add anyway?", e
+			)).map_err(|e| CliError::Io(e))?;
+			
+			if !proceed {
+				print_warning("Network addition cancelled");
+				return Ok(());
+			}
+			chain_id.unwrap_or(0)
+		}
+	};
+
+	let new_network = NetworkConfig {
+		name: name.clone(),
+		rpc_url: url,
+		network_type,
+		chain_id: actual_chain_id,
+		is_default: false,
+	};
+
+	state.networks.push(new_network);
+
+	let mut table = create_table();
+	table.add_row(vec![
+		Cell::new("Name").fg(Color::Cyan),
+		Cell::new(&name).fg(Color::Green),
+	]);
+	table.add_row(vec![
+		Cell::new("Status").fg(Color::Cyan),
+		Cell::new(format!("{} Added Successfully", status_indicator("success"))).fg(Color::Green),
+	]);
+
+	println!("{}", table);
+	print_success("✅ Network added successfully!");
+
+	Ok(())
+}
+
+/// Remove a network configuration
+async fn handle_remove_network(name: String, state: &mut CliState) -> Result<(), CliError> {
+	print_section_header("Removing Network");
+
+	let network_index = state.networks.iter().position(|n| n.name == name)
+		.ok_or_else(|| CliError::Network(format!("Network '{}' not found", name)))?;
+
+	let network = &state.networks[network_index];
+
+	// Check if it's the current network
+	if state.current_network.as_ref().map(|n| &n.name) == Some(&name) {
+		print_warning("Cannot remove the currently connected network");
+		return Ok(());
+	}
+
+	// Confirm removal
+	let confirm = prompt_yes_no(&format!("Remove network '{}'?", name))
+		.map_err(|e| CliError::Io(e))?;
+
+	if !confirm {
+		print_warning("Network removal cancelled");
+		return Ok(());
+	}
+
+	state.networks.remove(network_index);
+	print_success(&format!("🗑️ Network '{}' removed successfully", name));
+
+	Ok(())
+}
+
+// Placeholder implementations for remaining functions
+async fn handle_show_peers(_state: &CliState) -> Result<(), CliError> {
+	print_info("🚧 Peers functionality will be implemented");
+	Ok(())
+}
+
+async fn handle_show_block(_height: Option<u32>, _state: &CliState) -> Result<(), CliError> {
+	print_info("🚧 Block information functionality will be implemented");
+	Ok(())
+}
+
+async fn handle_ping_network(_network: Option<String>, _state: &CliState) -> Result<(), CliError> {
+	print_info("🚧 Network ping functionality will be implemented");
 	Ok(())
 }

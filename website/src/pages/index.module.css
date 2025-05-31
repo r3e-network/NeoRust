@@ -1,0 +1,284 @@
+/**
+ * CSS files with the .module.css suffix will be treated as CSS modules
+ * and scoped locally.
+ */
+
+.heroBanner {
+  padding: 4rem 0;
+  text-align: left;
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+}
+
+.heroImage {
+  text-align: center;
+  padding: 2rem;
+}
+
+.heroScreenshot {
+  max-width: 100%;
+  height: auto;
+  border-radius: 12px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+  transition: transform 0.3s ease;
+}
+
+.heroScreenshot:hover {
+  transform: translateY(-5px);
+}
+
+.buttons {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 1rem;
+  margin-top: 2rem;
+}
+
+.buttons .button {
+  font-weight: 600;
+  border-radius: 8px;
+  padding: 0.75rem 1.5rem;
+  transition: all 0.3s ease;
+}
+
+.buttons .button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+}
+
+.stats {
+  padding: 4rem 0;
+  background: #f8fafc;
+}
+
+.statCard {
+  text-align: center;
+  padding: 2rem 1rem;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+  transition: transform 0.3s ease;
+  margin-bottom: 1rem;
+}
+
+.statCard:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+}
+
+.statCard h3 {
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: #22c55e;
+  margin-bottom: 0.5rem;
+}
+
+.statCard p {
+  color: #64748b;
+  font-weight: 500;
+  margin: 0;
+}
+
+.showcase {
+  padding: 4rem 0;
+  background: white;
+}
+
+.showcase h2 {
+  font-size: 2.5rem;
+  font-weight: 700;
+  margin-bottom: 1rem;
+  color: #1e293b;
+}
+
+.showcaseCard {
+  text-align: center;
+  padding: 2rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  height: 100%;
+  transition: all 0.3s ease;
+  background: white;
+}
+
+.showcaseCard:hover {
+  border-color: #22c55e;
+  transform: translateY(-5px);
+  box-shadow: 0 10px 25px rgba(34, 197, 94, 0.1);
+}
+
+.showcaseIcon {
+  font-size: 3rem;
+  margin-bottom: 1rem;
+}
+
+.showcaseCard h3 {
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin-bottom: 1rem;
+  color: #1e293b;
+}
+
+.showcaseCard p {
+  color: #64748b;
+  line-height: 1.6;
+  margin-bottom: 1.5rem;
+}
+
+.showcaseCard .button {
+  border-radius: 8px;
+  font-weight: 600;
+  transition: all 0.3s ease;
+}
+
+.showcaseCard .button:hover {
+  transform: translateY(-2px);
+}
+
+.quickStart {
+  padding: 4rem 0;
+  background: #f8fafc;
+}
+
+.quickStart h2 {
+  font-size: 2rem;
+  font-weight: 700;
+  margin-bottom: 2rem;
+  color: #1e293b;
+}
+
+.quickStart h3 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin: 2rem 0 1rem 0;
+  color: #374151;
+}
+
+.codeBlock {
+  background: #1e293b;
+  border-radius: 8px;
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+  overflow-x: auto;
+}
+
+.codeBlock code {
+  color: #e2e8f0;
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  white-space: pre;
+}
+
+/* Responsive design */
+@media screen and (max-width: 996px) {
+  .heroBanner {
+    padding: 2rem 0;
+    text-align: center;
+  }
+  
+  .buttons {
+    justify-content: center;
+    flex-direction: column;
+  }
+  
+  .buttons .button {
+    width: 100%;
+    max-width: 300px;
+  }
+  
+  .heroImage {
+    margin-top: 2rem;
+  }
+  
+  .statCard {
+    margin-bottom: 1rem;
+  }
+  
+  .showcaseCard {
+    margin-bottom: 2rem;
+  }
+}
+
+@media screen and (max-width: 768px) {
+  .heroBanner {
+    padding: 1.5rem 0;
+  }
+  
+  .stats {
+    padding: 2rem 0;
+  }
+  
+  .showcase {
+    padding: 2rem 0;
+  }
+  
+  .quickStart {
+    padding: 2rem 0;
+  }
+  
+  .showcase h2 {
+    font-size: 2rem;
+  }
+  
+  .statCard h3 {
+    font-size: 2rem;
+  }
+  
+  .codeBlock {
+    padding: 1rem;
+  }
+  
+  .codeBlock code {
+    font-size: 0.75rem;
+  }
+}
+
+/* Animation keyframes */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.heroBanner {
+  animation: fadeInUp 0.8s ease-out;
+}
+
+.statCard {
+  animation: fadeInUp 0.8s ease-out;
+  animation-delay: 0.2s;
+  animation-fill-mode: both;
+}
+
+.showcaseCard {
+  animation: fadeInUp 0.8s ease-out;
+  animation-delay: 0.4s;
+  animation-fill-mode: both;
+}
+
+/* Custom scrollbar */
+.codeBlock::-webkit-scrollbar {
+  height: 8px;
+}
+
+.codeBlock::-webkit-scrollbar-track {
+  background: #374151;
+  border-radius: 4px;
+}
+
+.codeBlock::-webkit-scrollbar-thumb {
+  background: #22c55e;
+  border-radius: 4px;
+}
+
+.codeBlock::-webkit-scrollbar-thumb:hover {
+  background: #16a34a;
+} 

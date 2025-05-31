@@ -1,0 +1,23 @@
+{
+  "id": "wallet-management",
+  "title": "Wallet Management",
+  "description": "💼 Wallet Management",
+  "source": "@site/gui/wallet-management.md",
+  "sourceDirName": ".",
+  "slug": "/wallet-management",
+  "permalink": "/gui/wallet-management",
+  "draft": false,
+  "unlisted": false,
+  "tags": [],
+  "version": "current",
+  "frontMatter": {},
+  "sidebar": "guiSidebar",
+  "previous": {
+    "title": "Desktop GUI - Beautiful Neo N3 Wallet",
+    "permalink": "/gui/intro"
+  },
+  "next": {
+    "title": "NFT Operations",
+    "permalink": "/gui/nft-operations"
+  }
+}

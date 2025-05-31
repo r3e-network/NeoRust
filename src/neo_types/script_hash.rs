@@ -226,7 +226,7 @@ mod tests {
 		H160::from_hex(hex_str).unwrap().encode(&mut buffer);
 
 		assert_eq!(buffer.to_bytes(), data);
-		assert_eq!(H160::from_slice(&data).unwrap().as_bytes().to_hex_string(), hex_str);
+		assert_eq!(<H160 as ScriptHashExtension>::from_slice(&data).unwrap().as_bytes().to_hex_string(), hex_str);
 	}
 
 	#[test]

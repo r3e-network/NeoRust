@@ -194,7 +194,7 @@ impl NeoSerializable for InvocationScript {
 
 #[cfg(test)]
 mod tests {
-	use rustc_serialize::hex::{FromHex, ToHex};
+	use crate::neo_crypto::utils::ToHexString;
 
 	use super::*;
 
@@ -208,10 +208,10 @@ mod tests {
 		let expected = format!(
 			"{}40{}",
 			OpCode::PushData1.to_hex_string(),
-			expected_signature.to_bytes().to_hex()
+			hex::encode(expected_signature.to_bytes())
 		);
-		assert_eq!(expected.from_hex().unwrap(), script.script);
-		assert_eq!(format!("42{}", expected).from_hex().unwrap(), script.to_array());
+		assert_eq!(hex::decode(&expected).unwrap(), script.script);
+		assert_eq!(hex::decode(&format!("42{}", expected)).unwrap(), script.to_array());
 	}
 
 	#[test]
@@ -224,11 +224,11 @@ mod tests {
 	#[test]
 	fn test_deserialize_custom_invocation_script() {
 		let message = vec![1; 256];
-		let script = format!("{}0001{}", OpCode::PushData2.to_hex_string(), message.to_hex());
+		let script = format!("{}0001{}", OpCode::PushData2.to_hex_string(), hex::encode(&message));
 		let serialized_script = format!("FD0301{}", script);
 		let deserialized =
-			InvocationScript::from_serialized_script(serialized_script.from_hex().unwrap());
-		assert_eq!(deserialized.script, script.from_hex().unwrap());
+			InvocationScript::from_serialized_script(hex::decode(&serialized_script).unwrap());
+		assert_eq!(deserialized.script, hex::decode(&script).unwrap());
 	}
 
 	#[test]
@@ -237,15 +237,15 @@ mod tests {
 		let key_pair = KeyPair::new_random();
 		let signature = key_pair.private_key().sign_tx(&message).unwrap();
 		let script =
-			format!("{}40{}", OpCode::PushData1.to_hex_string(), signature.to_bytes().to_hex());
+			format!("{}40{}", OpCode::PushData1.to_hex_string(), hex::encode(signature.to_bytes()));
 		let deserialized =
-			InvocationScript::from_serialized_script(format!("42{}", script).from_hex().unwrap());
-		assert_eq!(deserialized.script, script.from_hex().unwrap());
+			InvocationScript::from_serialized_script(hex::decode(&format!("42{}", script)).unwrap());
+		assert_eq!(deserialized.script, hex::decode(&script).unwrap());
 	}
 
 	#[test]
 	fn test_size() {
-		let script = "147e5f3c929dd830d961626551dbea6b70e4b2837ed2fe9089eed2072ab3a655523ae0fa8711eee4769f1913b180b9b3410bbb2cf770f529c85f6886f22cbaaf".from_hex().unwrap();
+		let script = hex::decode("147e5f3c929dd830d961626551dbea6b70e4b2837ed2fe9089eed2072ab3a655523ae0fa8711eee4769f1913b180b9b3410bbb2cf770f529c85f6886f22cbaaf").unwrap();
 		let s = InvocationScript::new_with_script(script);
 		assert_eq!(s.size(), 65);
 	}

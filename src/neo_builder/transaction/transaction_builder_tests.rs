@@ -23,11 +23,11 @@ mod tests {
 	};
 	use num_bigint::BigInt;
 	use primitive_types::{H160, H256};
-	use rustc_serialize::hex::ToHex;
 	use serde_json::json;
 	use std::{default, ops::Deref, str::FromStr, sync::Arc};
 	use tokio::sync::{Mutex, OnceCell};
 	use tracing::debug;
+	use crate::neo_crypto::utils::ToHexString;
 
 	lazy_static! {
 		pub static ref ACCOUNT1: Account = Account::from_key_pair(
@@ -1485,8 +1485,8 @@ mod tests {
 				.await;
 			let mut mock_provider_guard = mock_provider_guard
 				.mock_response_for_balance_of(
-					&GAS_TOKEN_HASH.to_hex(),
-					&ACCOUNT1.address_or_scripthash().script_hash().to_hex(),
+					&hex::encode(GAS_TOKEN_HASH.deref().as_bytes()),
+					&hex::encode(ACCOUNT1.address_or_scripthash().script_hash().as_bytes()),
 					"invokefunction_balanceOf_1000000.json",
 				)
 				.await;
@@ -1574,8 +1574,8 @@ mod tests {
 				.await;
 			let mut mock_provider_guard = mock_provider_guard
 				.mock_response_for_balance_of(
-					&GAS_TOKEN_HASH.to_hex(),
-					&ACCOUNT1.address_or_scripthash().script_hash().to_hex(),
+					&hex::encode(GAS_TOKEN_HASH.deref().as_bytes()),
+					&hex::encode(ACCOUNT1.address_or_scripthash().script_hash().as_bytes()),
 					"invokefunction_balanceOf_1000000.json",
 				)
 				.await;

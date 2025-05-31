@@ -100,10 +100,12 @@ mod rx;
 mod utils;
 
 lazy_static! {
-	pub static ref HTTP_PROVIDER: RpcClient<Http> = RpcClient::<Http>::try_from(
-		std::env::var("ENDPOINT").unwrap_or_else(|_| NeoConstants::SEED_1.to_string())
-	)
-	.unwrap();
+	pub static ref HTTP_PROVIDER: RpcClient<Http> = {
+		let url_str = std::env::var("ENDPOINT").unwrap_or_else(|_| NeoConstants::SEED_1.to_string());
+		let url = url::Url::parse(&url_str).expect("Failed to parse URL");
+		let http_provider = Http::new(url).expect("Failed to create HTTP provider");
+		RpcClient::new(http_provider)
+	};
 }
 
 #[allow(missing_docs)]
@@ -143,7 +145,10 @@ mod test_provider {
 		}
 
 		pub fn provider(&self) -> RpcClient<Http> {
-			RpcClient::try_from(self.url().as_str()).unwrap()
+			let url_str = self.url();
+			let url = url::Url::parse(&url_str).expect("Failed to parse URL");
+			let http_provider = Http::new(url).expect("Failed to create HTTP provider");
+			RpcClient::new(http_provider)
 		}
 
 		#[cfg(feature = "ws")]

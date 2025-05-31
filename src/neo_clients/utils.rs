@@ -1,4 +1,4 @@
-use std::{future::Future, pin::Pin, str::FromStr, sync::Arc};
+use std::{future::Future, pin::Pin, str::FromStr, sync::Arc, time::Duration};
 
 use crate::{
 	builder::VerificationScript,
@@ -37,7 +37,7 @@ where
 
 /// Create a stream that emits items at a fixed interval. Used for rate control
 pub fn interval(
-	duration: instant::Duration,
+	duration: Duration,
 ) -> impl futures_core::stream::Stream<Item = ()> + Send + Unpin {
 	stream::unfold((), move |_| Delay::new(duration).map(|_| Some(((), ())))).map(drop)
 }

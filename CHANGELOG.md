@@ -11,16 +11,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - New `mock-hsm` feature flag for development and testing with YubiHSM mock functionality
 - Comprehensive [Build Configuration Guide](docs/guides/build-configuration.md) for dependency management
 - Documentation for handling environment-specific build configurations
+- Security vulnerability management section in build configuration guide
+- `hmac` dependency for secure cryptographic operations
 
 ### Fixed
 - **YubiHSM MockHsm Release Build Error**: Resolved compilation error where MockHsm was included in release builds
   - Removed `mockhsm` feature from default YubiHSM dependency configuration
   - Added optional `mock-hsm` feature flag for development builds
   - Updated documentation with troubleshooting guide for build configuration issues
+- **Security Vulnerabilities**: Addressed multiple critical and high-severity security issues
+  - **protobuf**: Updated from 3.2.0 to 3.7.2 (fixes RUSTSEC-2024-0437)
+  - **rust-crypto**: Removed vulnerable dependency (RUSTSEC-2022-0011) and replaced with secure RustCrypto alternatives
+  - **rustc-serialize**: Removed vulnerable dependency (RUSTSEC-2022-0004)
+  - **instant**: Replaced unmaintained dependency (RUSTSEC-2024-0384) with `std::time::Duration`
+  - **json**: Removed unmaintained dependency (RUSTSEC-2022-0081) - using `serde_json` instead
 
 ### Changed
 - YubiHSM dependency now uses `["http", "usb"]` features by default (production-safe)
 - Mock functionality now requires explicit `mock-hsm` feature flag activation
+- **Cryptographic Implementation**: Migrated from vulnerable `rust-crypto` to secure RustCrypto ecosystem
+  - Hash functions now use `sha2`, `ripemd`, and `hmac` crates
+  - Improved security and performance of cryptographic operations
+  - Maintained API compatibility while upgrading underlying implementations
+
+### Removed
+- **mdBook from CI/CD workflow**: Removed mdBook-based documentation building from GitHub Actions
+  - Simplified docs.yml workflow to deploy static documentation files
+  - Removed mdBook dependencies and build steps from CI pipeline
+  - Documentation now relies on Docusaurus website system in `website/` directory
+- **Vulnerable Dependencies**: Completely removed security-vulnerable dependencies
+  - `rust-crypto 0.2.36` (replaced with RustCrypto crates)
+  - `rustc-serialize 0.3.25` (not needed)
+  - `instant 0.1.13` (replaced with std::time::Duration)
+  - `json 0.12.4` (using serde_json instead)
 
 ## [0.2.3] - 2025-05-31
 

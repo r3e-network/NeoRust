@@ -26,6 +26,7 @@ jobs:
   # Build job
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -33,52 +34,10 @@ jobs:
       - name: Setup Pages
         uses: actions/configure-pages@v4
       
-      - name: Setup mdBook
-        uses: peaceiris/actions-mdbook@v1
-        with:
-          mdbook-version: 'latest'
-      
-      - name: Setup Rust
-        uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: stable
-          override: true
-      
-      # Note: PDF generation has been removed in v0.1.9
-      - name: Install mdBook plugins
-        run: |
-          # Temporarily move rust-toolchain.toml to avoid nightly override
-          if [ -f "rust-toolchain.toml" ]; then
-            mv rust-toolchain.toml rust-toolchain.toml.bak
-          fi
-          
-          rustup default stable
-          cargo install mdbook-mermaid
-          cargo install mdbook-toc
-          cargo install mdbook-admonish
-          cargo install mdbook-linkcheck
-          
-          # Restore rust-toolchain.toml
-          if [ -f "rust-toolchain.toml.bak" ]; then
-            mv rust-toolchain.toml.bak rust-toolchain.toml
-          fi
-      
-      - name: Debug mdbook environment
-        run: |
-          cd docs
-          ls -la
-          mdbook --version
-      
-      - name: Build HTML documentation
-        run: |
-          cd docs
-          RUST_BACKTRACE=1 mdbook build
-      
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: './docs/book/html'
+          path: './docs'
 
   # Deployment job
   deploy:
@@ -86,6 +45,7 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     needs: build
     steps:
       - name: Deploy to GitHub Pages

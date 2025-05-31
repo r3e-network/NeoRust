@@ -1,4 +1,4 @@
-# NeoRust v0.3.0 - Production-Ready Neo N3 SDK
+# NeoRust v0.4.0 - Production-Ready Neo N3 SDK
 
 <div align="center">
   <p>
@@ -125,7 +125,7 @@ cargo build --release
 
 ```toml
 [dependencies]
-neo3 = "0.3.0"
+neo3 = "0.4.0"
 ```
 
 **Quick example:**

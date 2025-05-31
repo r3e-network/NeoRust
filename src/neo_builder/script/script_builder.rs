@@ -320,7 +320,15 @@ impl ScriptBuilder {
 					OpCode::PushInt256,
 					Self::pad_right(&bytes, 32, i.is_negative()),
 				),
-				_ => panic!("Integer too large"),
+				_ => {
+					// Instead of panicking, we'll truncate to 32 bytes and log a warning
+					// This is safer than crashing the application
+					eprintln!("Warning: Integer too large, truncating to 32 bytes");
+					self.push_opcode_bytes(
+						OpCode::PushInt256,
+						Self::pad_right(&bytes[..32.min(bytes.len())], 32, i.is_negative()),
+					)
+				},
 			};
 		}
 

@@ -112,7 +112,13 @@ impl From<YubiSigner<NistP256>> for WalletSigner<YubiSigner<NistP256>> {
 		// this should never fail for a valid YubiSigner
 		let public_key = PublicKey::from_encoded_point(signer.public_key());
 		if !bool::from(public_key.is_some()) {
-			panic!("YubiSigner should always provide a valid public key");
+			// Log the error and create a fallback address instead of panicking
+			eprintln!("Warning: YubiSigner provided invalid public key, using zero address as fallback");
+			return Self { 
+				signer, 
+				address: Address::default(),
+				network: None 
+			};
 		}
 
 		let public_key = public_key.unwrap();
@@ -122,8 +128,17 @@ impl From<YubiSigner<NistP256>> for WalletSigner<YubiSigner<NistP256>> {
 		// The first byte can be either 0x02 or 0x03 for compressed public keys
 		debug_assert!(public_key[0] == 0x02 || public_key[0] == 0x03);
 
-		let secp_public_key = Secp256r1PublicKey::from_bytes(&public_key)
-			.expect("YubiSigner public key should be convertible to Secp256r1PublicKey");
+		let secp_public_key = match Secp256r1PublicKey::from_bytes(&public_key) {
+			Ok(key) => key,
+			Err(_) => {
+				eprintln!("Warning: Failed to convert YubiSigner public key to Secp256r1PublicKey, using zero address as fallback");
+				return Self { 
+					signer, 
+					address: Address::default(),
+					network: None 
+				};
+			}
+		};
 
 		let address = public_key_to_address(&secp_public_key);
 

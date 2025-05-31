@@ -103,15 +103,12 @@ impl<'a, P: JsonRpcProvider + 'static> NeoNameService<'a, P> {
 
 	async fn get_roots(&self) -> Result<NeoIterator<String, P>, ContractError> {
 		let args = vec![];
-		let roots = self
-			.call_function_returning_iterator(
-				Self::ROOTS,
-				args,
-				Arc::new(|item: StackItem| item.to_string()),
-			)
-			.await;
-
-		Ok(roots)
+		self.call_function_returning_iterator(
+			Self::ROOTS,
+			args,
+			Arc::new(|item: StackItem| item.to_string()),
+		)
+		.await
 	}
 
 	async fn get_symbol(&self) -> Result<String, ContractError> {
@@ -280,11 +277,15 @@ impl<'a, P: JsonRpcProvider + 'static> NeoNameService<'a, P> {
 #[async_trait]
 impl<'a, P: JsonRpcProvider> TokenTrait<'a, P> for NeoNameService<'a, P> {
 	fn total_supply(&self) -> Option<u64> {
-		todo!()
+		// NNS doesn't have a traditional total supply concept
+		// Return None to indicate this is not applicable for NNS
+		None
 	}
 
 	fn set_total_supply(&mut self, _total_supply: u64) {
-		todo!()
+		// NNS doesn't have a total supply concept
+		// This is intentionally a no-op as NNS is not a fungible token
+		eprintln!("Warning: Cannot set total supply for NNS contract - operation not supported");
 	}
 
 	fn decimals(&self) -> Option<u8> {
@@ -292,7 +293,8 @@ impl<'a, P: JsonRpcProvider> TokenTrait<'a, P> for NeoNameService<'a, P> {
 	}
 
 	fn set_decimals(&mut self, _decimals: u8) {
-		panic!("Cannot set decimals for NNS")
+		// NNS doesn't have a decimals concept
+		// This is intentionally a no-op as NNS is not a fungible token
 	}
 
 	fn symbol(&self) -> Option<String> {
@@ -300,7 +302,8 @@ impl<'a, P: JsonRpcProvider> TokenTrait<'a, P> for NeoNameService<'a, P> {
 	}
 
 	fn set_symbol(&mut self, _symbol: String) {
-		panic!("Cannot set symbol for NNS")
+		// NNS doesn't have a symbol concept
+		// This is intentionally a no-op as NNS is not a fungible token
 	}
 
 	async fn resolve_nns_text_record(&self, name: &NNSName) -> Result<H160, ContractError> {

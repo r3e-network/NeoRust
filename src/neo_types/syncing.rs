@@ -160,7 +160,7 @@ mod tests {
 		let sync: SyncingStatus = serde_json::from_str(s).unwrap();
 		match sync {
 			SyncingStatus::IsFalse => {
-				panic!("unexpected variant")
+				assert!(false, "Expected IsSyncing variant, got IsFalse")
 			},
 			SyncingStatus::IsSyncing(_) => {},
 		}
@@ -177,7 +177,7 @@ mod tests {
 		let sync: SyncingStatus = serde_json::from_str(s).unwrap();
 		match sync {
 			SyncingStatus::IsFalse => {
-				panic!("unexpected variant")
+				assert!(false, "Expected IsSyncing variant, got IsFalse")
 			},
 			SyncingStatus::IsSyncing(_) => {},
 		}
@@ -191,7 +191,7 @@ mod tests {
 		match sync {
 			SyncingStatus::IsFalse => {},
 			SyncingStatus::IsSyncing(_) => {
-				panic!("unexpected variant")
+				assert!(false, "Expected IsFalse variant, got IsSyncing")
 			},
 		}
 	}

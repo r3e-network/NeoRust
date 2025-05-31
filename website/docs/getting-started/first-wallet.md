@@ -85,7 +85,7 @@ Open your browser to `http://localhost:1420`
 
 ### **Step 2: Welcome Screen**
 
-![Welcome Screen](../static/img/wallet-welcome.png)
+![Welcome Screen](../static/img/wallet-welcome.svg)
 
 1. **First Time**: Click "Create New Wallet"
 2. **Existing User**: Click "Import Existing Wallet"

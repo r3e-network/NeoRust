@@ -21,6 +21,7 @@ use std::{
 	collections::HashMap,
 	fmt,
 	hash::{Hash, Hasher},
+	convert::TryInto,
 };
 use strum_macros::{Display, EnumString};
 
@@ -256,44 +257,6 @@ impl From<Vec<u8>> for ContractParameter {
 	}
 }
 
-impl Into<Vec<u8>> for ContractParameter {
-	fn into(self) -> Vec<u8> {
-		match self.clone().value {
-			Some(ParameterValue::ByteArray(b)) => b.into_bytes(),
-			_ => {
-				// In a real error handling scenario, we would return a Result
-				// Since the trait doesn't allow for Result, we'll still panic but with a better message
-				panic!(
-					"Cannot convert parameter of type {:?} to Vec<u8>. Expected ByteArray.",
-					self.typ
-				)
-			},
-		}
-	}
-}
-
-impl Into<String> for ContractParameter {
-	fn into(self) -> String {
-		match self.clone().value {
-			Some(ParameterValue::String(s)) => s,
-			_ => {
-				// In a real error handling scenario, we would return a Result
-				// Since the trait doesn't allow for Result, we'll still panic but with a better message
-				panic!(
-					"Cannot convert parameter of type {:?} to String. Expected String.",
-					self.typ
-				)
-			},
-		}
-	}
-}
-
-// impl Into<Vec<u8>> for Vec<ContractParameter> {
-// 	fn into(self) -> Vec<u8> {
-// 		self.into_iter().map(|x| x.into()).collect()
-// 	}
-// }
-
 impl From<&Secp256r1PublicKey> for ContractParameter {
 	fn from(value: &Secp256r1PublicKey) -> Self {
 		Self::public_key(value)
@@ -311,12 +274,6 @@ impl From<&Vec<ContractParameter>> for ContractParameter {
 		Self::array(value.clone())
 	}
 }
-
-// impl From<&[(ContractParameter, ContractParameter)]> for ContractParameter {
-// 	fn from(value: &[(ContractParameter, ContractParameter)]) -> Self {
-// 		Self::map(value.to_vec())
-// 	}
-// }
 
 impl From<&NefFile> for ContractParameter {
 	fn from(value: &NefFile) -> Self {
@@ -385,6 +342,58 @@ impl ContractParameter {
 	pub fn from_json(value: Value) -> Self {
 		Self::from(value)
 	}
+
+	/// Safely extracts a public key from the parameter
+	pub fn as_public_key(&self) -> Result<Secp256r1PublicKey, String> {
+		match &self.value {
+			Some(ParameterValue::PublicKey(bytes)) => {
+				Secp256r1PublicKey::from_bytes(bytes.as_bytes())
+					.map_err(|_| "Invalid public key bytes".to_string())
+			},
+			Some(ParameterValue::ByteArray(bytes)) => {
+				Secp256r1PublicKey::from_bytes(bytes.as_bytes())
+					.map_err(|_| "Invalid public key bytes".to_string())
+			},
+			_ => Err(format!(
+				"Invalid type for public key conversion. Expected PublicKey or ByteArray, got {:?}",
+				self.typ
+			)),
+		}
+	}
+
+	/// Safely extracts a signature from the parameter
+	pub fn as_signature(&self) -> Result<Vec<u8>, String> {
+		match &self.value {
+			Some(ParameterValue::Signature(bytes)) => Ok(bytes.as_bytes().to_vec()),
+			Some(ParameterValue::ByteArray(bytes)) => Ok(bytes.as_bytes().to_vec()),
+			_ => Err(format!(
+				"Invalid type for signature conversion. Expected Signature or ByteArray, got {:?}",
+				self.typ
+			)),
+		}
+	}
+
+	/// Safely extracts bytes from the parameter
+	pub fn as_bytes(&self) -> Result<Vec<u8>, String> {
+		match &self.value {
+			Some(ParameterValue::ByteArray(b)) => Ok(b.clone().into_bytes()),
+			_ => Err(format!(
+				"Cannot convert parameter of type {:?} to Vec<u8>. Expected ByteArray.",
+				self.typ
+			)),
+		}
+	}
+
+	/// Safely extracts a string from the parameter
+	pub fn as_string(&self) -> Result<String, String> {
+		match &self.value {
+			Some(ParameterValue::String(s)) => Ok(s.clone()),
+			_ => Err(format!(
+				"Cannot convert parameter of type {:?} to String. Expected String.",
+				self.typ
+			)),
+		}
+	}
 }
 
 impl Into<Value> for ContractParameter {
@@ -416,16 +425,6 @@ impl From<Vec<Value>> for ContractParameter {
 		Self::array(value.into_iter().map(|v| ContractParameter::from(v)).collect())
 	}
 }
-
-// impl Into<Vec<Value>> for ContractParameter{
-// 	fn into(self) -> Vec<Value> {
-// 		match self.value.clone().expect("Parameter value should not be None") {
-// 			ParameterValue::Array(a) => a.into_iter().map(|v| v.into()).collect(),
-// 			ParameterValue::Map(m) => m.into_iter().map(|v| v.into()).collect(),
-// 			_ => panic!("Cannot convert {:?} to Vec<Value>", self.clone()),
-// 		}
-// 	}
-// }
 
 impl ValueExtension for ContractParameter {
 	fn to_value(&self) -> Value {
@@ -476,13 +475,16 @@ impl Hash for ParameterValue {
 			ParameterValue::PublicKey(p) => p.hash(state),
 			ParameterValue::Signature(s) => s.hash(state),
 			ParameterValue::Array(a) => a.hash(state),
-			// ParameterValue::Map(m) =>
-			// 	for (k, v) in m.0 {
-			// 		k.hash(state);
-			// 		v.hash(state);
-			// 	},
+			ParameterValue::Map(m) => {
+				// Hash the map by iterating through its entries
+				// Note: HashMap iteration order is not guaranteed, but for hashing purposes
+				// we'll hash each key-value pair individually
+				for (k, v) in &m.0 {
+					k.hash(state);
+					v.hash(state);
+				}
+			},
 			ParameterValue::Any => "Any".hash(state),
-			_ => panic!("Invalid Hash Key"),
 		}
 	}
 }

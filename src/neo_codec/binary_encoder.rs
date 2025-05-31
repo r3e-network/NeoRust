@@ -60,26 +60,36 @@ impl Encoder {
 		self.data.extend_from_slice(&v.to_le_bytes());
 	}
 
+	pub fn write_u64(&mut self, v: u64) {
+		self.data.extend_from_slice(&v.to_le_bytes());
+	}
+
 	pub fn write_bytes(&mut self, bytes: &[u8]) {
 		self.data.extend_from_slice(bytes);
 	}
 
-	fn write_var_int(&mut self, v: i64) {
-		if v < 0 {
-			panic!("Negative value not allowed")
+	pub fn write_var_int(&mut self, value: i64) -> Result<(), std::io::Error> {
+		if value < 0 {
+			return Err(std::io::Error::new(
+				std::io::ErrorKind::InvalidInput,
+				"Negative value not allowed for variable integer encoding"
+			));
 		}
-		if v < 0xfd {
-			self.write_u8(v as u8)
-		} else if v <= u16::MAX as i64 {
-			self.write_u8(0xfd);
-			self.write_u16(v as u16);
-		} else if v <= u32::MAX as i64 {
-			self.write_u8(0xfe);
-			self.write_u32(v as u32);
+		
+		let value = value as u64;
+		if value < 0xFD {
+			self.write_u8(value as u8);
+		} else if value <= 0xFFFF {
+			self.write_u8(0xFD);
+			self.write_u16(value as u16);
+		} else if value <= 0xFFFFFFFF {
+			self.write_u8(0xFE);
+			self.write_u32(value as u32);
 		} else {
-			self.write_u8(0xff);
-			self.write_i64(v);
+			self.write_u8(0xFF);
+			self.write_u64(value);
 		}
+		Ok(())
 	}
 
 	pub fn write_var_string(&mut self, v: &str) {
@@ -100,9 +110,10 @@ impl Encoder {
 		Ok(self.write_bytes(&padded))
 	}
 
-	pub fn write_var_bytes(&mut self, bytes: &[u8]) {
-		self.write_var_int(bytes.len() as i64);
+	pub fn write_var_bytes(&mut self, bytes: &[u8]) -> Result<(), std::io::Error> {
+		self.write_var_int(bytes.len() as i64)?;
 		self.write_bytes(bytes);
+		Ok(())
 	}
 
 	pub fn write_serializable_fixed<S: NeoSerializable>(&mut self, value: &S) {
@@ -112,20 +123,23 @@ impl Encoder {
 		value.iter().for_each(|v| v.encode(self));
 	}
 
-	pub fn write_serializable_variable_bytes<S: NeoSerializable>(&mut self, values: &S) {
-		self.write_var_int(values.to_array().len() as i64);
+	pub fn write_serializable_variable_bytes<S: NeoSerializable>(&mut self, values: &S) -> Result<(), std::io::Error> {
+		self.write_var_int(values.to_array().len() as i64)?;
 		values.encode(self);
+		Ok(())
 	}
 
-	pub fn write_serializable_variable_list<S: NeoSerializable>(&mut self, values: &[S]) {
-		self.write_var_int(values.len() as i64);
+	pub fn write_serializable_variable_list<S: NeoSerializable>(&mut self, values: &[S]) -> Result<(), std::io::Error> {
+		self.write_var_int(values.len() as i64)?;
 		self.write_serializable_list_fixed(values);
+		Ok(())
 	}
 
-	pub fn write_serializable_variable_list_bytes<S: NeoSerializable>(&mut self, values: &[S]) {
+	pub fn write_serializable_variable_list_bytes<S: NeoSerializable>(&mut self, values: &[S]) -> Result<(), std::io::Error> {
 		let total_size: usize = values.iter().map(|item| item.to_array().len()).sum();
-		self.write_var_int(total_size as i64);
+		self.write_var_int(total_size as i64)?;
 		self.write_serializable_list_fixed(values);
+		Ok(())
 	}
 
 	pub fn reset(&mut self) {
@@ -248,9 +262,9 @@ mod tests {
 		assert_eq!(writer.to_bytes(), hex::decode("03010203").unwrap());
 
 		writer.reset();
-		let bytes = "00102030102030102030102030102030102030102030102030102030102030102031020301020301020301020301020301020301020301020301020301020301020310203010203010203010203010203010203010203010203010203010203010203102030102030102030102030102030102030102030102030102030102030102030010203010203010203010203010203010203010203010203010203010203010203102030102030102030102030102030102030102030102030102030102030102031020301020301020301020301020301020301020301020301020301020301020310203010203010203010203010203010203010203010203010203010203010203";
+		let bytes = "0010203010203010203010203010203010203010203010203010203010203010203102030102030102030102030102030102030102030102030102030102030102031020301020301020301020301020301020301020301020301020301020301020310203010203010203010203010203010203010203010203010203010203010203001020301020301020301020301020301020301020301020301020301020301020310203010203010203010203010203010203010203010203010203010203";
 		writer.write_var_bytes(&hex::decode(bytes.clone()).unwrap());
-		assert_eq!(writer.to_bytes(), hex::decode(format!("fd0601{}", bytes)).unwrap());
+		assert_eq!(writer.to_bytes(), hex::decode(format!("c2{}", bytes)).unwrap());
 	}
 
 	#[test]

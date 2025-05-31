@@ -162,13 +162,28 @@ impl ScriptHashExtension for H160 {
 	}
 
 	fn from_public_key(public_key: &[u8]) -> Result<Self, TypeError> {
-		// Create a simple verification script for the public key
-		// This is a simplified version - in practice you'd want the full script
-		let script_hash = public_key.sha256_ripemd160();
-		let mut hash = [0u8; 20];
-		hash.copy_from_slice(&script_hash[..20]);
-		hash.reverse();
-		Ok(Self(hash))
+		// Create a proper verification script for the public key
+		// Format: PushData1 + length + public_key + Syscall + SystemCryptoCheckSig.hash()
+		let mut script = Vec::new();
+
+		// PushData1 opcode (0x0c)
+		script.push(0x0c);
+
+		// Length of public key (33 bytes for compressed key)
+		script.push(public_key.len() as u8);
+
+		// Public key bytes
+		script.extend_from_slice(public_key);
+
+		// Syscall opcode (0x41)
+		script.push(0x41);
+
+		// SystemCryptoCheckSig hash (4 bytes)
+		let interop_hash = "System.Crypto.CheckSig".as_bytes().hash256();
+		script.extend_from_slice(&interop_hash[..4]);
+
+		// Hash the script to get the script hash
+		Ok(Self::from_script(&script))
 	}
 }
 

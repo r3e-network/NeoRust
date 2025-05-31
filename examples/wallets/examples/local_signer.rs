@@ -1,32 +1,149 @@
-use eyre::Result;
+use neo3::prelude::*;
+use std::error::Error;
 
 /// This example demonstrates how to use a local signer to sign messages in Neo N3.
 #[tokio::main]
-async fn main() -> Result<()> {
-	println!("Neo N3 Local Signer Example");
-	println!("===========================");
+async fn main() -> Result<(), Box<dyn Error>> {
+	println!("🔐 Neo3 Local Signer Example");
+	println!("============================");
 	
-	// In a real implementation, you would:
-	println!("\n1. Create an account:");
-	println!("   let account = Account::create()?;");
+	// 1. Create an account from a WIF (Wallet Import Format)
+	println!("\n1. Creating account from WIF:");
+	let wif = "L1WMhxazScMhUrdv34JqQb1HFSQmWeN2Kpc1R9JGKwL7CDNP21uR";
+	let account = Account::from_wif(wif)?;
+	println!("   ✅ Account created successfully");
+	println!("   📍 Address: {}", account.get_address());
+	println!("   🔑 Script Hash: {:?}", account.get_script_hash());
 	
-	println!("\n2. Create a wallet signer from the account:");
-	println!("   let wallet_signer = WalletSigner::from_account(account)?;");
+	// 2. Create a new random account
+	println!("\n2. Creating random account:");
+	let random_account = Account::create()?;
+	println!("   ✅ Random account created");
+	println!("   📍 Address: {}", random_account.get_address());
+	println!("   🔐 WIF: {}", random_account.export_wif()?);
 	
-	println!("\n3. Sign a message with the wallet signer:");
-	println!("   let message = b\"Hello, Neo!\";");
-	println!("   let signature = wallet_signer.sign_message(message).await?;");
+	// 3. Connect to Neo testnet
+	println!("\n3. Connecting to Neo testnet:");
+	let provider = HttpProvider::new("https://testnet1.neo.coz.io:443")?;
+	let client = RpcClient::new(provider);
 	
-	println!("\n4. Verify the signature with the public key:");
-	println!("   let public_key = account.key_pair.unwrap().public_key;");
-	println!("   let is_valid = public_key.verify_hash(message, &signature)?;");
+	// Test connection
+	let version = client.get_version().await?;
+	println!("   ✅ Connected to Neo node");
+	println!("   🌐 Network: {} (Magic: {})", version.protocol.network, version.protocol.magic);
 	
-	println!("\nLocal signers provide a secure way to sign transactions and messages");
-	println!("without exposing private keys. Use them in wallets, dApps, and any");
-	println!("application that requires cryptographic signing functionality.");
+	// 4. Check account balance
+	println!("\n4. Checking account balance:");
+	let neo_token = H160::from_hex("ef4073a0f2b305a38ec4050e4d3d28bc40ea63f5")?;
+	let gas_token = H160::from_hex("d2a4cff31913016155e38e474a2c06d08be276cf")?;
 	
-	println!("\nSee the Neo N3 documentation for more details on cryptographic operations:");
-	println!("https://docs.neo.org/docs/en-us/index.html");
+	// Get NEO balance
+	let neo_balance = client.invoke_function(
+		&neo_token,
+		"balanceOf".to_string(),
+		vec![ContractParameter::h160(&account.get_script_hash())],
+		None,
+	).await?;
+	
+	// Get GAS balance  
+	let gas_balance = client.invoke_function(
+		&gas_token,
+		"balanceOf".to_string(),
+		vec![ContractParameter::h160(&account.get_script_hash())],
+		None,
+	).await?;
+	
+	println!("   💰 NEO Balance: {:?}", neo_balance.stack.get(0));
+	println!("   ⛽ GAS Balance: {:?}", gas_balance.stack.get(0));
+	
+	// 5. Create and sign a transaction
+	println!("\n5. Creating and signing a transaction:");
+	
+	// Create a simple script that calls NEO's symbol method
+	let script = ScriptBuilder::new()
+		.contract_call(
+			&neo_token,
+			"symbol",
+			&[],
+			None,
+		)?
+		.to_bytes();
+	
+	// Build transaction
+	let mut tx_builder = TransactionBuilder::with_client(&client);
+	tx_builder
+		.set_script(Some(script))
+		.set_signers(vec![AccountSigner::called_by_entry(&account)?.into()])?
+		.valid_until_block(client.get_block_count().await? + 100)?;
+	
+	// Get unsigned transaction
+	let unsigned_tx = tx_builder.get_unsigned_tx().await?;
+	println!("   📝 Transaction created");
+	println!("   🆔 Nonce: {}", unsigned_tx.nonce());
+	println!("   ⏰ Valid until block: {}", unsigned_tx.valid_until_block());
+	println!("   💸 System fee: {}", unsigned_tx.sys_fee());
+	println!("   🌐 Network fee: {}", unsigned_tx.net_fee());
+	
+	// Sign the transaction
+	let signed_tx = tx_builder.sign().await?;
+	println!("   ✅ Transaction signed successfully");
+	println!("   🔏 Witnesses: {}", signed_tx.witnesses().len());
+	
+	// 6. Demonstrate message signing
+	println!("\n6. Message signing:");
+	let message = "Hello, Neo blockchain!";
+	let message_bytes = message.as_bytes();
+	
+	// Sign the message
+	if let Some(key_pair) = account.key_pair() {
+		let signature = key_pair.private_key().sign_tx(message_bytes)?;
+		println!("   ✅ Message signed");
+		println!("   📝 Message: {}", message);
+		println!("   🔏 Signature length: {} bytes", signature.to_bytes().len());
+		
+		// Verify the signature
+		let is_valid = key_pair.public_key().verify_signature(message_bytes, &signature)?;
+		println!("   ✅ Signature verification: {}", if is_valid { "VALID" } else { "INVALID" });
+	}
+	
+	// 7. Create a multi-signature account
+	println!("\n7. Multi-signature account:");
+	let account1 = Account::create()?;
+	let account2 = Account::create()?;
+	let account3 = Account::create()?;
+	
+	let mut public_keys = vec![
+		account1.get_public_key().unwrap(),
+		account2.get_public_key().unwrap(),
+		account3.get_public_key().unwrap(),
+	];
+	
+	let multi_sig_account = Account::multi_sig_from_public_keys(&mut public_keys, 2)?;
+	println!("   ✅ Multi-sig account created (2-of-3)");
+	println!("   📍 Address: {}", multi_sig_account.get_address());
+	
+	// 8. Demonstrate contract interaction
+	println!("\n8. Contract interaction example:");
+	
+	// Test invoke a contract method
+	let invoke_result = client.invoke_function(
+		&neo_token,
+		"totalSupply".to_string(),
+		vec![],
+		None,
+	).await?;
+	
+	println!("   ✅ Contract invoked successfully");
+	println!("   📊 Total NEO supply: {:?}", invoke_result.stack.get(0));
+	println!("   ⛽ Gas consumed: {}", invoke_result.gas_consumed);
+	
+	println!("\n🎉 Local signer example completed successfully!");
+	println!("\n💡 Key takeaways:");
+	println!("   • Accounts can be created from WIF or generated randomly");
+	println!("   • Transactions must be properly signed before submission");
+	println!("   • Multi-signature accounts provide enhanced security");
+	println!("   • Contract interactions can be tested before execution");
+	println!("   • Always verify signatures and check balances before operations");
 	
 	Ok(())
 }

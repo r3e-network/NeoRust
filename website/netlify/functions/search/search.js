@@ -1,156 +1,299 @@
 // This is a simple search implementation for a static site
 // In a production environment, you would use a proper search index
 
-// Sample search data - in a real implementation, this would be generated from your content
+const Fuse = require('fuse.js');
+const fs = require('fs');
+const path = require('path');
+
+// Production search index - this would be generated from your content
 const searchIndex = [
   {
     id: 'getting-started',
     title: 'Getting Started with Neo Rust SDK',
-    section: 'Documentation',
-    url: '/docs/getting-started/',
-    content: 'Learn how to install and use the Neo Rust SDK for blockchain development',
-    tags: ['installation', 'setup', 'introduction', 'beginner']
+    content: 'Learn how to get started with the Neo Rust SDK. Installation, basic setup, and your first transaction.',
+    url: '/docs/getting-started',
+    category: 'Documentation',
+    tags: ['beginner', 'setup', 'installation']
   },
   {
-    id: 'wallets',
+    id: 'wallet-management',
     title: 'Wallet Management',
-    section: 'Documentation',
-    url: '/docs/wallets/',
-    content: 'Create, load, and manage Neo wallets with the Neo Rust SDK',
-    tags: ['wallet', 'account', 'keys', 'address']
+    content: 'Create, import, and manage Neo wallets using the Rust SDK. Support for WIF, NEP-6, and hardware wallets.',
+    url: '/docs/wallet-management',
+    category: 'Documentation',
+    tags: ['wallet', 'security', 'keys']
+  },
+  {
+    id: 'smart-contracts',
+    title: 'Smart Contract Interaction',
+    content: 'Deploy and interact with smart contracts on the Neo blockchain. Contract invocation, deployment, and testing.',
+    url: '/docs/smart-contracts',
+    category: 'Documentation',
+    tags: ['contracts', 'deployment', 'invoke']
   },
   {
     id: 'transactions',
     title: 'Transaction Building',
-    section: 'Documentation',
-    url: '/docs/transactions/',
-    content: 'Build and sign transactions with the Neo Rust SDK',
-    tags: ['transaction', 'signing', 'blockchain', 'witness']
+    content: 'Build, sign, and send transactions on the Neo network. Transaction attributes, signers, and witnesses.',
+    url: '/docs/transactions',
+    category: 'Documentation',
+    tags: ['transactions', 'signing', 'witnesses']
   },
   {
-    id: 'contracts',
-    title: 'Smart Contract Interaction',
-    section: 'Documentation',
-    url: '/docs/contracts/',
-    content: 'Deploy and invoke smart contracts with the Neo Rust SDK',
-    tags: ['contract', 'nep17', 'deployment', 'invocation']
+    id: 'rpc-client',
+    title: 'RPC Client Usage',
+    content: 'Connect to Neo nodes using the RPC client. Query blockchain data, invoke contracts, and monitor events.',
+    url: '/docs/rpc-client',
+    category: 'Documentation',
+    tags: ['rpc', 'client', 'blockchain']
   },
   {
-    id: 'crypto',
-    title: 'Cryptography',
-    section: 'Documentation',
-    url: '/docs/crypto/',
-    content: 'Cryptographic operations in the Neo Rust SDK',
-    tags: ['encryption', 'hash', 'keys', 'signature']
+    id: 'neofs-integration',
+    title: 'NeoFS Integration',
+    content: 'Store and retrieve files using NeoFS. Container management, object operations, and access control.',
+    url: '/docs/neofs',
+    category: 'Documentation',
+    tags: ['neofs', 'storage', 'files']
   },
   {
-    id: 'wallet-api',
-    title: 'Wallet Module API',
-    section: 'API Reference',
-    url: '/api/wallet/',
-    content: 'Comprehensive API documentation for the wallet module',
-    tags: ['api', 'wallet', 'reference', 'functions']
+    id: 'examples-basic',
+    title: 'Basic Examples',
+    content: 'Simple examples to get you started. Account creation, balance checking, and basic transactions.',
+    url: '/examples/basic',
+    category: 'Examples',
+    tags: ['examples', 'tutorial', 'basic']
   },
   {
-    id: 'transaction-api',
-    title: 'Transaction Module API',
-    section: 'API Reference',
-    url: '/api/transaction/',
-    content: 'Comprehensive API documentation for the transaction module',
-    tags: ['api', 'transaction', 'reference', 'functions']
+    id: 'examples-advanced',
+    title: 'Advanced Examples',
+    content: 'Advanced usage patterns. Multi-signature transactions, contract deployment, and complex operations.',
+    url: '/examples/advanced',
+    category: 'Examples',
+    tags: ['examples', 'advanced', 'multisig']
   },
   {
-    id: 'contract-api',
-    title: 'Contract Module API',
-    section: 'API Reference',
-    url: '/api/contract/',
-    content: 'Comprehensive API documentation for the contract module',
-    tags: ['api', 'contract', 'reference', 'functions']
+    id: 'api-reference',
+    title: 'API Reference',
+    content: 'Complete API documentation for all modules, structs, and functions in the Neo Rust SDK.',
+    url: '/api',
+    category: 'Reference',
+    tags: ['api', 'reference', 'documentation']
   },
   {
-    id: 'wallet-example',
-    title: 'Creating a Wallet',
-    section: 'Examples',
-    url: '/examples/wallet-creation/',
-    content: 'Example code for creating and managing Neo wallets',
-    tags: ['example', 'wallet', 'creation', 'code']
-  },
-  {
-    id: 'transaction-example',
-    title: 'Building Transactions',
-    section: 'Examples',
-    url: '/examples/create-transaction/',
-    content: 'Example code for building and signing transactions',
-    tags: ['example', 'transaction', 'signing', 'code']
+    id: 'troubleshooting',
+    title: 'Troubleshooting Guide',
+    content: 'Common issues and solutions when working with the Neo Rust SDK. Error handling and debugging tips.',
+    url: '/docs/troubleshooting',
+    category: 'Documentation',
+    tags: ['troubleshooting', 'errors', 'debugging']
   }
 ];
 
-// Simple search function that looks for matches in title, content, and tags
-function searchContent(query) {
-  if (!query || query.trim() === '') {
-    return [];
-  }
-  
-  const searchTerms = query.toLowerCase().trim().split(/\s+/);
-  
-  return searchIndex
-    .filter(item => {
-      const searchableText = `${item.title} ${item.content} ${item.tags.join(' ')}`.toLowerCase();
-      return searchTerms.every(term => searchableText.includes(term));
-    })
-    .map(item => ({
-      id: item.id,
-      title: item.title,
-      section: item.section,
-      url: item.url,
-      preview: item.content.substring(0, 120) + (item.content.length > 120 ? '...' : '')
-    }))
-    .slice(0, 10); // Limit to 10 results
-}
+// Configure Fuse.js for fuzzy search
+const fuseOptions = {
+  includeScore: true,
+  threshold: 0.4, // Lower = more strict matching
+  ignoreLocation: true,
+  keys: [
+    {
+      name: 'title',
+      weight: 0.4
+    },
+    {
+      name: 'content',
+      weight: 0.3
+    },
+    {
+      name: 'tags',
+      weight: 0.2
+    },
+    {
+      name: 'category',
+      weight: 0.1
+    }
+  ]
+};
 
-exports.handler = async function(event, context) {
-  // CORS headers to allow requests from your domain
+const fuse = new Fuse(searchIndex, fuseOptions);
+
+exports.handler = async (event, context) => {
+  // Set CORS headers
   const headers = {
-    'Access-Control-Allow-Origin': '*', // In production, specify your domain
+    'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Headers': 'Content-Type',
     'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
     'Content-Type': 'application/json'
   };
-  
-  // Handle OPTIONS request for CORS
+
+  // Handle preflight requests
   if (event.httpMethod === 'OPTIONS') {
     return {
-      statusCode: 204,
+      statusCode: 200,
       headers,
       body: ''
     };
   }
-  
-  // Only allow GET requests for search
-  if (event.httpMethod !== 'GET') {
-    return {
-      statusCode: 405,
-      headers,
-      body: JSON.stringify({ error: 'Method Not Allowed' })
-    };
-  }
-  
+
   try {
-    const query = event.queryStringParameters?.query || '';
-    const results = searchContent(query);
-    
+    // Parse query parameters
+    const query = event.queryStringParameters?.q || '';
+    const category = event.queryStringParameters?.category || '';
+    const limit = parseInt(event.queryStringParameters?.limit || '10');
+    const offset = parseInt(event.queryStringParameters?.offset || '0');
+
+    // Validate input
+    if (!query.trim()) {
+      return {
+        statusCode: 400,
+        headers,
+        body: JSON.stringify({
+          error: 'Search query is required',
+          message: 'Please provide a search query using the "q" parameter'
+        })
+      };
+    }
+
+    if (query.length > 100) {
+      return {
+        statusCode: 400,
+        headers,
+        body: JSON.stringify({
+          error: 'Query too long',
+          message: 'Search query must be 100 characters or less'
+        })
+      };
+    }
+
+    // Perform search
+    let results = fuse.search(query);
+
+    // Filter by category if specified
+    if (category) {
+      results = results.filter(result => 
+        result.item.category.toLowerCase() === category.toLowerCase()
+      );
+    }
+
+    // Apply pagination
+    const totalResults = results.length;
+    const paginatedResults = results.slice(offset, offset + limit);
+
+    // Format results
+    const formattedResults = paginatedResults.map(result => ({
+      id: result.item.id,
+      title: result.item.title,
+      content: result.item.content,
+      url: result.item.url,
+      category: result.item.category,
+      tags: result.item.tags,
+      score: Math.round((1 - result.score) * 100), // Convert to percentage relevance
+      snippet: generateSnippet(result.item.content, query)
+    }));
+
+    // Get available categories for filtering
+    const categories = [...new Set(searchIndex.map(item => item.category))];
+
+    // Return results
     return {
       statusCode: 200,
       headers,
-      body: JSON.stringify({ results })
+      body: JSON.stringify({
+        query,
+        results: formattedResults,
+        pagination: {
+          total: totalResults,
+          limit,
+          offset,
+          hasMore: offset + limit < totalResults
+        },
+        filters: {
+          categories,
+          selectedCategory: category || null
+        },
+        suggestions: generateSuggestions(query, results.length === 0)
+      })
     };
+
   } catch (error) {
-    console.error('Error processing search:', error);
+    console.error('Search error:', error);
     
     return {
       statusCode: 500,
       headers,
-      body: JSON.stringify({ error: 'Internal Server Error' })
+      body: JSON.stringify({
+        error: 'Internal server error',
+        message: 'An error occurred while processing your search request'
+      })
     };
   }
 };
+
+// Generate content snippet with highlighted search terms
+function generateSnippet(content, query, maxLength = 150) {
+  const words = query.toLowerCase().split(/\s+/);
+  const contentLower = content.toLowerCase();
+  
+  // Find the best position to start the snippet
+  let bestPosition = 0;
+  let maxMatches = 0;
+  
+  for (let i = 0; i <= content.length - maxLength; i += 10) {
+    const snippet = content.substr(i, maxLength).toLowerCase();
+    const matches = words.reduce((count, word) => {
+      return count + (snippet.includes(word) ? 1 : 0);
+    }, 0);
+    
+    if (matches > maxMatches) {
+      maxMatches = matches;
+      bestPosition = i;
+    }
+  }
+  
+  // Extract snippet
+  let snippet = content.substr(bestPosition, maxLength);
+  
+  // Ensure we don't cut words in half
+  if (bestPosition > 0) {
+    const firstSpace = snippet.indexOf(' ');
+    if (firstSpace > 0) {
+      snippet = snippet.substr(firstSpace + 1);
+    }
+    snippet = '...' + snippet;
+  }
+  
+  if (bestPosition + maxLength < content.length) {
+    const lastSpace = snippet.lastIndexOf(' ');
+    if (lastSpace > 0) {
+      snippet = snippet.substr(0, lastSpace);
+    }
+    snippet = snippet + '...';
+  }
+  
+  return snippet;
+}
+
+// Generate search suggestions
+function generateSuggestions(query, noResults) {
+  const suggestions = [];
+  
+  if (noResults) {
+    // Suggest similar terms
+    const commonTerms = [
+      'wallet', 'transaction', 'contract', 'rpc', 'account', 
+      'signature', 'blockchain', 'neofs', 'examples', 'api'
+    ];
+    
+    const queryLower = query.toLowerCase();
+    const similar = commonTerms.filter(term => 
+      term.includes(queryLower) || queryLower.includes(term)
+    );
+    
+    if (similar.length > 0) {
+      suggestions.push(...similar.slice(0, 3));
+    } else {
+      suggestions.push('getting started', 'wallet management', 'smart contracts');
+    }
+  }
+  
+  return suggestions;
+}

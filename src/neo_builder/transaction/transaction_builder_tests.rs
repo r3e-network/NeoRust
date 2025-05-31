@@ -9,6 +9,7 @@ mod tests {
 		crypto::{KeyPair, Secp256r1PrivateKey},
 		neo_builder::GAS_TOKEN_HASH,
 		neo_clients::{APITrait, HttpProvider, MockClient, RpcClient},
+		neo_crypto::utils::ToHexString,
 		neo_protocol::{
 			Account, AccountTrait, ApplicationLog, NeoProtocol, NeoVersion, RawTransaction,
 		},
@@ -27,7 +28,6 @@ mod tests {
 	use std::{default, ops::Deref, str::FromStr, sync::Arc};
 	use tokio::sync::{Mutex, OnceCell};
 	use tracing::debug;
-	use crate::neo_crypto::utils::ToHexString;
 
 	lazy_static! {
 		pub static ref ACCOUNT1: Account = Account::from_key_pair(

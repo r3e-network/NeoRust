@@ -22,11 +22,13 @@ use crate::{
 	neo_protocol::Account,
 };
 use async_trait::async_trait;
-use std::fmt::Debug;
-use reqwest::{Client, header::{HeaderMap, HeaderValue, AUTHORIZATION, CONTENT_TYPE}};
-use serde_json::{json, Value};
-use std::collections::HashMap;
 use base64;
+use reqwest::{
+	header::{HeaderMap, HeaderValue, AUTHORIZATION, CONTENT_TYPE},
+	Client,
+};
+use serde_json::{json, Value};
+use std::{collections::HashMap, fmt::Debug};
 
 /// Default mainnet NeoFS gRPC endpoint
 pub const DEFAULT_MAINNET_ENDPOINT: &str = "grpc.mainnet.fs.neo.org:8082";
@@ -91,13 +93,8 @@ impl NeoFSClient {
 				DEFAULT_TESTNET_HTTP_GATEWAY.to_string()
 			}
 		};
-		
-		Self { 
-			config, 
-			account: None, 
-			http_client,
-			base_url,
-		}
+
+		Self { config, account: None, http_client, base_url }
 	}
 
 	/// Creates a new NeoFS client with default configuration
@@ -141,46 +138,65 @@ impl NeoFSClient {
 	fn create_auth_headers(&self) -> NeoFSResult<HeaderMap> {
 		let mut headers = HeaderMap::new();
 		headers.insert(CONTENT_TYPE, HeaderValue::from_static("application/json"));
-		
+
 		if let Some(auth) = &self.config.auth {
 			// Create a simple bearer token from wallet address
 			let token = format!("Bearer {}", auth.wallet_address);
-			headers.insert(AUTHORIZATION, HeaderValue::from_str(&token)
-				.map_err(|e| NeoFSError::AuthenticationError(format!("Invalid auth header: {}", e)))?);
+			headers.insert(
+				AUTHORIZATION,
+				HeaderValue::from_str(&token).map_err(|e| {
+					NeoFSError::AuthenticationError(format!("Invalid auth header: {}", e))
+				})?,
+			);
 		}
-		
+
 		Ok(headers)
 	}
 
 	/// Makes an HTTP request to the NeoFS REST API
-	async fn make_request(&self, method: &str, endpoint: &str, body: Option<Value>) -> NeoFSResult<Value> {
+	async fn make_request(
+		&self,
+		method: &str,
+		endpoint: &str,
+		body: Option<Value>,
+	) -> NeoFSResult<Value> {
 		let url = format!("{}/v1/{}", self.base_url, endpoint);
 		let headers = self.create_auth_headers()?;
-		
+
 		let mut request = match method {
 			"GET" => self.http_client.get(&url),
 			"POST" => self.http_client.post(&url),
 			"PUT" => self.http_client.put(&url),
 			"DELETE" => self.http_client.delete(&url),
-			_ => return Err(NeoFSError::InvalidArgument(format!("Unsupported HTTP method: {}", method))),
+			_ =>
+				return Err(NeoFSError::InvalidArgument(format!(
+					"Unsupported HTTP method: {}",
+					method
+				))),
 		};
-		
+
 		request = request.headers(headers);
-		
+
 		if let Some(json_body) = body {
 			request = request.json(&json_body);
 		}
-		
-		let response = request.send().await
+
+		let response = request
+			.send()
+			.await
 			.map_err(|e| NeoFSError::ConnectionError(format!("HTTP request failed: {}", e)))?;
-		
+
 		if !response.status().is_success() {
-			return Err(NeoFSError::UnexpectedResponse(format!("HTTP error: {}", response.status())));
+			return Err(NeoFSError::UnexpectedResponse(format!(
+				"HTTP error: {}",
+				response.status()
+			)));
 		}
-		
-		let json: Value = response.json().await
-			.map_err(|e| NeoFSError::SerializationError(format!("Failed to parse JSON response: {}", e)))?;
-		
+
+		let json: Value = response.json().await.map_err(|e| {
+			NeoFSError::SerializationError(format!("Failed to parse JSON response: {}", e))
+		})?;
+
 		Ok(json)
 	}
 
@@ -207,10 +223,10 @@ impl NeoFSClient {
 		});
 
 		let response = self.make_request("POST", "multipart/init", Some(request_body)).await?;
-		
-		let upload_id = response.get("uploadId")
-			.and_then(|v| v.as_str())
-			.ok_or_else(|| NeoFSError::UnexpectedResponse("Missing uploadId in response".to_string()))?;
+
+		let upload_id = response.get("uploadId").and_then(|v| v.as_str()).ok_or_else(|| {
+			NeoFSError::UnexpectedResponse("Missing uploadId in response".to_string())
+		})?;
 
 		Ok(MultipartUpload {
 			id: None,
@@ -233,7 +249,7 @@ impl NeoFSClient {
 
 		let endpoint = format!("multipart/{}/parts", upload.upload_id);
 		let _response = self.make_request("POST", &endpoint, Some(request_body)).await?;
-		
+
 		Ok(())
 	}
 
@@ -250,10 +266,10 @@ impl NeoFSClient {
 
 		let endpoint = format!("multipart/{}/complete", upload.upload_id);
 		let response = self.make_request("POST", &endpoint, Some(request_body)).await?;
-		
-		let object_id = response.get("objectId")
-			.and_then(|v| v.as_str())
-			.ok_or_else(|| NeoFSError::UnexpectedResponse("Missing objectId in response".to_string()))?;
+
+		let object_id = response.get("objectId").and_then(|v| v.as_str()).ok_or_else(|| {
+			NeoFSError::UnexpectedResponse("Missing objectId in response".to_string())
+		})?;
 
 		Ok(MultipartUploadResult {
 			object_id: ObjectId(object_id.to_string()),
@@ -273,7 +289,7 @@ impl NeoFSClient {
 impl NeoFSService for NeoFSClient {
 	async fn create_container(&self, container: &Container) -> NeoFSResult<ContainerId> {
 		let owner_id = self.get_owner_id()?;
-		
+
 		let request_body = json!({
 			"container": {
 				"ownerId": owner_id.0,
@@ -282,9 +298,9 @@ impl NeoFSService for NeoFSClient {
 				"placementPolicy": container.placement_policy
 			}
 		});
-		
+
 		let response = self.make_request("POST", "containers", Some(request_body)).await?;
-		
+
 		if let Some(container_id) = response.get("containerId").and_then(|v| v.as_str()) {
 			Ok(ContainerId(container_id.to_string()))
 		} else {
@@ -295,18 +311,19 @@ impl NeoFSService for NeoFSClient {
 	async fn get_container(&self, id: &ContainerId) -> NeoFSResult<Container> {
 		let endpoint = format!("containers/{}", id.0);
 		let response = self.make_request("GET", &endpoint, None).await?;
-		
+
 		if let Some(container_data) = response.get("container") {
-			let owner_id = container_data.get("ownerId")
+			let owner_id = container_data
+				.get("ownerId")
 				.and_then(|v| v.as_str())
 				.ok_or_else(|| NeoFSError::UnexpectedResponse("Missing ownerId".to_string()))?;
-			
+
 			let mut container = Container::new(id.clone(), OwnerId(owner_id.to_string()));
-			
+
 			if let Some(basic_acl) = container_data.get("basicAcl").and_then(|v| v.as_u64()) {
 				container.basic_acl = basic_acl as u32;
 			}
-			
+
 			if let Some(attributes) = container_data.get("attributes").and_then(|v| v.as_object()) {
 				for (key, value) in attributes {
 					if let Some(val_str) = value.as_str() {
@@ -314,7 +331,7 @@ impl NeoFSService for NeoFSClient {
 					}
 				}
 			}
-			
+
 			Ok(container)
 		} else {
 			Err(NeoFSError::UnexpectedResponse("Missing container data in response".to_string()))
@@ -325,7 +342,7 @@ impl NeoFSService for NeoFSClient {
 		let owner_id = self.get_owner_id()?;
 		let endpoint = format!("containers?ownerId={}", owner_id.0);
 		let response = self.make_request("GET", &endpoint, None).await?;
-		
+
 		if let Some(containers) = response.get("containers").and_then(|v| v.as_array()) {
 			let container_ids = containers
 				.iter()
@@ -350,7 +367,7 @@ impl NeoFSService for NeoFSClient {
 		object: &Object,
 	) -> NeoFSResult<ObjectId> {
 		let owner_id = self.get_owner_id()?;
-		
+
 		let request_body = json!({
 			"object": {
 				"containerId": container_id.0,
@@ -359,10 +376,10 @@ impl NeoFSService for NeoFSClient {
 				"payload": base64::encode(&object.payload)
 			}
 		});
-		
+
 		let endpoint = format!("objects/{}", container_id.0);
 		let response = self.make_request("POST", &endpoint, Some(request_body)).await?;
-		
+
 		if let Some(object_id) = response.get("objectId").and_then(|v| v.as_str()) {
 			Ok(ObjectId(object_id.to_string()))
 		} else {
@@ -377,19 +394,21 @@ impl NeoFSService for NeoFSClient {
 	) -> NeoFSResult<Object> {
 		let endpoint = format!("objects/{}/{}", container_id.0, object_id.0);
 		let response = self.make_request("GET", &endpoint, None).await?;
-		
+
 		if let Some(object_data) = response.get("object") {
-			let owner_id = object_data.get("ownerId")
+			let owner_id = object_data
+				.get("ownerId")
 				.and_then(|v| v.as_str())
 				.ok_or_else(|| NeoFSError::UnexpectedResponse("Missing ownerId".to_string()))?;
-			
+
 			let mut object = Object::new(container_id.clone(), OwnerId(owner_id.to_string()));
-			
+
 			if let Some(payload_b64) = object_data.get("payload").and_then(|v| v.as_str()) {
-				object.payload = base64::decode(payload_b64)
-					.map_err(|e| NeoFSError::UnexpectedResponse(format!("Invalid base64 payload: {}", e)))?;
+				object.payload = base64::decode(payload_b64).map_err(|e| {
+					NeoFSError::UnexpectedResponse(format!("Invalid base64 payload: {}", e))
+				})?;
 			}
-			
+
 			if let Some(attributes) = object_data.get("attributes").and_then(|v| v.as_object()) {
 				for (key, value) in attributes {
 					if let Some(val_str) = value.as_str() {
@@ -397,7 +416,7 @@ impl NeoFSService for NeoFSClient {
 					}
 				}
 			}
-			
+
 			Ok(object)
 		} else {
 			Err(NeoFSError::UnexpectedResponse("Missing object data in response".to_string()))
@@ -407,7 +426,7 @@ impl NeoFSService for NeoFSClient {
 	async fn list_objects(&self, container_id: &ContainerId) -> NeoFSResult<Vec<ObjectId>> {
 		let endpoint = format!("objects/{}", container_id.0);
 		let response = self.make_request("GET", &endpoint, None).await?;
-		
+
 		if let Some(objects) = response.get("objects").and_then(|v| v.as_array()) {
 			let object_ids = objects
 				.iter()
@@ -438,7 +457,7 @@ impl NeoFSService for NeoFSClient {
 	) -> NeoFSResult<BearerToken> {
 		let owner_id = self.get_owner_id()?;
 		let expiration = chrono::Utc::now() + chrono::Duration::seconds(expires_sec as i64);
-		
+
 		let request_body = json!({
 			"bearerToken": {
 				"containerId": container_id.0,
@@ -447,9 +466,9 @@ impl NeoFSService for NeoFSClient {
 				"expiresAt": expiration.timestamp()
 			}
 		});
-		
+
 		let response = self.make_request("POST", "auth/bearer", Some(request_body)).await?;
-		
+
 		if let Some(token) = response.get("token").and_then(|v| v.as_str()) {
 			Ok(BearerToken {
 				owner_id,
@@ -466,29 +485,32 @@ impl NeoFSService for NeoFSClient {
 
 	async fn get_session_token(&self) -> NeoFSResult<SessionToken> {
 		let owner_id = self.get_owner_id()?;
-		
+
 		let request_body = json!({
 			"sessionToken": {
 				"ownerId": owner_id.0
 			}
 		});
-		
+
 		let response = self.make_request("POST", "auth/session", Some(request_body)).await?;
-		
+
 		if let Some(token_data) = response.get("sessionToken") {
-			let token_id = token_data.get("tokenId")
+			let token_id = token_data
+				.get("tokenId")
 				.and_then(|v| v.as_str())
 				.ok_or_else(|| NeoFSError::UnexpectedResponse("Missing tokenId".to_string()))?;
-			
-			let session_key = token_data.get("sessionKey")
+
+			let session_key = token_data
+				.get("sessionKey")
 				.and_then(|v| v.as_str())
 				.ok_or_else(|| NeoFSError::UnexpectedResponse("Missing sessionKey".to_string()))?;
-			
-			let signature = token_data.get("signature")
+
+			let signature = token_data
+				.get("signature")
 				.and_then(|v| v.as_str())
 				.map(|s| base64::decode(s).unwrap_or_default())
 				.unwrap_or_default();
-			
+
 			Ok(SessionToken {
 				token_id: token_id.to_string(),
 				owner_id,
@@ -517,10 +539,10 @@ impl NeoFSService for NeoFSClient {
 	) -> NeoFSResult<Part> {
 		// Create the part
 		let part = Part::new(part_number, data);
-		
+
 		// Upload the part using the internal method
 		self.upload_part(upload, part.clone()).await?;
-		
+
 		Ok(part)
 	}
 

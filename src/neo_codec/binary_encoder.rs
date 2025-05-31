@@ -72,10 +72,10 @@ impl Encoder {
 		if value < 0 {
 			return Err(std::io::Error::new(
 				std::io::ErrorKind::InvalidInput,
-				"Negative value not allowed for variable integer encoding"
+				"Negative value not allowed for variable integer encoding",
 			));
 		}
-		
+
 		let value = value as u64;
 		if value < 0xFD {
 			self.write_u8(value as u8);
@@ -123,19 +123,28 @@ impl Encoder {
 		value.iter().for_each(|v| v.encode(self));
 	}
 
-	pub fn write_serializable_variable_bytes<S: NeoSerializable>(&mut self, values: &S) -> Result<(), std::io::Error> {
+	pub fn write_serializable_variable_bytes<S: NeoSerializable>(
+		&mut self,
+		values: &S,
+	) -> Result<(), std::io::Error> {
 		self.write_var_int(values.to_array().len() as i64)?;
 		values.encode(self);
 		Ok(())
 	}
 
-	pub fn write_serializable_variable_list<S: NeoSerializable>(&mut self, values: &[S]) -> Result<(), std::io::Error> {
+	pub fn write_serializable_variable_list<S: NeoSerializable>(
+		&mut self,
+		values: &[S],
+	) -> Result<(), std::io::Error> {
 		self.write_var_int(values.len() as i64)?;
 		self.write_serializable_list_fixed(values);
 		Ok(())
 	}
 
-	pub fn write_serializable_variable_list_bytes<S: NeoSerializable>(&mut self, values: &[S]) -> Result<(), std::io::Error> {
+	pub fn write_serializable_variable_list_bytes<S: NeoSerializable>(
+		&mut self,
+		values: &[S],
+	) -> Result<(), std::io::Error> {
 		let total_size: usize = values.iter().map(|item| item.to_array().len()).sum();
 		self.write_var_int(total_size as i64)?;
 		self.write_serializable_list_fixed(values);

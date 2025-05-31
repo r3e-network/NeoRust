@@ -1,5 +1,6 @@
 use std::str::FromStr;
 
+use neo3 as neo;
 use neo3::{
 	neo_clients::{HttpProvider, JsonRpcProvider},
 	neo_contract::NeoNameService,
@@ -7,7 +8,6 @@ use neo3::{
 	neo_types::script_hash::ScriptHash,
 	prelude::RpcClient,
 };
-use neo3 as neo;
 
 /// This example demonstrates how to work with the Neo Name Service (NNS) on the Neo N3 blockchain.
 /// It shows how to check domain availability, register domains, and manage domain records.

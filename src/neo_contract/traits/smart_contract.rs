@@ -1,20 +1,18 @@
-use std::sync::Arc;
-use std::collections::HashMap;
+use std::{collections::HashMap, sync::Arc};
 
+use crate::neo_crypto::utils::ToHexString;
 use async_trait::async_trait;
 use num_bigint::BigInt;
 use primitive_types::H160;
-use crate::neo_crypto::utils::ToHexString;
 
 // Replace prelude imports with specific types
 use crate::{
-	neo_builder::{
-		BuilderError, CallFlags, ScriptBuilder,
-	},
-	neo_clients::{JsonRpcProvider, ProviderError, RpcClient, APITrait},
+	neo_builder::{BuilderError, CallFlags, ScriptBuilder},
+	neo_clients::{APITrait, JsonRpcProvider, ProviderError, RpcClient},
 	neo_contract::{ContractError, NeoIterator},
 	neo_types::{
-		Bytes, ContractManifest, ContractParameter, ContractParameterType, InvocationResult, OpCode, ScriptHash, StackItem,
+		Bytes, ContractManifest, ContractParameter, ContractParameterType, InvocationResult,
+		OpCode, ScriptHash, StackItem,
 	},
 	ScriptHashExtension,
 };
@@ -180,10 +178,11 @@ pub trait SmartContractTrait<'a>: Send + Sync {
 		self.throw_if_fault_state(&output).unwrap();
 
 		let item = &output.stack[0];
-		let StackItem::InteropInterface { id, interface: _ } = item else { 
-			return Err(ContractError::UnexpectedReturnType(
-				format!("Expected InteropInterface, got {:?}", item)
-			));
+		let StackItem::InteropInterface { id, interface: _ } = item else {
+			return Err(ContractError::UnexpectedReturnType(format!(
+				"Expected InteropInterface, got {:?}",
+				item
+			)));
 		};
 
 		let session_id = output

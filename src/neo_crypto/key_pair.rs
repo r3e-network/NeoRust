@@ -148,8 +148,9 @@ mod tests {
 
 	#[test]
 	fn test_public_key_wif() {
-		let private_key = hex::decode("c7134d6fd8e73d819e82755c64c93788d8db0961929e025a53363c4cc02a6962")
-			.unwrap();
+		let private_key =
+			hex::decode("c7134d6fd8e73d819e82755c64c93788d8db0961929e025a53363c4cc02a6962")
+				.unwrap();
 		let private_key_arr: &[u8; 32] = private_key.as_slice().try_into().unwrap();
 		let key_pair = KeyPair::from_private_key(private_key_arr).unwrap();
 		assert_eq!(

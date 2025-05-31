@@ -78,9 +78,9 @@ where
 	let scopes = s
 		.split(",")
 		.map(|x| {
-			x.trim()
-				.parse()
-				.map_err(|e| serde::de::Error::custom(format!("Failed to parse scope '{}': {}", x.trim(), e)))
+			x.trim().parse().map_err(|e| {
+				serde::de::Error::custom(format!("Failed to parse scope '{}': {}", x.trim(), e))
+			})
 		})
 		.collect::<Result<Vec<WitnessScope>, _>>()?;
 

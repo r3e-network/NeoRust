@@ -91,10 +91,10 @@ impl ScriptHashExtension for H160 {
 		if hex.starts_with("0x") {
 			let mut bytes = hex::decode(&hex[2..])?;
 			bytes.reverse();
-			Ok(Self::from_slice(&bytes))
+			Self::from_slice(&bytes).map_err(|_| hex::FromHexError::InvalidHexCharacter { c: '0', index: 0 })
 		} else {
 			let bytes = hex::decode(hex)?;
-			Ok(Self::from_slice(&bytes))
+			Self::from_slice(&bytes).map_err(|_| hex::FromHexError::InvalidHexCharacter { c: '0', index: 0 })
 		}
 	}
 

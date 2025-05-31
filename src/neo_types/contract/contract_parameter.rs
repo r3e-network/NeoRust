@@ -5,10 +5,6 @@ use crate::{
 };
 use getset::Getters;
 use primitive_types::{H160, H256};
-use rustc_serialize::{
-	base64::FromBase64,
-	hex::{FromHex, ToHex},
-};
 use serde::{
 	de,
 	de::{MapAccess, Visitor},
@@ -22,8 +18,12 @@ use std::{
 	fmt,
 	hash::{Hash, Hasher},
 	convert::TryInto,
+	str::FromStr,
 };
 use strum_macros::{Display, EnumString};
+use crate::neo_crypto::utils::{FromBase64String, FromHexString, ToHexString};
+use crate::neo_types::{TypeError, ScriptHash};
+use hex;
 
 #[derive(Debug, PartialEq, Eq, Hash, Serialize, Deserialize, Clone)]
 pub struct ContractParameter2 {
@@ -532,13 +532,11 @@ impl ContractParameter {
 	}
 
 	pub fn to_byte_array(&self) -> Result<Vec<u8>, String> {
-		match self.value.as_ref() {
-			Some(ParameterValue::ByteArray(b)) => b
-				.from_base64()
-				.map(|bytes| bytes.to_vec())
+		match self {
+			ParameterValue::ByteArray(b) => b
+				.from_base64_string()
 				.map_err(|e| format!("Failed to decode base64: {}", e)),
-			Some(other) => Err(format!("Cannot convert {:?} to Vec<u8>", other)),
-			None => Err("Parameter value is None".to_string()),
+			_ => Err(format!("Cannot convert {:?} to Vec<u8>", self)),
 		}
 	}
 
@@ -558,28 +556,30 @@ impl ContractParameter {
 	}
 
 	pub fn to_h160(&self) -> Result<H160, String> {
-		match self.value.as_ref() {
-			Some(ParameterValue::H160(h)) => h
-				.from_hex()
-				.map(|bytes| H160::from_slice(&bytes))
-				.map_err(|e| format!("Failed to decode hex: {}", e)),
-			Some(other) => Err(format!("Cannot convert {:?} to H160", other)),
-			None => Err("Parameter value is None".to_string()),
+		match self {
+			ParameterValue::H160(h) => {
+				let bytes = h.from_hex_string()
+					.map_err(|e| format!("Failed to decode hex: {}", e))?;
+				H160::from_slice(&bytes)
+					.map_err(|e| format!("Failed to create H160: {:?}", e))
+			},
+			_ => Err(format!("Cannot convert {:?} to H160", self)),
 		}
 	}
 
 	pub fn h256(value: &H256) -> Self {
-		Self::with_value(ContractParameterType::H256, ParameterValue::H256(value.0.to_hex()))
+		Self::with_value(ContractParameterType::H256, ParameterValue::H256(value.0.to_hex_string()))
 	}
 
 	pub fn to_h256(&self) -> Result<H256, String> {
-		match self.value.as_ref() {
-			Some(ParameterValue::H256(h)) => h
-				.from_hex()
-				.map(|bytes| H256::from_slice(&bytes))
-				.map_err(|e| format!("Failed to decode hex: {}", e)),
-			Some(other) => Err(format!("Cannot convert {:?} to H256", other)),
-			None => Err("Parameter value is None".to_string()),
+		match self {
+			ParameterValue::H256(h) => {
+				let bytes = h.from_hex_string()
+					.map_err(|e| format!("Failed to decode hex: {}", e))?;
+				H256::from_slice(&bytes)
+					.map_err(|e| format!("Failed to create H256: {:?}", e))
+			},
+			_ => Err(format!("Cannot convert {:?} to H256", self)),
 		}
 	}
 
@@ -694,8 +694,7 @@ impl ParameterValue {
 	pub fn to_byte_array(&self) -> Result<Vec<u8>, String> {
 		match self {
 			ParameterValue::ByteArray(b) => b
-				.from_base64()
-				.map(|bytes| bytes.to_vec())
+				.from_base64_string()
 				.map_err(|e| format!("Failed to decode base64: {}", e)),
 			_ => Err(format!("Cannot convert {:?} to Vec<u8>", self)),
 		}
@@ -710,20 +709,24 @@ impl ParameterValue {
 
 	pub fn to_h160(&self) -> Result<H160, String> {
 		match self {
-			ParameterValue::H160(h) => h
-				.from_hex()
-				.map(|bytes| H160::from_slice(&bytes))
-				.map_err(|e| format!("Failed to decode hex: {}", e)),
+			ParameterValue::H160(h) => {
+				let bytes = h.from_hex_string()
+					.map_err(|e| format!("Failed to decode hex: {}", e))?;
+				H160::from_slice(&bytes)
+					.map_err(|e| format!("Failed to create H160: {:?}", e))
+			},
 			_ => Err(format!("Cannot convert {:?} to H160", self)),
 		}
 	}
 
 	pub fn to_h256(&self) -> Result<H256, String> {
 		match self {
-			ParameterValue::H256(h) => h
-				.from_hex()
-				.map(|bytes| H256::from_slice(&bytes))
-				.map_err(|e| format!("Failed to decode hex: {}", e)),
+			ParameterValue::H256(h) => {
+				let bytes = h.from_hex_string()
+					.map_err(|e| format!("Failed to decode hex: {}", e))?;
+				H256::from_slice(&bytes)
+					.map_err(|e| format!("Failed to create H256: {:?}", e))
+			},
 			_ => Err(format!("Cannot convert {:?} to H256", self)),
 		}
 	}
@@ -774,7 +777,6 @@ impl ParameterValue {
 #[cfg(test)]
 mod tests {
 	use primitive_types::{H160, H256};
-	use rustc_serialize::hex::FromHex;
 
 	use crate::{crypto::Secp256r1PublicKey, neo_types::ContractParameterMap};
 	use neo3::prelude::{ContractParameter, ContractParameterType};
@@ -815,7 +817,7 @@ mod tests {
 	#[test]
 	fn test_bytes_from_hex_string() {
 		let param = ContractParameter::byte_array(
-			"a602".from_hex().expect("Should be able to decode valid hex string in test"),
+			hex::decode("a602").expect("Should be able to decode valid hex string in test"),
 		);
 		// assert_param(&param, vec![0xa6, 0x02], ContractParameterType::ByteArray);
 		assert_eq!(param.typ, ContractParameterType::ByteArray);
@@ -835,7 +837,7 @@ mod tests {
 		let params = vec![
 			ContractParameter::string("value".to_string()),
 			ContractParameter::byte_array(
-				"0101".from_hex().expect("Should be able to decode valid hex string in test"),
+				hex::decode("0101").expect("Should be able to decode valid hex string in test"),
 			),
 		];
 
@@ -872,7 +874,7 @@ mod tests {
 		let params = vec![
 			ContractParameter::string("value".to_string()),
 			ContractParameter::byte_array(
-				"0101".from_hex().expect("Should be able to decode valid hex string in test"),
+				hex::decode("0101").expect("Should be able to decode valid hex string in test"),
 			),
 			ContractParameter::array(nested_params),
 			ContractParameter::integer(55),
@@ -981,7 +983,7 @@ mod tests {
 	#[test]
 	fn test_bytes_equals() {
 		let param1 = ContractParameter::byte_array(
-			"796573".from_hex().expect("Should be able to decode valid hex string in test"),
+			hex::decode("796573").expect("Should be able to decode valid hex string in test"),
 		);
 		let param2 = ContractParameter::byte_array(vec![0x79, 0x65, 0x73]);
 		assert_eq!(param1, param2);
@@ -1071,8 +1073,7 @@ mod tests {
 
 	#[test]
 	fn test_public_key() {
-		let key = "03b4af8efe55d98b44eedfcfaa39642fd5d53ad543d18d3cc2db5880970a4654f6"
-			.from_hex()
+		let key = hex::decode("03b4af8efe55d98b44eedfcfaa39642fd5d53ad543d18d3cc2db5880970a4654f6")
 			.expect("Should be able to decode valid hex string in test")
 			.to_vec();
 		let key = Secp256r1PublicKey::from_bytes(&key)

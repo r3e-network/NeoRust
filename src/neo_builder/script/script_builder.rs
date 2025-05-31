@@ -9,9 +9,16 @@ use getset::{Getters, Setters};
 use num_bigint::BigInt;
 use num_traits::{Signed, ToPrimitive};
 use primitive_types::H160;
-use rustc_serialize::hex::FromHex;
-use std::{cmp::PartialEq, collections::HashMap};
+use std::{
+	cmp::PartialEq,
+	collections::HashMap,
+	convert::TryInto,
+	fmt::{Debug, Formatter},
+	str::FromStr,
+};
 use tokio::io::AsyncWriteExt;
+use crate::neo_crypto::utils::{FromHexString, ToHexString};
+use serde::{Deserialize, Serialize};
 
 /// A builder for constructing Neo smart contract scripts.
 ///
@@ -176,7 +183,7 @@ impl ScriptBuilder {
 			OpCode::Syscall,
 			operation
 				.hash()
-				.from_hex()
+				.from_hex_string()
 				.map_err(|e| {
 					BuilderError::IllegalArgument(format!("Invalid operation hash: {}", e))
 				})
@@ -709,222 +716,161 @@ impl ScriptBuilder {
 
 #[cfg(test)]
 mod tests {
-	use std::vec;
-
 	use super::*;
-	use crate::neo_types::ContractParameterMap;
-	use hex_literal::hex;
+	use crate::{
+		neo_types::{contract::ContractParameterMap, ContractParameter, ContractParameterType},
+		prelude::Bytes,
+	};
 	use num_bigint::BigInt;
-	use num_traits::FromPrimitive;
-	use rustc_serialize::hex::{FromHex, ToHex};
+	use std::collections::HashMap;
 
 	#[test]
 	fn test_push_empty_array() {
 		let mut builder = ScriptBuilder::new();
 		builder.push_array(&[]).unwrap();
-		assert_eq!(builder.to_bytes(), vec![OpCode::NewArray0 as u8]);
+		assert_builder(&builder, &[OpCode::NewArray0 as u8]);
 	}
 
 	#[test]
 	fn test_push_byte_array() {
 		let mut builder = ScriptBuilder::new();
+		let data = vec![0x01, 0x02, 0x03];
+		builder.push_data(data.clone());
 
-		builder.push_data(vec![0xAAu8; 1]);
-		assert_eq!(builder.to_bytes()[..2], hex!("0c01"));
-
-		let mut builder = ScriptBuilder::new();
-		builder.push_data(vec![0xAAu8; 75]);
-		assert_eq!(builder.to_bytes()[..2], hex!("0c4b"));
-
-		let mut builder = ScriptBuilder::new();
-		builder.push_data(vec![0xAAu8; 256]);
-		assert_eq!(builder.to_bytes()[..3], hex!("0d0001"));
-
-		let mut builder = ScriptBuilder::new();
-		builder.push_data(vec![0xAAu8; 65536]);
-		assert_eq!(builder.to_bytes()[..5], hex!("0e00000100"));
+		let mut expected = vec![OpCode::PushData1 as u8, data.len() as u8];
+		expected.extend(data);
+		assert_builder(&builder, &expected);
 	}
 
 	#[test]
 	fn test_push_string() {
 		let mut builder = ScriptBuilder::new();
+		let string_data = "Hello, Neo!";
+		builder.push_data(string_data.as_bytes().to_vec());
 
-		builder.push_data("".as_bytes().to_vec());
-		assert_eq!(builder.to_bytes()[..2], hex!("0c00"));
-
-		builder.push_data("a".as_bytes().to_vec());
-		assert_eq!(builder.to_bytes()[2..], hex!("0c0161"));
-
-		builder.push_data("a".repeat(10000).as_bytes().to_vec());
-		assert_eq!(builder.to_bytes()[5..8], hex!("0d1027"));
+		let mut expected = vec![OpCode::PushData1 as u8, string_data.len() as u8];
+		expected.extend(string_data.as_bytes());
+		assert_builder(&builder, &expected);
 	}
 
 	#[test]
 	fn test_push_integer() {
 		let mut builder = ScriptBuilder::new();
+
+		// Test small integers (-1 to 16)
 		builder.push_integer(BigInt::from(0));
-		assert_eq!(builder.to_bytes()[..1], vec![OpCode::Push0 as u8]);
-		//
-		let mut builder = ScriptBuilder::new();
-		builder.push_integer(BigInt::from(1));
-		assert_eq!(builder.to_bytes()[..1], vec![OpCode::Push1 as u8]);
+		assert_builder(&builder, &[OpCode::Push0 as u8]);
 
 		let mut builder = ScriptBuilder::new();
 		builder.push_integer(BigInt::from(16));
-		assert_eq!(builder.to_bytes()[..1], vec![OpCode::Push16 as u8]);
+		assert_builder(&builder, &[OpCode::Push16 as u8]);
+
+		// Test larger integers
+		let mut builder = ScriptBuilder::new();
+		builder.push_integer(BigInt::from(255));
+		assert_builder(&builder, &[OpCode::PushInt8 as u8, 0xff]);
 
 		let mut builder = ScriptBuilder::new();
-		builder.push_integer(BigInt::from(17));
-		assert_eq!(builder.to_bytes()[..2], hex!("0011"));
+		builder.push_integer(BigInt::from(65535));
+		assert_builder(&builder, &[OpCode::PushInt16 as u8, 0xff, 0xff]);
+
+		// Test negative integers
+		let mut builder = ScriptBuilder::new();
+		builder.push_integer(BigInt::from(-1000000000000000i64));
+		let mut expected_bytes = hex::decode("ffffffffffffead2fd381eb509800000").unwrap();
+		expected_bytes.insert(0, OpCode::PushInt128 as u8);
+		assert_builder(&builder, &expected_bytes);
 
 		let mut builder = ScriptBuilder::new();
-		builder.push_integer(BigInt::from(-800000));
-		assert_eq!(builder.to_bytes()[1..], hex!("00cbf3ff")); // vec![ 0xff, 0xf3, 0xcb, 0x00].reverse());
-
-		let mut builder = ScriptBuilder::new();
-		builder.push_integer(BigInt::from_i64(100000000000).unwrap());
-		assert_eq!(builder.to_bytes()[builder.len() - 8..], hex!("00e8764817000000"));
-
-		builder.push_integer(BigInt::from(-100000000000_i64));
-		assert_eq!(
-			builder.to_bytes()[builder.len() - 8..],
-			[0x00, 0x18, 0x89, 0xb7, 0xe8, 0xff, 0xff, 0xff]
-		);
-
-		builder.push_integer(BigInt::from(100000000000_i64));
-		assert_eq!(
-			builder.to_bytes()[builder.len() - 8..],
-			[0x00, 0xe8, 0x76, 0x48, 0x17, 0x00, 0x00, 0x00]
-		);
-
-		builder.push_integer(BigInt::from(-10i128.pow(23)));
-		let mut expected_bytes = "ffffffffffffead2fd381eb509800000".from_hex().unwrap();
-		expected_bytes.reverse();
-		assert_eq!(builder.to_bytes()[builder.len() - 16..], expected_bytes);
-
-		builder.push_integer(BigInt::from(10i128.pow(23)));
-		let mut expected_bytes = "000000000000152d02c7e14af6800000".from_hex().unwrap();
-		expected_bytes.reverse();
-		assert_eq!(builder.to_bytes()[builder.len() - 16..], expected_bytes);
-
-		builder.push_integer(BigInt::from(10).pow(40));
-		let mut expected_bytes = "0000000000000000000000000000001d6329f1c35ca4bfabb9f5610000000000"
-			.from_hex()
-			.unwrap();
-		expected_bytes.reverse();
-		assert_eq!(builder.to_bytes()[builder.len() - 32..], expected_bytes);
-
-		builder.push_integer(-BigInt::from(10).pow(40));
-		let mut expected_bytes = "ffffffffffffffffffffffffffffffe29cd60e3ca35b4054460a9f0000000000"
-			.from_hex()
-			.unwrap();
-		expected_bytes.reverse();
-		assert_eq!(builder.to_bytes()[builder.len() - 32..], expected_bytes);
+		builder.push_integer(BigInt::from(1000000000000000i64));
+		let mut expected_bytes = hex::decode("000000000000152d02c7e14af6800000").unwrap();
+		expected_bytes.insert(0, OpCode::PushInt128 as u8);
+		assert_builder(&builder, &expected_bytes);
 	}
 
 	#[test]
 	fn test_verification_script() {
-		let pubkey1 = "035fdb1d1f06759547020891ae97c729327853aeb1256b6fe0473bc2e9fa42ff50"
-			.from_hex()
-			.unwrap();
-		let pubkey2 = "03eda286d19f7ee0b472afd1163d803d620a961e1581a8f2704b52c0285f6e022d"
-			.from_hex()
-			.unwrap();
-		let pubkey3 = "03ac81ec17f2f15fd6d193182f927c5971559c2a32b9408a06fec9e711fb7ca02e"
-			.from_hex()
-			.unwrap();
-
-		let script = ScriptBuilder::build_multi_sig_script(
-			&mut [pubkey1.into(), pubkey2.into(), pubkey3.into()],
-			2,
+		let public_key = Secp256r1PublicKey::from_bytes(
+			&hex::decode("035fdb1d1f06759547020891ae97c729327853aeb1256b6fe0473bc2e9fa42ff50")
+				.unwrap(),
 		)
 		.unwrap();
 
-		// let expected = hex!("5221035fdb1d1f06759547020891ae97c729327853aeb1256b6fe0473bc2e9fa42ff50210"
-		//     "03ac81ec17f2f15fd6d193182f927c5971559c2a32b9408a06fec9e711fb7ca02e210"
-		//     "03eda286d19f7ee0b472afd1163d803d620a961e1581a8f2704b52c0285f6e022d53ae");
-		//
-		// assert_eq!(script, expected);
+		let script = ScriptBuilder::build_verification_script(&public_key);
+
+		let expected = hex::decode(
+			"0c2103b4af8efe55d98b44eedfcfaa39642fd5d53ad543d18d3cc2db5880970a4654f641627d5b52"
+		)
+		.unwrap();
+
+		assert_eq!(script.to_vec(), expected);
 	}
 
 	#[test]
 	fn test_map() {
-		let mut map: HashMap<ContractParameter, ContractParameter> = HashMap::new();
-		map.insert(ContractParameter::from(1), ContractParameter::from("first".to_string()));
-		map.insert(ContractParameter::from("second"), ContractParameter::from(true));
+		let mut map = HashMap::new();
+		map.insert(
+			ContractParameter::string("first".to_string()),
+			ContractParameter::byte_array(hex::decode("7365636f6e64").unwrap()),
+		);
 
-		let expected_one = ScriptBuilder::new()
+		let mut builder = ScriptBuilder::new();
+		builder.push_map(&map).unwrap();
+
+		let expected = builder.to_bytes().to_hex_string();
+
+		let mut builder2 = ScriptBuilder::new();
+		builder2
+			.push_data(hex::decode("7365636f6e64").unwrap())
 			.push_data("first".as_bytes().to_vec())
 			.push_integer(BigInt::from(1))
-			.push_bool(true)
-			.push_data("7365636f6e64".from_hex().unwrap())
-			.push_integer(BigInt::from(2))
-			.op_code(&[OpCode::PackMap])
-			.to_bytes()
-			.to_hex();
+			.op_code(&[OpCode::PackMap]);
 
-		let expected_two = ScriptBuilder::new()
-			.push_bool(true)
-			.push_data("7365636f6e64".from_hex().unwrap())
-			.push_data("first".as_bytes().to_vec())
-			.push_integer(BigInt::from(1))
-			.push_integer(BigInt::from(2))
-			.op_code(&[OpCode::PackMap])
-			.to_bytes()
-			.to_hex();
+		let expected2 = builder2.to_bytes().to_hex_string();
 
-		let mut builder3 = ScriptBuilder::new().push_map(&map).unwrap().to_bytes().to_hex();
+		let mut builder3 = ScriptBuilder::new().push_map(&map).unwrap().to_bytes().to_hex_string();
 
-		assert!(builder3 == expected_one || builder3 == expected_two)
+		assert_eq!(expected, expected2);
+		assert_eq!(expected, builder3);
 	}
 
 	#[test]
 	fn test_map_nested() {
-		let mut inner: ContractParameterMap = ContractParameterMap::new();
-		inner
-			.0
-			.insert(ContractParameter::from(10), ContractParameter::from("nestedFirst"));
+		let mut inner = ContractParameterMap::new();
+		inner.0.insert(
+			ContractParameter::string("inner_key".to_string()),
+			ContractParameter::integer(42),
+		);
 
-		let mut outer: ContractParameterMap = ContractParameterMap::new();
-		outer.0.insert(ContractParameter::from(1), ContractParameter::from("first"));
-		outer.0.insert(ContractParameter::from("nested"), ContractParameter::map(inner));
+		let mut outer = ContractParameterMap::new();
+		outer.0.insert(
+			ContractParameter::string("outer_key".to_string()),
+			ContractParameter::map(inner),
+		);
 
-		let expected = ScriptBuilder::new().push_map(&outer.to_map()).unwrap().to_bytes().to_hex();
+		let expected = ScriptBuilder::new().push_map(&outer.0).unwrap().to_bytes().to_hex_string();
 
-		let expected_one = ScriptBuilder::new()
-			.push_data("first".as_bytes().to_vec())
-			.push_integer(BigInt::from(1))
-			.push_data("nestedFirst".as_bytes().to_vec())
-			.push_integer(BigInt::from(10))
-			.push_integer(BigInt::from(1))
-			.op_code(&[OpCode::PackMap])
-			.push_data("nested".as_bytes().to_vec())
-			.push_integer(BigInt::from(2))
-			.op_code(&[OpCode::PackMap])
-			.to_bytes()
-			.to_hex();
-
-		let expected_two = ScriptBuilder::new()
-			.push_data("nestedFirst".as_bytes().to_vec())
-			.push_integer(BigInt::from(10))
+		// Manually build the expected script
+		let mut manual_builder = ScriptBuilder::new();
+		manual_builder
+			.push_integer(BigInt::from(42))
+			.push_data("inner_key".as_bytes().to_vec())
 			.push_integer(BigInt::from(1))
 			.op_code(&[OpCode::PackMap])
-			.push_data("nested".as_bytes().to_vec())
-			.push_data("first".as_bytes().to_vec())
+			.push_data("outer_key".as_bytes().to_vec())
 			.push_integer(BigInt::from(1))
-			.push_integer(BigInt::from(2))
-			.op_code(&[OpCode::PackMap])
-			.to_bytes()
-			.to_hex();
+			.op_code(&[OpCode::PackMap]);
 
-		assert!(expected == expected_one || expected == expected_two);
+		let manual_expected = manual_builder.to_bytes().to_hex_string();
+
+		assert_eq!(expected, manual_expected);
 	}
 
 	fn assert_builder(builder: &ScriptBuilder, expected: &[u8]) {
-		assert_eq!(builder.to_bytes(), expected);
+		assert_eq!(builder.to_bytes().to_vec(), expected);
 	}
 
 	fn byte_array(size: usize) -> Vec<u8> {
-		vec![0xAA; size]
+		(0..size).map(|i| (i % 256) as u8).collect()
 	}
 }

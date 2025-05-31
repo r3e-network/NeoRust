@@ -2,15 +2,18 @@
 // and handling various formats like Base58 and hexadecimal strings. It leverages cryptographic functions, serialization, and
 // deserialization to work with blockchain-specific data types.
 
+use std::{fmt, str::FromStr};
+
 use primitive_types::H160;
 use rand::Rng;
-use rustc_serialize::hex::FromHex;
-use serde_derive::{Deserialize, Serialize};
+use serde::{Deserialize, Serialize};
 
 use crate::{
-	neo_crypto::HashableForVec,
+	crypto::{base58check_decode, base58check_encode, HashableForVec, Secp256r1PublicKey},
+	neo_crypto::utils::{FromHexString, ToHexString},
 	neo_types::{ScriptHash, ScriptHashExtension, StringExt, TypeError},
 	neo_error::NeoError,
+	prelude::Bytes,
 };
 
 pub type Address = String;
@@ -88,7 +91,7 @@ impl AddressExtension for String {
 	}
 
 	fn script_to_script_hash(&self) -> Result<ScriptHash, TypeError> {
-		self.from_hex()
+		self.from_hex_string()
 			.map(|data| ScriptHash::from_script(data.as_slice()))
 			.map_err(|_| TypeError::InvalidScript("Invalid hex string".to_string()))
 	}

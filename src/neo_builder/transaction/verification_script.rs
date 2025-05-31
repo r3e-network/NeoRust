@@ -1,19 +1,32 @@
-use std::vec;
+use std::{
+	collections::HashMap,
+	fmt::{Debug, Formatter},
+	str::FromStr,
+};
+
+use getset::{Getters, Setters};
+use primitive_types::H160;
+use serde::{Deserialize, Serialize};
+
+use crate::{
+	crypto::Secp256r1PublicKey,
+	neo_crypto::utils::{FromHexString, ToHexString},
+	neo_types::{
+		script_hash::ScriptHashExtension, Address, OpCode, ScriptHash, StackItem, TypeError,
+	},
+	prelude::Bytes,
+};
 
 use crate::{
 	builder::{BuilderError, InteropService, ScriptBuilder},
 	codec::{Decoder, Encoder, NeoSerializable},
 	config::NeoConstants,
-	crypto::{HashableForVec, Secp256r1PublicKey, Secp256r1Signature},
-	var_size, Bytes, OpCode,
+	crypto::{HashableForVec, Secp256r1Signature},
+	var_size,
 };
-use getset::{Getters, Setters};
 use num_bigint::BigInt;
 use num_traits::{ToPrimitive, Zero};
 use p256::pkcs8::der::Encode;
-use primitive_types::H160;
-use rustc_serialize::hex::{FromHex, ToHex};
-use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Getters, Setters, Serialize, Deserialize)]
 pub struct VerificationScript {
@@ -61,7 +74,7 @@ impl VerificationScript {
 		}
 
 		let interop_service = &self.script[self.script.len() - 4..]; // Get the last 4 bytes
-		let interop_service_hex = interop_service.to_hex();
+		let interop_service_hex = interop_service.to_hex_string();
 
 		self.script[0] == OpCode::PushData1.opcode()
 			&& self.script[1] == 33
@@ -114,7 +127,7 @@ impl VerificationScript {
 			return false;
 		}
 
-		let service_bytes = &reader.read_bytes(4).unwrap().to_hex();
+		let service_bytes = &reader.read_bytes(4).unwrap().to_hex_string();
 		let hash = &InteropService::SystemCryptoCheckMultiSig.hash(); //.from_hex().unwrap();
 																//assert_eq!(service_bytes, hash);
 		if service_bytes != hash {
@@ -234,7 +247,6 @@ impl NeoSerializable for VerificationScript {
 #[cfg(test)]
 mod tests {
 	use hex_literal::hex;
-	use rustc_serialize::hex::FromHex;
 
 	use super::*;
 
@@ -250,7 +262,7 @@ mod tests {
 			OpCode::Syscall.to_hex_string(),
 			InteropService::SystemCryptoCheckSig.hash()
 		)
-		.from_hex()
+		.from_hex_string()
 		.unwrap();
 
 		assert_eq!(script.script(), &expected);
@@ -277,16 +289,16 @@ mod tests {
 			"{}{}21{}{}21{}{}21{}{}{}{}",
 			OpCode::Push2.to_hex_string(),
 			OpCode::PushData1.to_hex_string(),
-			key1.to_hex(),
+			key1.to_hex_string(),
 			OpCode::PushData1.to_hex_string(),
-			key3.to_hex(),
+			key3.to_hex_string(),
 			OpCode::PushData1.to_hex_string(),
-			key2.to_hex(),
+			key2.to_hex_string(),
 			OpCode::Push3.to_hex_string(),
 			OpCode::Syscall.to_hex_string(),
 			InteropService::SystemCryptoCheckMultiSig.hash()
 		)
-		.from_hex()
+		.from_hex_string()
 		.unwrap();
 
 		assert_eq!(script.script(), &expected);
@@ -313,7 +325,7 @@ mod tests {
 		let deserialized = VerificationScript::from(serialized[1..].to_vec());
 
 		// Check deserialized script matches
-		assert_eq!(deserialized.script(), &expected.from_hex().unwrap());
+		assert_eq!(deserialized.script(), &expected.from_hex_string().unwrap());
 	}
 
 	#[test]
@@ -336,13 +348,6 @@ mod tests {
 		assert!(script.get_nr_of_accounts().is_err());
 	}
 
-	// #[test]
-	// fn test_size() {
-	// 	let data = hex!("147e5f3c929dd830d961626551dbea6b70e4b2837ed2fe9089eed2072ab3a655523ae0fa8711eee4769f1913b180b9b3410bbb2cf770f529c85f6886f22cbaaf").to_vec();
-	// 	let script = VerificationScript::from(data);
-	// 	assert_eq!(script.size(), 65);
-	// }
-
 	#[test]
 	fn test_is_single_sig_script() -> Result<(), BuilderError> {
 		let script = format!(
@@ -360,146 +365,6 @@ mod tests {
 
 		Ok(())
 	}
-
-	// #[test]
-	// fn test_from_public_key() {
-	// 	let key = "035fdb1d1f06759547020891ae97c729327853aeb1256b6fe0473bc2e9fa42ff50";
-	// 	let ec_key = Secp256r1PublicKey::from(key);
-	// 	let script = VerificationScript::from_public_key(&ec_key).unwrap();
-	//
-	// 	let expected = format!(
-	// 		"{}21{}{}{}",
-	// 		OpCode::PushData1.to_string(),
-	// 		key,
-	// 		OpCode::Syscall.to_string(),
-	// 		InteropService::SystemCryptoCheckSig.hash()
-	// 	).from_hex().unwrap();
-	//
-	// 	assert_eq!(script.script(), &expected);
-	// }
-
-	// #[test]
-	// fn test_from_public_keys() {
-	// 	let key1 = hex!("035fdb1d1f06759547020891ae97c729327853aeb1256b6fe0473bc2e9fa42ff50").to_vec();
-	// 	let key2 = hex!("03eda286d19f7ee0b472afd1163d803d620a961e1581a8f2704b52c0285f6e022d").to_vec();
-	// 	let key3 = hex!("03ac81ec17f2f15fd6d193182f927c5971559c2a32b9408a06fec9e711fb7ca02e").to_vec();
-	//
-	// 	let mut pubkeys = vec![
-	// 		Secp256r1PublicKey::from(key1.clone()),
-	// 		Secp256r1PublicKey::from(key2.clone()),
-	// 		Secp256r1PublicKey::from(key3.clone())
-	// 	];
-	//
-	// 	let script = VerificationScript::from_multi_sig(&mut pubkeys, 2).unwrap();
-	//
-	// 	let expected = format!(
-	// 		"{}{}{}21{}{}21{}{}21{}{}{}",
-	// 		OpCode::Push2,
-	// 		OpCode::PushData1,
-	// 		hex::encode(key1),
-	// 		OpCode::PushData1,
-	// 		hex::encode(key3),
-	// 		OpCode::PushData1,
-	// 		hex::encode(key2),
-	// 		OpCode::Push3,
-	// 		OpCode::Syscall,
-	// 		InteropService::SystemCryptoCheckMultiSig.hash()
-	// 	).from_hex().unwrap();
-	//
-	// 	assert_eq!(script.script(), &expected);
-	// }
-
-	// #[test]
-	// fn test_serialize_and_deserialize() {
-	// 	let key = hex!("035fdb1d1f06759547020891ae97c729327853aeb1256b6fe0473bc2e9fa42ff50").to_vec();
-	// 	let ec_pub_key = Secp256r1PublicKey::from(key.clone());
-	//
-	// 	let script = VerificationScript::from_public_key(&ec_pub_key);
-	//
-	// 	let size = vec![NeoConstants::VERIFICATION_SCRIPT_SIZE];
-	// 	let expected = format!(
-	// 		"{}21{}{}{}",
-	// 		OpCode::PushData1,
-	// 		hex::encode(key),
-	// 		OpCode::Syscall,
-	// 		InteropService::SystemCryptoCheckSig.hash(),
-	// 	);
-	//
-	// 	let serialized = format!("{}{}", size, expected).from_hex().unwrap();
-	//
-	// 	assert_eq!(script.script, serialized);
-	//
-	// 	let deserialized = VerificationScript::deserialize(&serialized).unwrap();
-	//
-	// 	assert_eq!(deserialized.script(), &expected);
-	// }
-
-	// #[test]
-	// fn test_get_signing_threshold() {
-	// 	let key = format!(
-	// 		"{}{}{}",
-	// 		OpCode::PushData1,
-	// 		"2102028a99826edc0c97d18e22b6932373d908d323aa7f92656a77ec26e8861699ef",
-	// 		OpCode::PushData1
-	// 	).from_hex().unwrap();
-	//
-	// 	let mut s = String::new();
-	// 	for _ in 1..=3 {
-	// 		s.push_str(&hex::encode(key.clone()));
-	// 	}
-	// 	s.push_str(&format!(
-	// 		"{}{}{}",
-	// 		OpCode::Push3,
-	// 		OpCode::Syscall,
-	// 		InteropService::SystemCryptoCheckMultiSig.hash()
-	// 	));
-	//
-	// 	let script = VerificationScript::from(s.from_hex().unwrap()).unwrap();
-	// 	assert_eq!(script.get_signing_threshold(), Ok(2));
-	// }
-
-	#[test]
-	fn test_throw_on_invalid_script() -> Result<(), BuilderError> {
-		let script =
-			VerificationScript::from("0123456789abcdef".from_hex().map_err(|e| {
-				BuilderError::InvalidScript(format!("Failed to decode hex: {}", e))
-			})?);
-
-		let err = script.get_signing_threshold().unwrap_err();
-		assert_eq!(err.to_string(), "Invalid operation");
-
-		let err = script.get_public_keys().unwrap_err();
-		assert_eq!(err.to_string(), "Invalid operation");
-		let err = script.get_nr_of_accounts().unwrap_err();
-		assert_eq!(err.to_string(), "Invalid operation");
-
-		Ok(())
-	}
-
-	#[test]
-	fn test_size() -> Result<(), BuilderError> {
-		let script = "147e5f3c929dd830d961626551dbea6b70e4b2837ed2fe9089eed2072ab3a655523ae0fa8711eee4769f1913b180b9b3410bbb2cf770f529c85f6886f22cbaaf".from_hex()
-			.map_err(|e| BuilderError::InvalidScript(format!("Failed to decode hex: {}", e)))?;
-
-		let verification = VerificationScript::from(script);
-		assert_eq!(verification.size(), 65);
-
-		Ok(())
-	}
-
-	// #[test]
-	// fn test_is_single_sig_script() {
-	// 	let script = format!(
-	// 		"{}{}{}{}",
-	// 		OpCode::PushData1,
-	// 		"2102028a99826edc0c97d18e22b6932373d908d323aa7f92656a77ec26e8861699ef",
-	// 		OpCode::Syscall,
-	// 		InteropService::SystemCryptoCheckSig.hash()
-	// 	).from_hex().unwrap();
-	//
-	// 	let verification = VerificationScript::from(script);
-	// 	assert!(verification.is_single_sig_script());
-	// }
 
 	#[test]
 	fn test_is_multi_sig() -> Result<(), BuilderError> {

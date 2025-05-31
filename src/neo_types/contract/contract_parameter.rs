@@ -556,14 +556,16 @@ impl ContractParameter {
 	}
 
 	pub fn to_h160(&self) -> Result<H160, String> {
-		match self {
-			ParameterValue::H160(h) => {
+		match &self.value {
+			Some(ParameterValue::H160(h)) => {
 				let bytes = h.from_hex_string()
 					.map_err(|e| format!("Failed to decode hex: {}", e))?;
-				match H160::from_slice(&bytes) {
-					Ok(hash) => Ok(hash),
-					Err(e) => Err(format!("Failed to create H160: {:?}", e)),
+				if bytes.len() != 20 {
+					return Err("Invalid H160 length".to_string());
 				}
+				let mut arr = [0u8; 20];
+				arr.copy_from_slice(&bytes);
+				Ok(H160(arr))
 			},
 			_ => Err(format!("Cannot convert {:?} to H160", self)),
 		}
@@ -718,10 +720,12 @@ impl ParameterValue {
 			ParameterValue::H160(h) => {
 				let bytes = h.from_hex_string()
 					.map_err(|e| format!("Failed to decode hex: {}", e))?;
-				match H160::from_slice(&bytes) {
-					Ok(hash) => Ok(hash),
-					Err(e) => Err(format!("Failed to create H160: {:?}", e)),
+				if bytes.len() != 20 {
+					return Err("Invalid H160 length".to_string());
 				}
+				let mut arr = [0u8; 20];
+				arr.copy_from_slice(&bytes);
+				Ok(H160(arr))
 			},
 			_ => Err(format!("Cannot convert {:?} to H160", self)),
 		}

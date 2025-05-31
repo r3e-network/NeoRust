@@ -6,7 +6,7 @@ use crate::{
 	crypto::Secp256r1PublicKey,
 	neo_codec::VarSizeTrait,
 	neo_crypto::utils::{FromHexString, ToHexString},
-	ScriptHashExtension,
+	neo_types::ScriptHashExtension,
 };
 use primitive_types::H160;
 use serde::{ser::SerializeStruct, Deserialize, Deserializer, Serialize, Serializer};
@@ -59,7 +59,7 @@ impl Serialize for WitnessCondition {
 			},
 			WitnessCondition::ScriptHash(ref hash) => {
 				state.serialize_field("type", "ScriptHash")?;
-				state.serialize_field("hash", &hash.to_hex_string())?;
+				state.serialize_field("hash", &hash.to_hex())?;
 			},
 			WitnessCondition::Group(ref key) | WitnessCondition::CalledByGroup(ref key) => {
 				state.serialize_field(
@@ -77,7 +77,7 @@ impl Serialize for WitnessCondition {
 			},
 			WitnessCondition::CalledByContract(ref hash) => {
 				state.serialize_field("type", "CalledByContract")?;
-				state.serialize_field("hash", &hash.to_hex_string())?;
+				state.serialize_field("hash", &hash.to_hex())?;
 			},
 			WitnessCondition::CalledByGroup(ref key) => {
 				state.serialize_field("type", "CalledByGroup")?;
@@ -151,9 +151,12 @@ where
 			let hash_bytes = hash.from_hex_string().map_err(|e| {
 				serde::de::Error::custom(format!("Failed to decode hex: {}", e))
 			})?;
-			Ok(WitnessCondition::CalledByContract(H160::from_slice(&hash_bytes).map_err(|e| {
-				serde::de::Error::custom(format!("Failed to create H160: {:?}", e))
-			})?))
+			if hash_bytes.len() != 20 {
+				return Err(serde::de::Error::custom("Invalid H160 length"));
+			}
+			let mut arr = [0u8; 20];
+			arr.copy_from_slice(&hash_bytes);
+			Ok(WitnessCondition::CalledByContract(H160(arr)))
 		},
 		_ => Err(serde::de::Error::custom("Unknown WitnessCondition type")),
 	}

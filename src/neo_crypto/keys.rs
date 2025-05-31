@@ -646,13 +646,13 @@ impl NeoSerializable for Secp256r1PublicKey {
 mod tests {
 	use hex_literal::hex;
 	use p256::EncodedPoint;
-	use rustc_serialize::hex::{FromHex, ToHex};
 
 	use crate::{
 		codec::{Decoder, NeoSerializable},
 		crypto::{
 			HashableForVec, Secp256r1PrivateKey, Secp256r1PublicKey, Secp256r1Signature, ToArray32,
 		},
+		neo_crypto::utils::{FromHexString, ToHexString},
 	};
 
 	const ENCODED_POINT: &str =
@@ -705,15 +705,15 @@ mod tests {
 		let enc_point = "03b4af8d061b6b320cce6c63bc4ec7894dce107bfc5f5ef5c68a93b4ad1e136816";
 		let pub_key = Secp256r1PublicKey::from_encoded(&enc_point).unwrap();
 
-		assert_eq!(pub_key.to_array(), enc_point.from_hex().unwrap());
+		assert_eq!(pub_key.to_array(), hex::decode(enc_point).unwrap());
 	}
 
 	#[test]
 	fn test_deserialize_public_key() {
 		let data = hex!("036b17d1f2e12c4247f8bce6e563a440f277037d812deb33a0f4a13945d898c296");
 		let mut decoder = Decoder::new(&data);
-		let mut public_key = Secp256r1PublicKey::decode(&mut decoder).unwrap();
-		assert_eq!(public_key.get_encoded(true).to_hex(), data.to_hex());
+		let public_key = Secp256r1PublicKey::decode(&mut decoder).unwrap();
+		assert_eq!(public_key.get_encoded(true).to_hex_string(), hex::encode(data));
 	}
 
 	#[test]
@@ -772,16 +772,15 @@ mod tests {
 		let signature: Secp256r1Signature = private_key.clone().sign_tx(&hashed_msg).unwrap();
 
 		let expected_signature = Secp256r1Signature::from_scalars(
-			&expected_r.from_hex().unwrap().to_array32().unwrap(),
-			&expected_s.from_hex().unwrap().to_array32().unwrap(),
+			&hex::decode(expected_r).unwrap().to_array32().unwrap(),
+			&hex::decode(expected_s).unwrap().to_array32().unwrap(),
 		)
 		.unwrap_or_else(|e| {
 			eprintln!("Warning: Failed to create signature from scalars: {}", e);
 			// Return a signature created from the actual signature for comparison
 			signature.clone()
 		});
-		assert!(public_key.verify(&hashed_msg, &signature).is_ok());
-		assert!(public_key.verify(&hashed_msg, &signature).is_ok());
+		assert!(public_key.verify(&hashed_msg, &expected_signature).is_ok());
 	}
 }
 

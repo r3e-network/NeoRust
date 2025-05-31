@@ -91,10 +91,10 @@ impl ScriptHashExtension for H160 {
 		if hex.starts_with("0x") {
 			let mut bytes = hex::decode(&hex[2..])?;
 			bytes.reverse();
-			Self::from_slice(&bytes).map_err(|_| hex::FromHexError::InvalidHexCharacter { c: '0', index: 0 })
+			<Self as ScriptHashExtension>::from_slice(&bytes).map_err(|_| hex::FromHexError::InvalidHexCharacter { c: '0', index: 0 })
 		} else {
 			let bytes = hex::decode(hex)?;
-			Self::from_slice(&bytes).map_err(|_| hex::FromHexError::InvalidHexCharacter { c: '0', index: 0 })
+			<Self as ScriptHashExtension>::from_slice(&bytes).map_err(|_| hex::FromHexError::InvalidHexCharacter { c: '0', index: 0 })
 		}
 	}
 
@@ -116,7 +116,7 @@ impl ScriptHashExtension for H160 {
 		let mut rev = [0u8; 20];
 		rev.clone_from_slice(hash);
 		rev.reverse();
-		Self::from_slice(&rev)
+		<Self as ScriptHashExtension>::from_slice(&rev)
 	}
 
 	fn to_address(&self) -> String {

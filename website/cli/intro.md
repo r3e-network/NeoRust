@@ -2,7 +2,7 @@
 
 Welcome to the **NeoRust CLI** - a professional, feature-rich command-line interface for Neo N3 blockchain operations with beautiful output and comprehensive functionality.
 
-![NeoRust CLI](../static/img/cli-hero.png)
+![NeoRust CLI](../static/img/cli-hero.svg)
 
 ## 🌟 Why Choose NeoRust CLI
 

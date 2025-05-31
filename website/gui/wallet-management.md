@@ -16,7 +16,7 @@
 
 The wallet dashboard is your central hub for managing all Neo N3 assets and operations.
 
-![Wallet Dashboard](../static/img/wallet-dashboard.png)
+![Wallet Dashboard](../static/img/wallet-dashboard.svg)
 
 ### **Key Components**
 

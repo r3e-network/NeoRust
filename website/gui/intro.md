@@ -2,7 +2,7 @@
 
 Welcome to the **NeoRust Desktop GUI** - a beautiful, modern, and powerful Neo N3 wallet application built with cutting-edge technologies.
 
-![NeoRust Desktop GUI](../static/img/gui-hero.png)
+![NeoRust Desktop GUI](../static/img/gui-hero.svg)
 
 ## 🌟 What Makes Our GUI Special
 

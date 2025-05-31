@@ -539,8 +539,7 @@ impl NEP2 {
 ///
 /// A NEP2-formatted string containing the encrypted key, or an error if encryption fails
 pub fn get_nep2_from_private_key(pri_key: &str, passphrase: &str) -> Result<String, crate::providers::ProviderError> {
-	let private_key = pri_key
-		.from_hex()
+	let private_key = hex::decode(pri_key)
 		.map_err(|_| crate::providers::ProviderError::CustomError("Invalid hex in private key".to_string()))?;
 
 	let key_pair =

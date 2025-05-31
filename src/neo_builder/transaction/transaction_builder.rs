@@ -52,7 +52,8 @@ use crate::builder::SignerTrait;
 use getset::{CopyGetters, Getters, MutGetters, Setters};
 use once_cell::sync::Lazy;
 use primitive_types::H160;
-use rustc_serialize::hex::ToHex;
+use serde::{Deserialize, Serialize};
+use serde_json::Value;
 // Import from neo_types
 use crate::neo_types::{
 	Bytes, ContractParameter, InvocationResult, NameOrAddress, ScriptHash, ScriptHashExtension,
@@ -383,7 +384,7 @@ impl<'a, P: JsonRpcProvider + 'static> TransactionBuilder<'a, P> {
 			.client
 			.unwrap()
 			.rpc_client()
-			.invoke_script(self.script.clone().unwrap().to_hex(), self.signers.clone())
+			.invoke_script(self.script.clone().unwrap().to_hex_string(), self.signers.clone())
 			.await
 			.map_err(|e| TransactionError::ProviderError(e))?;
 		Ok((result))
@@ -525,7 +526,7 @@ impl<'a, P: JsonRpcProvider + 'static> TransactionBuilder<'a, P> {
 			.ok_or_else(|| TransactionError::IllegalState("Client is not set".to_string()))?;
 
 		let response = client
-			.invoke_script(script.to_hex(), vec![self.signers[0].clone()])
+			.invoke_script(script.to_hex_string(), vec![self.signers[0].clone()])
 			.await
 			.map_err(|e| TransactionError::ProviderError(e))?;
 
@@ -638,7 +639,7 @@ impl<'a, P: JsonRpcProvider + 'static> TransactionBuilder<'a, P> {
 			return Err(TransactionError::TransactionConfiguration("A transaction requires at least one signing account (i.e. an AccountSigner). None was provided.".to_string()))
 		}
 
-		let fee = client.calculate_network_fee(tx.to_array().to_hex()).await?;
+		let fee = client.calculate_network_fee(tx.to_array().to_hex_string()).await?;
 		Ok(fee.network_fee)
 	}
 

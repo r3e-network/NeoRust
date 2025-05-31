@@ -136,10 +136,11 @@ jobs:
 
       - name: Build CLI binary
         run: |
+          cd neo-cli
           if [ "${{ matrix.cross }}" = "true" ]; then
-            cross build --release --target ${{ matrix.target }} --bin neo-cli --features "network,fs,storage,files,neofs"
+            cross build --release --target ${{ matrix.target }} --features "network,fs,storage,files,neofs"
           else
-            cargo build --release --target ${{ matrix.target }} --bin neo-cli --features "network,fs,storage,files,neofs"
+            cargo build --release --target ${{ matrix.target }} --features "network,fs,storage,files,neofs"
           fi
         shell: bash
 
@@ -167,11 +168,11 @@ jobs:
           mkdir -p release
           
           # CLI binary
-          cp target/${{ matrix.target }}/release/neo-cli release/neo-cli-${{ matrix.name }}
+          cp neo-cli/target/${{ matrix.target }}/release/neo-cli release/neo-cli-${{ matrix.name }}
           
           # GUI binary (if exists)
-          if [ -f "target/${{ matrix.target }}/release/neo-gui" ]; then
-            cp target/${{ matrix.target }}/release/neo-gui release/neo-gui-${{ matrix.name }}
+          if [ -f "neo-gui/target/${{ matrix.target }}/release/neo-gui" ]; then
+            cp neo-gui/target/${{ matrix.target }}/release/neo-gui release/neo-gui-${{ matrix.name }}
           fi
           
           # Create archive
@@ -185,11 +186,11 @@ jobs:
           mkdir release
           
           # CLI binary
-          cp target/${{ matrix.target }}/release/neo-cli.exe release/neo-cli-${{ matrix.name }}.exe
+          cp neo-cli/target/${{ matrix.target }}/release/neo-cli.exe release/neo-cli-${{ matrix.name }}.exe
           
           # GUI binary (if exists)
-          if (Test-Path "target/${{ matrix.target }}/release/neo-gui.exe") {
-            cp target/${{ matrix.target }}/release/neo-gui.exe release/neo-gui-${{ matrix.name }}.exe
+          if (Test-Path "neo-gui/target/${{ matrix.target }}/release/neo-gui.exe") {
+            cp neo-gui/target/${{ matrix.target }}/release/neo-gui.exe release/neo-gui-${{ matrix.name }}.exe
           }
           
           # Create archive

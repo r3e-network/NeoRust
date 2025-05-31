@@ -1,9 +1,9 @@
 use crate::{
 	builder::{BuilderError, InteropService},
 	codec::Decoder,
+	neo_crypto::utils::ToHexString,
 	Bytes, OpCode, OperandSize,
 };
-use rustc_serialize::hex::ToHex;
 use tokio::io::AsyncReadExt;
 
 /// A utility struct for reading and interpreting Neo smart contract scripts.
@@ -72,7 +72,7 @@ impl ScriptReader {
 						// Fixed size operand
 						result.push_str(&format!(
 							" {}",
-							reader.read_bytes(size.size().clone() as usize).unwrap().to_hex()
+							reader.read_bytes(size.size().clone() as usize).unwrap().to_hex_string()
 						));
 					} else if size.prefix_size().clone() > 0 {
 						// Variable size operand with prefix
@@ -80,7 +80,7 @@ impl ScriptReader {
 						result.push_str(&format!(
 							" {} {}",
 							prefix_size,
-							reader.read_bytes(prefix_size).unwrap().to_hex()
+							reader.read_bytes(prefix_size).unwrap().to_hex_string()
 						));
 					}
 				}
@@ -126,14 +126,12 @@ impl ScriptReader {
 
 #[cfg(test)]
 mod tests {
-	use rustc_serialize::hex::FromHex;
-
 	use super::*;
 
 	#[test]
 	fn test_convert_to_op_code_string() {
 		// Test script in hexadecimal format
-		let script = "0c0548656c6c6f0c05576f726c642150419bf667ce41e63f18841140".from_hex().unwrap();
+		let script = hex::decode("0c0548656c6c6f0c05576f726c642150419bf667ce41e63f18841140").unwrap();
 
 		// Expected output after conversion
 		let expected_op_code_string = "PUSHDATA1 5 48656c6c6f\nPUSHDATA1 5 576f726c64\nNOP\nSWAP\nSYSCALL 9bf667ce\nSYSCALL e63f1884\nPUSH1\nRET\n";

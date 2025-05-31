@@ -87,6 +87,7 @@ sha2 = { version = "0.10.7", default-features = false }
 tiny-keccak = { version = "2.0.2", default-features = false }
 spki = { version = "0.7.2", default-features = false }
 hmac = "0.12.1"
+base64 = "0.21.7"
 
 # serde
 serde = { version = "1.0", features = ["derive"] }
@@ -128,7 +129,6 @@ web-time = "1.1.0"  # Modern replacement for instant with better WASM support
 serde_with = "3.3.0"
 serde_derive = "1.0.188"
 # For base64 encoding
-base64 = "0.22.1"
 bs58 = "0.5.1"
 aes = "0.8.3"
 block-modes = "0.9.1"
@@ -166,7 +166,6 @@ byteorder = "1.4.3"
 serde-big-array = "0.5.1"
 blake2 = { version = "0.10.6", default-features = false }
 ethereum-types = "0.15.0"
-rustc-serialize = "0.3.24"
 serde_bytes = "0.11.12"
 
 scrypt = "0.11.0"
@@ -200,7 +199,7 @@ protobuf = { version = "3.7.2", optional = true }
 # yubi
 yubihsm = { version = "0.42", features = ["http", "usb"] }
 block-padding = "0.3.3"
-env_logger = "^0.11.3"
+env_logger = "0.11.7"
 async-stream = "0.3.5"
 
 bip39 = { version = "2.1.0", features = ["rand"] }

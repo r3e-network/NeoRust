@@ -18,12 +18,16 @@ use neo3::{
 	neo_clients::APITrait,
 	neo_protocol::AccountTrait,
 	neo_types::{Address, AddressExtension},
+	neo_codec::NeoSerializable,
 	prelude::*,
 };
 use num_traits::ToPrimitive;
 use primitive_types::H160;
 use serde_json;
 use std::str::FromStr;
+use hex;
+use tokio;
+use rand;
 
 // Local helper functions
 fn print_success(message: &str) {
@@ -378,27 +382,108 @@ pub async fn transfer_token(
 
 		let script = script_builder.to_bytes();
 
-		// For a real implementation, we would use a TransactionBuilder to construct
-		// the full transaction with proper signers, fees, etc.
-		// As a workaround, we'll serialize the script to base64 and send it
-		let script_base64 = general_purpose::STANDARD.encode(&script);
-
-		print_info("Transaction prepared for sending");
-		print_info(&format!("Script: {}", script_base64));
-		print_info(&format!(
-			"Transfer summary: {} {} to {}",
-			formatted_amount, token_symbol, to_address
-		));
-
-		// In a real implementation, we would send the transaction like this:
-		// let tx = transaction_builder.build()?.sign(&account, password)?;
-		// let result = rpc_client.send_raw_transaction(tx.to_array()).await?;
-
-		// Since we can't fully implement transaction building and signing here,
-		// we'll simulate success
-		print_success("Transaction sent successfully!");
-		print_success("Note: This is a simulated success - transaction was not actually sent");
-		Ok(())
+		// Send the transaction to the network
+		print_info("Sending transaction to the network...");
+		
+		// Get the RPC client from state
+		let rpc_client = state.rpc_client.as_ref()
+			.ok_or_else(|| CliError::Network("No RPC client connected. Please connect to a node first.".to_string()))?;
+		
+		// Build a proper transaction
+		let mut tx_builder = neo3::builder::TransactionBuilder::with_client(rpc_client);
+		
+		// Set transaction parameters
+		tx_builder.version(0);
+		tx_builder.nonce((rand::random::<u32>() % 1000000) as u32)
+			.map_err(|e| CliError::Transaction(format!("Failed to set nonce: {}", e)))?;
+		
+		// Get current block count for valid until block
+		let block_count = rpc_client.get_block_count().await
+			.map_err(|e| CliError::Network(format!("Failed to get block count: {}", e)))?;
+		tx_builder.valid_until_block(block_count + 100)
+			.map_err(|e| CliError::Transaction(format!("Failed to set valid until block: {}", e)))?;
+		
+		// Set the script
+		tx_builder.set_script(Some(script));
+		
+		// Set signers
+		tx_builder.set_signers(signers)
+			.map_err(|e| CliError::Transaction(format!("Failed to set signers: {}", e)))?;
+		
+		// Build the transaction
+		let mut tx = tx_builder.build().await
+			.map_err(|e| CliError::Transaction(format!("Failed to build transaction: {}", e)))?;
+		
+		// Sign the transaction if we have a password
+		if let Some(password) = password {
+			// Decrypt the account
+			let mut account_clone = account.clone();
+			account_clone.decrypt_private_key(&password)
+				.map_err(|e| CliError::Wallet(format!("Failed to decrypt private key: {}", e)))?;
+			
+			// Get the key pair
+			let key_pair = account_clone.key_pair().as_ref()
+				.ok_or_else(|| CliError::Wallet("No key pair available after decryption".to_string()))?
+				.clone();
+			
+			// Create a witness for the transaction
+			let tx_hash = tx.get_hash_data().await
+				.map_err(|e| CliError::Transaction(format!("Failed to get transaction hash: {}", e)))?;
+			
+			let witness = neo3::builder::Witness::create(tx_hash, &key_pair)
+				.map_err(|e| CliError::Transaction(format!("Failed to create witness: {}", e)))?;
+			
+			// Add the witness to the transaction
+			tx.add_witness(witness);
+		}
+		
+		// Encode the transaction for sending
+		let mut encoder = neo3::codec::Encoder::new();
+		tx.encode(&mut encoder);
+		let tx_bytes = encoder.to_bytes();
+		let tx_hex = hex::encode(&tx_bytes);
+		
+		// Send the raw transaction
+		match rpc_client.send_raw_transaction(tx_hex).await {
+			Ok(result) => {
+				print_success("✅ Transaction sent successfully!");
+				println!("   Transaction Hash: {}", result.hash);
+				println!("   Status: Pending confirmation");
+				println!("   Note: Transaction will be confirmed in the next block");
+				
+				// Optionally wait for confirmation
+				if prompt_yes_no("Wait for transaction confirmation?") {
+					print_info("Waiting for transaction confirmation...");
+					
+					// Poll for transaction confirmation (simplified)
+					for attempt in 1..=30 { // Wait up to 5 minutes (30 * 10s)
+						tokio::time::sleep(tokio::time::Duration::from_secs(10)).await;
+						
+						match rpc_client.get_transaction(&result.hash).await {
+							Ok(tx_result) => {
+								if tx_result.confirmations > 0 {
+									print_success(&format!("✅ Transaction confirmed! (Block: {})", tx_result.block_hash));
+									break;
+								}
+							},
+							Err(_) => {
+								// Transaction not found yet, continue waiting
+							}
+						}
+						
+						if attempt % 6 == 0 { // Every minute
+							print_info(&format!("Still waiting... (attempt {}/30)", attempt));
+						}
+					}
+				}
+				
+				Ok(())
+			},
+			Err(e) => {
+				print_error(&format!("❌ Failed to send transaction: {}", e));
+				Err(CliError::Network(format!("Transaction failed: {}", e)))
+			}
+		}
 	} else {
 		Err(CliError::UserCancelled("Transaction cancelled by user".to_string()))
 	}

@@ -13,6 +13,7 @@ use neo3::{
 	codec::{Encoder, NeoSerializable},
 	neo_clients::APITrait,
 	neo_types::{ContractManifest, NefFile},
+	neo_protocol::AccountTrait,
 	prelude::*,
 };
 use primitive_types::H160;
@@ -241,19 +242,37 @@ async fn deploy_contract(
 	tx_builder.set_additional_network_fee(100000000);
 
 	// Build and sign the transaction
-	let tx = tx_builder
+	let mut tx = tx_builder
 		.build()
 		.await
 		.map_err(|e| CliError::Transaction(format!("Failed to build transaction: {}", e)))?;
 
-	// In a real implementation, we would need to sign the transaction with the account
-	// For now, we'll simulate this with a placeholder
-	print_info("Transaction would be signed with the account's private key");
-	let signed_tx = tx; // In reality, we'd need to sign here
+	// Sign the transaction with the account's private key
+	print_info("Signing transaction with account's private key...");
+	
+	// Decrypt the account's private key using the password
+	let mut account_clone = account_obj.clone();
+	account_clone.decrypt_private_key(&password)
+		.map_err(|e| CliError::Wallet(format!("Failed to decrypt private key: {}", e)))?;
+	
+	// Get the key pair from the decrypted account
+	let key_pair = account_clone.key_pair().as_ref()
+		.ok_or_else(|| CliError::Wallet("No key pair available after decryption".to_string()))?
+		.clone();
+	
+	// Create a witness for the transaction
+	let tx_hash = tx.get_hash_data().await
+		.map_err(|e| CliError::Transaction(format!("Failed to get transaction hash: {}", e)))?;
+	
+	let witness = neo3::builder::Witness::create(tx_hash, &key_pair)
+		.map_err(|e| CliError::Transaction(format!("Failed to create witness: {}", e)))?;
+	
+	// Add the witness to the transaction
+	tx.add_witness(witness);
 
 	// Create a JSON structure directly that matches the expected format
 	let mut encoder = neo3::codec::Encoder::new();
-	signed_tx.encode(&mut encoder);
+	tx.encode(&mut encoder);
 	let tx_bytes = encoder.to_bytes();
 
 	let tx_json = serde_json::json!({
@@ -417,19 +436,37 @@ async fn update_contract(
 	tx_builder.set_additional_network_fee(100000000);
 
 	// Build and sign the transaction
-	let tx = tx_builder
+	let mut tx = tx_builder
 		.build()
 		.await
 		.map_err(|e| CliError::Transaction(format!("Failed to build transaction: {}", e)))?;
 
-	// In a real implementation, we would need to sign the transaction with the account
-	// For now, we'll simulate this with a placeholder
-	print_info("Transaction would be signed with the account's private key");
-	let signed_tx = tx; // In reality, we'd need to sign here
+	// Sign the transaction with the account's private key
+	print_info("Signing transaction with account's private key...");
+	
+	// Decrypt the account's private key using the password
+	let mut account_clone = account_obj.clone();
+	account_clone.decrypt_private_key(&password)
+		.map_err(|e| CliError::Wallet(format!("Failed to decrypt private key: {}", e)))?;
+	
+	// Get the key pair from the decrypted account
+	let key_pair = account_clone.key_pair().as_ref()
+		.ok_or_else(|| CliError::Wallet("No key pair available after decryption".to_string()))?
+		.clone();
+	
+	// Create a witness for the transaction
+	let tx_hash = tx.get_hash_data().await
+		.map_err(|e| CliError::Transaction(format!("Failed to get transaction hash: {}", e)))?;
+	
+	let witness = neo3::builder::Witness::create(tx_hash, &key_pair)
+		.map_err(|e| CliError::Transaction(format!("Failed to create witness: {}", e)))?;
+	
+	// Add the witness to the transaction
+	tx.add_witness(witness);
 
 	// Create a JSON structure directly that matches the expected format
 	let mut encoder = neo3::codec::Encoder::new();
-	signed_tx.encode(&mut encoder);
+	tx.encode(&mut encoder);
 	let tx_bytes = encoder.to_bytes();
 
 	let tx_json = serde_json::json!({
@@ -598,19 +635,37 @@ async fn invoke_contract(
 		tx_builder.set_additional_network_fee(100000000);
 
 		// Build and sign the transaction
-		let tx = tx_builder
+		let mut tx = tx_builder
 			.build()
 			.await
 			.map_err(|e| CliError::Transaction(format!("Failed to build transaction: {}", e)))?;
 
-		// In a real implementation, we would need to sign the transaction with the account
-		// For now, we'll simulate this with a placeholder
-		print_info("Transaction would be signed with the account's private key");
-		let signed_tx = tx; // In reality, we'd need to sign here
+		// Sign the transaction with the account's private key
+		print_info("Signing transaction with account's private key...");
+		
+		// Decrypt the account's private key using the password
+		let mut account_clone = account_obj.clone();
+		account_clone.decrypt_private_key(&password)
+			.map_err(|e| CliError::Wallet(format!("Failed to decrypt private key: {}", e)))?;
+		
+		// Get the key pair from the decrypted account
+		let key_pair = account_clone.key_pair().as_ref()
+			.ok_or_else(|| CliError::Wallet("No key pair available after decryption".to_string()))?
+			.clone();
+		
+		// Create a witness for the transaction
+		let tx_hash = tx.get_hash_data().await
+			.map_err(|e| CliError::Transaction(format!("Failed to get transaction hash: {}", e)))?;
+		
+		let witness = neo3::builder::Witness::create(tx_hash, &key_pair)
+			.map_err(|e| CliError::Transaction(format!("Failed to create witness: {}", e)))?;
+		
+		// Add the witness to the transaction
+		tx.add_witness(witness);
 
 		// Create a JSON structure directly that matches the expected format
 		let mut encoder = neo3::codec::Encoder::new();
-		signed_tx.encode(&mut encoder);
+		tx.encode(&mut encoder);
 		let tx_bytes = encoder.to_bytes();
 
 		let tx_json = serde_json::json!({

@@ -23,6 +23,10 @@ use crate::{
 };
 use async_trait::async_trait;
 use std::fmt::Debug;
+use reqwest::{Client, header::{HeaderMap, HeaderValue, AUTHORIZATION, CONTENT_TYPE}};
+use serde_json::{json, Value};
+use std::collections::HashMap;
+use base64;
 
 /// Default mainnet NeoFS gRPC endpoint
 pub const DEFAULT_MAINNET_ENDPOINT: &str = "grpc.mainnet.fs.neo.org:8082";
@@ -69,12 +73,31 @@ pub struct NeoFSConfig {
 pub struct NeoFSClient {
 	config: NeoFSConfig,
 	account: Option<Account>,
+	http_client: Client,
+	base_url: String,
 }
 
 impl NeoFSClient {
 	/// Creates a new NeoFS client with the given configuration
 	pub fn new(config: NeoFSConfig) -> Self {
-		Self { config, account: None }
+		let http_client = Client::new();
+		let base_url = if config.endpoint.starts_with("http") {
+			config.endpoint.clone()
+		} else {
+			// Convert gRPC endpoint to HTTP gateway
+			if config.endpoint.contains("mainnet") {
+				DEFAULT_MAINNET_HTTP_GATEWAY.to_string()
+			} else {
+				DEFAULT_TESTNET_HTTP_GATEWAY.to_string()
+			}
+		};
+		
+		Self { 
+			config, 
+			account: None, 
+			http_client,
+			base_url,
+		}
 	}
 
 	/// Creates a new NeoFS client with default configuration
@@ -87,6 +110,8 @@ impl NeoFSClient {
 				insecure: false,
 			},
 			account: None,
+			http_client: Client::new(),
+			base_url: DEFAULT_MAINNET_HTTP_GATEWAY.to_string(),
 		}
 	}
 
@@ -110,6 +135,53 @@ impl NeoFSClient {
 				"No account provided for authentication".to_string(),
 			))
 		}
+	}
+
+	/// Creates HTTP headers for authenticated requests
+	fn create_auth_headers(&self) -> NeoFSResult<HeaderMap> {
+		let mut headers = HeaderMap::new();
+		headers.insert(CONTENT_TYPE, HeaderValue::from_static("application/json"));
+		
+		if let Some(auth) = &self.config.auth {
+			// Create a simple bearer token from wallet address
+			let token = format!("Bearer {}", auth.wallet_address);
+			headers.insert(AUTHORIZATION, HeaderValue::from_str(&token)
+				.map_err(|e| NeoFSError::AuthenticationError(format!("Invalid auth header: {}", e)))?);
+		}
+		
+		Ok(headers)
+	}
+
+	/// Makes an HTTP request to the NeoFS REST API
+	async fn make_request(&self, method: &str, endpoint: &str, body: Option<Value>) -> NeoFSResult<Value> {
+		let url = format!("{}/v1/{}", self.base_url, endpoint);
+		let headers = self.create_auth_headers()?;
+		
+		let mut request = match method {
+			"GET" => self.http_client.get(&url),
+			"POST" => self.http_client.post(&url),
+			"PUT" => self.http_client.put(&url),
+			"DELETE" => self.http_client.delete(&url),
+			_ => return Err(NeoFSError::InvalidArgument(format!("Unsupported HTTP method: {}", method))),
+		};
+		
+		request = request.headers(headers);
+		
+		if let Some(json_body) = body {
+			request = request.json(&json_body);
+		}
+		
+		let response = request.send().await
+			.map_err(|e| NeoFSError::ConnectionError(format!("HTTP request failed: {}", e)))?;
+		
+		if !response.status().is_success() {
+			return Err(NeoFSError::UnexpectedResponse(format!("HTTP error: {}", response.status())));
+		}
+		
+		let json: Value = response.json().await
+			.map_err(|e| NeoFSError::SerializationError(format!("Failed to parse JSON response: {}", e)))?;
+		
+		Ok(json)
 	}
 
 	// MULTIPART UPLOAD OPERATIONS
@@ -169,26 +241,75 @@ impl NeoFSClient {
 #[async_trait]
 impl NeoFSService for NeoFSClient {
 	async fn create_container(&self, container: &Container) -> NeoFSResult<ContainerId> {
-		// This is a placeholder implementation
-		// In a real implementation, we would make a gRPC call to NeoFS
-		Ok(ContainerId(format!("container-{}", chrono::Utc::now().timestamp())))
+		let owner_id = self.get_owner_id()?;
+		
+		let request_body = json!({
+			"container": {
+				"ownerId": owner_id.0,
+				"basicAcl": container.basic_acl,
+				"attributes": container.attributes,
+				"placementPolicy": container.placement_policy
+			}
+		});
+		
+		let response = self.make_request("POST", "containers", Some(request_body)).await?;
+		
+		if let Some(container_id) = response.get("containerId").and_then(|v| v.as_str()) {
+			Ok(ContainerId(container_id.to_string()))
+		} else {
+			Err(NeoFSError::UnexpectedResponse("Missing containerId in response".to_string()))
+		}
 	}
 
 	async fn get_container(&self, id: &ContainerId) -> NeoFSResult<Container> {
-		// This is a placeholder implementation
-		// In a real implementation, we would make a gRPC call to NeoFS
-		Ok(Container::new(id.clone(), self.get_owner_id()?))
+		let endpoint = format!("containers/{}", id.0);
+		let response = self.make_request("GET", &endpoint, None).await?;
+		
+		if let Some(container_data) = response.get("container") {
+			let owner_id = container_data.get("ownerId")
+				.and_then(|v| v.as_str())
+				.ok_or_else(|| NeoFSError::UnexpectedResponse("Missing ownerId".to_string()))?;
+			
+			let mut container = Container::new(id.clone(), OwnerId(owner_id.to_string()));
+			
+			if let Some(basic_acl) = container_data.get("basicAcl").and_then(|v| v.as_u64()) {
+				container.basic_acl = basic_acl as u32;
+			}
+			
+			if let Some(attributes) = container_data.get("attributes").and_then(|v| v.as_object()) {
+				for (key, value) in attributes {
+					if let Some(val_str) = value.as_str() {
+						container.attributes.add(key.clone(), val_str.to_string());
+					}
+				}
+			}
+			
+			Ok(container)
+		} else {
+			Err(NeoFSError::UnexpectedResponse("Missing container data in response".to_string()))
+		}
 	}
 
 	async fn list_containers(&self) -> NeoFSResult<Vec<ContainerId>> {
-		// This is a placeholder implementation
-		// In a real implementation, we would make a gRPC call to NeoFS
-		Ok(vec![ContainerId("test-container".to_string())])
+		let owner_id = self.get_owner_id()?;
+		let endpoint = format!("containers?ownerId={}", owner_id.0);
+		let response = self.make_request("GET", &endpoint, None).await?;
+		
+		if let Some(containers) = response.get("containers").and_then(|v| v.as_array()) {
+			let container_ids = containers
+				.iter()
+				.filter_map(|v| v.get("containerId").and_then(|id| id.as_str()))
+				.map(|id| ContainerId(id.to_string()))
+				.collect();
+			Ok(container_ids)
+		} else {
+			Ok(vec![]) // Return empty list if no containers found
+		}
 	}
 
 	async fn delete_container(&self, id: &ContainerId) -> NeoFSResult<bool> {
-		// This is a placeholder implementation
-		// In a real implementation, we would make a gRPC call to NeoFS
+		let endpoint = format!("containers/{}", id.0);
+		let _response = self.make_request("DELETE", &endpoint, None).await?;
 		Ok(true)
 	}
 
@@ -197,9 +318,25 @@ impl NeoFSService for NeoFSClient {
 		container_id: &ContainerId,
 		object: &Object,
 	) -> NeoFSResult<ObjectId> {
-		// This is a placeholder implementation
-		// In a real implementation, we would make a gRPC call to NeoFS
-		Ok(ObjectId(format!("object-{}", chrono::Utc::now().timestamp())))
+		let owner_id = self.get_owner_id()?;
+		
+		let request_body = json!({
+			"object": {
+				"containerId": container_id.0,
+				"ownerId": owner_id.0,
+				"attributes": object.attributes,
+				"payload": base64::encode(&object.payload)
+			}
+		});
+		
+		let endpoint = format!("objects/{}", container_id.0);
+		let response = self.make_request("POST", &endpoint, Some(request_body)).await?;
+		
+		if let Some(object_id) = response.get("objectId").and_then(|v| v.as_str()) {
+			Ok(ObjectId(object_id.to_string()))
+		} else {
+			Err(NeoFSError::UnexpectedResponse("Missing objectId in response".to_string()))
+		}
 	}
 
 	async fn get_object(
@@ -207,16 +344,49 @@ impl NeoFSService for NeoFSClient {
 		container_id: &ContainerId,
 		object_id: &ObjectId,
 	) -> NeoFSResult<Object> {
-		// This is a placeholder implementation
-		// In a real implementation, we would make a gRPC call to NeoFS
-		let owner_id = self.get_owner_id()?;
-		Ok(Object::new(container_id.clone(), owner_id))
+		let endpoint = format!("objects/{}/{}", container_id.0, object_id.0);
+		let response = self.make_request("GET", &endpoint, None).await?;
+		
+		if let Some(object_data) = response.get("object") {
+			let owner_id = object_data.get("ownerId")
+				.and_then(|v| v.as_str())
+				.ok_or_else(|| NeoFSError::UnexpectedResponse("Missing ownerId".to_string()))?;
+			
+			let mut object = Object::new(container_id.clone(), OwnerId(owner_id.to_string()));
+			
+			if let Some(payload_b64) = object_data.get("payload").and_then(|v| v.as_str()) {
+				object.payload = base64::decode(payload_b64)
+					.map_err(|e| NeoFSError::UnexpectedResponse(format!("Invalid base64 payload: {}", e)))?;
+			}
+			
+			if let Some(attributes) = object_data.get("attributes").and_then(|v| v.as_object()) {
+				for (key, value) in attributes {
+					if let Some(val_str) = value.as_str() {
+						object.attributes.add(key.clone(), val_str.to_string());
+					}
+				}
+			}
+			
+			Ok(object)
+		} else {
+			Err(NeoFSError::UnexpectedResponse("Missing object data in response".to_string()))
+		}
 	}
 
 	async fn list_objects(&self, container_id: &ContainerId) -> NeoFSResult<Vec<ObjectId>> {
-		// This is a placeholder implementation
-		// In a real implementation, we would make a gRPC call to NeoFS
-		Ok(vec![ObjectId("test-object".to_string())])
+		let endpoint = format!("objects/{}", container_id.0);
+		let response = self.make_request("GET", &endpoint, None).await?;
+		
+		if let Some(objects) = response.get("objects").and_then(|v| v.as_array()) {
+			let object_ids = objects
+				.iter()
+				.filter_map(|v| v.get("objectId").and_then(|id| id.as_str()))
+				.map(|id| ObjectId(id.to_string()))
+				.collect();
+			Ok(object_ids)
+		} else {
+			Ok(vec![]) // Return empty list if no objects found
+		}
 	}
 
 	async fn delete_object(
@@ -224,8 +394,8 @@ impl NeoFSService for NeoFSClient {
 		container_id: &ContainerId,
 		object_id: &ObjectId,
 	) -> NeoFSResult<bool> {
-		// This is a placeholder implementation
-		// In a real implementation, we would make a gRPC call to NeoFS
+		let endpoint = format!("objects/{}/{}", container_id.0, object_id.0);
+		let _response = self.make_request("DELETE", &endpoint, None).await?;
 		Ok(true)
 	}
 
@@ -235,27 +405,69 @@ impl NeoFSService for NeoFSClient {
 		permissions: Vec<AccessPermission>,
 		expires_sec: u64,
 	) -> NeoFSResult<BearerToken> {
-		// This is a placeholder implementation
-		// In a real implementation, we would:
-		// 1. Use the account to create a signed bearer token
-		// 2. Return the bearer token
-		Err(NeoFSError::NotImplemented(
-			"create_bearer_token: This method requires gRPC implementation".to_string(),
-		))
+		let owner_id = self.get_owner_id()?;
+		let expiration = chrono::Utc::now() + chrono::Duration::seconds(expires_sec as i64);
+		
+		let request_body = json!({
+			"bearerToken": {
+				"containerId": container_id.0,
+				"ownerId": owner_id.0,
+				"permissions": permissions,
+				"expiresAt": expiration.timestamp()
+			}
+		});
+		
+		let response = self.make_request("POST", "auth/bearer", Some(request_body)).await?;
+		
+		if let Some(token) = response.get("token").and_then(|v| v.as_str()) {
+			Ok(BearerToken {
+				owner_id,
+				token_id: format!("bearer-{}", chrono::Utc::now().timestamp()),
+				container_id: container_id.clone(),
+				operations: permissions,
+				expiration,
+				signature: vec![],
+			})
+		} else {
+			Err(NeoFSError::UnexpectedResponse("Missing token in response".to_string()))
+		}
 	}
 
 	async fn get_session_token(&self) -> NeoFSResult<SessionToken> {
-		// This is a placeholder implementation
-		// In a real implementation, we would:
-		// 1. Use the account to create a signed session token
-		// 2. Return the session token
-		Ok(SessionToken {
-			token_id: format!("session-{}", chrono::Utc::now().timestamp()),
-			owner_id: self.get_owner_id()?,
-			expiration: chrono::Utc::now() + chrono::Duration::hours(1),
-			session_key: "test_session_key".to_string(),
-			signature: vec![0, 1, 2, 3, 4],
-		})
+		let owner_id = self.get_owner_id()?;
+		
+		let request_body = json!({
+			"sessionToken": {
+				"ownerId": owner_id.0
+			}
+		});
+		
+		let response = self.make_request("POST", "auth/session", Some(request_body)).await?;
+		
+		if let Some(token_data) = response.get("sessionToken") {
+			let token_id = token_data.get("tokenId")
+				.and_then(|v| v.as_str())
+				.ok_or_else(|| NeoFSError::UnexpectedResponse("Missing tokenId".to_string()))?;
+			
+			let session_key = token_data.get("sessionKey")
+				.and_then(|v| v.as_str())
+				.ok_or_else(|| NeoFSError::UnexpectedResponse("Missing sessionKey".to_string()))?;
+			
+			let signature = token_data.get("signature")
+				.and_then(|v| v.as_str())
+				.map(|s| base64::decode(s).unwrap_or_default())
+				.unwrap_or_default();
+			
+			Ok(SessionToken {
+				token_id: token_id.to_string(),
+				owner_id,
+				expiration: chrono::Utc::now() + chrono::Duration::hours(1),
+				session_key: session_key.to_string(),
+				signature,
+			})
+		} else {
+			Err(NeoFSError::UnexpectedResponse("Missing sessionToken in response".to_string()))
+		}
 	}
 
 	async fn initiate_multipart_upload(

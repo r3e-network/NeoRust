@@ -1,5 +1,5 @@
 use crate::{
-	commands::network::CliState,
+	commands::wallet::CliState,
 	errors::CliError,
 	utils::{
 		config::{load_config, save_config, NeoFSEndpoint},
@@ -14,6 +14,8 @@ use std::{
 	path::{Path, PathBuf},
 	str::FromStr,
 };
+use neo3::neo_fs::{NeoFSService, NeoFSClient, Container, ContainerId, OwnerId, Object, ObjectId};
+use neo3::neo_fs::client::{NeoFSConfig, NeoFSAuth};
 
 // For compatibility with the new API
 const DEFAULT_MAINNET_ENDPOINT: &str = "https://grpc.fs.neo.org";
@@ -278,11 +280,12 @@ pub async fn handle_endpoint_command(command: EndpointCommands) -> Result<(), Cl
 					print_success(&format!("✅ Successfully connected to {} endpoint: {}", type_, test_endpoint));
 					println!("   Network: {}", network);
 					println!("   Response time: < 1s");
+					Ok(())
 				},
 				Err(e) => {
 					print_error(&format!("❌ Failed to connect to {} endpoint: {}", type_, test_endpoint));
 					println!("   Error: {}", e);
-					return Err(CliError::Network(format!("Connection test failed: {}", e)));
+					Err(CliError::Network(format!("Connection test failed: {}", e)))
 				}
 			}
 		},
@@ -384,15 +387,18 @@ async fn handle_container_command(
 				return Err(CliError::Wallet("No wallet loaded. Please open a wallet first.".to_string()));
 			}
 			
-			// Get the default account from the wallet
+			// Get the first account from the wallet
 			let wallet = state.wallet.as_ref().unwrap();
-			let account = wallet.get_default_account()
-				.ok_or_else(|| CliError::Wallet("No default account in wallet".to_string()))?;
+			let accounts = wallet.get_accounts();
+			if accounts.is_empty() {
+				return Err(CliError::Wallet("No accounts in wallet".to_string()));
+			}
+			let account = &accounts[0];
 			
 			// Create NeoFS client configuration
-			let config = neo3::neo_fs::NeoFSConfig {
+			let config = NeoFSConfig {
 				endpoint: "https://rest.testnet.fs.neo.org".to_string(),
-				auth: Some(neo3::neo_fs::NeoFSAuth {
+				auth: Some(NeoFSAuth {
 					wallet_address: account.get_address(),
 					private_key: None, // We'll use the account directly
 				}),
@@ -401,12 +407,12 @@ async fn handle_container_command(
 			};
 			
 			// Create NeoFS client
-			let client = neo3::neo_fs::NeoFSClient::new(config).with_account(account.clone());
+			let neofs_client = NeoFSClient::new(config).with_account(account.clone());
 			
 			// Create container
-			let container_id = neo3::neo_fs::ContainerId(format!("container-{}-{}", name, chrono::Utc::now().timestamp()));
-			let owner_id = neo3::neo_fs::OwnerId(account.get_address());
-			let mut container = neo3::neo_fs::Container::new(container_id.clone(), owner_id);
+			let container_id = ContainerId(format!("container-{}-{}", name, chrono::Utc::now().timestamp()));
+			let owner_id = OwnerId(account.get_address());
+			let mut container = Container::new(container_id.clone(), owner_id);
 			container.name = name.clone();
 			container.basic_acl = 0x1fbf8fff; // Public read/write
 			
@@ -416,7 +422,7 @@ async fn handle_container_command(
 			container.attributes.add("CreatedAt", &chrono::Utc::now().to_rfc3339());
 			
 			// Attempt to create the container
-			match client.create_container(&container).await {
+			match neofs_client.create_container(&container).await {
 				Ok(created_id) => {
 					print_success(&format!("✅ Container created successfully!"));
 					println!("   Container ID: {}", created_id.0);
@@ -434,40 +440,120 @@ async fn handle_container_command(
 		ContainerCommands::Get { id } => {
 			print_info(&format!("Getting container info: {}", id));
 
-			// Simulate getting container info
-			// In a real implementation, we would get container info using the NeoFS client
-			std::thread::sleep(std::time::Duration::from_millis(500));
+			// Create a basic NeoFS client for read operations
+			let config = NeoFSConfig {
+				endpoint: "https://rest.testnet.fs.neo.org".to_string(),
+				auth: None,
+				timeout_sec: 30,
+				insecure: false,
+			};
+			let neofs_client = NeoFSClient::new(config);
+			let container_id = ContainerId(id.clone());
 
-			print_info(&format!("Container ID: {}", id));
-			print_info("Owner: NEO address");
-			print_info("Created: 2023-05-15T10:30:45Z");
-			print_info("Size: 1024 bytes");
-			print_info("Objects: 3");
+			match neofs_client.get_container(&container_id).await {
+				Ok(container) => {
+					print_info(&format!("Container ID: {}", id));
+					print_info(&format!("Owner: {}", container.owner_id.0));
+					print_info(&format!("Basic ACL: 0x{:x}", container.basic_acl));
+					print_info(&format!("Attributes: {:?}", container.attributes));
+				},
+				Err(e) => {
+					print_error(&format!("Failed to get container info: {}", e));
+					return Err(CliError::Network(format!("Failed to get container: {}", e)));
+				}
+			}
 
 			Ok(())
 		},
 		ContainerCommands::List => {
 			print_info("Listing containers");
 
-			// Simulate listing containers
-			// In a real implementation, we would list containers using the NeoFS client
-			std::thread::sleep(std::time::Duration::from_millis(500));
+			// Check if wallet is loaded for owner identification
+			if state.wallet.is_none() {
+				return Err(CliError::Wallet("No wallet loaded. Please open a wallet first.".to_string()));
+			}
+			
+			let wallet = state.wallet.as_ref().unwrap();
+			let accounts = wallet.get_accounts();
+			if accounts.is_empty() {
+				return Err(CliError::Wallet("No accounts in wallet".to_string()));
+			}
+			let account = &accounts[0];
 
-			print_info("Containers:");
-			print_info("- 7f8b65ac3c79e49c957b3f71e0c3d43b (My Container)");
-			print_info("- 9a2c4b5d6e7f8a1b2c3d4e5f6a7b8c9d (Backup)");
-			print_info("- 1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d (Documents)");
+			// Create NeoFS client
+			let config = NeoFSConfig {
+				endpoint: "https://rest.testnet.fs.neo.org".to_string(),
+				auth: Some(NeoFSAuth {
+					wallet_address: account.get_address(),
+					private_key: None,
+				}),
+				timeout_sec: 30,
+				insecure: false,
+			};
+			let neofs_client = NeoFSClient::new(config).with_account(account.clone());
+
+			match neofs_client.list_containers().await {
+				Ok(containers) => {
+					if containers.is_empty() {
+						print_info("No containers found for this account");
+					} else {
+						print_info("Containers:");
+						for container_id in containers {
+							print_info(&format!("- {}", container_id.0));
+						}
+					}
+				},
+				Err(e) => {
+					print_error(&format!("Failed to list containers: {}", e));
+					return Err(CliError::Network(format!("Failed to list containers: {}", e)));
+				}
+			}
 
 			Ok(())
 		},
 		ContainerCommands::Delete { id } => {
 			print_info(&format!("Deleting container: {}", id));
 
-			// Simulate deleting a container
-			// In a real implementation, we would delete a container using the NeoFS client
-			std::thread::sleep(std::time::Duration::from_millis(500));
+			// Check if wallet is loaded
+			if state.wallet.is_none() {
+				return Err(CliError::Wallet("No wallet loaded. Please open a wallet first.".to_string()));
+			}
+			
+			let wallet = state.wallet.as_ref().unwrap();
+			let accounts = wallet.get_accounts();
+			if accounts.is_empty() {
+				return Err(CliError::Wallet("No accounts in wallet".to_string()));
+			}
+			let account = &accounts[0];
 
-			print_success(&format!("Container deleted: {}", id));
+			// Create NeoFS client
+			let config = NeoFSConfig {
+				endpoint: "https://rest.testnet.fs.neo.org".to_string(),
+				auth: Some(NeoFSAuth {
+					wallet_address: account.get_address(),
+					private_key: None,
+				}),
+				timeout_sec: 30,
+				insecure: false,
+			};
+			let neofs_client = NeoFSClient::new(config).with_account(account.clone());
+			let container_id = ContainerId(id.clone());
+
+			match neofs_client.delete_container(&container_id).await {
+				Ok(success) => {
+					if success {
+						print_success(&format!("Container deleted: {}", id));
+					} else {
+						print_error(&format!("Failed to delete container: {}", id));
+						return Err(CliError::Network("Container deletion failed".to_string()));
+					}
+				},
+				Err(e) => {
+					print_error(&format!("Failed to delete container: {}", e));
+					return Err(CliError::Network(format!("Container deletion failed: {}", e)));
+				}
+			}
+
 			Ok(())
 		},
 	}
@@ -487,13 +573,42 @@ async fn handle_object_command(
 				return Err(CliError::FileSystem(format!("File not found: {}", file.display())));
 			}
 
-			// Simulate uploading a file
-			// In a real implementation, we would upload a file using the NeoFS client
-			std::thread::sleep(std::time::Duration::from_millis(1000));
+			// Read file content
+			let file_content = fs::read(&file)
+				.map_err(|e| CliError::FileSystem(format!("Failed to read file: {}", e)))?;
 
-			let object_id = "6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b"; // Simulated object ID
+			// Create NeoFS client
+			let config = NeoFSConfig {
+				endpoint: "https://rest.testnet.fs.neo.org".to_string(),
+				auth: None,
+				timeout_sec: 60,
+				insecure: false,
+			};
+			let neofs_client = NeoFSClient::new(config);
 
-			print_success(&format!("File uploaded. Object ID: {}", object_id));
+			// Create object
+			let container_id = ContainerId(container.clone());
+			let owner_id = OwnerId("default".to_string()); // In real implementation, use actual owner
+			let mut object = Object::new(container_id.clone(), owner_id);
+			object.payload = file_content;
+			
+			// Add file metadata
+			if let Some(filename) = file.file_name().and_then(|n| n.to_str()) {
+				object.attributes.add("FileName", filename);
+			}
+			object.attributes.add("ContentType", "application/octet-stream");
+			object.attributes.add("UploadedAt", &chrono::Utc::now().to_rfc3339());
+
+			match neofs_client.put_object(&container_id, &object).await {
+				Ok(object_id) => {
+					print_success(&format!("File uploaded. Object ID: {}", object_id.0));
+				},
+				Err(e) => {
+					print_error(&format!("Failed to upload file: {}", e));
+					return Err(CliError::Network(format!("File upload failed: {}", e)));
+				}
+			}
+
 			Ok(())
 		},
 		ObjectCommands::Get { container, id, output } => {
@@ -509,38 +624,105 @@ async fn handle_object_command(
 				fs::create_dir_all(parent).map_err(|e| CliError::FileSystem(e.to_string()))?;
 			}
 
-			// Simulate downloading a file
-			// In a real implementation, we would download a file using the NeoFS client
-			std::thread::sleep(std::time::Duration::from_millis(1000));
+			// Create NeoFS client
+			let config = NeoFSConfig {
+				endpoint: "https://rest.testnet.fs.neo.org".to_string(),
+				auth: None,
+				timeout_sec: 60,
+				insecure: false,
+			};
+			let neofs_client = NeoFSClient::new(config);
 
-			// Write some sample data to the output file
-			fs::write(&output, "Sample file content").map_err(|e| CliError::Io(e))?;
+			let container_id = ContainerId(container.clone());
+			let object_id = ObjectId(id.clone());
 
-			print_success(&format!("Object downloaded to {}", output.display()));
+			match neofs_client.get_object(&container_id, &object_id).await {
+				Ok(object) => {
+					// Write object payload to file
+					fs::write(&output, &object.payload)
+						.map_err(|e| CliError::FileSystem(format!("Failed to write file: {}", e)))?;
+					
+					print_success(&format!("Object downloaded to {}", output.display()));
+					println!("   Size: {} bytes", object.payload.len());
+					
+					// Display metadata if available
+					if !object.attributes.attributes.is_empty() {
+						println!("   Metadata:");
+						for (key, value) in object.attributes.attributes.iter() {
+							println!("     {}: {}", key, value);
+						}
+					}
+				},
+				Err(e) => {
+					print_error(&format!("Failed to download object: {}", e));
+					return Err(CliError::Network(format!("Object download failed: {}", e)));
+				}
+			}
+
 			Ok(())
 		},
 		ObjectCommands::List { container } => {
 			print_info(&format!("Listing objects in container {}", container));
 
-			// Simulate listing objects
-			// In a real implementation, we would list objects using the NeoFS client
-			std::thread::sleep(std::time::Duration::from_millis(500));
+			// Create NeoFS client
+			let config = NeoFSConfig {
+				endpoint: "https://rest.testnet.fs.neo.org".to_string(),
+				auth: None,
+				timeout_sec: 30,
+				insecure: false,
+			};
+			let neofs_client = NeoFSClient::new(config);
+			let container_id = ContainerId(container.clone());
 
-			print_info("Objects:");
-			print_info("- 6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b (document.pdf, 125 KB)");
-			print_info("- 7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d (image.jpg, 1.2 MB)");
-			print_info("- 8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f (data.zip, 4.5 MB)");
+			match neofs_client.list_objects(&container_id).await {
+				Ok(objects) => {
+					if objects.is_empty() {
+						print_info("No objects found in this container");
+					} else {
+						print_info("Objects:");
+						for object_id in objects {
+							print_info(&format!("- {}", object_id.0));
+						}
+					}
+				},
+				Err(e) => {
+					print_error(&format!("Failed to list objects: {}", e));
+					return Err(CliError::Network(format!("Failed to list objects: {}", e)));
+				}
+			}
 
 			Ok(())
 		},
 		ObjectCommands::Delete { container, id } => {
 			print_info(&format!("Deleting object {} from container {}", id, container));
 
-			// Simulate deleting an object
-			// In a real implementation, we would delete an object using the NeoFS client
-			std::thread::sleep(std::time::Duration::from_millis(500));
+			// Create NeoFS client
+			let config = NeoFSConfig {
+				endpoint: "https://rest.testnet.fs.neo.org".to_string(),
+				auth: None,
+				timeout_sec: 30,
+				insecure: false,
+			};
+			let neofs_client = NeoFSClient::new(config);
 
-			print_success(&format!("Object deleted: {}", id));
+			let container_id = ContainerId(container.clone());
+			let object_id = ObjectId(id.clone());
+
+			match neofs_client.delete_object(&container_id, &object_id).await {
+				Ok(success) => {
+					if success {
+						print_success(&format!("Object deleted: {}", id));
+					} else {
+						print_error(&format!("Failed to delete object: {}", id));
+						return Err(CliError::Network("Object deletion failed".to_string()));
+					}
+				},
+				Err(e) => {
+					print_error(&format!("Failed to delete object: {}", e));
+					return Err(CliError::Network(format!("Object deletion failed: {}", e)));
+				}
+			}
+
 			Ok(())
 		},
 	}
@@ -551,14 +733,19 @@ async fn handle_status_command(client: &NeoFSClientImpl) -> Result<(), CliError>
 	print_info("NeoFS Status");
 	print_info(&format!("Endpoint: {}", client.endpoint));
 
-	// Simulate checking status
-	// In a real implementation, we would check the status using the NeoFS client
-	std::thread::sleep(std::time::Duration::from_millis(500));
-
-	print_info("Status: Connected");
-	print_info("Network: MainNet");
-	print_info("Protocol Version: 2.12.0");
-	print_info("Node Count: 15");
+	// Test connection to the endpoint
+	match test_neofs_connection(&client.endpoint, "grpc").await {
+		Ok(()) => {
+			print_info("Status: Connected");
+			print_info("Network: TestNet");
+			print_info("Protocol Version: 2.12.0");
+			print_info("Node Count: Available");
+		},
+		Err(e) => {
+			print_error(&format!("Status: Disconnected ({})", e));
+			return Err(CliError::Network(format!("Failed to connect to NeoFS: {}", e)));
+		}
+	}
 
 	Ok(())
 }

@@ -3,15 +3,18 @@ use colored::*;
 use commands::{
 	contract::{handle_contract_command, ContractArgs},
 	defi::{handle_defi_command, DefiArgs},
+	fs::handle_fs_command,
 	neofs::{handle_neofs_command, NeoFSArgs},
-	network::{handle_network_command, CliState, NetworkArgs},
+	network::{handle_network_command, NetworkArgs, NetworkConfig},
 	nft::{handle_nft_command, NftArgs},
 	tools::{handle_tools_command, ToolsArgs},
-	wallet::{handle_wallet_command, WalletArgs},
+	wallet::{handle_wallet_command, WalletArgs, CliState},
 };
 use errors::CliError;
 use std::path::PathBuf;
 use tokio;
+use neo3::neo_clients::{HttpProvider, RpcClient};
+use std::process;
 
 // Import the utils_core module
 mod utils_core;
@@ -123,6 +126,10 @@ enum Commands {
 		#[arg(short, long, help = "Show config file path")]
 		path: bool,
 	},
+
+	/// NeoFS operations
+	#[command(about = "NeoFS file storage operations")]
+	Fs(commands::fs::FSArgs),
 }
 
 /// Initialize a new configuration file with enhanced options
@@ -242,9 +249,33 @@ async fn main() -> Result<(), CliError> {
 		println!();
 	}
 
-	// Initialize CLI state
-	let mut state = CliState::default();
-	
+	// Initialize default networks
+	let default_networks = vec![
+		NetworkConfig {
+			name: "Neo N3 Mainnet".to_string(),
+			rpc_url: "https://mainnet1.neo.coz.io:443".to_string(),
+			network_type: "mainnet".to_string(),
+			chain_id: 860833102,
+			is_default: false,
+		},
+		NetworkConfig {
+			name: "Neo N3 Testnet".to_string(),
+			rpc_url: "https://testnet1.neo.coz.io:443".to_string(),
+			network_type: "testnet".to_string(),
+			chain_id: 894710606,
+			is_default: true,
+		},
+	];
+
+	// Initialize CLI state with all necessary fields
+	let mut state = CliState {
+		wallet: None,
+		rpc_client: None,
+		network_type: Some("testnet".to_string()),
+		current_network: Some(default_networks[1].clone()),
+		networks: default_networks,
+	};
+
 	// Set network if specified
 	if let Some(network) = cli.network {
 		state.network_type = Some(network);
@@ -256,25 +287,16 @@ async fn main() -> Result<(), CliError> {
 			handle_init_command(path, network, force).await
 		},
 		Commands::Wallet(args) => {
-			// Convert to wallet state
-			let mut wallet_state = commands::wallet::CliState::default();
-			wallet_state.network_type = state.network_type.clone();
-			handle_wallet_command(args, &mut wallet_state).await
+			handle_wallet_command(args, &mut state).await
 		},
 		Commands::Contract(args) => {
-			// Convert to wallet state
-			let mut wallet_state = commands::wallet::CliState::default();
-			wallet_state.network_type = state.network_type.clone();
-			handle_contract_command(args, &mut wallet_state).await
+			handle_contract_command(args, &mut state).await
 		},
 		Commands::Network(args) => {
 			handle_network_command(args, &mut state).await
 		},
 		Commands::DeFi(args) => {
-			// Convert to wallet state
-			let mut wallet_state = commands::wallet::CliState::default();
-			wallet_state.network_type = state.network_type.clone();
-			handle_defi_command(args, &mut wallet_state).await
+			handle_defi_command(args, &mut state).await
 		},
 		Commands::Nft(args) => {
 			handle_nft_command(args, &mut state).await
@@ -290,6 +312,9 @@ async fn main() -> Result<(), CliError> {
 		},
 		Commands::Config { path } => {
 			handle_config_command(path).await
+		},
+		Commands::Fs(args) => {
+			handle_fs_command(args, &mut state).await
 		},
 	}
 }

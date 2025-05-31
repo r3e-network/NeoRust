@@ -1,6 +1,12 @@
 /// This example demonstrates the concept of message signing in Neo N3.
 use neo3::prelude::*;
+use neo3::neo_protocol::{Account, AccountTrait};
+use neo3::neo_crypto::hash::HashableForVec;
 use std::error::Error;
+use hex;
+use base64;
+use chrono;
+use serde_json;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
@@ -29,11 +35,11 @@ async fn main() -> Result<(), Box<dyn Error>> {
 		.ok_or("Account does not have a key pair available")?;
 	
 	// Create a hash of the message (this is what we actually sign)
-	let message_hash = neo3::crypto::hash256(message_bytes);
+	let message_hash = message_bytes.hash256();
 	println!("   🔐 Message hash: {}", hex::encode(&message_hash));
 	
-	// Sign the hash
-	let signature = key_pair.sign(&message_hash)?;
+	// Sign the hash using the private key directly
+	let signature = key_pair.private_key.sign_prehash(&message_hash)?;
 	let signature_bytes = signature.to_bytes();
 	println!("   ✅ Message signed successfully");
 	println!("   📝 Signature: {}", hex::encode(&signature_bytes));
@@ -43,10 +49,10 @@ async fn main() -> Result<(), Box<dyn Error>> {
 	println!("\n4. Verifying the signature:");
 	
 	// Get the public key from the key pair
-	let public_key = key_pair.public_key();
+	let public_key = &key_pair.public_key;
 	
 	// Verify the signature
-	let is_valid = public_key.verify(&message_hash, &signature)?;
+	let is_valid = public_key.verify(&message_hash, &signature).is_ok();
 	
 	if is_valid {
 		println!("   ✅ Signature verification: VALID");
@@ -98,20 +104,20 @@ async fn main() -> Result<(), Box<dyn Error>> {
 	
 	// JSON message
 	let json_message = r#"{"action":"transfer","amount":100,"to":"NXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXx"}"#;
-	let json_hash = neo3::crypto::hash256(json_message.as_bytes());
-	let json_signature = key_pair.sign(&json_hash)?;
+	let json_hash = json_message.as_bytes().hash256();
+	let json_signature = key_pair.private_key.sign_prehash(&json_hash)?;
 	println!("   📋 JSON message signed: {}", hex::encode(json_signature.to_bytes()));
 	
 	// Binary data
 	let binary_data = vec![0x01, 0x02, 0x03, 0x04, 0x05];
-	let binary_hash = neo3::crypto::hash256(&binary_data);
-	let binary_signature = key_pair.sign(&binary_hash)?;
+	let binary_hash = binary_data.hash256();
+	let binary_signature = key_pair.private_key.sign_prehash(&binary_hash)?;
 	println!("   💾 Binary data signed: {}", hex::encode(binary_signature.to_bytes()));
 	
 	// Timestamp-based message
 	let timestamp_message = format!("Action performed at {}", chrono::Utc::now().to_rfc3339());
-	let timestamp_hash = neo3::crypto::hash256(timestamp_message.as_bytes());
-	let timestamp_signature = key_pair.sign(&timestamp_hash)?;
+	let timestamp_hash = timestamp_message.as_bytes().hash256();
+	let timestamp_signature = key_pair.private_key.sign_prehash(&timestamp_hash)?;
 	println!("   ⏰ Timestamped message signed: {}", hex::encode(timestamp_signature.to_bytes()));
 	
 	println!("\n🎯 Message signing example completed successfully!");
@@ -138,22 +144,21 @@ struct MessageSignaturePackage {
 /// Verify a message signature package
 fn verify_message_package(package: &MessageSignaturePackage) -> Result<bool, Box<dyn Error>> {
 	// Decode the public key
-	let public_key_bytes = hex::decode(&package.public_key)?;
-	let public_key = neo3::crypto::Secp256r1PublicKey::from_encoded(&public_key_bytes)
+	let public_key = neo3::neo_crypto::Secp256r1PublicKey::from_encoded(&package.public_key)
 		.ok_or("Invalid public key format")?;
 	
 	// Decode the signature
 	let signature_bytes = hex::decode(&package.signature)?;
-	let signature = neo3::crypto::Secp256r1Signature::from_bytes(&signature_bytes)?;
+	let signature = neo3::neo_crypto::Secp256r1Signature::from_bytes(&signature_bytes)?;
 	
 	// Hash the message
-	let message_hash = neo3::crypto::hash256(package.message.as_bytes());
+	let message_hash = package.message.as_bytes().hash256();
 	
 	// Verify the signature
-	let is_valid = public_key.verify(&message_hash, &signature)?;
+	let is_valid = public_key.verify(&message_hash, &signature).is_ok();
 	
 	// Additional verification: check if the public key matches the address
-	let derived_address = public_key.to_address();
+	let derived_address = neo3::neo_clients::public_key_to_address(&public_key);
 	let address_matches = derived_address == package.address;
 	
 	Ok(is_valid && address_matches)

@@ -1,16 +1,16 @@
 use crate::{
+	commands::wallet::CliState,
 	errors::CliError,
 	utils_core::{
 		create_table, display_key_value, print_info, print_section_header, print_success,
-		print_warning, status_indicator,
+		print_warning, prompt_input, status_indicator, with_loading,
 	},
 };
 use clap::{Args, Subcommand};
 use colored::*;
 use comfy_table::{Cell, Color};
-use super::network::CliState;
 use base64::{Engine as _, engine::general_purpose};
-use sha2::{Sha256, Digest};
+use sha2::{Digest, Sha256};
 use ripemd::{Ripemd160};
 
 #[derive(Args, Debug)]

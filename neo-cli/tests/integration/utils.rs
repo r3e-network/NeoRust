@@ -7,6 +7,8 @@ use std::{
 	process::{Command, Output},
 };
 use tempfile::{NamedTempFile, TempDir};
+use sha2::{Digest, Sha256};
+use hex;
 
 pub struct CliTest {
 	/// Temporary directory for test files
@@ -101,7 +103,18 @@ pub fn assert_output_matches(output: &Output, pattern: &str) {
 
 /// Helper to create a script hash from a string
 pub fn script_hash_from_string(s: &str) -> String {
-	// This is a simple mock implementation for test purposes
-	// In a real implementation, this would use crypto libraries to hash the content
-	format!("0x{:x}", s.as_bytes().iter().fold(0u64, |acc, &b| acc + b as u64))
+	// Use SHA256 for proper hashing instead of a simple sum
+	let mut hasher = Sha256::new();
+	hasher.update(s.as_bytes());
+	let result = hasher.finalize();
+	format!("0x{}", hex::encode(result))
+}
+
+/// Compute a simple hash of a string for testing purposes
+pub fn simple_hash(s: &str) -> String {
+	// Use SHA256 for proper hashing instead of a simple sum
+	let mut hasher = Sha256::new();
+	hasher.update(s.as_bytes());
+	let result = hasher.finalize();
+	format!("0x{}", hex::encode(result))
 }

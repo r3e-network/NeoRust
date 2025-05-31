@@ -459,7 +459,7 @@ pub async fn transfer_token(
 					for attempt in 1..=30 { // Wait up to 5 minutes (30 * 10s)
 						tokio::time::sleep(tokio::time::Duration::from_secs(10)).await;
 						
-						match rpc_client.get_transaction(&result.hash).await {
+						match rpc_client.get_transaction(result.hash).await {
 							Ok(tx_result) => {
 								if tx_result.confirmations > 0 {
 									print_success(&format!("✅ Transaction confirmed! (Block: {})", tx_result.block_hash));

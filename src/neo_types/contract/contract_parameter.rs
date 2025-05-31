@@ -532,8 +532,8 @@ impl ContractParameter {
 	}
 
 	pub fn to_byte_array(&self) -> Result<Vec<u8>, String> {
-		match self {
-			ParameterValue::ByteArray(b) => b
+		match &self.value {
+			Some(ParameterValue::ByteArray(b)) => b
 				.from_base64_string()
 				.map_err(|e| format!("Failed to decode base64: {}", e)),
 			_ => Err(format!("Cannot convert {:?} to Vec<u8>", self)),
@@ -576,8 +576,12 @@ impl ContractParameter {
 			ParameterValue::H256(h) => {
 				let bytes = h.from_hex_string()
 					.map_err(|e| format!("Failed to decode hex: {}", e))?;
-				H256::from_slice(&bytes)
-					.map_err(|e| format!("Failed to create H256: {:?}", e))
+				if bytes.len() != 32 {
+					return Err("Invalid H256 length".to_string());
+				}
+				let mut arr = [0u8; 32];
+				arr.copy_from_slice(&bytes);
+				Ok(H256(arr))
 			},
 			_ => Err(format!("Cannot convert {:?} to H256", self)),
 		}
@@ -724,8 +728,12 @@ impl ParameterValue {
 			ParameterValue::H256(h) => {
 				let bytes = h.from_hex_string()
 					.map_err(|e| format!("Failed to decode hex: {}", e))?;
-				H256::from_slice(&bytes)
-					.map_err(|e| format!("Failed to create H256: {:?}", e))
+				if bytes.len() != 32 {
+					return Err("Invalid H256 length".to_string());
+				}
+				let mut arr = [0u8; 32];
+				arr.copy_from_slice(&bytes);
+				Ok(H256(arr))
 			},
 			_ => Err(format!("Cannot convert {:?} to H256", self)),
 		}

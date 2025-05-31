@@ -27,6 +27,7 @@ use crate::{
 use num_bigint::BigInt;
 use num_traits::{ToPrimitive, Zero};
 use p256::pkcs8::der::Encode;
+use hex;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Getters, Setters, Serialize, Deserialize)]
 pub struct VerificationScript {
@@ -357,10 +358,11 @@ mod tests {
 			InteropService::SystemCryptoCheckSig.hash()
 		);
 
-		let verification =
-			VerificationScript::from(script.from_hex().map_err(|e| {
+		let verification = VerificationScript::from(
+			hex::decode(&script).map_err(|e| {
 				BuilderError::InvalidScript(format!("Failed to decode hex: {}", e))
-			})?);
+			})?
+		);
 		assert!(verification.is_single_sig());
 
 		Ok(())
@@ -380,11 +382,13 @@ mod tests {
 			OpCode::Push3.to_hex_string(),
 			OpCode::Syscall.to_hex_string(),
 			InteropService::SystemCryptoCheckMultiSig.hash()
-		)
-		.from_hex()
-		.map_err(|e| BuilderError::InvalidScript(format!("Failed to decode hex: {}", e)))?;
+		);
 
-		let verification = VerificationScript::from(script);
+		let verification = VerificationScript::from(
+			hex::decode(&script).map_err(|e| {
+				BuilderError::InvalidScript(format!("Failed to decode hex: {}", e))
+			})?
+		);
 		assert!(verification.is_multi_sig());
 
 		Ok(())
@@ -392,13 +396,10 @@ mod tests {
 
 	#[test]
 	fn test_fail_is_multi_sig_too_short() -> Result<(), BuilderError> {
-		let script = "a89429c3be9f"
-			.from_hex()
-			.map_err(|e| BuilderError::InvalidScript(format!("Failed to decode hex: {}", e)))?;
+		let script = hex::decode("a89429c3be9f").map_err(|e| {
+			BuilderError::InvalidScript(format!("Failed to decode hex: {}", e))
+		})?;
 		let verification = VerificationScript::from(script);
-		let script = "a89429c3be9f"
-			.from_hex()
-			.map_err(|e| BuilderError::InvalidScript(format!("Failed to decode hex: {}", e)))?;
 		assert!(!verification.is_multi_sig());
 
 		Ok(())
@@ -414,11 +415,13 @@ mod tests {
 			OpCode::Push1.to_hex_string(),
 			OpCode::PushNull.to_hex_string(),
 			OpCode::Syscall.to_hex_string(),
-		)
-		.from_hex()
-		.map_err(|e| BuilderError::InvalidScript(format!("Failed to decode hex: {}", e)))?;
+		);
 
-		let verification = VerificationScript::from(script);
+		let verification = VerificationScript::from(
+			hex::decode(&script).map_err(|e| {
+				BuilderError::InvalidScript(format!("Failed to decode hex: {}", e))
+			})?
+		);
 		assert!(!verification.is_multi_sig());
 
 		Ok(())
@@ -578,11 +581,13 @@ mod tests {
 			"2102028a99826edc0c97d18e22b6932373d908d323aa7f92656a77ec26e8861699ef",
 			OpCode::Syscall.to_hex_string(),
 			InteropService::SystemCryptoCheckSig.hash()
-		)
-		.from_hex()
-		.map_err(|e| BuilderError::InvalidScript(format!("Failed to decode hex: {}", e)))?;
+		);
 
-		let verification = VerificationScript::from(script);
+		let verification = VerificationScript::from(
+			hex::decode(&script).map_err(|e| {
+				BuilderError::InvalidScript(format!("Failed to decode hex: {}", e))
+			})?
+		);
 
 		let keys = verification.get_public_keys().unwrap();
 
@@ -591,7 +596,7 @@ mod tests {
 		let encoded = keys[0].get_encoded(true);
 
 		assert_eq!(
-			encoded.to_hex(),
+			hex::encode(&encoded),
 			"02028a99826edc0c97d18e22b6932373d908d323aa7f92656a77ec26e8861699ef"
 		);
 
@@ -612,11 +617,13 @@ mod tests {
 			OpCode::Push3.to_hex_string(),
 			OpCode::Syscall.to_hex_string(),
 			InteropService::SystemCryptoCheckMultiSig.hash()
-		)
-		.from_hex()
-		.map_err(|e| BuilderError::InvalidScript(format!("Failed to decode hex: {}", e)))?;
+		);
 
-		let verification = VerificationScript::from(script);
+		let verification = VerificationScript::from(
+			hex::decode(&script).map_err(|e| {
+				BuilderError::InvalidScript(format!("Failed to decode hex: {}", e))
+			})?
+		);
 
 		let keys = verification.get_public_keys()?;
 
@@ -627,15 +634,15 @@ mod tests {
 		let key3 = keys[2].get_encoded(true);
 
 		assert_eq!(
-			key1.to_hex(),
+			hex::encode(&key1),
 			"02028a99826edc0c97d18e22b6932373d908d323aa7f92656a77ec26e8861699ef"
 		);
 		assert_eq!(
-			key2.to_hex(),
+			hex::encode(&key2),
 			"031d8e1630ce640966967bc6d95223d21f44304133003140c3b52004dc981349c9"
 		);
 		assert_eq!(
-			key3.to_hex(),
+			hex::encode(&key3),
 			"03f0f9b358dfed564e74ffe242713f8bc866414226649f59859b140a130818898b"
 		);
 

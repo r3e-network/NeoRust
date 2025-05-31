@@ -73,6 +73,7 @@ use base64::{engine::general_purpose, Engine};
 pub use log::*;
 use primitive_types::H256;
 use serde_derive::{Deserialize, Serialize};
+use crate::neo_crypto::utils::FromBase64String;
 
 // Re-export everything from these modules
 pub use address::*;
@@ -236,7 +237,7 @@ pub fn to_checksum(addr: &ScriptHash, chain_id: Option<u8>) -> String {
 #[cfg(test)]
 mod tests {
 	use hex;
-	use rustc_serialize::base64::FromBase64;
+	use crate::neo_crypto::utils::FromBase64String;
 
 	use super::*;
 
@@ -255,7 +256,7 @@ mod tests {
 		let encoded = "FQwUJC2/Xi9qwlaLWbeCInjVcbdfF74MFCQtv14vasJWi1m3giJ41XG3Xxe+E8AMCHRyYW5zZmVyDBSJdyDYzXb08Aq/o3wO3YicII/em0FifVtSOA==";
 		let expected = "150c14242dbf5e2f6ac2568b59b7822278d571b75f17be0c14242dbf5e2f6ac2568b59b7822278d571b75f17be13c00c087472616e736665720c14897720d8cd76f4f00abfa37c0edd889c208fde9b41627d5b5238";
 
-		let decoded = encoded.from_base64().unwrap();
+		let decoded = encoded.from_base64_string().unwrap();
 		let decoded_hex = hex::encode(decoded);
 
 		assert_eq!(decoded_hex, expected);

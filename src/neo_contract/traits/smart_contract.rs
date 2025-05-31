@@ -1,17 +1,21 @@
 use std::sync::Arc;
+use std::collections::HashMap;
 
 use async_trait::async_trait;
 use num_bigint::BigInt;
 use primitive_types::H160;
-use rustc_serialize::hex::ToHex;
+use crate::neo_crypto::utils::ToHexString;
 
 // Replace prelude imports with specific types
 use crate::{
-	neo_builder::{CallFlags, ScriptBuilder, Signer, TransactionBuilder},
-	neo_clients::{APITrait, JsonRpcProvider, RpcClient},
+	neo_builder::{
+		transaction::{Signer, Transaction, TransactionBuilder},
+		BuilderError, CallFlags, ScriptBuilder,
+	},
+	neo_clients::{JsonRpcProvider, ProviderError, RpcClient},
 	neo_contract::{ContractError, NeoIterator},
 	neo_types::{
-		Bytes, ContractManifest, ContractParameter, InvocationResult, OpCode, ScriptHash, StackItem,
+		Bytes, ContractManifest, ContractParameter, ContractParameterType, InvocationResult, OpCode, ScriptHash, StackItem,
 	},
 	ScriptHashExtension,
 };
@@ -203,7 +207,7 @@ pub trait SmartContractTrait<'a>: Send + Sync {
 		)
 		.unwrap();
 
-		let output = { self.provider().unwrap().invoke_script(script.to_hex(), vec![]) };
+		let output = { self.provider().unwrap().invoke_script(script.to_hex_string(), vec![]) };
 
 		let output = output.await.unwrap();
 

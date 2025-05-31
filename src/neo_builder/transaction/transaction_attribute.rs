@@ -1,12 +1,22 @@
-use std::hash::Hasher;
+use std::{
+	fmt::{Debug, Formatter},
+	hash::{Hash, Hasher},
+};
+
+use getset::{Getters, Setters};
+use primitive_types::{H160, H256};
+use serde::{Deserialize, Serialize};
+use serde_json::Value;
+use crate::neo_crypto::utils::FromBase64String;
 
 use crate::{
 	builder::TransactionError,
 	codec::{Decoder, Encoder, NeoSerializable},
 	prelude::Base64Encode,
+	neo_types::{Bytes, TypeError},
+	var_size,
 };
 use ethereum_types::H256;
-use rustc_serialize::base64::FromBase64;
 use serde::{Deserialize, Serialize};
 
 use super::oracle_response_code::OracleResponseCode;
@@ -133,7 +143,7 @@ impl NeoSerializable for TransactionAttribute {
 				v.reverse();
 				writer.write(&v);
 				writer.write_u8(response_code.clone() as u8);
-				writer.write_var_bytes(result.from_base64().unwrap().as_slice());
+				writer.write_var_bytes(result.from_base64_string().unwrap().as_slice());
 			},
 			_ => {},
 		}

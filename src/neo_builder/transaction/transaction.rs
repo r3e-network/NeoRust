@@ -17,6 +17,7 @@ use crate::{
 	neo_protocol::{ApplicationLog, RawTransaction},
 	neo_types::NameOrAddress,
 	Bytes,
+	neo_error::NeoError,
 };
 
 /// A Neo N3 blockchain transaction.
@@ -205,7 +206,9 @@ impl<'a, T: JsonRpcProvider + 'static> Transaction<'a, T> {
 
 	pub async fn get_hash_data(&self) -> Result<Bytes, TransactionError> {
 		if self.network.is_none() {
-			panic!("Transaction network magic is not set");
+			return Err(TransactionError::TransactionConfiguration(
+				"Transaction network magic is not set".to_string()
+			));
 		}
 		let mut encoder = Encoder::new();
 		self.serialize_without_witnesses(&mut encoder);

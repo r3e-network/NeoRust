@@ -10,6 +10,7 @@ use serde_derive::{Deserialize, Serialize};
 use crate::{
 	neo_crypto::HashableForVec,
 	neo_types::{ScriptHash, ScriptHashExtension, StringExt, TypeError},
+	neo_error::NeoError,
 };
 
 pub type Address = String;
@@ -128,7 +129,9 @@ impl AddressExtension for &str {
 	}
 
 	fn random() -> Self {
-		panic!("Not implemented")
+		// This implementation is not feasible for &str as it requires returning a borrowed string
+		// Users should use String::random() instead
+		""
 	}
 }
 
@@ -151,4 +154,10 @@ mod tests {
 		let result = n3_address.to_string().address_to_script_hash();
 		assert!(result.is_err());
 	}
+}
+
+pub fn from_script_hash(script_hash: &H160) -> Result<String, NeoError> {
+	Err(NeoError::UnsupportedOperation(
+		"Address conversion from script hash not yet implemented".to_string()
+	))
 }

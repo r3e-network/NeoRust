@@ -174,16 +174,15 @@ impl SignerTrait for RTransactionSigner {
 	}
 
 	fn get_allowed_contracts_mut(&mut self) -> &mut Vec<H160> {
-		panic!("Not implemented")
+		&mut self.allowed_contracts
 	}
 
 	fn get_allowed_groups(&self) -> &Vec<Secp256r1PublicKey> {
-		panic!("Not implemented")
-		// &self.allowed_groups
+		unimplemented!("RTransactionSigner uses String for groups, conversion needed")
 	}
 
 	fn get_allowed_groups_mut(&mut self) -> &mut Vec<Secp256r1PublicKey> {
-		panic!("Not implemented")
+		unimplemented!("RTransactionSigner uses String for groups, conversion needed")
 	}
 
 	fn get_rules(&self) -> &Vec<WitnessRule> {
@@ -191,7 +190,7 @@ impl SignerTrait for RTransactionSigner {
 	}
 
 	fn get_rules_mut(&mut self) -> &mut Vec<WitnessRule> {
-		panic!("Not implemented")
+		&mut self.rules
 	}
 }
 

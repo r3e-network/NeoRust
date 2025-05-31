@@ -392,7 +392,9 @@ mod tests {
 				let result: u64 = serde_json::from_str(result.get()).unwrap();
 				assert_eq!(result, 19);
 			},
-			_ => panic!("expected `Success` response"),
+			_ => {
+				assert!(false, "Expected Success response but got: {:?}", response);
+			},
 		}
 
 		let response: Response<'_> = serde_json::from_str(
@@ -407,7 +409,9 @@ mod tests {
 				assert_eq!(error.message, "error occurred");
 				assert!(error.data.is_none());
 			},
-			_ => panic!("expected `Error` response"),
+			_ => {
+				assert!(false, "Expected Error response but got: {:?}", response);
+			},
 		}
 
 		let response: Response<'_> =
@@ -419,7 +423,9 @@ mod tests {
 				let result: String = serde_json::from_str(result.get()).unwrap();
 				assert_eq!(i64::from_str_radix(result.trim_start_matches("0x"), 16).unwrap(), 250);
 			},
-			_ => panic!("expected `Success` response"),
+			_ => {
+				assert!(false, "Expected Success response but got: {:?}", response);
+			},
 		}
 	}
 

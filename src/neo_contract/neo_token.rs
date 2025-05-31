@@ -231,17 +231,28 @@ impl<'a, P: JsonRpcProvider + 'static> NeoToken<'a, P> {
 				.iter()
 				.map(|item| {
 					if let StackItem::ByteString { value: bytes } = item {
-						Secp256r1PublicKey::from_bytes(bytes.as_bytes()).unwrap()
+						Secp256r1PublicKey::from_bytes(bytes.as_bytes())
+							.map_err(|_| ContractError::InvalidNeoName("Invalid public key bytes".to_string()))
 					} else {
-						panic!("Unexpected stack item type")
+						Err(ContractError::UnexpectedReturnType(
+							format!("Expected ByteString, got {:?}", item)
+						))
 					}
 				})
-				.collect::<Vec<Secp256r1PublicKey>>();
+				.collect::<Result<Vec<Secp256r1PublicKey>, ContractError>>()?;
 
 			Ok(keys)
 		} else {
-			Err(ContractError::UnexpectedReturnType("UnexpectedReturnType".to_string()))
+			Err(ContractError::UnexpectedReturnType("Expected Array".to_string()))
 		}
+	}
+
+	async fn resolve_nns_text_record(&self, _name: &NNSName) -> Result<H160, ContractError> {
+		// NEO token doesn't support NNS text record resolution
+		// Return an error indicating this operation is not supported
+		Err(ContractError::UnsupportedOperation(
+			"NNS text record resolution is not supported for NEO token".to_string()
+		))
 	}
 }
 
@@ -272,7 +283,11 @@ impl<'a, P: JsonRpcProvider> TokenTrait<'a, P> for NeoToken<'a, P> {
 	}
 
 	async fn resolve_nns_text_record(&self, _name: &NNSName) -> Result<H160, ContractError> {
-		todo!()
+		// NEO token doesn't support NNS text record resolution
+		// Return an error indicating this operation is not supported
+		Err(ContractError::UnsupportedOperation(
+			"NNS text record resolution is not supported for NEO token".to_string()
+		))
 	}
 }
 

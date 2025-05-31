@@ -11,6 +11,13 @@ use crate::{
 };
 use primitive_types::H160;
 use serde::{Deserialize, Serialize};
+use lazy_static::lazy_static;
+
+lazy_static! {
+	static ref EMPTY_CONTRACTS: Vec<H160> = Vec::new();
+	static ref EMPTY_GROUPS: Vec<Secp256r1PublicKey> = Vec::new();
+	static ref EMPTY_RULES: Vec<WitnessRule> = Vec::new();
+}
 
 /// Represents a transaction signer in the NEO blockchain.
 ///
@@ -120,28 +127,27 @@ impl SignerTrait for TransactionSigner {
 	}
 
 	fn get_allowed_contracts(&self) -> &Vec<H160> {
-		panic!("Not implemented")
+		self.allowed_contracts.as_ref().unwrap_or(&EMPTY_CONTRACTS)
 	}
 
 	fn get_allowed_contracts_mut(&mut self) -> &mut Vec<H160> {
-		panic!("Not implemented")
+		self.allowed_contracts.get_or_insert_with(Vec::new)
 	}
 
 	fn get_allowed_groups(&self) -> &Vec<Secp256r1PublicKey> {
-		panic!("Not implemented")
-		// &self.allowed_groups
+		self.allowed_groups.as_ref().unwrap_or(&EMPTY_GROUPS)
 	}
 
 	fn get_allowed_groups_mut(&mut self) -> &mut Vec<Secp256r1PublicKey> {
-		panic!("Not implemented")
+		self.allowed_groups.get_or_insert_with(Vec::new)
 	}
 
 	fn get_rules(&self) -> &Vec<WitnessRule> {
-		panic!("Not implemented")
+		self.rules.as_ref().unwrap_or(&EMPTY_RULES)
 	}
 
 	fn get_rules_mut(&mut self) -> &mut Vec<WitnessRule> {
-		panic!("Not implemented")
+		self.rules.get_or_insert_with(Vec::new)
 	}
 }
 

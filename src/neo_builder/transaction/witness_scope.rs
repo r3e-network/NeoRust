@@ -22,11 +22,9 @@ pub enum WitnessScope {
 }
 
 impl WitnessScope {
-	pub fn from_str(s: &str) -> Self {
-		match s.parse::<WitnessScope>() {
-			Ok(scope) => scope,
-			Err(_) => panic!("Invalid witness scope: {}", s),
-		}
+	pub fn from_str(s: &str) -> Result<Self, String> {
+		s.parse::<WitnessScope>()
+			.map_err(|_| format!("Invalid witness scope: {}", s))
 	}
 
 	pub fn byte_repr(&self) -> u8 {

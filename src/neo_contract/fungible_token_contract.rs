@@ -58,7 +58,9 @@ impl<'a, P: JsonRpcProvider> TokenTrait<'a, P> for FungibleTokenContract<'a, P> 
 	}
 
 	async fn resolve_nns_text_record(&self, _name: &NNSName) -> Result<H160, ContractError> {
-		todo!()
+		Err(ContractError::UnsupportedOperation(
+			"NNS text record resolution not yet implemented for fungible tokens".to_string()
+		))
 	}
 }
 

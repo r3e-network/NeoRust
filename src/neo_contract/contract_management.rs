@@ -89,7 +89,7 @@ impl<'a, P: JsonRpcProvider + 'static> ContractManagement<'a, P> {
 			.unwrap()
 			.invoke_function(&self.script_hash, "getContractHashes".to_string(), vec![], None)
 			.await
-			.map(|item| ContractIdentifiers::try_from(item).unwrap())
+			.map(|item| ContractIdentifiers::from_invocation_result(item).unwrap())
 			.map_err(|e| {
 				// Convert ProviderError to ContractError here
 				// This assumes you have a way to convert from ProviderError to ContractError

@@ -332,7 +332,7 @@ impl NeoSerializable for WitnessCondition {
 			},
 			WitnessCondition::Or(exp) => {
 				writer.write_u8(WitnessCondition::OR_BYTE);
-				writer.write_serializable_variable_list(exp)
+				writer.write_serializable_variable_list(exp);
 			},
 			WitnessCondition::ScriptHash(hash) => {
 				writer.write_u8(WitnessCondition::SCRIPT_HASH_BYTE);

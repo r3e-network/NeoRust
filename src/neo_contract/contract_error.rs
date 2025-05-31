@@ -22,6 +22,9 @@ pub enum ContractError {
 	/// Error indicating that a domain name is not registered
 	#[error("Domain name {0} is not registered")]
 	DomainNameNotRegistered(String),
+	/// Error indicating an unsupported operation
+	#[error("Unsupported operation: {0}")]
+	UnsupportedOperation(String),
 	/// Error indicating a runtime error
 	#[error("Runtime error: {0}")]
 	RuntimeError(String),

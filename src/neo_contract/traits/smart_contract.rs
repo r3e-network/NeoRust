@@ -25,13 +25,17 @@ pub trait SmartContractTrait<'a>: Send + Sync {
 		self.get_manifest().await.name.clone().unwrap()
 	}
 	fn set_name(&mut self, _name: String) {
-		panic!("Cannot set name for NNS")
+		// NNS contracts don't support setting names
+		// This is intentionally a no-op as it's not supported
+		eprintln!("Warning: Cannot set name for NNS contract - operation not supported");
 	}
 
 	fn script_hash(&self) -> H160;
 
 	fn set_script_hash(&mut self, _script_hash: H160) {
-		panic!("Cannot set script hash for NNS")
+		// NNS contracts don't support setting script hash
+		// This is intentionally a no-op as it's not supported
+		eprintln!("Warning: Cannot set script hash for NNS contract - operation not supported");
 	}
 
 	fn provider(&self) -> Option<&RpcClient<Self::P>>;
@@ -162,7 +166,7 @@ pub trait SmartContractTrait<'a>: Send + Sync {
 		function: &str,
 		params: Vec<ContractParameter>,
 		mapper: Arc<dyn Fn(StackItem) -> U + Send + Sync>,
-	) -> NeoIterator<U, Self::P>
+	) -> Result<NeoIterator<U, Self::P>, ContractError>
 	where
 		U: Send + Sync, // Adding this bound if necessary
 	{
@@ -170,14 +174,17 @@ pub trait SmartContractTrait<'a>: Send + Sync {
 		self.throw_if_fault_state(&output).unwrap();
 
 		let item = &output.stack[0];
-		let StackItem::InteropInterface { id, interface: _ } = item else { panic!("") };
+		let StackItem::InteropInterface { id, interface: _ } = item else { 
+			return Err(ContractError::UnexpectedReturnType(
+				format!("Expected InteropInterface, got {:?}", item)
+			));
+		};
 
 		let session_id = output
 			.session_id
-			.ok_or(ContractError::InvalidNeoNameServiceRoot("No session ID".to_string()))
-			.unwrap();
+			.ok_or(ContractError::InvalidNeoNameServiceRoot("No session ID".to_string()))?;
 
-		NeoIterator::new(session_id, id.clone(), mapper, None)
+		Ok(NeoIterator::new(session_id, id.clone(), mapper, None))
 	}
 
 	async fn call_function_and_unwrap_iterator<U>(

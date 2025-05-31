@@ -1,5 +1,7 @@
 use crate::{
+	commands::wallet::CliState,
 	errors::CliError,
+	utils::config::{load_config, save_config},
 	utils_core::{
 		create_table, display_key_value, print_error, print_info, print_section_header,
 		print_success, print_warning, prompt_input, prompt_select, prompt_yes_no, status_indicator,
@@ -10,11 +12,13 @@ use clap::{Args, Subcommand};
 use colored::*;
 use comfy_table::{Cell, Color};
 use neo3::{
-	neo_clients::{HttpProvider, JsonRpcProvider, RpcClient},
+	neo_clients::{HttpProvider, JsonRpcProvider, RpcClient, APITrait},
 	neo_protocol::{NeoBlock, Peers},
+	prelude::*,
 };
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use url::Url;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct NetworkConfig {
@@ -23,39 +27,6 @@ pub struct NetworkConfig {
 	pub network_type: String,
 	pub chain_id: u32,
 	pub is_default: bool,
-}
-
-pub struct CliState {
-	pub current_network: Option<NetworkConfig>,
-	pub networks: Vec<NetworkConfig>,
-	pub rpc_client: Option<RpcClient<HttpProvider>>,
-}
-
-impl Default for CliState {
-	fn default() -> Self {
-		let default_networks = vec![
-			NetworkConfig {
-				name: "Neo N3 Mainnet".to_string(),
-				rpc_url: "https://mainnet1.neo.coz.io:443".to_string(),
-				network_type: "mainnet".to_string(),
-				chain_id: 860833102,
-				is_default: false,
-			},
-			NetworkConfig {
-				name: "Neo N3 Testnet".to_string(),
-				rpc_url: "https://testnet1.neo.coz.io:443".to_string(),
-				network_type: "testnet".to_string(),
-				chain_id: 894710606,
-				is_default: true,
-			},
-		];
-
-		Self {
-			current_network: Some(default_networks[1].clone()),
-			networks: default_networks,
-			rpc_client: None,
-		}
-	}
 }
 
 #[derive(Args, Debug)]
@@ -199,8 +170,11 @@ async fn handle_connect_network(
 
 	// Test connection
 	let client = with_loading("Testing connection...", async {
-		RpcClient::new(HttpProvider::new(&target_network.rpc_url))
-	}).await;
+		let url = Url::parse(&target_network.rpc_url)
+			.map_err(|e| format!("Invalid RPC URL: {}", e))?;
+		let provider = HttpProvider::new(url).unwrap();
+		Ok::<_, String>(RpcClient::new(provider))
+	}).await.map_err(|e| CliError::Network(e))?;
 
 	// Try to get block count to verify connection
 	match client.get_block_count().await {
@@ -253,7 +227,9 @@ async fn handle_network_status(state: &CliState) -> Result<(), CliError> {
 
 	let (block_count, version) = with_loading("Fetching network information...", async {
 		let block_count = client.get_block_count().await.unwrap_or(0);
-		let version = client.get_version().await.unwrap_or_else(|_| "Unknown".to_string());
+		let version = client.get_version().await
+			.map(|v| format!("{:?}", v))
+			.unwrap_or_else(|_| "Unknown".to_string());
 		(block_count, version)
 	}).await;
 
@@ -351,11 +327,14 @@ async fn handle_add_network(
 
 	// Test the connection first
 	let client = with_loading("Testing network connection...", async {
-		RpcClient::new(HttpProvider::new(&url))
-	}).await;
+		let url = Url::parse(&url)
+			.map_err(|e| format!("Invalid RPC URL: {}", e))?;
+		let provider = HttpProvider::new(url).unwrap();
+		Ok::<_, String>(RpcClient::new(provider))
+	}).await.map_err(|e| CliError::Network(e))?;
 
 	let actual_chain_id = match client.get_version().await {
-		Ok(_) => {
+		Ok(version) => {
 			// Try to get actual chain ID if not provided
 			chain_id.unwrap_or(0)
 		},
@@ -441,5 +420,60 @@ async fn handle_show_block(_height: Option<u32>, _state: &CliState) -> Result<()
 
 async fn handle_ping_network(_network: Option<String>, _state: &CliState) -> Result<(), CliError> {
 	print_info("🚧 Network ping functionality will be implemented");
+	Ok(())
+}
+
+async fn connect_to_network(
+	network_index: usize,
+	state: &mut CliState,
+) -> Result<(), CliError> {
+	let target_network = &state.networks[network_index];
+
+	print_info(&format!("Connecting to {} network...", target_network.name));
+
+	// Parse URL properly
+	let url = Url::parse(&target_network.rpc_url)
+		.map_err(|e| CliError::Network(format!("Invalid RPC URL: {}", e)))?;
+
+	let provider = HttpProvider::new(url).unwrap();
+	let client = RpcClient::new(provider);
+
+	// Test the connection
+	match client.get_block_count().await {
+		Ok(block_count) => {
+			print_success(&format!("Connected to {} (block: {})", target_network.name, block_count));
+			state.rpc_client = Some(client);
+			state.current_network = Some(target_network.clone());
+		},
+		Err(e) => {
+			print_error(&format!("Failed to connect: {}", e));
+			return Err(CliError::Network(format!("Connection failed: {}", e)));
+		},
+	}
+
+	Ok(())
+}
+
+async fn test_network_connection(url: String) -> Result<(), CliError> {
+	print_info(&format!("Testing connection to {}...", url));
+
+	// Parse URL properly
+	let parsed_url = Url::parse(&url)
+		.map_err(|e| CliError::Network(format!("Invalid RPC URL: {}", e)))?;
+
+	let provider = HttpProvider::new(parsed_url).unwrap();
+	let client = RpcClient::new(provider);
+
+	match client.get_version().await {
+		Ok(version) => {
+			print_success(&format!("✅ Connection successful"));
+			println!("   Version: {:?}", version);
+		},
+		Err(e) => {
+			print_error(&format!("❌ Connection failed: {}", e));
+			return Err(CliError::Network(format!("Connection test failed: {}", e)));
+		},
+	}
+
 	Ok(())
 }

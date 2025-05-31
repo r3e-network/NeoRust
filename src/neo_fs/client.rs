@@ -193,16 +193,30 @@ impl NeoFSClient {
 		object: &Object,
 		part_size: u64,
 	) -> NeoFSResult<MultipartUpload> {
-		// This is a placeholder implementation
-		// In a real implementation, we would make a gRPC call to NeoFS
-
 		let owner_id = self.get_owner_id()?;
+
+		// Create multipart upload request
+		let request_body = json!({
+			"multipartUpload": {
+				"containerId": container_id.0,
+				"ownerId": owner_id.0,
+				"attributes": object.attributes,
+				"partSize": part_size,
+				"maxParts": 10000
+			}
+		});
+
+		let response = self.make_request("POST", "multipart/init", Some(request_body)).await?;
+		
+		let upload_id = response.get("uploadId")
+			.and_then(|v| v.as_str())
+			.ok_or_else(|| NeoFSError::UnexpectedResponse("Missing uploadId in response".to_string()))?;
 
 		Ok(MultipartUpload {
 			id: None,
 			container_id: container_id.clone(),
 			owner_id,
-			upload_id: format!("upload-{}", chrono::Utc::now().timestamp()),
+			upload_id: upload_id.to_string(),
 			attributes: object.attributes.clone(),
 			part_size,
 			max_parts: 10000,
@@ -211,8 +225,15 @@ impl NeoFSClient {
 
 	/// Uploads a part of a multipart upload
 	pub async fn upload_part(&self, upload: &MultipartUpload, part: Part) -> NeoFSResult<()> {
-		// This is a placeholder implementation
-		// In a real implementation, we would make a gRPC call to NeoFS
+		let request_body = json!({
+			"uploadId": upload.upload_id,
+			"partNumber": part.part_number,
+			"data": base64::encode(&part.payload)
+		});
+
+		let endpoint = format!("multipart/{}/parts", upload.upload_id);
+		let _response = self.make_request("POST", &endpoint, Some(request_body)).await?;
+		
 		Ok(())
 	}
 
@@ -222,18 +243,28 @@ impl NeoFSClient {
 		upload: &MultipartUpload,
 		part_numbers: Vec<u32>,
 	) -> NeoFSResult<MultipartUploadResult> {
-		// This is a placeholder implementation
-		// In a real implementation, we would make a gRPC call to NeoFS
+		let request_body = json!({
+			"uploadId": upload.upload_id,
+			"parts": part_numbers
+		});
+
+		let endpoint = format!("multipart/{}/complete", upload.upload_id);
+		let response = self.make_request("POST", &endpoint, Some(request_body)).await?;
+		
+		let object_id = response.get("objectId")
+			.and_then(|v| v.as_str())
+			.ok_or_else(|| NeoFSError::UnexpectedResponse("Missing objectId in response".to_string()))?;
+
 		Ok(MultipartUploadResult {
-			object_id: ObjectId(format!("obj-{}", chrono::Utc::now().timestamp())),
+			object_id: ObjectId(object_id.to_string()),
 			container_id: upload.container_id.clone(),
 		})
 	}
 
 	/// Aborts a multipart upload
 	pub async fn abort_multipart_upload(&self, upload: &MultipartUpload) -> NeoFSResult<()> {
-		// This is a placeholder implementation
-		// In a real implementation, we would make a gRPC call to NeoFS
+		let endpoint = format!("multipart/{}/abort", upload.upload_id);
+		let _response = self.make_request("DELETE", &endpoint, None).await?;
 		Ok(())
 	}
 }
@@ -484,10 +515,12 @@ impl NeoFSService for NeoFSClient {
 		part_number: u32,
 		data: Vec<u8>,
 	) -> NeoFSResult<Part> {
-		// This is a placeholder implementation
-		// In a real implementation, we would make a gRPC call to NeoFS
+		// Create the part
 		let part = Part::new(part_number, data);
+		
+		// Upload the part using the internal method
 		self.upload_part(upload, part.clone()).await?;
+		
 		Ok(part)
 	}
 

@@ -1,5 +1,5 @@
 use crate::{
-	commands::network::CliState,
+	commands::wallet::CliState,
 	errors::CliError,
 	utils::{print_info, print_success},
 };

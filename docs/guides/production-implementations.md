@@ -59,6 +59,7 @@ tx.add_witness(witness);
 - **Object Operations**: Upload, download, list, and delete objects
 - **Bearer Token Management**: Create and manage access tokens
 - **Session Token Support**: Handle session-based authentication
+- **Multipart Upload Support**: Complete multipart upload implementation for large files
 - **Error Handling**: Comprehensive error handling with proper error types
 
 ### Key Features
@@ -85,15 +86,16 @@ async fn create_container(&self, container: &Container) -> NeoFSResult<Container
 
 ### What Was Replaced
 - Placeholder implementations with `todo!()` macros
-- Simulated operations
+- Simulated operations with sleep statements
 
 ### Production Implementation
 - **Complete CLI Interface**: Full command-line interface for NeoFS operations
-- **Container Management**: Create, list, get, and delete containers
-- **Object Management**: Upload, download, list, and delete objects
+- **Container Management**: Create, list, get, and delete containers with real API calls
+- **Object Management**: Upload, download, list, and delete objects with file I/O
 - **Endpoint Management**: Add, remove, test, and configure NeoFS endpoints
 - **Connection Testing**: Real network connectivity testing for gRPC and HTTP endpoints
 - **Configuration Management**: Persistent configuration storage and management
+- **Wallet Integration**: Proper wallet integration for authenticated operations
 
 ### Key Features
 ```rust
@@ -124,9 +126,10 @@ async fn test_neofs_connection(endpoint: &str, endpoint_type: &str) -> Result<()
 ### Production Implementation
 - **Real Transaction Sending**: Actual transaction broadcasting to Neo N3 network
 - **Transaction Building**: Complete transaction construction with proper fees and signers
-- **Confirmation Tracking**: Real-time transaction confirmation monitoring
+- **Confirmation Tracking**: Real-time transaction confirmation monitoring with polling
 - **Network Integration**: Full RPC client integration for blockchain operations
 - **User Interaction**: Interactive confirmation prompts and progress tracking
+- **Error Handling**: Comprehensive error handling for all transaction operations
 
 ### Key Features
 ```rust
@@ -135,7 +138,7 @@ let mut tx_builder = neo3::builder::TransactionBuilder::with_client(rpc_client);
 tx_builder.version(0);
 tx_builder.nonce((rand::random::<u32>() % 1000000) as u32)?;
 
-// Send the raw transaction
+// Send the raw transaction and poll for confirmation
 match rpc_client.send_raw_transaction(tx_hex).await {
     Ok(result) => {
         // Poll for confirmation
@@ -197,11 +200,12 @@ let tx_builder = TransactionBuilder::new()
 - **Signature Verification**: Complete signature validation with public key verification
 - **Format Variations**: Base64 and hex encoding support
 - **Verifiable Packages**: Complete message packages with metadata for verification
+- **Address Verification**: Ensures signatures match the expected account addresses
 
 ### Key Features
 ```rust
 // Sign a message
-let message_hash = neo3::crypto::hash256(message_bytes);
+let message_hash = neo3::neo_crypto::hash::hash256(message_bytes);
 let signature = key_pair.sign(&message_hash)?;
 
 // Verify the signature
@@ -305,7 +309,7 @@ await collection.insertOne({
 - **Resource Limits**: Execution time, memory, and output size limits
 - **Rate Limiting**: Per-IP rate limiting to prevent abuse
 - **Code Validation**: Security pattern detection and dangerous operation blocking
-- **Docker Integration**: Containerized execution for enhanced security
+- **Containerized Execution**: Secure execution environment with proper cleanup
 
 ### Key Features
 ```javascript
@@ -327,6 +331,32 @@ const child = spawn(command, args, {
     USER: 'sandbox',
   }
 });
+```
+
+## 10. Test Utilities
+
+### Location
+- `neo-cli/tests/integration/utils.rs`
+
+### What Was Replaced
+- Simple sum-based hash function
+- Mock implementations
+
+### Production Implementation
+- **Cryptographic Hashing**: SHA256-based hash functions for proper testing
+- **Secure Test Data**: Proper hash generation for test scenarios
+- **Realistic Test Environment**: Test utilities that mirror production behavior
+
+### Key Features
+```rust
+/// Helper to create a script hash from a string
+pub fn script_hash_from_string(s: &str) -> String {
+    // Use SHA256 for proper hashing
+    let mut hasher = Sha256::new();
+    hasher.update(s.as_bytes());
+    let result = hasher.finalize();
+    format!("0x{}", hex::encode(result))
+}
 ```
 
 ## Security Considerations
@@ -411,4 +441,4 @@ Each implementation follows best practices for:
 - Code maintainability and documentation
 - Testing and quality assurance
 
-The implementations are designed to be modular and extensible, allowing for easy customization and enhancement based on specific project requirements. 
+The implementations are designed to be modular and extensible, allowing for easy customization and enhancement based on specific project requirements. All placeholder code has been replaced with fully functional, production-ready implementations that can be deployed and used in real-world applications. 

@@ -16,7 +16,7 @@
 
 Non-Fungible Tokens (NFTs) on Neo N3 represent unique digital assets with verifiable ownership and provenance. The NeoRust GUI provides comprehensive tools for all NFT operations.
 
-![NFT Dashboard](../static/img/nft-dashboard.png)
+![NFT Dashboard](../static/img/nft-dashboard.svg)
 
 ### **What Makes Neo N3 NFTs Special**
 

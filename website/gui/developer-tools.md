@@ -16,7 +16,7 @@
 
 The NeoRust GUI includes a comprehensive suite of developer tools designed to streamline blockchain development and debugging.
 
-![Developer Tools](../static/img/developer-tools.png)
+![Developer Tools](../static/img/developer-tools.svg)
 
 ### **Tool Categories**
 

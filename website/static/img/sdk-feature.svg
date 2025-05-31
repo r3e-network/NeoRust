@@ -1,0 +1,5 @@
+<svg width="200" height="200" xmlns="http://www.w3.org/2000/svg">
+  <rect width="200" height="200" fill="#dc2626" rx="20"/>
+  <rect x="20" y="40" width="160" height="120" fill="white" rx="10"/>
+  <text x="100" y="110" text-anchor="middle" font-family="monospace" font-size="16" fill="#dc2626">SDK</text>
+</svg> 

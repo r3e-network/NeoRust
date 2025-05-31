@@ -2,7 +2,7 @@
 
 Welcome to the **NeoRust SDK** - a comprehensive, production-ready Rust library for Neo N3 blockchain development with zero panics, full test coverage, and enterprise-grade reliability.
 
-![NeoRust SDK](../static/img/sdk-hero.png)
+![NeoRust SDK](../static/img/sdk-hero.svg)
 
 ## 🌟 Why Choose NeoRust SDK
 

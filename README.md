@@ -1,4 +1,4 @@
-# NeoRust v0.1.9 - Production-Ready Neo N3 SDK
+# NeoRust v0.2.3 - Production-Ready Neo N3 SDK
 
 <div align="center">
   <p>
@@ -12,6 +12,7 @@
 </div>
 
 [![Rust](https://github.com/R3E-Network/NeoRust/actions/workflows/rust.yml/badge.svg)](https://github.com/R3E-Network/NeoRust/actions/workflows/rust.yml)
+[![Release](https://github.com/R3E-Network/NeoRust/actions/workflows/release.yml/badge.svg)](https://github.com/R3E-Network/NeoRust/actions/workflows/release.yml)
 [![Netlify Status](https://api.netlify.com/api/v1/badges/bb13b046-abdd-4d5e-962c-31c2a3d06090/deploy-status)](https://app.netlify.com/sites/neorust/deploys)
 [![Crates.io](https://img.shields.io/crates/v/neo3.svg)](https://crates.io/crates/neo3)
 [![Documentation](https://docs.rs/neo3/badge.svg)](https://docs.rs/neo3)
@@ -20,7 +21,25 @@
 
 **NeoRust** is the most comprehensive Rust SDK for the Neo N3 blockchain ecosystem. It provides everything you need to build, deploy, and manage Neo applications - from a powerful Rust library to beautiful desktop applications.
 
-## 🌟 What's New in v0.1.9
+## 🌟 What's New in v0.2.3
+
+### 🚀 **Automated Release Workflow**
+- **Multi-Platform Builds**: Automatic binary generation for Linux, macOS, and Windows
+- **Cross-Architecture Support**: x86_64 and ARM64 (Apple Silicon) compatibility
+- **Automated Publishing**: Direct crate publishing to crates.io on release
+- **GitHub Releases**: Automatic release creation with comprehensive changelogs
+
+### 📚 **Enhanced Documentation**
+- **Beautiful Website**: Complete Docusaurus-powered documentation site
+- **Comprehensive Guides**: Getting started, wallet creation, and NFT operations
+- **Developer Resources**: CLI commands reference and SDK integration guides
+- **Professional Design**: Neo-branded responsive layout with modern UX
+
+### 🔧 **Improved Stability**
+- **Zero Panics**: 95% reduction in panic calls for production stability
+- **Complete Test Coverage**: 378/378 tests passing with comprehensive validation
+- **Enhanced Error Handling**: Graceful degradation and detailed error messages
+- **Production Optimizations**: Performance improvements and memory efficiency
 
 ### 🎨 **Beautiful Desktop GUI**
 - **Modern Interface**: Sleek, responsive design with Neo branding
@@ -36,13 +55,25 @@
 - **Production Ready**: Error handling, validation, and user feedback
 - **Extensible**: Modular architecture for custom commands
 
-### 🔧 **Enhanced SDK**
-- **Zero Panics**: 95% reduction in panic calls for production stability
-- **Complete API**: 378/378 tests passing with comprehensive coverage
-- **Type Safety**: Enhanced error handling and graceful degradation
-- **Performance**: Optimized for high-throughput applications
-
 ## 🚀 Quick Start
+
+### 📦 **Installation**
+
+#### Download Pre-built Binaries
+Visit our [Releases Page](https://github.com/R3E-Network/NeoRust/releases/latest) to download pre-built binaries for your platform:
+
+- **Linux**: `neo-cli-linux-x86_64`, `neo-gui-linux-x86_64`
+- **macOS**: `neo-cli-macos-x86_64`, `neo-gui-macos-x86_64` (Intel), `neo-cli-macos-aarch64`, `neo-gui-macos-aarch64` (Apple Silicon)
+- **Windows**: `neo-cli-windows-x86_64.exe`, `neo-gui-windows-x86_64.exe`
+
+#### Install from Crates.io
+```bash
+# Install the CLI globally
+cargo install neo-cli
+
+# Add the SDK to your project
+cargo add neo3
+```
 
 ### 📱 Desktop GUI Application
 
@@ -96,7 +127,7 @@ cargo build --release
 
 ```toml
 [dependencies]
-neo3 = "0.1.9"
+neo3 = "0.2.3"
 ```
 
 **Quick example:**
@@ -196,6 +227,7 @@ NeoRust/
 - **[User Guide](https://neorust.netlify.app/guide)**: Step-by-step tutorials
 - **[Developer Docs](https://neorust.netlify.app/dev)**: Advanced development guides
 - **[Examples](https://neorust.netlify.app/examples)**: Real-world usage examples
+- **[Release Workflow](docs/RELEASE_WORKFLOW.md)**: Automated release process guide
 
 ### 🌐 **Online Resources**
 - **Website**: [https://neorust.netlify.app/](https://neorust.netlify.app/)
@@ -244,7 +276,7 @@ cargo build --release
 #### 📚 Rust Library (Recommended for Integration)
 ```toml
 [dependencies]
-neo3 = "0.1.9"
+neo3 = "0.2.3"
 ```
 
 ### 2. **Create Your First Wallet**

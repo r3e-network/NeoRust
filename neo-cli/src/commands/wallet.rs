@@ -93,11 +93,13 @@ pub struct CliState {
 	pub wallet: Option<Wallet>,
 	pub rpc_client: Option<RpcClient<HttpProvider>>,
 	pub network_type: Option<String>,
+	pub current_network: Option<crate::commands::network::NetworkConfig>,
+	pub networks: Vec<crate::commands::network::NetworkConfig>,
 }
 
 impl Default for CliState {
 	fn default() -> Self {
-		Self { wallet: None, rpc_client: None, network_type: None }
+		Self { wallet: None, rpc_client: None, network_type: None, current_network: None, networks: Vec::new() }
 	}
 }
 

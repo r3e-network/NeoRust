@@ -1,6 +1,6 @@
 [package]
 name = "neo-cli"
-version = "0.2.3"
+version = "0.3.0"
 edition = "2021"
 description = "Command-line interface for the NeoRust SDK"
 authors = ["R3E Network (c) 2020-2025"]
@@ -19,42 +19,36 @@ files = []
 neofs = []
 
 [dependencies]
-neo3 = { path = "..", version = "0.2.3" }
-clap = { version = "4.4", features = ["derive", "env", "unicode", "wrap_help"] }
-tokio = { version = "1.35.1", features = ["full"] }
-serde = "1.0.195"
-serde_json = "1.0.114"
-serde_derive = "1.0.195"
-anyhow = "1.0.79"
-thiserror = "1.0.56"
-lazy_static = "1.4.0"
-comfy-table = "7.1.0"
-prettytable-rs = "0.10.0"
-confy = "0.5.1"
-dirs = "5.0.1"
-toml = "0.8.8"
-reqwest = { version = "0.11.22", features = ["json"] }
-num-bigint = "0.4.4"
-num-traits = "0.2.17"
-futures = "0.3.30"
-chrono = "0.4.31"
-base64 = "0.21.5"
-rand = "0.8.5"
-colored = "2.0.4"
-dialoguer = "0.11.0"
-hex = "0.4.3"
-primitive-types = "0.13.0"
-env_logger = "0.10.1"
-sha2 = "0.10.8"
-ripemd = "0.1.3"
-mime_guess = "2.0.4"
-async-trait = "0.1.77"
-indicatif = "0.17.7"
-console = "0.15.7"
-crossterm = "0.27.0"
+neo3 = { path = "../", features = ["futures", "ledger", "aws"] }
+tokio = { version = "1.0", features = ["full"] }
+clap = { version = "4.0", features = ["derive"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+colored = "2.0"
+comfy-table = "7.0"
+dirs = "5.0"
+rpassword = "7.0"
+regex = "1.0"
+chrono = { version = "0.4", features = ["serde"] }
+base64 = "0.21"
+hex = "0.4"
+rand = "0.8"
+futures = "0.3"
+async-trait = "0.1"
+url = "2.4"
+dialoguer = "0.11"
+anyhow = "1.0"
+thiserror = "1.0"
+indicatif = "0.17"
+primitive-types = "0.13"
+num-traits = "0.2"
+reqwest = { version = "0.11", features = ["json"] }
+sha2 = "0.10"
+ripemd = "0.1"
+env_logger = "0.10"
+log = "0.4"
 
 [dev-dependencies]
 tempfile = "3.10.0"
-regex = "1.10.5"
 assert_cmd = "2.0.13"
 predicates = "3.1.0"

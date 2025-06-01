@@ -1,11 +1,11 @@
 @echo off
-REM NeoRust Test Script v0.4.0 for Windows
+REM NeoRust Test Script v0.4.1 for Windows
 REM Runs comprehensive tests for the NeoRust SDK
 
 setlocal enabledelayedexpansion
 
-REM Default features for v0.4.0 (AWS disabled for security)
-set "FEATURES=futures,ledger"
+REM Default features for v0.4.1 (AWS disabled for security)
+set FEATURES=futures,ledger
 
 REM Parse command line arguments
 :parse_args
@@ -23,7 +23,7 @@ echo Use --help for usage information
 exit /b 1
 
 :help
-echo NeoRust Test Script v0.4.0
+echo NeoRust Test Script v0.4.1
 echo.
 echo Usage: %0 [OPTIONS]
 echo.
@@ -39,11 +39,11 @@ echo Examples:
 echo   .\scripts\test.bat --features futures,ledger
 echo   .\scripts\test.bat --features futures
 echo.
-echo Note: AWS feature is disabled in v0.4.0 for security reasons
+echo Note: AWS feature is disabled in v0.4.1 for security reasons
 exit /b 0
 
 :test
-echo 🧪 Running NeoRust v0.4.0 Test Suite...
+echo 🧪 Running NeoRust v0.4.1 Test Suite...
 echo 📦 Features: %FEATURES%
 
 REM Run main library tests

@@ -1,12 +1,47 @@
 #!/bin/bash
 
-# NeoRust Build Script v0.4.0
-# Builds the NeoRust SDK with specified features
+# NeoRust Build Script v0.4.1
+# This script builds the NeoRust project with all features
+# Usage: ./build.sh [--release] [--features <features>]
 
 set -e
 
-# Default features for v0.4.0 (AWS disabled for security)
-FEATURES="futures,ledger"
+# Default features for v0.4.1 (AWS disabled for security)
+DEFAULT_FEATURES="futures,ledger"
+
+# Function to display help
+show_help() {
+    cat << EOF
+NeoRust Build Script v0.4.1
+
+Usage: $0 [OPTIONS]
+
+OPTIONS:
+    -h, --help                 Show this help message
+    -r, --release             Build in release mode
+    -f, --features FEATURES   Specify features (default: $DEFAULT_FEATURES)
+    --all-features            Build with all available features
+    --no-default-features     Build without default features
+    --verbose                 Verbose output
+
+EXAMPLES:
+    $0                        # Build with default features
+    $0 --release              # Release build with default features
+    $0 --features "futures"   # Build with only futures feature
+
+echo "NeoRust Build Script v0.4.1"
+echo "Building NeoRust with optimized settings..."
+echo ""
+
+# Display current configuration
+echo "📋 Build Configuration:"
+echo "   Mode: $BUILD_MODE"
+echo "   Features: $FEATURES_FLAG"
+echo "Note: AWS feature is disabled in v0.4.1 for security reasons"
+echo ""
+
+# Build the project
+echo "🏗️  Building NeoRust v0.4.1..."
 
 # Parse command line arguments
 while [[ $# -gt 0 ]]; do
@@ -16,7 +51,7 @@ while [[ $# -gt 0 ]]; do
             shift 2
             ;;
         --help|-h)
-            echo "NeoRust Build Script v0.4.0"
+            echo "NeoRust Build Script v0.4.1"
             echo ""
             echo "Usage: $0 [OPTIONS]"
             echo ""
@@ -32,7 +67,7 @@ while [[ $# -gt 0 ]]; do
             echo "  ./scripts/build.sh --features futures,ledger"
             echo "  ./scripts/build.sh --features futures"
             echo ""
-            echo "Note: AWS feature is disabled in v0.4.0 for security reasons"
+            echo "Note: AWS feature is disabled in v0.4.1 for security reasons"
             exit 0
             ;;
         *)
@@ -43,7 +78,6 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-echo "🏗️  Building NeoRust v0.4.0..."
 echo "📦 Features: $FEATURES"
 
 # Build main library

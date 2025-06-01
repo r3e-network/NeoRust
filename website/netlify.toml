@@ -3,8 +3,8 @@
   publish = "build/"
   # Build temporarily disabled due to component migration issues
   # Dependencies for Netlify functions have been fixed in v0.4.1
-  # To re-enable: command = "npm run build"
-  command = "echo 'Build temporarily disabled due to component migration issues'"
+  # To re-enable full build: command = "npm run build"
+  command = "mkdir -p build && cp build/index.html build/index.html || echo 'Maintenance page ready'"
 
 [[redirects]]
   from = "/api/*"

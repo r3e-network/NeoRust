@@ -44,7 +44,7 @@
       </div>
       <div className="card__body">
         <p>Download the MSI installer for easy installation.</p>
-        <pre><code>NeoRust-Desktop-v0.1.9-x64.msi</code></pre>
+        <pre><code>NeoRust-Desktop-v0.4.1-x64.msi</code></pre>
       </div>
       <div className="card__footer">
         <a href="https://github.com/R3E-Network/NeoRust/releases" className="button button--primary">
@@ -61,7 +61,7 @@
       </div>
       <div className="card__body">
         <p>Download the DMG file for macOS installation.</p>
-        <pre><code>NeoRust-Desktop-v0.1.9.dmg</code></pre>
+        <pre><code>NeoRust-Desktop-v0.4.1.dmg</code></pre>
       </div>
       <div className="card__footer">
         <a href="https://github.com/R3E-Network/NeoRust/releases" className="button button--primary">
@@ -78,7 +78,7 @@
       </div>
       <div className="card__body">
         <p>Download the AppImage for universal Linux support.</p>
-        <pre><code>NeoRust-Desktop-v0.1.9.AppImage</code></pre>
+        <pre><code>NeoRust-Desktop-v0.4.1.AppImage</code></pre>
       </div>
       <div className="card__footer">
         <a href="https://github.com/R3E-Network/NeoRust/releases" className="button button--primary">
@@ -161,10 +161,10 @@ cargo build --release
 
 ```toml
 [dependencies]
-neo3 = "0.1.9"
+neo3 = "0.4.1"
 
 # Optional features
-neo3 = { version = "0.1.9", features = ["futures", "ledger", "aws"] }
+neo3 = { version = "0.4.1", features = ["futures", "ledger", "aws"] }
 ```
 
 ### **Available Features**

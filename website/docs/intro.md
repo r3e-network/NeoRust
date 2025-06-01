@@ -2,7 +2,7 @@
 
 <div className="hero hero--primary">
   <div className="container">
-    <h1 className="hero__title">🚀 NeoRust v0.1.9</h1>
+    <h1 className="hero__title">🚀 NeoRust v0.4.1</h1>
     <p className="hero__subtitle">
       Production-Ready Neo N3 Development Suite
     </p>
@@ -134,7 +134,7 @@ cargo build --release
 
 ```toml
 [dependencies]
-neo3 = "0.1.9"
+neo3 = "0.4.1"
 ```
 
 ```rust

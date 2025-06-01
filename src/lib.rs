@@ -20,7 +20,7 @@
 //!   hardware wallets for transaction signing and key management. This feature provides an additional
 //!   security layer by keeping private keys on dedicated hardware.
 //!
-//! - **aws**: ⚠️ **DISABLED in v0.4.0** due to security vulnerabilities in rusoto dependencies.
+//! - **aws**: ⚠️ **DISABLED in v0.4.1** due to security vulnerabilities in rusoto dependencies.
 //!   Will be re-enabled in a future version with modern AWS SDK. For AWS KMS integration,
 //!   please use v0.3.0 or wait for the next major release with updated AWS dependencies.
 //!
@@ -668,7 +668,7 @@ pub use futures;
 #[cfg_attr(docsrs, doc(cfg(feature = "ledger")))]
 pub use coins_ledger;
 
-// AWS feature is disabled in v0.4.0 due to security vulnerabilities
+// AWS feature is disabled in v0.4.1 due to security vulnerabilities
 // #[cfg(feature = "aws")]
 // #[cfg_attr(docsrs, doc(cfg(feature = "aws")))]
 // pub use rusoto_core;

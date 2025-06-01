@@ -1,6 +1,9 @@
 [build]
   base = "website/"
   publish = "build/"
+  # Build temporarily disabled due to component migration issues
+  # Dependencies for Netlify functions have been fixed in v0.4.1
+  # To re-enable: command = "npm run build"
   command = "echo 'Build temporarily disabled due to component migration issues'"
 
 [[redirects]]

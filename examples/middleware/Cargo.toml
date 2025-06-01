@@ -2,7 +2,6 @@
 default = []
 futures = ["neo3/futures"]
 ledger = ["neo3/ledger"]
-aws = ["neo3/aws"]
 [package]
 name = "examples-middleware"
 version = "0.0.0"

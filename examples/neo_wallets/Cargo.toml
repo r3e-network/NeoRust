@@ -10,7 +10,6 @@ publish = false
 default = []
 futures = ["neo3/futures"]
 ledger = ["neo3/ledger"]
-aws = ["neo3/aws"]
 [dependencies]
 neo3 = { path = "../../", package = "neo3", features = [] }
 tokio = { version = "1.32", features = ["full"] }

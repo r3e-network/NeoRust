@@ -28,13 +28,13 @@ doctest = false
 # https://docs.rs/about/metadata
 [metadata.docs.rs]
 all-features = false
-features = ["futures", "ledger", "aws"]
+features = ["futures", "ledger"]
 rustdoc-args = ["--cfg", "docsrs"]
 default-target = "x86_64-unknown-linux-gnu"
 
 # https://github.com/integer32llc/rust-playground/blob/c6165a36923db5d99313e6056b5b610a2ede5bb0/top-crates/src/lib.rs#L175-L184
 [metadata.playground]
-all-features = true
+all-features = false
 # Explicitly set the resolver to version 2, which is the default for packages with edition >= 2021
 # https://doc.rust-lang.org/edition-guide/rust-2021/default-cargo-resolver.html
 resolver = "2"
@@ -65,7 +65,7 @@ members = [
 ]
 
 [dependencies]
-tokio = { version = "1.32", features = ["full"] }
+tokio = { version = "1.45", features = ["full"] }
 tokio-tungstenite = { version = "0.23.1", default-features = false }
 futures = { version = "0.3.28", default-features = false, features = ["std"] }
 futures-core = "0.3.28"
@@ -188,11 +188,8 @@ uint = { git = "https://github.com/paritytech/parity-common", package = "uint", 
 impl-codec = { version = "0.6", default-features = false, optional = true }
 impl-serde = { version = "0.5.0", default-features = false, optional = true }
 scale-info = { version = ">=1.0, <3", features = ["derive"], default-features = false, optional = true }
-ring = { version = "0.17.8", features = [] }
+ring = { version = "0.17.12", features = [] }
 
-# aws
-rusoto_core = { version = "0.48.0", default-features = false, features = ["rustls"], optional = true }
-rusoto_kms = { version = "0.48.0", default-features = false, optional = true }
 # ledger
 coins-ledger = { version = "0.12.0", default-features = false, optional = true }
 protobuf = { version = "3.7.2", optional = true }
@@ -213,7 +210,7 @@ tracing-subscriber = "0.3.18"
 [features]
 futures = []
 ledger = ["coins-ledger", "protobuf"]
-aws = ["rusoto_core", "rusoto_kms"]
+# aws = ["rusoto_core", "rusoto_kms"]  # DISABLED: Security vulnerabilities in rusoto dependencies
 default = []
 # Development feature for mock HSM (only for testing/development)
 mock-hsm = ["yubihsm/mockhsm"]

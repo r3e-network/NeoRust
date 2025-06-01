@@ -19,8 +19,8 @@ files = []
 neofs = []
 
 [dependencies]
-neo3 = { path = "../", features = ["futures", "ledger", "aws"] }
-tokio = { version = "1.0", features = ["full"] }
+neo3 = { path = "../", features = ["futures", "ledger"] }
+tokio = { version = "1.45", features = ["full"] }
 clap = { version = "4.0", features = ["derive"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"

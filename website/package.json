@@ -1,6 +1,6 @@
 {
   "name": "neorust-website",
-  "version": "0.2.3",
+  "version": "0.4.1",
   "private": true,
   "scripts": {
     "docusaurus": "docusaurus",
@@ -18,10 +18,15 @@
     "@docusaurus/preset-classic": "^3.0.0",
     "@docusaurus/plugin-content-docs": "^3.0.0",
     "@mdx-js/react": "^3.0.0",
+    "axios": "^1.6.0",
     "clsx": "^2.0.0",
+    "fuse.js": "^7.0.0",
+    "mongodb": "^6.3.0",
+    "node-fetch": "^3.3.2",
     "prism-react-renderer": "^2.3.0",
     "react": "^18.0.0",
-    "react-dom": "^18.0.0"
+    "react-dom": "^18.0.0",
+    "validator": "^13.11.0"
   },
   "devDependencies": {
     "@docusaurus/module-type-aliases": "^3.0.0",

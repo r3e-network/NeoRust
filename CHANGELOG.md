@@ -7,6 +7,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.1] - 2025-06-01
+
+### 🔧 Fixed
+- **Cross-Platform Line Endings**: Added `.gitattributes` to enforce LF line endings across all platforms
+  - Resolves GitHub Actions CI failures on Windows due to CRLF line ending conflicts
+  - Ensures consistent `cargo fmt --all -- --check` results across macOS, Linux, and Windows
+  - Prevents "Incorrect newline style" errors in CI/CD pipeline
+
+### 🚀 Improved  
+- **CI/CD Reliability**: Enhanced GitHub Actions workflow stability
+  - Fixed cross-platform compatibility issues in automated testing
+  - Improved development experience across different operating systems
+  - Streamlined workflow focusing on essential checks (format, clippy, build, test)
+
+### 📚 Documentation
+- **Git Configuration**: Added comprehensive `.gitattributes` file
+  - Enforces consistent text file handling across platforms
+  - Proper binary file detection for images and archives
+  - Developer-friendly cross-platform development setup
+
+### 🛠️ Technical Details
+- Added `.gitattributes` with proper LF line ending rules for:
+  - Rust source files (`*.rs`)
+  - Configuration files (`*.toml`, `*.yml`, `*.json`)
+  - Documentation files (`*.md`, `*.txt`)
+  - Shell scripts (`*.sh`)
+- Configured binary file handling for images and archives
+- Ensured Git repository normalization for existing files
+
 ## [0.4.0] - 2025-06-01
 
 ### 🎯 Focus Areas for Next Release

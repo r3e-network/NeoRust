@@ -672,7 +672,7 @@ pub use coins_ledger;
 // #[cfg(feature = "aws")]
 // #[cfg_attr(docsrs, doc(cfg(feature = "aws")))]
 // pub use rusoto_core;
-// 
+//
 // #[cfg(feature = "aws")]
 // #[cfg_attr(docsrs, doc(cfg(feature = "aws")))]
 // pub use rusoto_kms;

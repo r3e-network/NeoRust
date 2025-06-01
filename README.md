@@ -1,4 +1,4 @@
-# NeoRust v0.4.0 - Production-Ready Neo N3 SDK
+# NeoRust v0.4.1 - Production-Ready Neo N3 SDK
 
 <div align="center">
   <p>
@@ -125,7 +125,7 @@ cargo build --release
 
 ```toml
 [dependencies]
-neo3 = "0.4.0"
+neo3 = "0.4.1"
 ```
 
 **Quick example:**
@@ -274,7 +274,7 @@ cargo build --release
 #### 📚 Rust Library (Recommended for Integration)
 ```toml
 [dependencies]
-neo3 = "0.3.0"
+neo3 = "0.4.1"
 ```
 
 ### 2. **Create Your First Wallet**

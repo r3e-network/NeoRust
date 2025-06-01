@@ -68,7 +68,7 @@ neo-cli defi transfer <TOKEN> <TO> <AMOUNT> [--data <DATA>]
 
 - Connection to a Neo N3 RPC node
 - Properly configured wallet
-- Neo SDK v0.1.9 or later with the following features:
+- Neo SDK v0.4.1 or later with the following features:
   - `futures` - Required for async operations
   - `ledger` - Optional for hardware wallet support
   - `aws` - Optional for AWS integration

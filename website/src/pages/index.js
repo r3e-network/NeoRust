@@ -175,7 +175,7 @@ cargo build --release
             <h3>Rust SDK</h3>
             <pre className={styles.codeBlock}>
               <code>{`[dependencies]
-neo3 = "0.1.9"`}</code>
+neo3 = "0.4.1"`}</code>
             </pre>
             
             <pre className={styles.codeBlock}>

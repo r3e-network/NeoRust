@@ -1,11 +1,11 @@
 @echo off
-REM NeoRust Build Script v0.4.0 for Windows
+REM NeoRust Build Script v0.4.1 for Windows
 REM Builds the NeoRust SDK with specified features
 
 setlocal enabledelayedexpansion
 
-REM Default features for v0.4.0 (AWS disabled for security)
-set "FEATURES=futures,ledger"
+REM Default features for v0.4.1 (AWS disabled for security)
+set FEATURES=futures,ledger
 
 REM Parse command line arguments
 :parse_args
@@ -23,7 +23,7 @@ echo Use --help for usage information
 exit /b 1
 
 :help
-echo NeoRust Build Script v0.4.0
+echo NeoRust Build Script v0.4.1
 echo.
 echo Usage: %0 [OPTIONS]
 echo.
@@ -39,11 +39,11 @@ echo Examples:
 echo   .\scripts\build.bat --features futures,ledger
 echo   .\scripts\build.bat --features futures
 echo.
-echo Note: AWS feature is disabled in v0.4.0 for security reasons
+echo Note: AWS feature is disabled in v0.4.1 for security reasons
 exit /b 0
 
 :build
-echo 🏗️  Building NeoRust v0.4.0...
+echo 🏗️  Building NeoRust v0.4.1...
 echo 📦 Features: %FEATURES%
 
 REM Build main library

@@ -1,11 +1,11 @@
 #!/bin/bash
 
-# NeoRust Test Script v0.4.0
+# NeoRust Test Script v0.4.1
 # Runs comprehensive tests for the NeoRust SDK
 
 set -e
 
-# Default features for v0.4.0 (AWS disabled for security)
+# Default features for v0.4.1 (AWS disabled for security)
 FEATURES="futures,ledger"
 
 # Parse command line arguments
@@ -16,7 +16,7 @@ while [[ $# -gt 0 ]]; do
             shift 2
             ;;
         --help|-h)
-            echo "NeoRust Test Script v0.4.0"
+            echo "NeoRust Test Script v0.4.1"
             echo ""
             echo "Usage: $0 [OPTIONS]"
             echo ""
@@ -32,7 +32,7 @@ while [[ $# -gt 0 ]]; do
             echo "  ./scripts/test.sh --features futures,ledger"
             echo "  ./scripts/test.sh --features futures"
             echo ""
-            echo "Note: AWS feature is disabled in v0.4.0 for security reasons"
+            echo "Note: AWS feature is disabled in v0.4.1 for security reasons"
             exit 0
             ;;
         *)
@@ -43,7 +43,7 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-echo "🧪 Running NeoRust v0.4.0 Test Suite..."
+echo "🧪 Running NeoRust v0.4.1 Test Suite..."
 echo "📦 Features: $FEATURES"
 
 # Run main library tests

@@ -2,7 +2,6 @@
 default = []
 futures = ["neo3/futures"]
 ledger = ["neo3/ledger"]
-aws = ["neo3/aws"]
 [package]
 name = "examples-events"
 version = "0.0.0"

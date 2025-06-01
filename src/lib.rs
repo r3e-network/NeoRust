@@ -20,8 +20,9 @@
 //!   hardware wallets for transaction signing and key management. This feature provides an additional
 //!   security layer by keeping private keys on dedicated hardware.
 //!
-//! - **aws**: Enables AWS KMS integration for cloud-based key management. This feature allows you to
-//!   store and use keys securely in AWS Key Management Service rather than managing them locally.
+//! - **aws**: ⚠️ **DISABLED in v0.4.0** due to security vulnerabilities in rusoto dependencies.
+//!   Will be re-enabled in a future version with modern AWS SDK. For AWS KMS integration,
+//!   please use v0.3.0 or wait for the next major release with updated AWS dependencies.
 //!
 //! To enable specific features in your project, modify your `Cargo.toml` as follows:
 //!
@@ -667,10 +668,11 @@ pub use futures;
 #[cfg_attr(docsrs, doc(cfg(feature = "ledger")))]
 pub use coins_ledger;
 
-#[cfg(feature = "aws")]
-#[cfg_attr(docsrs, doc(cfg(feature = "aws")))]
-pub use rusoto_core;
-
-#[cfg(feature = "aws")]
-#[cfg_attr(docsrs, doc(cfg(feature = "aws")))]
-pub use rusoto_kms;
+// AWS feature is disabled in v0.4.0 due to security vulnerabilities
+// #[cfg(feature = "aws")]
+// #[cfg_attr(docsrs, doc(cfg(feature = "aws")))]
+// pub use rusoto_core;
+// 
+// #[cfg(feature = "aws")]
+// #[cfg_attr(docsrs, doc(cfg(feature = "aws")))]
+// pub use rusoto_kms;

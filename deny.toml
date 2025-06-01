@@ -2,11 +2,13 @@
 # More documentation for the advisories section can be found here:
 # https://embarkstudios.github.io/cargo-deny/checks/advisories/cfg.html
 [advisories]
-vulnerability = "deny"
-unmaintained = "warn"
-unsound = "warn"
+# Version 2 configuration removes deprecated fields and sets new defaults
+version = 2
+
+# Note: vulnerability, unsound, and notice are no longer configurable in newer versions
+# They always emit errors and can only be ignored via the ignore field
+unmaintained = "workspace"
 yanked = "warn"
-notice = "warn"
 
 # This section is considered when running `cargo deny check bans`.
 # More documentation about the 'bans' section can be found here:
@@ -32,7 +34,12 @@ skip = []
 skip-tree = []
 
 [licenses]
-unlicensed = "deny"
+# Note: vulnerability, unsound, and notice are no longer configurable in newer versions
+# They always emit errors and can only be ignored via the ignore field
+
+# Version 2 configuration removes deprecated fields and sets new defaults
+version = 2
+
 confidence-threshold = 0.9
 # copyleft = "deny"
 
@@ -46,9 +53,12 @@ allow = [
     "Apache-2.0 WITH LLVM-exception",
     "BSD-2-Clause",
     "BSD-3-Clause",
+    "CC0-1.0",
     "ISC",
     "Unicode-DFS-2016",
+    "Unicode-3.0",
     "Unlicense",
+    "Zlib",
     "MPL-2.0",
     # https://github.com/briansmith/ring/issues/902
     "LicenseRef-ring",

@@ -35,11 +35,11 @@ default-target = "x86_64-unknown-linux-gnu"
 # https://github.com/integer32llc/rust-playground/blob/c6165a36923db5d99313e6056b5b610a2ede5bb0/top-crates/src/lib.rs#L175-L184
 [metadata.playground]
 all-features = false
+
+[workspace]
 # Explicitly set the resolver to version 2, which is the default for packages with edition >= 2021
 # https://doc.rust-lang.org/edition-guide/rust-2021/default-cargo-resolver.html
 resolver = "2"
-
-[workspace]
 members = [
     "neo-cli",
     "examples/neo_contracts",
@@ -196,7 +196,7 @@ protobuf = { version = "3.7.2", optional = true }
 # yubi
 yubihsm = { version = "0.42", features = ["http", "usb"] }
 block-padding = "0.3.3"
-env_logger = "0.11.7"
+env_logger = "0.11.8"
 async-stream = "0.3.5"
 
 bip39 = { version = "2.1.0", features = ["rand"] }

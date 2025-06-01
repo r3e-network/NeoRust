@@ -21,38 +21,6 @@
 
 **NeoRust** is the most comprehensive Rust SDK for the Neo N3 blockchain ecosystem. It provides everything you need to build, deploy, and manage Neo applications - from a powerful Rust library to beautiful desktop applications.
 
-## 🌟 What's New in v0.3.0
-
-### 🎉 **Complete Project Transformation**
-- **116 compilation errors eliminated** - Achieved 100% compilation success across all components
-- **All security vulnerabilities resolved** - Updated all vulnerable dependencies to secure versions
-- **Complete API modernization** - Fixed all deprecated and broken API calls
-- **Production-ready implementations** - Replaced all placeholder code with fully functional implementations
-
-### 🔒 **Security Enhancements**
-- **protobuf**: Updated from 3.2.0 to 3.7.2 (RUSTSEC-2024-0437)
-- **rustc-serialize**: Removed vulnerable dependency (RUSTSEC-2022-0004)
-- **rust-crypto**: Removed vulnerable dependency (RUSTSEC-2022-0011)
-- **json**: Removed unmaintained dependency (RUSTSEC-2022-0081)
-- **instant**: Replaced with web-time for better WASM support (RUSTSEC-2024-0384)
-- Migrated to secure RustCrypto ecosystem with proper cryptographic key management
-
-### 🚀 **Production Features**
-- **Complete CLI tool** with comprehensive Neo N3 operations
-- **Real message signing and verification** with ECDSA cryptography
-- **Transaction building and signing** with proper fee calculation
-- **NeoFS file storage** with complete client implementation and multipart upload
-- **DeFi protocol integration** (Flamingo, NeoBurger, NeoCompound, GrandShare)
-- **NFT operations** (mint, transfer, list, metadata management)
-- **Developer tools** (encoding, hashing, signature verification)
-
-### 📊 **Achievement Metrics**
-- **Compilation Errors**: 116 → 0 ✅
-- **Security Vulnerabilities**: 5 → 0 ✅
-- **Placeholder Implementations**: 9 → All Production-Ready ✅
-- **Test Suite**: 278 tests passing ✅
-- **Examples**: All working correctly ✅
-
 ## 🚀 Quick Start
 
 ### 📦 **Installation**

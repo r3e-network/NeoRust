@@ -1,70 +1,75 @@
 #!/bin/bash
 
-# Script to build NeoRust with various feature combinations
+# NeoRust Build Script v0.4.0
+# Builds the NeoRust SDK with specified features
 
-set -e  # Exit on first error
+set -e
 
-# Colors for output
-GREEN='\033[0;32m'
-RED='\033[0;31m'
-YELLOW='\033[0;33m'
-NC='\033[0m' # No Color
+# Default features for v0.4.0 (AWS disabled for security)
+FEATURES="futures,ledger"
 
-echo -e "${YELLOW}NeoRust Build Script${NC}"
-echo
-
-# Help output
-if [[ "$1" == "-h" || "$1" == "--help" ]]; then
-  echo "Usage: ./scripts/build.sh [options]"
-  echo
-  echo "Options:"
-  echo "  --features    - Comma-separated list of features to enable"
-  echo "                  Available features:"
-  echo "  futures     - Enables async/futures support"
-  echo "  ledger      - Enables Ledger hardware wallet support"
-  echo "  aws         - Enables AWS KMS support"
-  echo "  --release     - Build in release mode"
-  echo "  -h, --help    - Show this help message"
-  echo
-  echo "Examples:"
-  echo "  ./scripts/build.sh --features futures,ledger,aws"
-  echo "  ./scripts/build.sh --release"
-  exit 0
-fi
-
-# Default features
-FEATURES="futures,ledger,aws"
-BUILD_MODE="debug"
-
-# Parse arguments
+# Parse command line arguments
 while [[ $# -gt 0 ]]; do
-  case $1 in
-    --features)
-      FEATURES="$2"
-      shift 2
-      ;;
-    --release)
-      BUILD_MODE="release"
-      shift
-      ;;
-    *)
-      echo "Unknown option: $1"
-      echo "Use --help to see available options"
-      exit 1
-      ;;
-  esac
+    case $1 in
+        --features)
+            FEATURES="$2"
+            shift 2
+            ;;
+        --help|-h)
+            echo "NeoRust Build Script v0.4.0"
+            echo ""
+            echo "Usage: $0 [OPTIONS]"
+            echo ""
+            echo "Options:"
+            echo "  --features FEATURES    Comma-separated list of features to enable"
+            echo "  --help, -h            Show this help message"
+            echo ""
+            echo "Available features:"
+            echo "  futures               Enable async/futures support"
+            echo "  ledger                Enable Ledger hardware wallet support"
+            echo ""
+            echo "Examples:"
+            echo "  ./scripts/build.sh --features futures,ledger"
+            echo "  ./scripts/build.sh --features futures"
+            echo ""
+            echo "Note: AWS feature is disabled in v0.4.0 for security reasons"
+            exit 0
+            ;;
+        *)
+            echo "Unknown option: $1"
+            echo "Use --help for usage information"
+            exit 1
+            ;;
+    esac
 done
 
-# Display build settings
-echo -e "${YELLOW}Building NeoRust with features: ${GREEN}$FEATURES${NC}"
-echo -e "${YELLOW}Build mode: ${GREEN}$BUILD_MODE${NC}"
-echo
+echo "🏗️  Building NeoRust v0.4.0..."
+echo "📦 Features: $FEATURES"
 
-# Build command based on settings
-if [ "$BUILD_MODE" = "release" ]; then
-  cargo build --release --features "$FEATURES"
-  echo -e "${GREEN}Release build completed successfully!${NC}"
-else
-  cargo build --features "$FEATURES"
-  echo -e "${GREEN}Debug build completed successfully!${NC}"
-fi 
+# Build main library
+echo "Building main library..."
+cargo build --release --features "$FEATURES"
+
+# Build CLI
+echo "Building CLI..."
+cd neo-cli
+cargo build --release
+cd ..
+
+# Build examples
+echo "Building examples..."
+for example_dir in examples/*/; do
+    if [ -d "$example_dir" ]; then
+        echo "Building $(basename "$example_dir")..."
+        cd "$example_dir"
+        cargo build --release
+        cd ../..
+    fi
+done
+
+echo "✅ Build completed successfully!"
+echo "📊 Build summary:"
+echo "   - Main library: ✅"
+echo "   - CLI tool: ✅"
+echo "   - Examples: ✅"
+echo "   - Features: $FEATURES" 

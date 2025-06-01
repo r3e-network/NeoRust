@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.4.0] - TBD
+## [0.4.0] - 2025-06-01
 
 ### 🎯 Focus Areas for Next Release
 - **Enhanced Testing Framework**: Comprehensive unit test coverage with all tests passing
@@ -17,25 +17,49 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### 🧪 Testing & Quality Assurance
 - **Complete Test Suite**: All 276 unit tests now passing successfully
-- **Fixed Test Issues**: Resolved all failing tests in script builder, crypto keys, and script hash modules
-- **Improved Test Coverage**: Enhanced test reliability and deterministic behavior
-- **Non-deterministic Signature Handling**: Updated tests to properly handle ECDSA signature variability
+- **Fixed Critical Test Issues**: Resolved 6 failing tests in script builder, crypto keys, and script hash modules
+- **Improved Test Determinism**: Enhanced ECDSA signature handling for non-deterministic signatures
+- **Enhanced Script Builder**: Fixed integer encoding for BigInt values and proper byte trimming
+- **Crypto Key Validation**: Improved message signing and verification test reliability
+- **Script Hash Generation**: Fixed verification script creation for public key hashing
 
-### 🔧 Technical Improvements
-- **Script Builder Enhancements**: Fixed integer encoding for BigInt values with proper padding removal
-- **Cryptographic Updates**: Improved signature verification and key handling
-- **Script Hash Generation**: Enhanced public key to script hash conversion with proper verification scripts
-- **Error Handling**: Better error propagation and type safety
+### 🔒 Security Enhancements
+- **Zero Security Vulnerabilities**: Successfully eliminated all security vulnerabilities
+- **AWS Feature Disabled**: Temporarily disabled AWS feature due to unmaintained rusoto dependencies
+  - Removed vulnerable rusoto dependencies (RUSTSEC-2022-0071)
+  - Eliminated ring 0.16.20 vulnerabilities (RUSTSEC-2025-0009, RUSTSEC-2025-0010)
+  - Resolved rustls 0.20.9 infinite loop vulnerability (RUSTSEC-2024-0336)
+- **Updated Dependencies**: Upgraded tokio to 1.45 to address broadcast channel issues
+- **Secure Cryptography**: Maintained secure RustCrypto ecosystem with ring 0.17.12
 
-### 📚 Documentation & Developer Experience
-- **Comprehensive Guides**: Detailed implementation documentation and examples
-- **API Documentation**: Improved inline documentation and usage examples
-- **Migration Guides**: Clear upgrade paths and breaking change documentation
+### 🛠️ Technical Improvements
+- **Script Builder Enhancements**: 
+  - Fixed `push_integer` method for proper BigInt encoding
+  - Improved byte trimming logic for positive numbers
+  - Enhanced verification script generation
+- **Crypto Module Fixes**:
+  - Fixed message signing tests for non-deterministic ECDSA signatures
+  - Improved signature verification reliability
+- **Script Hash Module**:
+  - Fixed `from_public_key` method to create proper verification scripts
+  - Enhanced script hash generation accuracy
+- **Error Handling**: Improved ByteArray parameter decoding in script builder
 
-### 🚀 Performance & Reliability
-- **Memory Management**: Optimized memory usage in cryptographic operations
-- **Network Efficiency**: Improved RPC client performance and connection handling
-- **Error Recovery**: Enhanced error handling and graceful failure modes
+### 📚 Documentation Updates
+- **Security Warnings**: Added clear documentation about disabled AWS feature
+- **Migration Guide**: Documented security improvements and breaking changes
+- **API Documentation**: Updated feature flags and security considerations
+
+### ⚠️ Breaking Changes
+- **AWS Feature Disabled**: The `aws` feature is temporarily disabled due to security vulnerabilities
+  - Users requiring AWS KMS integration should use v0.3.0 or wait for v0.5.0
+  - Will be re-enabled with modern AWS SDK in future release
+- **Test Expectations**: Some test expectations updated to match corrected implementations
+
+### 🔄 Migration Notes
+- Remove `aws` feature from your `Cargo.toml` if using v0.4.0
+- All other functionality remains fully compatible
+- Enhanced test reliability may reveal previously hidden issues in dependent code
 
 ## [0.3.0] - 2025-06-01
 

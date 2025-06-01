@@ -1,73 +1,87 @@
 @echo off
+REM NeoRust Build Script v0.4.0 for Windows
+REM Builds the NeoRust SDK with specified features
+
 setlocal enabledelayedexpansion
 
-:: Colors for output (Windows)
-set "GREEN=[32m"
-set "RED=[31m"
-set "YELLOW=[33m"
-set "NC=[0m"
+REM Default features for v0.4.0 (AWS disabled for security)
+set "FEATURES=futures,ledger"
 
-echo %YELLOW%NeoRust Build Script%NC%
-echo.
-
-:: Help output
-if "%1"=="-h" goto :help
-if "%1"=="--help" goto :help
-goto :main
-
-:help
-echo Usage: .\scripts\build.bat [options]
-echo.
-echo Options:
-echo   --features    - Comma-separated list of features to enable
-echo                   Available features:
-echo   futures     - Enables async/futures support
-echo   ledger      - Enables Ledger hardware wallet support
-echo   aws         - Enables AWS KMS support
-echo   --release     - Build in release mode
-echo   -h, --help    - Show this help message
-echo.
-echo Examples:
-echo   .\scripts\build.bat --features futures,ledger,aws
-echo   .\scripts\build.bat --release
-exit /b 0
-
-:main
-:: Default features
-set "FEATURES=futures,ledger,aws"
-set "BUILD_MODE=debug"
-
-:: Parse arguments
+REM Parse command line arguments
 :parse_args
-if "%1"=="" goto :build
-if "%1"=="--features" (
-    set "FEATURES=%2"
+if "%~1"=="" goto build
+if "%~1"=="--features" (
+    set "FEATURES=%~2"
     shift
     shift
-    goto :parse_args
+    goto parse_args
 )
-if "%1"=="--release" (
-    set "BUILD_MODE=release"
-    shift
-    goto :parse_args
-)
-echo Unknown option: %1
-echo Use --help to see available options
+if "%~1"=="--help" goto help
+if "%~1"=="-h" goto help
+echo Unknown option: %~1
+echo Use --help for usage information
 exit /b 1
 
-:build
-:: Display build settings
-echo %YELLOW%Building NeoRust with features: %GREEN%%FEATURES%%NC%
-echo %YELLOW%Build mode: %GREEN%%BUILD_MODE%%NC%
+:help
+echo NeoRust Build Script v0.4.0
 echo.
+echo Usage: %0 [OPTIONS]
+echo.
+echo Options:
+echo   --features FEATURES    Comma-separated list of features to enable
+echo   --help, -h            Show this help message
+echo.
+echo Available features:
+echo   futures               Enable async/futures support
+echo   ledger                Enable Ledger hardware wallet support
+echo.
+echo Examples:
+echo   .\scripts\build.bat --features futures,ledger
+echo   .\scripts\build.bat --features futures
+echo.
+echo Note: AWS feature is disabled in v0.4.0 for security reasons
+exit /b 0
 
-:: Build command based on settings
-if "%BUILD_MODE%"=="release" (
-    cargo build --release --features "%FEATURES%"
-    echo %GREEN%Release build completed successfully!%NC%
-) else (
-    cargo build --features "%FEATURES%"
-    echo %GREEN%Debug build completed successfully!%NC%
+:build
+echo 🏗️  Building NeoRust v0.4.0...
+echo 📦 Features: %FEATURES%
+
+REM Build main library
+echo Building main library...
+cargo build --release --features "%FEATURES%"
+if errorlevel 1 (
+    echo ❌ Main library build failed
+    exit /b 1
 )
 
-exit /b 0 
+REM Build CLI
+echo Building CLI...
+cd neo-cli
+cargo build --release
+if errorlevel 1 (
+    echo ❌ CLI build failed
+    exit /b 1
+)
+cd ..
+
+REM Build examples
+echo Building examples...
+for /d %%i in (examples\*) do (
+    if exist "%%i\Cargo.toml" (
+        echo Building %%~ni...
+        cd "%%i"
+        cargo build --release
+        if errorlevel 1 (
+            echo ❌ Example %%~ni build failed
+            exit /b 1
+        )
+        cd ..\..
+    )
+)
+
+echo ✅ Build completed successfully!
+echo 📊 Build summary:
+echo    - Main library: ✅
+echo    - CLI tool: ✅
+echo    - Examples: ✅
+echo    - Features: %FEATURES% 

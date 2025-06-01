@@ -1,8 +1,8 @@
-# NeoRust v0.4.0 Release Preparation Guide
+# NeoRust v0.4.1 Release Preparation Guide
 
 ## 📋 Release Overview
 
-**Version**: 0.4.0  
+**Version**: 0.4.1  
 **Release Type**: Minor Release  
 **Target Date**: TBD  
 **Focus**: Testing Framework Enhancement & Quality Assurance
@@ -121,7 +121,7 @@ cargo test --lib --quiet
 
 ### Pre-Release
 - [x] All unit tests passing (276/276)
-- [x] Version numbers updated (0.4.0)
+- [x] Version numbers updated (0.4.1)
 - [x] CHANGELOG.md updated
 - [x] README.md updated
 - [x] Documentation reviewed and updated
@@ -130,7 +130,7 @@ cargo test --lib --quiet
 - [ ] Integration tests verified
 
 ### Release Process
-- [ ] Create release branch (`release/v0.4.0`)
+- [ ] Create release branch (`release/v0.4.1`)
 - [ ] Final testing on release branch
 - [ ] Create GitHub release with changelog
 - [ ] Publish to crates.io

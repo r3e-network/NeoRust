@@ -1,0 +1,24 @@
+{
+  "id": "basic-operations",
+  "title": "Basic Operations",
+  "description": "Learn the essential operations in NeoRust GUI.",
+  "source": "@site/gui/basic-operations.md",
+  "sourceDirName": ".",
+  "slug": "/basic-operations",
+  "permalink": "/gui/basic-operations",
+  "draft": false,
+  "unlisted": false,
+  "editUrl": "https://github.com/R3E-Network/NeoRust/tree/main/website/gui/basic-operations.md",
+  "tags": [],
+  "version": "current",
+  "frontMatter": {},
+  "sidebar": "guiSidebar",
+  "previous": {
+    "title": "First Wallet",
+    "permalink": "/gui/first-wallet"
+  },
+  "next": {
+    "title": "Token Operations",
+    "permalink": "/gui/token-operations"
+  }
+}

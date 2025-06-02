@@ -2,8 +2,6 @@
 
 Welcome to the **NeoRust Desktop GUI** - a beautiful, modern, and powerful Neo N3 wallet application built with cutting-edge technologies.
 
-![NeoRust Desktop GUI](../static/img/gui-hero.svg)
-
 ## 🌟 What Makes Our GUI Special
 
 The NeoRust Desktop GUI isn't just another wallet - it's a comprehensive blockchain interaction platform designed for both end users and developers.
@@ -87,8 +85,6 @@ Your central hub for portfolio management and blockchain monitoring.
 - **Network Status**: Live blockchain statistics
 - **Quick Actions**: Fast access to common operations
 
-![Dashboard Screenshot](../static/img/gui-dashboard.png)
-
 ### 💼 **Wallet Management**
 Comprehensive wallet operations with enterprise-grade security.
 
@@ -98,8 +94,6 @@ Comprehensive wallet operations with enterprise-grade security.
 - **Address Book**: Save and organize frequently used addresses
 - **Backup & Recovery**: Secure wallet backup and restoration
 - **Hardware Wallet Integration**: Ledger device support
-
-![Wallet Screenshot](../static/img/gui-wallet.png)
 
 ### 🎨 **NFT Marketplace**
 Beautiful NFT collection browser and management interface.
@@ -111,8 +105,6 @@ Beautiful NFT collection browser and management interface.
 - **Metadata Viewer**: Detailed NFT information and properties
 - **IPFS Integration**: Seamless decentralized storage support
 
-![NFT Screenshot](../static/img/gui-nft.png)
-
 ### 🔧 **Developer Tools**
 Built-in utilities for blockchain developers and power users.
 
@@ -122,8 +114,6 @@ Built-in utilities for blockchain developers and power users.
 - **Transaction Builder**: Visual transaction construction
 - **Contract Interaction**: Smart contract testing interface
 - **Network Debugger**: RPC call testing and debugging
-
-![Tools Screenshot](../static/img/gui-tools.png)
 
 ### 📊 **Analytics**
 Advanced portfolio analytics and market insights.
@@ -135,8 +125,6 @@ Advanced portfolio analytics and market insights.
 - **Market Data**: Real-time market information
 - **Export Tools**: Data export for external analysis
 
-![Analytics Screenshot](../static/img/gui-analytics.png)
-
 ### ⚙️ **Settings**
 Comprehensive application configuration and preferences.
 
@@ -146,8 +134,6 @@ Comprehensive application configuration and preferences.
 - **Theme Customization**: Dark/light mode and color schemes
 - **Language Support**: Multi-language interface
 - **Backup Management**: Automated backup scheduling
-
-![Settings Screenshot](../static/img/gui-settings.png)
 
 ## 🏗️ Technical Architecture
 

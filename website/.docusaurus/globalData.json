@@ -1,0 +1,225 @@
+{
+  "docusaurus-plugin-content-docs": {
+    "default": {
+      "path": "/docs",
+      "versions": [
+        {
+          "name": "current",
+          "label": "v0.4.1",
+          "isLast": true,
+          "path": "/docs",
+          "mainDocId": "intro",
+          "docs": [
+            {
+              "id": "getting-started/installation",
+              "path": "/docs/getting-started/installation",
+              "sidebar": "tutorialSidebar"
+            },
+            {
+              "id": "getting-started/quick-start",
+              "path": "/docs/getting-started/quick-start",
+              "sidebar": "tutorialSidebar"
+            },
+            {
+              "id": "intro",
+              "path": "/docs/intro",
+              "sidebar": "tutorialSidebar"
+            },
+            {
+              "id": "testing",
+              "path": "/docs/testing",
+              "sidebar": "tutorialSidebar"
+            }
+          ],
+          "draftIds": [],
+          "sidebars": {
+            "tutorialSidebar": {
+              "link": {
+                "path": "/docs/intro",
+                "label": "👋 Welcome to NeoRust"
+              }
+            }
+          }
+        }
+      ],
+      "breadcrumbs": true
+    },
+    "sdk": {
+      "path": "/sdk",
+      "versions": [
+        {
+          "name": "current",
+          "label": "Next",
+          "isLast": true,
+          "path": "/sdk",
+          "mainDocId": "intro",
+          "docs": [
+            {
+              "id": "api-reference",
+              "path": "/sdk/api-reference",
+              "sidebar": "sdkSidebar"
+            },
+            {
+              "id": "contracts",
+              "path": "/sdk/contracts",
+              "sidebar": "sdkSidebar"
+            },
+            {
+              "id": "examples",
+              "path": "/sdk/examples",
+              "sidebar": "sdkSidebar"
+            },
+            {
+              "id": "installation",
+              "path": "/sdk/installation",
+              "sidebar": "sdkSidebar"
+            },
+            {
+              "id": "intro",
+              "path": "/sdk/intro",
+              "sidebar": "sdkSidebar"
+            },
+            {
+              "id": "quick-start",
+              "path": "/sdk/quick-start",
+              "sidebar": "sdkSidebar"
+            },
+            {
+              "id": "tokens",
+              "path": "/sdk/tokens",
+              "sidebar": "sdkSidebar"
+            },
+            {
+              "id": "transactions",
+              "path": "/sdk/transactions",
+              "sidebar": "sdkSidebar"
+            },
+            {
+              "id": "troubleshooting",
+              "path": "/sdk/troubleshooting",
+              "sidebar": "sdkSidebar"
+            },
+            {
+              "id": "wallets",
+              "path": "/sdk/wallets",
+              "sidebar": "sdkSidebar"
+            }
+          ],
+          "draftIds": [],
+          "sidebars": {
+            "sdkSidebar": {
+              "link": {
+                "path": "/sdk/intro",
+                "label": "🦀 Rust SDK Overview"
+              }
+            }
+          }
+        }
+      ],
+      "breadcrumbs": true
+    },
+    "gui": {
+      "path": "/gui",
+      "versions": [
+        {
+          "name": "current",
+          "label": "Next",
+          "isLast": true,
+          "path": "/gui",
+          "mainDocId": "intro",
+          "docs": [
+            {
+              "id": "basic-operations",
+              "path": "/gui/basic-operations",
+              "sidebar": "guiSidebar"
+            },
+            {
+              "id": "first-wallet",
+              "path": "/gui/first-wallet",
+              "sidebar": "guiSidebar"
+            },
+            {
+              "id": "installation",
+              "path": "/gui/installation",
+              "sidebar": "guiSidebar"
+            },
+            {
+              "id": "intro",
+              "path": "/gui/intro",
+              "sidebar": "guiSidebar"
+            },
+            {
+              "id": "settings",
+              "path": "/gui/settings",
+              "sidebar": "guiSidebar"
+            },
+            {
+              "id": "token-operations",
+              "path": "/gui/token-operations",
+              "sidebar": "guiSidebar"
+            },
+            {
+              "id": "transactions",
+              "path": "/gui/transactions",
+              "sidebar": "guiSidebar"
+            },
+            {
+              "id": "wallet-management",
+              "path": "/gui/wallet-management",
+              "sidebar": "guiSidebar"
+            }
+          ],
+          "draftIds": [],
+          "sidebars": {
+            "guiSidebar": {
+              "link": {
+                "path": "/gui/intro",
+                "label": "🖥️ Desktop GUI Overview"
+              }
+            }
+          }
+        }
+      ],
+      "breadcrumbs": true
+    },
+    "cli": {
+      "path": "/cli",
+      "versions": [
+        {
+          "name": "current",
+          "label": "Next",
+          "isLast": true,
+          "path": "/cli",
+          "mainDocId": "intro",
+          "docs": [
+            {
+              "id": "commands",
+              "path": "/cli/commands",
+              "sidebar": "cliSidebar"
+            },
+            {
+              "id": "configuration",
+              "path": "/cli/configuration",
+              "sidebar": "cliSidebar"
+            },
+            {
+              "id": "intro",
+              "path": "/cli/intro",
+              "sidebar": "cliSidebar"
+            }
+          ],
+          "draftIds": [],
+          "sidebars": {
+            "cliSidebar": {
+              "link": {
+                "path": "/cli/intro",
+                "label": "⌨️ CLI Tools Overview"
+              }
+            }
+          }
+        }
+      ],
+      "breadcrumbs": true
+    }
+  }
+}

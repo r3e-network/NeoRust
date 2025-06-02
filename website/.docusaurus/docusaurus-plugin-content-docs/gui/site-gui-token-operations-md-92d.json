@@ -1,0 +1,24 @@
+{
+  "id": "token-operations",
+  "title": "Token Operations",
+  "description": "Manage tokens in NeoRust GUI.",
+  "source": "@site/gui/token-operations.md",
+  "sourceDirName": ".",
+  "slug": "/token-operations",
+  "permalink": "/gui/token-operations",
+  "draft": false,
+  "unlisted": false,
+  "editUrl": "https://github.com/R3E-Network/NeoRust/tree/main/website/gui/token-operations.md",
+  "tags": [],
+  "version": "current",
+  "frontMatter": {},
+  "sidebar": "guiSidebar",
+  "previous": {
+    "title": "Basic Operations",
+    "permalink": "/gui/basic-operations"
+  },
+  "next": {
+    "title": "Wallet Management",
+    "permalink": "/gui/wallet-management"
+  }
+}

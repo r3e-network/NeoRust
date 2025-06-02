@@ -330,16 +330,66 @@ body {
   border: 1px solid rgba(16, 185, 129, 0.2);
   border-radius: var(--ifm-border-radius-lg);
   backdrop-filter: blur(10px);
+  margin-top: 0.5rem;
+  position: relative;
+}
+
+/* Fix dropdown button alignment */
+.navbar__item.dropdown {
+  position: relative;
+}
+
+.navbar__item.dropdown .navbar__link {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+.navbar__item.dropdown .navbar__link::after {
+  display: none; /* Remove the underline for dropdown buttons */
+}
+
+/* Dropdown toggle button styling */
+.navbar__item.dropdown .navbar__link[aria-expanded] {
+  background: rgba(16, 185, 129, 0.1);
+  border-radius: var(--ifm-border-radius);
+  transition: var(--neo-transition);
+}
+
+.navbar__item.dropdown:hover .navbar__link,
+.navbar__item.dropdown .navbar__link[aria-expanded="true"] {
+  background: rgba(16, 185, 129, 0.15) !important;
+  color: var(--ifm-color-primary) !important;
+  transform: none !important; /* Prevent any transform that might cause misalignment */
+}
+
+/* Ensure dropdown menu positioning */
+.navbar__item.dropdown .dropdown__menu {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  z-index: 1000;
+  transform: translateY(0);
+}
+
+/* Right-aligned dropdowns */
+.navbar__items--right .navbar__item.dropdown .dropdown__menu {
+  left: auto;
+  right: 0;
 }
 
 .dropdown__link {
   padding: 0.75rem 1rem;
   transition: var(--neo-transition);
+  display: block;
+  text-decoration: none;
 }
 
 .dropdown__link:hover {
   background: rgba(16, 185, 129, 0.1);
   color: var(--ifm-color-primary);
+  text-decoration: none;
 }
 
 /* Custom dropdown divider */
@@ -347,6 +397,64 @@ body {
   border-top: 1px solid rgba(16, 185, 129, 0.2);
   margin-top: 0.25rem;
   padding-top: 0.75rem;
+}
+
+/* Fix dropdown caret alignment */
+.navbar__item.dropdown .navbar__link::after {
+  display: none !important; /* Remove the default underline */
+}
+
+/* Ensure dropdown button doesn't shift on hover */
+.navbar__item.dropdown .navbar__link {
+  box-sizing: border-box;
+  width: auto;
+  min-height: 40px;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  white-space: nowrap;
+  position: relative !important;
+}
+
+/* Fix for dropdown caret positioning */
+.navbar__item.dropdown .navbar__link[aria-expanded]::after {
+  content: '';
+  display: inline-block !important;
+  width: 0;
+  height: 0;
+  margin-left: 0.5rem;
+  border-left: 4px solid transparent;
+  border-right: 4px solid transparent;
+  border-top: 4px solid currentColor;
+  transition: var(--neo-transition);
+  vertical-align: middle;
+}
+
+.navbar__item.dropdown .navbar__link[aria-expanded="true"]::after {
+  transform: rotate(180deg);
+}
+
+/* Prevent any layout shift on hover */
+.navbar__item.dropdown:hover .navbar__link {
+  transform: none !important;
+  margin: 0 0.125rem !important;
+  padding: 0.5rem 0.75rem !important;
+}
+
+/* Ensure consistent spacing for all navbar items */
+.navbar__items .navbar__item {
+  margin: 0 0.125rem;
+}
+
+.navbar__items .navbar__item .navbar__link {
+  padding: 0.5rem 0.75rem;
+  border-radius: var(--ifm-border-radius);
+  transition: var(--neo-transition);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 40px;
+  box-sizing: border-box;
 }
 
 /* Responsive navbar adjustments */

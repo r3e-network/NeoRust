@@ -1,0 +1,24 @@
+{
+  "id": "contracts",
+  "title": "Smart Contracts",
+  "description": "Deploy and interact with smart contracts on Neo N3.",
+  "source": "@site/sdk/contracts.md",
+  "sourceDirName": ".",
+  "slug": "/contracts",
+  "permalink": "/sdk/contracts",
+  "draft": false,
+  "unlisted": false,
+  "editUrl": "https://github.com/R3E-Network/NeoRust/tree/main/website/sdk/contracts.md",
+  "tags": [],
+  "version": "current",
+  "frontMatter": {},
+  "sidebar": "sdkSidebar",
+  "previous": {
+    "title": "Transaction Management",
+    "permalink": "/sdk/transactions"
+  },
+  "next": {
+    "title": "Token Operations",
+    "permalink": "/sdk/tokens"
+  }
+}

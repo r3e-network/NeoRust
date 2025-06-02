@@ -1,0 +1,22 @@
+{
+  "id": "intro",
+  "title": "CLI Tools Overview",
+  "description": "Welcome to NeoRust CLI Tools - your command-line interface for Neo N3 blockchain development and operations. Built with Rust for maximum performance and reliability.",
+  "source": "@site/cli/intro.md",
+  "sourceDirName": ".",
+  "slug": "/intro",
+  "permalink": "/cli/intro",
+  "draft": false,
+  "unlisted": false,
+  "editUrl": "https://github.com/R3E-Network/NeoRust/tree/main/website/cli/intro.md",
+  "tags": [],
+  "version": "current",
+  "lastUpdatedBy": "Jimmy",
+  "lastUpdatedAt": 1748702329000,
+  "frontMatter": {},
+  "sidebar": "cliSidebar",
+  "next": {
+    "title": "CLI Commands Reference",
+    "permalink": "/cli/commands"
+  }
+}

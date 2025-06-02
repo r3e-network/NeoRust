@@ -1,0 +1,20 @@
+{
+  "id": "configuration",
+  "title": "Configuration",
+  "description": "Complete guide to configuring and customizing NeoRust CLI tools for optimal development workflow.",
+  "source": "@site/cli/configuration.md",
+  "sourceDirName": ".",
+  "slug": "/configuration",
+  "permalink": "/cli/configuration",
+  "draft": false,
+  "unlisted": false,
+  "editUrl": "https://github.com/R3E-Network/NeoRust/tree/main/website/cli/configuration.md",
+  "tags": [],
+  "version": "current",
+  "frontMatter": {},
+  "sidebar": "cliSidebar",
+  "previous": {
+    "title": "CLI Commands Reference",
+    "permalink": "/cli/commands"
+  }
+}

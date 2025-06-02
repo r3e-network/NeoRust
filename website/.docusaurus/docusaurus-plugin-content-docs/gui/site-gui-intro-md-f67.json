@@ -1,0 +1,22 @@
+{
+  "id": "intro",
+  "title": "Desktop GUI - Beautiful Neo N3 Wallet",
+  "description": "Welcome to the NeoRust Desktop GUI - a beautiful, modern, and powerful Neo N3 wallet application built with cutting-edge technologies.",
+  "source": "@site/gui/intro.md",
+  "sourceDirName": ".",
+  "slug": "/intro",
+  "permalink": "/gui/intro",
+  "draft": false,
+  "unlisted": false,
+  "editUrl": "https://github.com/R3E-Network/NeoRust/tree/main/website/gui/intro.md",
+  "tags": [],
+  "version": "current",
+  "lastUpdatedBy": "Jimmy",
+  "lastUpdatedAt": 1748820964000,
+  "frontMatter": {},
+  "sidebar": "guiSidebar",
+  "next": {
+    "title": "Installation",
+    "permalink": "/gui/installation"
+  }
+}

@@ -1,0 +1,24 @@
+{
+  "id": "quick-start",
+  "title": "Quick Start",
+  "description": "Get up and running with NeoRust SDK in minutes.",
+  "source": "@site/sdk/quick-start.md",
+  "sourceDirName": ".",
+  "slug": "/quick-start",
+  "permalink": "/sdk/quick-start",
+  "draft": false,
+  "unlisted": false,
+  "editUrl": "https://github.com/R3E-Network/NeoRust/tree/main/website/sdk/quick-start.md",
+  "tags": [],
+  "version": "current",
+  "frontMatter": {},
+  "sidebar": "sdkSidebar",
+  "previous": {
+    "title": "Installation",
+    "permalink": "/sdk/installation"
+  },
+  "next": {
+    "title": "Examples",
+    "permalink": "/sdk/examples"
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "title": "Recent posts",
+  "items": [
+    {
+      "title": "🎉 NeoRust v0.4.1 Released - Production-Ready Neo N3 Development",
+      "permalink": "/blog/neorust-v0.4.1-release",
+      "unlisted": false,
+      "date": "2024-01-15T00:00:00.000Z"
+    },
+    {
+      "title": "🏗️ Building Your First Neo dApp with NeoRust - Complete Guide",
+      "permalink": "/blog/building-first-neo-dapp",
+      "unlisted": false,
+      "date": "2024-01-10T00:00:00.000Z"
+    }
+  ]
+}

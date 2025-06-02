@@ -1,403 +1,444 @@
-# Command Line Interface - Powerful Neo N3 Tools
+# CLI Tools Overview
 
-Welcome to the **NeoRust CLI** - a professional, feature-rich command-line interface for Neo N3 blockchain operations with beautiful output and comprehensive functionality.
+Welcome to **NeoRust CLI Tools** - your command-line interface for Neo N3 blockchain development and operations. Built with Rust for maximum performance and reliability.
 
-![NeoRust CLI](../static/img/cli-hero.svg)
+## What is NeoRust CLI? ⌨️
 
-## 🌟 Why Choose NeoRust CLI
+NeoRust CLI is a comprehensive command-line toolkit that brings the full power of Neo N3 blockchain to your terminal. Whether you're developing smart contracts, managing wallets, or automating blockchain operations, our CLI tools provide everything you need for efficient Neo development.
 
-The NeoRust CLI is designed for developers, power users, and automation scenarios. It provides the full power of the Neo N3 blockchain through an elegant command-line interface.
+### ✨ **Key Highlights**
 
-### 🎨 **Beautiful Output**
-- **Colored Interface**: Rich, colored output for better readability
-- **Progress Indicators**: Real-time progress bars and spinners
-- **Interactive Prompts**: User-friendly input prompts and confirmations
-- **Formatted Tables**: Beautiful table output for data display
-- **Status Icons**: Visual indicators for success, error, and warning states
+- **🚀 Performance**: Built with Rust for lightning-fast operations
+- **🔧 Comprehensive**: Complete toolkit for Neo N3 development
+- **⚙️ Configurable**: Highly customizable to fit your workflow
+- **🔒 Secure**: Enterprise-grade security features
+- **📊 Detailed**: Rich output and comprehensive logging
+- **🌐 Cross-platform**: Works on Windows, macOS, and Linux
 
-### 🔧 **Comprehensive Features**
-- **Wallet Management**: Complete wallet operations
-- **NFT Operations**: Full NFT lifecycle management
-- **Network Tools**: Blockchain monitoring and interaction
-- **Developer Utilities**: Encoding, hashing, and debugging tools
-- **Automation Ready**: Perfect for scripts and CI/CD pipelines
-
-### ⚡ **High Performance**
-- **Fast Execution**: Optimized Rust implementation
-- **Parallel Operations**: Concurrent processing where possible
-- **Memory Efficient**: Minimal resource usage
-- **Reliable**: Comprehensive error handling and recovery
-
-## 🚀 Quick Start
+## Quick Start 🚀
 
 ### Installation
 
-#### Option 1: Download Pre-built Binary
 ```bash
-# Download the latest release for your platform
-curl -L https://github.com/R3E-Network/NeoRust/releases/latest/download/neo-cli-linux -o neo-cli
-chmod +x neo-cli
+# Install via Cargo (Rust package manager)
+cargo install neo3-cli
 
-# Or for other platforms:
-# Windows: neo-cli-windows.exe
-# macOS: neo-cli-macos
+# Verify installation
+neorust --version
+# Output: neorust 0.4.1
+
+# Initialize configuration
+neorust config init
 ```
 
-#### Option 2: Build from Source
-```bash
-# Clone the repository
-git clone https://github.com/R3E-Network/NeoRust.git
-cd NeoRust/neo-cli
-
-# Build the CLI
-cargo build --release
-
-# The binary will be at ./target/release/neo-cli
-```
-
-#### Option 3: Install via Cargo
-```bash
-# Install directly from crates.io
-cargo install neo-cli
-
-# Or from git
-cargo install --git https://github.com/R3E-Network/NeoRust.git neo-cli
-```
-
-### First Steps
+### Your First Commands
 
 ```bash
-# Check installation
-neo-cli --version
+# Check Neo N3 network status
+neorust network status
 
-# Get help
-neo-cli --help
+# Get current block height
+neorust blockchain height
 
-# Create your first wallet
-neo-cli wallet create --name "MyWallet"
+# Create a new wallet
+neorust wallet create --name my-wallet
 
-# Check network status
-neo-cli network status
+# Check account balance
+neorust account balance NXXXxxxXXX...
+
+# Send tokens
+neorust send --to NRecipientAddress --amount 10 --token GAS
 ```
 
-## 📋 Command Overview
+## Core Features 🔧
 
-### 🏠 **Main Commands**
-
-| Command | Description | Example |
-|---------|-------------|---------|
-| `wallet` | Wallet management operations | `neo-cli wallet create --name "MyWallet"` |
-| `nft` | NFT operations and management | `neo-cli nft mint --contract "0x..." --to "NX8..."` |
-| `network` | Network connectivity and info | `neo-cli network connect --network testnet` |
-| `tools` | Developer utilities | `neo-cli tools encode --input "hello" --format base64` |
-
-### 💼 **Wallet Commands**
+### 🏦 **Wallet Management**
+- **Create & Import**: Generate new wallets or import existing ones
+- **Multi-format Support**: NEP-6, WIF, private key, and mnemonic
+- **Hardware Wallet**: Ledger device integration
+- **Security**: Encrypted storage with multiple authentication methods
 
 ```bash
-# Wallet Management
-neo-cli wallet create --name "MyWallet" --path "./wallet.json"
-neo-cli wallet open --path "./wallet.json"
-neo-cli wallet close
-neo-cli wallet list
+# Create new wallet
+neorust wallet create --name production-wallet
 
-# Address Management
-neo-cli wallet create-address --label "Main Account"
-neo-cli wallet import-address --wif "KxDgvEKzgSBPPfuVfw67oPQBSjidEiqTHURKSDL1R7yGaGYAeYnr"
-neo-cli wallet export-address --address "NbTiM6h8r99kpRtb428XcsUk1TzKed2gTc"
-neo-cli wallet list-addresses
+# Import from mnemonic
+neorust wallet import --mnemonic "your twelve word mnemonic phrase here..."
 
-# Balance and Transactions
-neo-cli wallet balance --detailed
-neo-cli wallet history --limit 10
-neo-cli wallet send --to "NbTiM6h8r99kpRtb428XcsUk1TzKed2gTc" --amount 1.5 --asset NEO
-
-# Backup and Recovery
-neo-cli wallet backup --output "./backup.json"
-neo-cli wallet restore --input "./backup.json"
+# List all wallets
+neorust wallet list
 ```
 
-### 🎨 **NFT Commands**
+### 💰 **Account Operations**
+- **Balance Checking**: View NEO, GAS, and custom token balances
+- **Transaction History**: Complete transaction records with filtering
+- **Multi-signature**: Support for multi-sig accounts
+- **Watch-only**: Monitor addresses without private keys
 
 ```bash
-# NFT Collection Management
-neo-cli nft deploy --name "MyCollection" --symbol "MC" --max-supply 1000
-neo-cli nft info --contract "0x1234567890abcdef1234567890abcdef12345678"
-neo-cli nft collection --contract "0x..." --owner "NX8..."
+# Check all balances
+neorust account balance --all
 
-# NFT Operations
-neo-cli nft mint --contract "0x..." --to "NX8..." --token-id "001" --metadata "ipfs://..."
-neo-cli nft transfer --contract "0x..." --token-id "001" --from "NX8..." --to "NY9..."
-neo-cli nft burn --contract "0x..." --token-id "001"
+# View transaction history
+neorust account history --limit 10 --format table
 
-# NFT Information
-neo-cli nft balance --contract "0x..." --owner "NX8..."
-neo-cli nft metadata --contract "0x..." --token-id "001"
-neo-cli nft properties --contract "0x..." --token-id "001"
+# Create multi-signature account
+neorust account multisig create --threshold 2 --keys key1,key2,key3
 ```
 
-### 🌐 **Network Commands**
+### 💸 **Token Operations**
+- **Send Transactions**: Transfer NEO, GAS, and NEP-17 tokens
+- **Batch Transfers**: Send to multiple recipients in one transaction
+- **Token Information**: Query token metadata and supply
+- **Custom Tokens**: Work with any NEP-17 compliant token
 
 ```bash
-# Network Management
-neo-cli network connect --network "Neo N3 Testnet"
-neo-cli network disconnect
-neo-cli network status
-neo-cli network list
+# Send GAS tokens
+neorust send --to NRecipient --amount 100 --token GAS
 
-# Network Information
-neo-cli network info --detailed
-neo-cli network peers
-neo-cli network block --height 1000000
-neo-cli network transaction --hash "0x..."
+# Batch transfer
+neorust send batch --file recipients.csv --token NEO
 
-# Network Configuration
-neo-cli network add --name "Custom" --rpc "https://custom-node.com:443"
-neo-cli network remove --name "Custom"
-neo-cli network test --network "testnet"
+# Get token information
+neorust token info --contract 0x1234...
 ```
 
-### 🔧 **Developer Tools**
+### 📋 **Smart Contract Interaction**
+- **Deploy Contracts**: Deploy .nef and .nvm contract files
+- **Invoke Methods**: Call contract methods with parameters
+- **Contract Testing**: Test contracts on TestNet before MainNet
+- **Event Monitoring**: Watch for contract events in real-time
 
 ```bash
-# Encoding/Decoding
-neo-cli tools encode --input "hello world" --format base64
-neo-cli tools decode --input "aGVsbG8gd29ybGQ=" --format base64
-neo-cli tools encode --input "neo" --format hex
+# Deploy contract
+neorust contract deploy --nef contract.nef --manifest contract.manifest.json
 
-# Hashing
-neo-cli tools hash --input "hello" --algorithm sha256
-neo-cli tools hash --input "neo" --algorithm ripemd160
-neo-cli tools hash --file "./contract.nef" --algorithm sha256
+# Invoke contract method
+neorust contract invoke 0x1234... methodName param1 param2
 
-# Random Generation
-neo-cli tools random --length 32 --format hex
-neo-cli tools random --length 16 --format base64
-
-# Address Utilities
-neo-cli tools validate-address --address "NbTiM6h8r99kpRtb428XcsUk1TzKed2gTc"
-neo-cli tools generate-address --count 5
-
-# Transaction Tools
-neo-cli tools calculate-fee --transaction "./tx.json"
-neo-cli tools sign-transaction --transaction "./tx.json" --key "KxDgvE..."
+# Monitor contract events
+neorust contract events 0x1234... --event Transfer
 ```
 
-## 🎨 Beautiful Output Examples
+### 🌐 **Network Operations**
+- **RPC Calls**: Direct JSON-RPC calls to Neo nodes
+- **Network Stats**: Real-time blockchain statistics
+- **Node Management**: Connect to different networks and nodes
+- **Health Monitoring**: Check node status and connectivity
 
-### **Wallet Balance Display**
-```
-┌─────────────────────────────────────────────────────────────┐
-│                    💼 Wallet Balance                        │
-├─────────────────────────────────────────────────────────────┤
-│ Address: NbTiM6h8r99kpRtb428XcsUk1TzKed2gTc                │
-│                                                             │
-│ Assets:                                                     │
-│ ├─ 🟢 NEO      │ 100.00000000 │ $2,500.00                  │
-│ ├─ ⛽ GAS      │  50.12345678 │ $1,250.62                  │
-│ └─ 🎨 FLUND    │   1.00000000 │   $25.00                   │
-│                                                             │
-│ Total Value: $3,775.62                                      │
-└─────────────────────────────────────────────────────────────┘
-```
+```bash
+# Get network information
+neorust network info
 
-### **Network Status Display**
-```
-🌐 Network Status: Neo N3 MainNet
+# Switch to TestNet
+neorust config set network testnet
 
-┌─────────────────┬─────────────────────────────────────────┐
-│ Property        │ Value                                   │
-├─────────────────┼─────────────────────────────────────────┤
-│ 📊 Block Height │ 12,345,678                             │
-│ ⏱️  Block Time   │ 15.2s                                   │
-│ 🔗 Connections  │ 42 peers                                │
-│ 💾 Memory Pool  │ 156 transactions                        │
-│ ⛽ Network Fee  │ 0.00123456 GAS                          │
-│ 🔄 Status       │ ✅ Synchronized                         │
-└─────────────────┴─────────────────────────────────────────┘
+# Custom RPC call
+neorust rpc call getblockcount
+
+# Monitor network health
+neorust network monitor --interval 30
 ```
 
-### **NFT Collection Display**
-```
-🎨 NFT Collection: CryptoPunks Neo
+### 🔐 **Security Features**
+- **Encrypted Storage**: All private keys encrypted at rest
+- **Hardware Wallet**: Ledger device support for signing
+- **Transaction Preview**: Review transactions before signing
+- **Secure Configuration**: Encrypted configuration files
 
-┌─────────────────────────────────────────────────────────────┐
-│ Contract: 0x1234567890abcdef1234567890abcdef12345678        │
-│ Symbol: CPN                                                 │
-│ Total Supply: 10,000                                        │
-│ Owner: NbTiM6h8r99kpRtb428XcsUk1TzKed2gTc                  │
-├─────────────────────────────────────────────────────────────┤
-│ Recent Mints:                                               │
-│ ├─ #9999 → NX8... (2 minutes ago)                          │
-│ ├─ #9998 → NY9... (5 minutes ago)                          │
-│ └─ #9997 → NZ1... (8 minutes ago)                          │
-└─────────────────────────────────────────────────────────────┘
-```
+## Command Categories 📚
 
-## 🔧 Advanced Usage
+### Core Commands
+| Command | Description |
+|---------|-------------|
+| `neorust wallet` | Wallet management operations |
+| `neorust account` | Account and balance operations |
+| `neorust send` | Send tokens and transfers |
+| `neorust contract` | Smart contract interactions |
+| `neorust network` | Network and blockchain queries |
 
-### **Configuration File**
-Create a configuration file at `~/.neorust/config.toml`:
+### Utility Commands
+| Command | Description |
+|---------|-------------|
+| `neorust config` | Configuration management |
+| `neorust keys` | Cryptographic key operations |
+| `neorust convert` | Data format conversions |
+| `neorust monitor` | Real-time monitoring |
+| `neorust backup` | Backup and restore operations |
 
-```toml
-[default]
-network = "Neo N3 TestNet"
-wallet_path = "~/.neorust/wallets/"
-auto_backup = true
+## Configuration 🔧
 
-[networks.mainnet]
-name = "Neo N3 MainNet"
-rpc_url = "https://mainnet1.neo.coz.io:443"
-magic = 860833102
-
-[networks.testnet]
-name = "Neo N3 TestNet"
-rpc_url = "https://testnet1.neo.coz.io:443"
-magic = 894710606
-
-[ui]
-color = true
-progress_bars = true
-table_style = "rounded"
-```
-
-### **Environment Variables**
+### Quick Configuration
 ```bash
 # Set default network
-export NEO_NETWORK="testnet"
+neorust config set network mainnet
 
-# Set default wallet path
-export NEO_WALLET_PATH="./my-wallet.json"
+# Set default RPC endpoint
+neorust config set rpc.mainnet "https://rpc10.n3.nspcc.ru:10331"
 
-# Enable verbose logging
-export NEO_LOG_LEVEL="debug"
-
-# Disable colored output
-export NO_COLOR=1
+# Configure output format
+neorust config set output.format table
 ```
 
-### **Scripting and Automation**
+### Advanced Configuration
+Create `~/.config/neorust/config.toml`:
 
-#### **Batch Operations**
+```toml
+[general]
+network = "mainnet"
+output_format = "table"
+colorize = true
+
+[rpc]
+mainnet = "https://rpc10.n3.nspcc.ru:10331"
+testnet = "https://rpc.t5.n3.nspcc.ru:20331"
+timeout = 30
+
+[security]
+confirm_threshold = 10.0
+preview_transactions = true
+hardware_wallet = false
+
+[gas]
+strategy = "auto"
+default_limit = 20000000
+```
+
+Learn more in our [Configuration Guide](./configuration).
+
+## Output Formats 📊
+
+### Table Format (Default)
+```
+┌─────────────────────────┬────────────┬──────────────┐
+│ Address                 │ Token      │ Balance      │
+├─────────────────────────┼────────────┼──────────────┤
+│ NXXXxxxXXX...          │ NEO        │ 100          │
+│ NXXXxxxXXX...          │ GAS        │ 1,234.56789  │
+└─────────────────────────┴────────────┴──────────────┘
+```
+
+### JSON Format
+```json
+{
+  "address": "NXXXxxxXXX...",
+  "balances": [
+    {"token": "NEO", "balance": "100", "decimals": 0},
+    {"token": "GAS", "balance": "1234.56789", "decimals": 8}
+  ]
+}
+```
+
+### Minimal Format
+```
+NEO: 100
+GAS: 1,234.56789
+```
+
+## Integration Examples 🔗
+
+### Bash Scripting
 ```bash
 #!/bin/bash
-# Batch wallet creation script
+# Automated balance checker
 
-for i in {1..10}; do
-    neo-cli wallet create --name "Wallet_$i" --path "./wallets/wallet_$i.json"
-    neo-cli wallet create-address --label "Account_1"
-    echo "Created wallet $i"
+ADDRESSES=("NAddr1..." "NAddr2..." "NAddr3...")
+
+for addr in "${ADDRESSES[@]}"; do
+    echo "Checking balance for $addr"
+    neorust account balance $addr --format json | jq '.balances[0].balance'
 done
 ```
 
-#### **CI/CD Integration**
+### CI/CD Pipeline
 ```yaml
 # GitHub Actions example
-name: Deploy Smart Contract
-on: [push]
-jobs:
-  deploy:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v2
-      - name: Install NeoRust CLI
-        run: |
-          curl -L https://github.com/R3E-Network/NeoRust/releases/latest/download/neo-cli-linux -o neo-cli
-          chmod +x neo-cli
-      - name: Deploy Contract
-        run: |
-          ./neo-cli network connect --network testnet
-          ./neo-cli contract deploy --file ./contract.nef --manifest ./contract.manifest.json
+- name: Deploy Contract
+  run: |
+    neorust config set network testnet
+    neorust wallet import --wif ${{ secrets.DEPLOY_KEY }}
+    neorust contract deploy --nef contract.nef --manifest contract.manifest.json
 ```
 
-#### **Monitoring Script**
+### Monitoring Script
 ```bash
 #!/bin/bash
-# Network monitoring script
-
-while true; do
-    echo "$(date): Checking network status..."
-    
-    if neo-cli network status --quiet; then
-        echo "✅ Network is healthy"
-    else
-        echo "❌ Network issues detected"
-        # Send alert notification
-    fi
-    
-    sleep 60
-done
+# Monitor contract events
+neorust contract events 0x1234... --event Transfer --format json \
+  | while read event; do
+    echo "New transfer: $(echo $event | jq '.amount')"
+    # Process event...
+  done
 ```
 
-## 🎯 Use Cases
+## Advanced Features ⚡
 
-### **For Developers**
-- **Smart Contract Testing**: Deploy and test contracts on TestNet
-- **Transaction Analysis**: Analyze blockchain transactions
-- **Automation Scripts**: Automate repetitive blockchain operations
-- **CI/CD Integration**: Integrate blockchain operations into deployment pipelines
-
-### **For Power Users**
-- **Bulk Operations**: Perform batch wallet or NFT operations
-- **Portfolio Management**: Monitor and manage large portfolios
-- **Network Monitoring**: Track blockchain health and performance
-- **Advanced Trading**: Execute complex trading strategies
-
-### **For Enterprises**
-- **Treasury Management**: Manage corporate digital assets
-- **Compliance Reporting**: Generate detailed transaction reports
-- **Multi-Signature Operations**: Coordinate multi-sig transactions
-- **Infrastructure Monitoring**: Monitor blockchain infrastructure
-
-## 📊 Performance and Reliability
-
-### **Benchmarks**
-- **Wallet Creation**: < 100ms
-- **Transaction Signing**: < 50ms
-- **Network Queries**: < 200ms
-- **Bulk Operations**: 1000+ ops/minute
-
-### **Error Handling**
-- **Graceful Degradation**: Continues operation despite network issues
-- **Retry Logic**: Automatic retry for transient failures
-- **Detailed Errors**: Clear error messages with suggested solutions
-- **Recovery Options**: Multiple recovery strategies for failed operations
-
-### **Logging and Debugging**
+### Plugin System
 ```bash
-# Enable debug logging
-neo-cli --log-level debug wallet balance
+# List available plugins
+neorust plugin list
 
-# Save logs to file
-neo-cli --log-file ./neo-cli.log network status
+# Install DeFi plugin
+neorust plugin install neorust-defi
 
-# Verbose output
-neo-cli -v wallet create --name "TestWallet"
+# Use plugin commands
+neorust defi swap --from GAS --to fWBTC --amount 100
 ```
 
-## 🔒 Security Features
+### Batch Operations
+```bash
+# Create batch transaction file
+cat > batch_transfers.json << EOF
+{
+  "transfers": [
+    {"to": "NAddr1...", "amount": "10", "token": "GAS"},
+    {"to": "NAddr2...", "amount": "20", "token": "GAS"},
+    {"to": "NAddr3...", "amount": "30", "token": "GAS"}
+  ]
+}
+EOF
 
-### **Secure Key Management**
-- **Memory Protection**: Private keys cleared from memory after use
-- **Encrypted Storage**: All sensitive data encrypted at rest
-- **Hardware Wallet Support**: Integration with Ledger devices
-- **Secure Random**: Cryptographically secure random number generation
+# Execute batch transfer
+neorust send batch --file batch_transfers.json
+```
 
-### **Network Security**
-- **TLS Verification**: All network connections verified
-- **Certificate Pinning**: Protection against man-in-the-middle attacks
-- **Request Validation**: All RPC requests validated
-- **Rate Limiting**: Protection against abuse
+### Real-time Monitoring
+```bash
+# Monitor blockchain in real-time
+neorust monitor blockchain --interval 15
 
-## 📚 Next Steps
+# Watch specific address
+neorust monitor address NXXXxxxXXX... --notifications
 
-- **[Command Reference](./commands)**: Complete command documentation
-- **[Configuration Guide](./configuration)**: Advanced configuration options
-- **[Scripting Guide](./scripting)**: Automation and scripting examples
-- **[Troubleshooting](./troubleshooting)**: Common issues and solutions
-- **[API Integration](./api-integration)**: Using CLI in applications
+# Monitor contract events
+neorust monitor contract 0x1234... --event Transfer
+```
+
+## Best Practices 📋
+
+### Security
+- ✅ **Use hardware wallets** for MainNet operations
+- ✅ **Enable transaction preview** before signing
+- ✅ **Set confirmation thresholds** for large amounts
+- ✅ **Keep configuration files secure** (600 permissions)
+- ✅ **Use environment variables** for sensitive data
+
+### Performance
+- ✅ **Enable response caching** for repeated queries
+- ✅ **Use batch operations** for multiple transactions
+- ✅ **Configure connection pooling** for better throughput
+- ✅ **Set appropriate timeouts** for network calls
+- ✅ **Use local nodes** when possible for faster responses
+
+### Automation
+- ✅ **Use JSON output** for scripting
+- ✅ **Set up proper error handling** in scripts
+- ✅ **Log operations** for audit trails
+- ✅ **Use configuration profiles** for different environments
+- ✅ **Implement retry logic** for network operations
+
+## Common Use Cases 💼
+
+### Development Workflow
+```bash
+# 1. Set up development environment
+neorust config set network testnet
+neorust config set gas.strategy low
+
+# 2. Create development wallet
+neorust wallet create --name dev-wallet
+
+# 3. Get testnet tokens (external faucet)
+# 4. Deploy and test contract
+neorust contract deploy --nef contract.nef --manifest contract.manifest.json
+
+# 5. Test contract methods
+neorust contract invoke $CONTRACT_HASH testMethod param1
+```
+
+### Production Deployment
+```bash
+# 1. Switch to MainNet
+neorust config set network mainnet
+neorust config set security.hardware_wallet true
+
+# 2. Load production wallet
+neorust wallet import --hardware ledger
+
+# 3. Deploy with confirmation
+neorust contract deploy --nef contract.nef --confirm
+
+# 4. Verify deployment
+neorust contract info $CONTRACT_HASH
+```
+
+### Portfolio Management
+```bash
+# Create portfolio monitoring script
+neorust account balance --all --format json > portfolio.json
+
+# Set up alerts for balance changes
+neorust monitor address $MY_ADDRESS --threshold 1000 --notification email
+```
+
+## Troubleshooting 🔧
+
+### Common Issues
+
+#### Installation Problems
+```bash
+# Update Rust toolchain
+rustup update
+
+# Clear cargo cache
+cargo cache --autoclean
+
+# Reinstall CLI
+cargo uninstall neo3-cli
+cargo install neo3-cli --force
+```
+
+#### Network Connection Issues
+```bash
+# Test network connectivity
+neorust network test
+
+# Try different RPC endpoint
+neorust config set rpc.mainnet "https://rpc1.neo.org:443"
+
+# Check firewall settings
+curl -X POST https://rpc10.n3.nspcc.ru:10331
+```
+
+#### Configuration Problems
+```bash
+# Reset configuration
+neorust config reset
+
+# Validate configuration
+neorust config validate
+
+# Show current configuration
+neorust config show
+```
+
+## Getting Help 🆘
+
+### Documentation
+- **[Commands Reference](./commands)**: Complete command documentation
+- **[Configuration Guide](./configuration)**: Detailed configuration options
+- **[Examples](../examples)**: Real-world usage examples
+
+### Community Support
+- **GitHub Issues**: [Report bugs and request features](https://github.com/R3E-Network/NeoRust/issues)
+- **Discord Chat**: [Join our community](https://discord.gg/neo-rust)
+- **Forum**: [Ask questions and share knowledge](https://forum.neorust.org)
+
+### Professional Support
+- **Enterprise Support**: Available for commercial users
+- **Custom Development**: Tailored solutions for specific needs
+- **Training Services**: Team training and workshops
 
 ---
 
-**Ready to harness the power of Neo N3 from the command line?**
-
-[Download NeoRust CLI →](https://github.com/R3E-Network/NeoRust/releases) 
+**Ready to master the command line?** Start with the [Commands Reference](./commands) and explore the full power of NeoRust CLI! ⚡🦀 

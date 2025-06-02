@@ -84,15 +84,15 @@ export default [
   },
   {
     path: '/cli',
-    component: ComponentCreator('/cli', '3c3'),
+    component: ComponentCreator('/cli', '9ba'),
     routes: [
       {
         path: '/cli',
-        component: ComponentCreator('/cli', 'd6f'),
+        component: ComponentCreator('/cli', '1af'),
         routes: [
           {
             path: '/cli',
-            component: ComponentCreator('/cli', 'b1b'),
+            component: ComponentCreator('/cli', '8ab'),
             routes: [
               {
                 path: '/cli/commands',
@@ -102,13 +102,13 @@ export default [
               },
               {
                 path: '/cli/configuration',
-                component: ComponentCreator('/cli/configuration', 'e9f'),
+                component: ComponentCreator('/cli/configuration', 'fd1'),
                 exact: true,
                 sidebar: "cliSidebar"
               },
               {
                 path: '/cli/intro',
-                component: ComponentCreator('/cli/intro', 'ec7'),
+                component: ComponentCreator('/cli/intro', '671'),
                 exact: true,
                 sidebar: "cliSidebar"
               }
@@ -120,25 +120,25 @@ export default [
   },
   {
     path: '/docs',
-    component: ComponentCreator('/docs', '003'),
+    component: ComponentCreator('/docs', '053'),
     routes: [
       {
         path: '/docs',
-        component: ComponentCreator('/docs', '61f'),
+        component: ComponentCreator('/docs', '6a5'),
         routes: [
           {
             path: '/docs',
-            component: ComponentCreator('/docs', '895'),
+            component: ComponentCreator('/docs', '769'),
             routes: [
               {
                 path: '/docs/getting-started/installation',
-                component: ComponentCreator('/docs/getting-started/installation', '876'),
+                component: ComponentCreator('/docs/getting-started/installation', '88d'),
                 exact: true,
                 sidebar: "tutorialSidebar"
               },
               {
                 path: '/docs/getting-started/quick-start',
-                component: ComponentCreator('/docs/getting-started/quick-start', '01c'),
+                component: ComponentCreator('/docs/getting-started/quick-start', 'a2d'),
                 exact: true,
                 sidebar: "tutorialSidebar"
               },
@@ -162,61 +162,61 @@ export default [
   },
   {
     path: '/gui',
-    component: ComponentCreator('/gui', '17e'),
+    component: ComponentCreator('/gui', '18a'),
     routes: [
       {
         path: '/gui',
-        component: ComponentCreator('/gui', 'b31'),
+        component: ComponentCreator('/gui', '4c5'),
         routes: [
           {
             path: '/gui',
-            component: ComponentCreator('/gui', 'b94'),
+            component: ComponentCreator('/gui', 'c6f'),
             routes: [
               {
                 path: '/gui/basic-operations',
-                component: ComponentCreator('/gui/basic-operations', 'e04'),
+                component: ComponentCreator('/gui/basic-operations', '3f3'),
                 exact: true,
                 sidebar: "guiSidebar"
               },
               {
                 path: '/gui/first-wallet',
-                component: ComponentCreator('/gui/first-wallet', '61d'),
+                component: ComponentCreator('/gui/first-wallet', 'efc'),
                 exact: true,
                 sidebar: "guiSidebar"
               },
               {
                 path: '/gui/installation',
-                component: ComponentCreator('/gui/installation', 'bc3'),
+                component: ComponentCreator('/gui/installation', '938'),
                 exact: true,
                 sidebar: "guiSidebar"
               },
               {
                 path: '/gui/intro',
-                component: ComponentCreator('/gui/intro', 'ad2'),
+                component: ComponentCreator('/gui/intro', '0b2'),
                 exact: true,
                 sidebar: "guiSidebar"
               },
               {
                 path: '/gui/settings',
-                component: ComponentCreator('/gui/settings', '0e9'),
+                component: ComponentCreator('/gui/settings', 'be4'),
                 exact: true,
                 sidebar: "guiSidebar"
               },
               {
                 path: '/gui/token-operations',
-                component: ComponentCreator('/gui/token-operations', 'bb6'),
+                component: ComponentCreator('/gui/token-operations', '3f2'),
                 exact: true,
                 sidebar: "guiSidebar"
               },
               {
                 path: '/gui/transactions',
-                component: ComponentCreator('/gui/transactions', '17c'),
+                component: ComponentCreator('/gui/transactions', '6fc'),
                 exact: true,
                 sidebar: "guiSidebar"
               },
               {
                 path: '/gui/wallet-management',
-                component: ComponentCreator('/gui/wallet-management', '164'),
+                component: ComponentCreator('/gui/wallet-management', 'e0d'),
                 exact: true,
                 sidebar: "guiSidebar"
               }
@@ -228,37 +228,37 @@ export default [
   },
   {
     path: '/sdk',
-    component: ComponentCreator('/sdk', '14a'),
+    component: ComponentCreator('/sdk', 'eeb'),
     routes: [
       {
         path: '/sdk',
-        component: ComponentCreator('/sdk', '3bd'),
+        component: ComponentCreator('/sdk', '463'),
         routes: [
           {
             path: '/sdk',
-            component: ComponentCreator('/sdk', '319'),
+            component: ComponentCreator('/sdk', 'c6c'),
             routes: [
               {
                 path: '/sdk/api-reference',
-                component: ComponentCreator('/sdk/api-reference', '4b9'),
+                component: ComponentCreator('/sdk/api-reference', '641'),
                 exact: true,
                 sidebar: "sdkSidebar"
               },
               {
                 path: '/sdk/contracts',
-                component: ComponentCreator('/sdk/contracts', '9e6'),
+                component: ComponentCreator('/sdk/contracts', '933'),
                 exact: true,
                 sidebar: "sdkSidebar"
               },
               {
                 path: '/sdk/examples',
-                component: ComponentCreator('/sdk/examples', '164'),
+                component: ComponentCreator('/sdk/examples', 'fd7'),
                 exact: true,
                 sidebar: "sdkSidebar"
               },
               {
                 path: '/sdk/installation',
-                component: ComponentCreator('/sdk/installation', 'ce5'),
+                component: ComponentCreator('/sdk/installation', '5d4'),
                 exact: true,
                 sidebar: "sdkSidebar"
               },
@@ -270,31 +270,31 @@ export default [
               },
               {
                 path: '/sdk/quick-start',
-                component: ComponentCreator('/sdk/quick-start', 'b28'),
+                component: ComponentCreator('/sdk/quick-start', 'ef2'),
                 exact: true,
                 sidebar: "sdkSidebar"
               },
               {
                 path: '/sdk/tokens',
-                component: ComponentCreator('/sdk/tokens', '590'),
+                component: ComponentCreator('/sdk/tokens', '3d2'),
                 exact: true,
                 sidebar: "sdkSidebar"
               },
               {
                 path: '/sdk/transactions',
-                component: ComponentCreator('/sdk/transactions', '3d4'),
+                component: ComponentCreator('/sdk/transactions', '221'),
                 exact: true,
                 sidebar: "sdkSidebar"
               },
               {
                 path: '/sdk/troubleshooting',
-                component: ComponentCreator('/sdk/troubleshooting', '294'),
+                component: ComponentCreator('/sdk/troubleshooting', '760'),
                 exact: true,
                 sidebar: "sdkSidebar"
               },
               {
                 path: '/sdk/wallets',
-                component: ComponentCreator('/sdk/wallets', '3a1'),
+                component: ComponentCreator('/sdk/wallets', '1e2'),
                 exact: true,
                 sidebar: "sdkSidebar"
               }

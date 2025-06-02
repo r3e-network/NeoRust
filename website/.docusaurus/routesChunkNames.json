@@ -186,49 +186,49 @@
       "plugin": "c141421f"
     }
   },
-  "/cli-3c3": {
+  "/cli-9ba": {
     "__comp": "5e95c892",
     "__context": {
       "plugin": "19622068"
     }
   },
-  "/cli-d6f": {
+  "/cli-1af": {
     "__comp": "a7bd4aaa",
     "__props": "58880a5f"
   },
-  "/cli-b1b": {
+  "/cli-8ab": {
     "__comp": "a94703ab"
   },
   "/cli/commands-c46": {
     "__comp": "17896441",
     "content": "05b3d406"
   },
-  "/cli/configuration-e9f": {
+  "/cli/configuration-fd1": {
     "__comp": "17896441",
     "content": "7495bed9"
   },
-  "/cli/intro-ec7": {
+  "/cli/intro-671": {
     "__comp": "17896441",
     "content": "9cc01b4b"
   },
-  "/docs-003": {
+  "/docs-053": {
     "__comp": "5e95c892",
     "__context": {
       "plugin": "aba21aa0"
     }
   },
-  "/docs-61f": {
+  "/docs-6a5": {
     "__comp": "a7bd4aaa",
     "__props": "0058b4c6"
   },
-  "/docs-895": {
+  "/docs-769": {
     "__comp": "a94703ab"
   },
-  "/docs/getting-started/installation-876": {
+  "/docs/getting-started/installation-88d": {
     "__comp": "17896441",
     "content": "54f44165"
   },
-  "/docs/getting-started/quick-start-01c": {
+  "/docs/getting-started/quick-start-a2d": {
     "__comp": "17896441",
     "content": "588bd741"
   },
@@ -240,77 +240,77 @@
     "__comp": "17896441",
     "content": "fbe93038"
   },
-  "/gui-17e": {
+  "/gui-18a": {
     "__comp": "5e95c892",
     "__context": {
       "plugin": "4980b587"
     }
   },
-  "/gui-b31": {
+  "/gui-4c5": {
     "__comp": "a7bd4aaa",
     "__props": "7d8b676e"
   },
-  "/gui-b94": {
+  "/gui-c6f": {
     "__comp": "a94703ab"
   },
-  "/gui/basic-operations-e04": {
+  "/gui/basic-operations-3f3": {
     "__comp": "17896441",
     "content": "894f6afc"
   },
-  "/gui/first-wallet-61d": {
+  "/gui/first-wallet-efc": {
     "__comp": "17896441",
     "content": "ad273aa5"
   },
-  "/gui/installation-bc3": {
+  "/gui/installation-938": {
     "__comp": "17896441",
     "content": "6706447e"
   },
-  "/gui/intro-ad2": {
+  "/gui/intro-0b2": {
     "__comp": "17896441",
     "content": "f672b7f6"
   },
-  "/gui/settings-0e9": {
+  "/gui/settings-be4": {
     "__comp": "17896441",
     "content": "b3c3471f"
   },
-  "/gui/token-operations-bb6": {
+  "/gui/token-operations-3f2": {
     "__comp": "17896441",
     "content": "92d93292"
   },
-  "/gui/transactions-17c": {
+  "/gui/transactions-6fc": {
     "__comp": "17896441",
     "content": "75ce022d"
   },
-  "/gui/wallet-management-164": {
+  "/gui/wallet-management-e0d": {
     "__comp": "17896441",
     "content": "91559b99"
   },
-  "/sdk-14a": {
+  "/sdk-eeb": {
     "__comp": "5e95c892",
     "__context": {
       "plugin": "3e6392c6"
     }
   },
-  "/sdk-3bd": {
+  "/sdk-463": {
     "__comp": "a7bd4aaa",
     "__props": "bc77022d"
   },
-  "/sdk-319": {
+  "/sdk-c6c": {
     "__comp": "a94703ab"
   },
-  "/sdk/api-reference-4b9": {
+  "/sdk/api-reference-641": {
     "__comp": "17896441",
     "content": "a0887138"
   },
-  "/sdk/contracts-9e6": {
+  "/sdk/contracts-933": {
     "__comp": "17896441",
     "content": "c010f725"
   },
-  "/sdk/examples-164": {
+  "/sdk/examples-fd7": {
     "__comp": "17896441",
     "content": "a5a94e6e"
   },
-  "/sdk/installation-ce5": {
+  "/sdk/installation-5d4": {
     "__comp": "17896441",
     "content": "1f8bb803"
   },
@@ -318,23 +318,23 @@
     "__comp": "17896441",
     "content": "4f4cdf9c"
   },
-  "/sdk/quick-start-b28": {
+  "/sdk/quick-start-ef2": {
     "__comp": "17896441",
     "content": "a76712d0"
   },
-  "/sdk/tokens-590": {
+  "/sdk/tokens-3d2": {
     "__comp": "17896441",
     "content": "4681e810"
   },
-  "/sdk/transactions-3d4": {
+  "/sdk/transactions-221": {
     "__comp": "17896441",
     "content": "e14185dd"
   },
-  "/sdk/troubleshooting-294": {
+  "/sdk/troubleshooting-760": {
     "__comp": "17896441",
     "content": "5b1e8ba9"
   },
-  "/sdk/wallets-3a1": {
+  "/sdk/wallets-1e2": {
     "__comp": "17896441",
     "content": "e12e8231"
   },

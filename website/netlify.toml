@@ -1,17 +1,9 @@
 [build]
   base = "website/"
   publish = "build/"
-  # Build temporarily disabled due to component migration issues
-  # Dependencies for Netlify functions have been fixed in v0.4.1
-  # To re-enable full build: command = "npm run build"
-  command = "mkdir -p build && cp build/index.html build/index.html || echo 'Maintenance page ready'"
-
-[[redirects]]
-  from = "/api/*"
-  to = "/.netlify/functions/:splat"
-  status = 200
+  command = "npm run build"
 
 [[redirects]]
   from = "/*"
-  to = "/404/"
-  status = 404
+  to = "/index.html"
+  status = 200

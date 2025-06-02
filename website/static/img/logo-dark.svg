@@ -1,0 +1,66 @@
+<svg viewBox="0 0 280 60" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!-- Main gradient from lighter Neo green to lighter Rust orange -->
+    <linearGradient id="mainGradientDark" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#00FF99;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#FF8555;stop-opacity:1" />
+    </linearGradient>
+    
+    <!-- Lighter Neo green -->
+    <linearGradient id="neoGreenDark" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#00FF99;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#33E5AA;stop-opacity:1" />
+    </linearGradient>
+    
+    <!-- Lighter Rust orange -->
+    <linearGradient id="rustOrangeDark" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#FF8555;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#FF6B35;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Icon: Hexagonal gear with lightning -->
+  <g transform="translate(5, 5)">
+    <!-- Base hexagon with gear teeth -->
+    <g fill="url(#mainGradientDark)">
+      <!-- Main hexagon shape -->
+      <polygon points="25,8 40,8 48,22 48,38 40,52 25,52 17,38 17,22" />
+      
+      <!-- Gear teeth around perimeter -->
+      <rect x="30" y="5" width="5" height="6" />
+      <rect x="42" y="12" width="6" height="5" transform="rotate(60 45 14.5)" />
+      <rect x="42" y="43" width="6" height="5" transform="rotate(-60 45 45.5)" />
+      <rect x="30" y="52" width="5" height="6" />
+      <rect x="14" y="43" width="6" height="5" transform="rotate(60 17 45.5)" />
+      <rect x="14" y="12" width="6" height="5" transform="rotate(-60 17 14.5)" />
+    </g>
+    
+    <!-- Lightning bolt -->
+    <path d="M 35 15 L 28 25 L 32 25 L 30 35 L 22 35 L 30 45 L 37 35 L 33 35 L 35 25 L 43 25 Z" 
+          fill="#1a1a1a" 
+          stroke="none"/>
+  </g>
+  
+  <!-- Text: NeoRust -->
+  <g transform="translate(70, 12)">
+    <!-- "Neo" -->
+    <text x="0" y="28" 
+          font-family="Inter, -apple-system, BlinkMacSystemFont, sans-serif" 
+          font-size="28" 
+          font-weight="800" 
+          fill="url(#neoGreenDark)"
+          letter-spacing="-0.5px">Neo</text>
+    
+    <!-- "Rust" -->
+    <text x="65" y="28" 
+          font-family="Inter, -apple-system, BlinkMacSystemFont, sans-serif" 
+          font-size="28" 
+          font-weight="800" 
+          fill="url(#rustOrangeDark)"
+          letter-spacing="-0.5px">Rust</text>
+  </g>
+  
+  <!-- Accessibility -->
+  <title>NeoRust Logo (Dark Theme)</title>
+  <desc>NeoRust SDK - High-performance Neo N3 blockchain development in Rust</desc>
+</svg> 

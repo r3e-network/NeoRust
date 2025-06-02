@@ -6,7 +6,7 @@
     <generator>https://github.com/jpmonette/feed</generator>
     <link rel="alternate" href="https://neorust.netlify.app/blog"/>
     <subtitle>NeoRust v0.4.1 Blog</subtitle>
-    <icon>https://neorust.netlify.app/img/favicon.ico</icon>
+    <icon>https://neorust.netlify.app/img/favicon.svg</icon>
     <entry>
         <title type="html"><![CDATA[🎉 NeoRust v0.4.1 Released - Production-Ready Neo N3 Development]]></title>
         <id>https://neorust.netlify.app/blog/neorust-v0.4.1-release</id>

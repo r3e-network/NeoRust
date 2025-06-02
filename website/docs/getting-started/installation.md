@@ -1,379 +1,115 @@
-# Installation Guide
+# Installation
 
-<div className="hero hero--primary">
-  <div className="container">
-    <h1 className="hero__title">🚀 Installation Guide</h1>
-    <p className="hero__subtitle">
-      Get NeoRust up and running in minutes
-    </p>
-    <p>
-      Choose your preferred installation method and start building on Neo N3 today.
-    </p>
-  </div>
-</div>
+Get started with NeoRust SDK by installing it in your development environment.
 
-## 📋 System Requirements
+## System Requirements
 
-### **Minimum Requirements**
-- **Operating System**: Windows 10+, macOS 10.15+, or Linux (Ubuntu 18.04+)
-- **Memory**: 4GB RAM
-- **Storage**: 2GB free space
-- **Network**: Stable internet connection
+- **Rust**: Version 1.70 or later
+- **Cargo**: Rust's package manager (included with Rust)
+- **Operating System**: Windows, macOS, or Linux
 
-### **Recommended Requirements**
-- **Operating System**: Latest version of Windows 11, macOS 13+, or Linux
-- **Memory**: 8GB+ RAM
-- **Storage**: 10GB+ free space (for blockchain data)
-- **Network**: High-speed internet connection
+## Install Rust
 
-### **Development Requirements**
-- **Node.js**: 18.0+ (for GUI development)
-- **Rust**: 1.70+ (for SDK and CLI development)
-- **Git**: Latest version
-- **Code Editor**: VS Code, IntelliJ, or similar
-
-## 🖥️ Desktop GUI Installation
-
-### **Option 1: Download Pre-built Application**
-
-<div className="row">
-  <div className="col col--4">
-    <div className="card">
-      <div className="card__header">
-        <h3>🪟 Windows</h3>
-      </div>
-      <div className="card__body">
-        <p>Download the MSI installer for easy installation.</p>
-        <pre><code>NeoRust-Desktop-v0.4.1-x64.msi</code></pre>
-      </div>
-      <div className="card__footer">
-        <a href="https://github.com/R3E-Network/NeoRust/releases" className="button button--primary">
-          Download for Windows
-        </a>
-      </div>
-    </div>
-  </div>
-  
-  <div className="col col--4">
-    <div className="card">
-      <div className="card__header">
-        <h3>🍎 macOS</h3>
-      </div>
-      <div className="card__body">
-        <p>Download the DMG file for macOS installation.</p>
-        <pre><code>NeoRust-Desktop-v0.4.1.dmg</code></pre>
-      </div>
-      <div className="card__footer">
-        <a href="https://github.com/R3E-Network/NeoRust/releases" className="button button--primary">
-          Download for macOS
-        </a>
-      </div>
-    </div>
-  </div>
-  
-  <div className="col col--4">
-    <div className="card">
-      <div className="card__header">
-        <h3>🐧 Linux</h3>
-      </div>
-      <div className="card__body">
-        <p>Download the AppImage for universal Linux support.</p>
-        <pre><code>NeoRust-Desktop-v0.4.1.AppImage</code></pre>
-      </div>
-      <div className="card__footer">
-        <a href="https://github.com/R3E-Network/NeoRust/releases" className="button button--primary">
-          Download for Linux
-        </a>
-      </div>
-    </div>
-  </div>
-</div>
-
-### **Option 2: Build from Source**
+If you don't have Rust installed, get it from [rustup.rs](https://rustup.rs/):
 
 ```bash
-# Clone the repository
-git clone https://github.com/R3E-Network/NeoRust.git
-cd NeoRust/neo-gui
-
-# Install dependencies
-npm install
-
-# Start development server
-npm run dev
-
-# Build for production
-npm run build
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 ```
 
-## 💻 CLI Installation
-
-### **Option 1: Download Pre-built Binary**
+## Create a New Project
 
 ```bash
-# Linux/macOS
-curl -L https://github.com/R3E-Network/NeoRust/releases/latest/download/neo-cli-linux -o neo-cli
-chmod +x neo-cli
-sudo mv neo-cli /usr/local/bin/
-
-# Verify installation
-neo-cli --version
+cargo new my-neo-app
+cd my-neo-app
 ```
 
-```powershell
-# Windows PowerShell
-Invoke-WebRequest -Uri "https://github.com/R3E-Network/NeoRust/releases/latest/download/neo-cli-windows.exe" -OutFile "neo-cli.exe"
+## Add NeoRust Dependency
 
-# Add to PATH or run directly
-.\neo-cli.exe --version
-```
-
-### **Option 2: Install via Cargo**
-
-```bash
-# Install from crates.io
-cargo install neo-cli
-
-# Or install from git
-cargo install --git https://github.com/R3E-Network/NeoRust.git neo-cli
-
-# Verify installation
-neo-cli --version
-```
-
-### **Option 3: Build from Source**
-
-```bash
-# Clone the repository
-git clone https://github.com/R3E-Network/NeoRust.git
-cd NeoRust/neo-cli
-
-# Build the CLI
-cargo build --release
-
-# The binary will be at ./target/release/neo-cli
-./target/release/neo-cli --version
-```
-
-## 📚 Rust SDK Installation
-
-### **Add to Cargo.toml**
+Add NeoRust to your `Cargo.toml`:
 
 ```toml
 [dependencies]
 neo3 = "0.4.1"
-
-# Optional features
-neo3 = { version = "0.4.1", features = ["futures", "ledger", "aws"] }
+tokio = { version = "1.0", features = ["full"] }
 ```
 
-### **Available Features**
+## Feature Flags
 
-| Feature | Description | Use Case |
-|---------|-------------|----------|
-| `futures` | Async/await support | High-performance applications |
-| `ledger` | Hardware wallet support | Enhanced security |
-| `aws` | AWS integration | Cloud deployments |
-| `default` | Core functionality | Basic usage |
+NeoRust provides several optional features:
 
-### **Basic Usage Example**
+```toml
+[dependencies]
+neo3 = { version = "0.4.1", features = ["futures", "ledger", "websocket"] }
+```
+
+### Available Features
+
+- **`futures`** - Async/await support (recommended)
+- **`ledger`** - Hardware wallet support
+- **`websocket`** - WebSocket client support
+- **`serde`** - Serialization support
+
+## Verify Installation
+
+Create a simple test to verify everything works:
 
 ```rust
+// src/main.rs
 use neo3::prelude::*;
 
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // Connect to Neo N3 TestNet
-    let provider = HttpProvider::new("https://testnet1.neo.coz.io:443")?;
-    let client = RpcClient::new(provider);
+fn main() {
+    println!("NeoRust SDK v0.4.1 is ready!");
     
-    // Get blockchain information
-    let block_count = client.get_block_count().await?;
-    println!("Current block height: {}", block_count);
-    
-    Ok(())
+    // Create a simple account
+    let account = Account::create().expect("Failed to create account");
+    println!("Generated address: {}", account.get_address());
 }
 ```
 
-## 🔧 Development Environment Setup
-
-### **VS Code Setup**
-
-1. **Install Extensions**:
-   ```json
-   {
-     "recommendations": [
-       "rust-lang.rust-analyzer",
-       "bradlc.vscode-tailwindcss",
-       "ms-vscode.vscode-typescript-next",
-       "tauri-apps.tauri-vscode"
-     ]
-   }
-   ```
-
-2. **Configure Settings**:
-   ```json
-   {
-     "rust-analyzer.cargo.features": ["futures", "ledger"],
-     "typescript.preferences.importModuleSpecifier": "relative"
-   }
-   ```
-
-### **IntelliJ IDEA Setup**
-
-1. **Install Plugins**:
-   - Rust Plugin
-   - Tauri Plugin
-   - TypeScript Support
-
-2. **Configure Rust Toolchain**:
-   - Set Rust toolchain to stable
-   - Enable Cargo features: `futures`, `ledger`
-
-## 🌐 Network Configuration
-
-### **Default Networks**
-
-NeoRust comes pre-configured with these networks:
-
-| Network | RPC Endpoint | Magic Number |
-|---------|--------------|--------------|
-| **MainNet** | `https://mainnet1.neo.coz.io:443` | `860833102` |
-| **TestNet** | `https://testnet1.neo.coz.io:443` | `894710606` |
-
-### **Custom Network Setup**
+Run it:
 
 ```bash
-# CLI: Add custom network
-neo-cli network add --name "Private" --rpc "https://private-node.com:443" --magic 123456789
-
-# GUI: Use Settings > Network Configuration
-# SDK: Configure in code
-let provider = HttpProvider::new("https://custom-node.com:443")?;
-```
-
-## ✅ Verification
-
-### **Test Your Installation**
-
-#### **Desktop GUI**
-1. Launch the application
-2. Create a test wallet
-3. Connect to TestNet
-4. Verify network synchronization
-
-#### **CLI**
-```bash
-# Test basic functionality
-neo-cli --version
-neo-cli network status
-neo-cli wallet create --name "TestWallet"
-```
-
-#### **SDK**
-```rust
-// Create a test project
-cargo new neo-test
-cd neo-test
-
-// Add neo3 dependency and run
-cargo add neo3
 cargo run
 ```
 
-## 🔍 Troubleshooting
-
-### **Common Issues**
-
-#### **GUI Won't Start**
-```bash
-# Check Node.js version
-node --version  # Should be 18+
-
-# Clear npm cache
-npm cache clean --force
-
-# Reinstall dependencies
-rm -rf node_modules package-lock.json
-npm install
+You should see output like:
+```
+NeoRust SDK v0.4.1 is ready!
+Generated address: NXXXXxxxXXXxxxXXXxxxXXXxxxXXXxxx
 ```
 
-#### **CLI Not Found**
+## Troubleshooting
+
+### Build Errors
+
+If you encounter build errors, make sure you have the latest stable Rust:
+
 ```bash
-# Check PATH
-echo $PATH
-
-# Verify binary location
-which neo-cli
-
-# Reinstall if needed
-cargo install --force neo-cli
+rustup update stable
 ```
 
-#### **SDK Compilation Errors**
+### Platform-Specific Issues
+
+#### macOS
+You may need to install additional tools:
 ```bash
-# Update Rust toolchain
-rustup update
-
-# Clear cargo cache
-cargo clean
-
-# Check feature flags
-cargo check --features "futures,ledger"
+xcode-select --install
 ```
 
-### **Getting Help**
+#### Windows
+Ensure you have the Microsoft C++ Build Tools installed.
 
-- **GitHub Issues**: [Report problems](https://github.com/R3E-Network/NeoRust/issues)
-- **Discussions**: [Community support](https://github.com/R3E-Network/NeoRust/discussions)
-- **Documentation**: [Complete guides](https://neorust.netlify.app)
+#### Linux
+Install build essentials:
+```bash
+# Ubuntu/Debian
+sudo apt update && sudo apt install build-essential
 
-## 🎯 Next Steps
+# CentOS/RHEL
+sudo yum groupinstall "Development Tools"
+```
 
-<div className="row">
-  <div className="col col--4">
-    <div className="card">
-      <div className="card__header">
-        <h3>🚀 Quick Start</h3>
-      </div>
-      <div className="card__body">
-        <p>Get up and running with your first Neo N3 application in 5 minutes.</p>
-      </div>
-      <div className="card__footer">
-        <a href="./quick-start" className="button button--primary">Start Building →</a>
-      </div>
-    </div>
-  </div>
-  
-  <div className="col col--4">
-    <div className="card">
-      <div className="card__header">
-        <h3>💼 First Wallet</h3>
-      </div>
-      <div className="card__body">
-        <p>Create your first Neo wallet and start managing digital assets.</p>
-      </div>
-      <div className="card__footer">
-        <a href="./first-wallet" className="button button--primary">Create Wallet →</a>
-      </div>
-    </div>
-  </div>
-  
-  <div className="col col--4">
-    <div className="card">
-      <div className="card__header">
-        <h3>📚 Learn More</h3>
-      </div>
-      <div className="card__body">
-        <p>Explore advanced features and learn best practices.</p>
-      </div>
-      <div className="card__footer">
-        <a href="../intro" className="button button--primary">Explore Features →</a>
-      </div>
-    </div>
-  </div>
-</div>
+## Next Steps
 
----
-
-**Installation complete? Let's start building! 🚀** 
+- [Quick Start Guide](./quick-start.md) - Your first Neo application
+- [Examples](/examples) - Practical code examples 

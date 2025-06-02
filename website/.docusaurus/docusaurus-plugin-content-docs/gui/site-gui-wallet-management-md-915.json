@@ -1,0 +1,26 @@
+{
+  "id": "wallet-management",
+  "title": "Wallet Management",
+  "description": "Complete guide to managing Neo wallets with the NeoRust Desktop GUI.",
+  "source": "@site/gui/wallet-management.md",
+  "sourceDirName": ".",
+  "slug": "/wallet-management",
+  "permalink": "/gui/wallet-management",
+  "draft": false,
+  "unlisted": false,
+  "editUrl": "https://github.com/R3E-Network/NeoRust/tree/main/website/gui/wallet-management.md",
+  "tags": [],
+  "version": "current",
+  "lastUpdatedBy": "Jimmy",
+  "lastUpdatedAt": 1748702329000,
+  "frontMatter": {},
+  "sidebar": "guiSidebar",
+  "previous": {
+    "title": "Token Operations",
+    "permalink": "/gui/token-operations"
+  },
+  "next": {
+    "title": "Settings",
+    "permalink": "/gui/settings"
+  }
+}

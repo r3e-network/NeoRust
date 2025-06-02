@@ -1,567 +1,395 @@
 # Wallet Management
 
-<div className="hero hero--primary">
-  <div className="container">
-    <h1 className="hero__title">💼 Wallet Management</h1>
-    <p className="hero__subtitle">
-      Complete guide to managing your Neo N3 wallets
-    </p>
-    <p>
-      Master wallet operations, account management, and transaction handling in the NeoRust Desktop GUI.
-    </p>
-  </div>
-</div>
+Complete guide to managing Neo wallets with the NeoRust Desktop GUI.
 
-## 🏠 Dashboard Overview
+## Overview 💼
 
-The wallet dashboard is your central hub for managing all Neo N3 assets and operations.
+The NeoRust Desktop GUI provides comprehensive wallet management capabilities with enterprise-grade security and user-friendly interface. Whether you're a newcomer to blockchain or an experienced developer, our wallet management system offers the tools you need.
 
-![Wallet Dashboard](../static/img/wallet-dashboard.svg)
+### Key Features
+- **Multi-wallet support** - Manage multiple wallets simultaneously
+- **Secure storage** - Bank-grade encryption for private keys
+- **Backup & recovery** - Multiple backup options for peace of mind
+- **Hardware wallet integration** - Support for Ledger devices
+- **Real-time monitoring** - Live balance and transaction updates
 
-### **Key Components**
+## Creating Wallets 🆕
 
-<div className="row">
-  <div className="col col--4">
-    <div className="card">
-      <div className="card__header">
-        <h3>💰 Portfolio Summary</h3>
-      </div>
-      <div className="card__body">
-        <ul>
-          <li>Total portfolio value</li>
-          <li>Asset breakdown</li>
-          <li>24h change indicators</li>
-          <li>Real-time price updates</li>
-        </ul>
-      </div>
-    </div>
-  </div>
-  
-  <div className="col col--4">
-    <div className="card">
-      <div className="card__header">
-        <h3>📊 Interactive Charts</h3>
-      </div>
-      <div className="card__body">
-        <ul>
-          <li>Price history graphs</li>
-          <li>Portfolio allocation pie chart</li>
-          <li>Performance metrics</li>
-          <li>Customizable time ranges</li>
-        </ul>
-      </div>
-    </div>
-  </div>
-  
-  <div className="col col--4">
-    <div className="card">
-      <div className="card__header">
-        <h3>📝 Recent Activity</h3>
-      </div>
-      <div className="card__body">
-        <ul>
-          <li>Latest transactions</li>
-          <li>Status indicators</li>
-          <li>Quick action buttons</li>
-          <li>Transaction details</li>
-        </ul>
-      </div>
-    </div>
-  </div>
-</div>
+### Create New Wallet
 
----
+1. **Launch the Application**
+   - Open NeoRust Desktop GUI
+   - Click "Create New Wallet" on the welcome screen
 
-## 👤 Account Management
+2. **Security Setup**
+   - Generate a strong password (12+ characters recommended)
+   - Enable two-factor authentication if available
+   - Choose encryption strength (AES-256 default)
 
-### **Creating New Accounts**
-
-1. **Navigate to Accounts**: Click "Accounts" in the sidebar
-2. **Add Account**: Click the "+" button or "Create New Account"
-3. **Account Setup**:
+3. **Seed Phrase Generation**
    ```
-   Account Name: "Trading Account"
-   Account Type: Standard / Multi-signature
-   Derivation Path: m/44'/888'/0'/0/1 (auto-generated)
-   ```
-4. **Confirm Creation**: Review details and click "Create Account"
-
-![Account Creation](../static/img/account-creation.png)
-
-### **Account Types**
-
-<div className="row">
-  <div className="col col--6">
-    <h4>🔑 Standard Account</h4>
-    <ul>
-      <li><strong>Single signature</strong> required</li>
-      <li><strong>Full control</strong> with private key</li>
-      <li><strong>Quick transactions</strong></li>
-      <li><strong>Best for</strong>: Personal use, trading</li>
-    </ul>
-  </div>
-  <div className="col col--6">
-    <h4>🔐 Multi-Signature Account</h4>
-    <ul>
-      <li><strong>Multiple signatures</strong> required</li>
-      <li><strong>Enhanced security</strong> for large amounts</li>
-      <li><strong>Shared control</strong> between parties</li>
-      <li><strong>Best for</strong>: Business, joint accounts</li>
-    </ul>
-  </div>
-</div>
-
-### **Account Operations**
-
-#### **Viewing Account Details**
-```
-Account Information:
-├─ Address: NbTiM6h8r99kpRtb428XcsUk1TzKed2gTc
-├─ Public Key: 03b4af8d061b6b320cce6c63bc4ec7894dce107bfc5f5ef5c68a93b4ad1e136816
-├─ Balance: 150.00 NEO, 2,500.00 GAS
-├─ Transactions: 47 total
-└─ Created: 2024-01-15 14:30:22
-```
-
-#### **Account Actions**
-- **🏷️ Rename Account**: Change display name
-- **📋 Copy Address**: Copy to clipboard
-- **🔍 View on Explorer**: Open in blockchain explorer
-- **📤 Export Private Key**: Secure export (password required)
-- **🗑️ Remove Account**: Delete from wallet (with confirmation)
-
----
-
-## 💸 Sending Transactions
-
-### **Basic Token Transfer**
-
-1. **Select Account**: Choose sending account
-2. **Choose Asset**: Select NEO, GAS, or custom token
-3. **Enter Details**:
-   ```
-   Recipient: NX8GVjjjhyZNhMhmdBbg1KrP3tJ5cAqd2c
-   Amount: 10.00000000
-   Asset: NEO
-   Network Fee: 0.00123456 GAS (auto-calculated)
-   ```
-4. **Review Transaction**: Verify all details
-5. **Sign & Send**: Enter password and confirm
-
-![Send Transaction](../static/img/send-transaction.png)
-
-### **Advanced Transfer Options**
-
-#### **Batch Transfers**
-Send to multiple recipients in one transaction:
-
-```
-Recipients:
-├─ NX8GVjjjhyZNhMhmdBbg1KrP3tJ5cAqd2c → 5.00 NEO
-├─ NY9WpJ3qKyqK8gLbTKrP3tJ5cAqd2c → 3.00 NEO
-└─ NZ1AbCdEfGhIjKlMnOpQrStUvWxYz2 → 2.00 NEO
-
-Total: 10.00 NEO + 0.00456789 GAS (fees)
-```
-
-#### **Scheduled Transactions**
-Set up recurring or delayed payments:
-
-```
-Schedule Configuration:
-├─ Type: Recurring
-├─ Frequency: Monthly
-├─ Start Date: 2024-02-01
-├─ End Date: 2024-12-31
-└─ Amount: 100.00 GAS
-```
-
-### **Transaction Status Tracking**
-
-<div className="row">
-  <div className="col col--3">
-    <div className="text--center">
-      <h4>🟡 Pending</h4>
-      <p>Waiting for network confirmation</p>
-    </div>
-  </div>
-  <div className="col col--3">
-    <div className="text--center">
-      <h4>🔄 Confirming</h4>
-      <p>Being processed by network</p>
-    </div>
-  </div>
-  <div className="col col--3">
-    <div className="text--center">
-      <h4>✅ Confirmed</h4>
-      <p>Successfully completed</p>
-    </div>
-  </div>
-  <div className="col col--3">
-    <div className="text--center">
-      <h4>❌ Failed</h4>
-      <p>Transaction rejected</p>
-    </div>
-  </div>
-</div>
-
----
-
-## 📥 Receiving Payments
-
-### **Generate Receive Address**
-
-1. **Select Account**: Choose receiving account
-2. **Generate QR Code**: Click "Receive" button
-3. **Share Information**:
-   ```
-   Address: NbTiM6h8r99kpRtb428XcsUk1TzKed2gTc
-   QR Code: [Scannable QR code displayed]
-   Network: Neo N3 MainNet
+   ⚠️ CRITICAL: Your seed phrase is the master key to your wallet
+   - Write down all 12/24 words in order
+   - Store in a secure, offline location
+   - Never share with anyone
+   - Test recovery before adding funds
    ```
 
-![Receive Payment](../static/img/receive-payment.png)
+4. **Verification**
+   - Re-enter your seed phrase to confirm
+   - Set up additional security questions
+   - Complete wallet creation
 
-### **Payment Requests**
+### Import Existing Wallet
 
-Create detailed payment requests with specific amounts:
+#### From Seed Phrase
+1. Click "Import Wallet" → "From Seed Phrase"
+2. Enter your 12/24 word seed phrase
+3. Set new password for this device
+4. Verify addresses match your expectations
 
+#### From Private Key
+1. Click "Import Wallet" → "From Private Key"
+2. Enter WIF (Wallet Import Format) private key
+3. Set password and security options
+4. Wallet ready for use
+
+#### From Keystore File
+1. Click "Import Wallet" → "From Keystore"
+2. Select your NEP-6 keystore file
+3. Enter keystore password
+4. Set new device password
+
+## Wallet Security 🔒
+
+### Security Best Practices
+
+#### Strong Passwords
+- **Minimum 12 characters**
+- **Mix of uppercase, lowercase, numbers, symbols**
+- **Unique to this wallet** (don't reuse)
+- **Use password manager** for complex passwords
+
+#### Two-Factor Authentication
 ```
-Payment Request:
-├─ Amount: 50.00 NEO
-├─ Purpose: "Invoice #12345"
-├─ Expiry: 24 hours
-└─ QR Code: [Generated with embedded details]
+Available 2FA Methods:
+✅ TOTP (Google Authenticator, Authy)
+✅ SMS (less secure, not recommended)
+✅ Hardware keys (YubiKey, etc.)
+✅ Biometric (if supported by device)
 ```
 
-### **Address Book Management**
+#### Hardware Wallet Integration
+**Supported Devices:**
+- Ledger Nano S/X/S Plus
+- Future: Trezor support planned
 
-#### **Adding Contacts**
-```
-Contact Information:
-├─ Name: "John Doe"
-├─ Address: NX8GVjjjhyZNhMhmdBbg1KrP3tJ5cAqd2c
-├─ Label: "Business Partner"
-├─ Notes: "Monthly payments"
-└─ Verified: ✅ Address validated
+**Setup Process:**
+1. Connect hardware wallet via USB
+2. Install Neo app on device
+3. Follow GUI prompts to pair
+4. Transactions require device confirmation
+
+### Backup & Recovery
+
+#### Seed Phrase Backup
+```bash
+# Best practices for seed phrase storage:
+1. Write on paper (waterproof ink)
+2. Store in fireproof safe
+3. Consider metal backup plates
+4. Split storage (partial phrases in different locations)
+5. Test recovery annually
 ```
 
-#### **Contact Categories**
-- **👥 Personal**: Friends and family
-- **🏢 Business**: Professional contacts
-- **🏦 Exchanges**: Trading platforms
-- **🔧 Services**: DeFi protocols, dApps
+#### Encrypted Backup
+1. **File Export**
+   - Go to Settings → Backup
+   - Choose "Encrypted Backup"
+   - Select destination folder
+   - Backup includes: addresses, labels, settings
+
+2. **Cloud Backup** (Optional)
+   - Enable encrypted cloud sync
+   - Choose provider (Google Drive, iCloud, etc.)
+   - Automatic backup scheduling
+   - Zero-knowledge encryption
+
+#### Recovery Process
+1. **From Seed Phrase**
+   ```
+   Steps:
+   1. Install NeoRust GUI on new device
+   2. Select "Recover Wallet"
+   3. Enter seed phrase
+   4. Set new password
+   5. Wait for blockchain sync
+   ```
+
+2. **From Backup File**
+   ```
+   Steps:
+   1. File → Import Backup
+   2. Select backup file
+   3. Enter backup password
+   4. Verify addresses
+   5. Sync complete
+   ```
+
+## Account Management 👥
+
+### Multiple Accounts per Wallet
+
+#### Creating Accounts
+1. Open wallet settings
+2. Click "Add Account"
+3. Choose derivation path (or use default)
+4. Label the account (e.g., "Savings", "Trading")
+5. Account ready for use
+
+#### Account Types
+- **Standard Account**: Regular Neo address for general use
+- **Multi-signature Account**: Requires multiple signatures
+- **Contract Account**: For smart contract interactions
+- **Watch-only Account**: Monitor without spending ability
+
+### Address Management
+
+#### Address Labels
+```
+Organize your addresses:
+- Personal: "My Main Address"
+- Business: "Company Treasury" 
+- Exchange: "Binance Withdrawal"
+- DeFi: "Flamingo Pool"
+```
+
+#### QR Code Generation
+- Click any address to generate QR code
+- Includes address and optional amount
+- Perfect for receiving payments
+- Print or share digitally
+
+## Transaction Management 📊
+
+### Transaction History
+
+#### Viewing Transactions
+- **All Transactions**: Complete history across all accounts
+- **Filter by Account**: Focus on specific addresses
+- **Search**: Find transactions by hash, address, or amount
+- **Export**: CSV/PDF reports for accounting
+
+#### Transaction Details
+Each transaction shows:
+- **Amount & Token**: NEO, GAS, or custom tokens
+- **Addresses**: From/to with labels if available
+- **Status**: Confirmed, pending, or failed
+- **Block Information**: Height, timestamp, confirmations
+- **Gas Fee**: Network fee paid
+
+### Pending Transactions
+- **Real-time Monitoring**: Track unconfirmed transactions
+- **Fee Bumping**: Increase fee for faster confirmation
+- **Cancellation**: Cancel unconfirmed transactions
+- **Rebroadcast**: Resend stuck transactions
+
+## Address Book 📇
+
+### Managing Contacts
+
+#### Adding Contacts
+1. Click "Address Book" in main menu
+2. Select "Add Contact"
+3. Enter address and label
+4. Optional: Add notes, categories
+5. Save contact
+
+#### Contact Categories
+```
+Organize by purpose:
+🏢 Business Partners
+👨‍👩‍👧‍👦 Family & Friends  
+🏦 Exchanges
+💱 DeFi Protocols
+🎮 Gaming Platforms
+```
+
+#### Import/Export Contacts
+- **Import**: From CSV, vCard, or other wallets
+- **Export**: Backup contacts to external file
+- **Sync**: Cross-device contact synchronization
+
+## Advanced Features 🚀
+
+### Multi-signature Wallets
+
+#### Creating Multi-sig
+1. Navigate to "Advanced" → "Multi-signature"
+2. Set required signatures (e.g., 2 of 3)
+3. Add co-signer public keys
+4. Deploy multi-sig contract
+5. Share contract address with co-signers
+
+#### Using Multi-sig
+- **Creating Transactions**: Initiate with your signature
+- **Signing**: Co-signers add their signatures
+- **Broadcasting**: Automatic when threshold reached
+- **Monitoring**: Track signature collection progress
+
+### Watch-only Wallets
+```
+Use cases:
+✅ Monitor exchange balances
+✅ Track team treasury
+✅ Audit partner wallets
+✅ Portfolio tracking
+```
+
+Setup:
+1. "Add Wallet" → "Watch-only"
+2. Enter public address
+3. Set monitoring preferences
+4. View-only access (no spending)
+
+### Wallet Analytics
+
+#### Balance Overview
+- **Total Portfolio Value**: USD/fiat equivalent
+- **Asset Allocation**: Pie chart of holdings
+- **Performance**: Gains/losses over time
+- **Yield Tracking**: Staking and DeFi rewards
+
+#### Transaction Analytics
+- **Spending Patterns**: Category-based analysis
+- **Monthly Reports**: Income vs expenses
+- **Tax Preparation**: Capital gains calculations
+- **Custom Reports**: Flexible date ranges and filters
+
+## Network Management 🌐
+
+### Network Selection
+- **MainNet**: Production network for real transactions
+- **TestNet**: Free testing environment
+- **Custom RPC**: Connect to private or local networks
+
+### Node Configuration
+```json
+Custom RPC Settings:
+{
+  "mainnet": "https://rpc10.n3.nspcc.ru:10331",
+  "testnet": "https://rpc.t5.n3.nspcc.ru:20331",
+  "local": "http://localhost:20332"
+}
+```
+
+## Troubleshooting 🔧
+
+### Common Issues
+
+#### Wallet Won't Open
+1. **Check password**: Ensure caps lock, keyboard language
+2. **File corruption**: Restore from backup
+3. **Version compatibility**: Update to latest version
+4. **Permissions**: Ensure read/write access to wallet folder
+
+#### Missing Transactions
+1. **Sync Status**: Wait for complete blockchain sync
+2. **Network Issues**: Check internet connection
+3. **RPC Problems**: Try different RPC endpoint
+4. **Refresh**: Force refresh transaction history
+
+#### Balance Showing Zero
+1. **Address Verification**: Confirm you're viewing correct address
+2. **Network Selection**: Ensure correct network (MainNet vs TestNet)
+3. **Sync Progress**: Check synchronization status
+4. **Node Issues**: Switch to different RPC node
+
+### Performance Optimization
+
+#### Faster Syncing
+- **Select Fast Sync**: Skip full blockchain download
+- **Reliable RPC**: Use well-connected nodes
+- **Bandwidth**: Ensure stable internet connection
+- **Hardware**: SSD storage recommended
+
+#### Memory Usage
+- **Close Unused Wallets**: Reduce memory footprint
+- **Cache Settings**: Adjust cache size in preferences
+- **Update Software**: Latest version has optimizations
+
+## Security Checklist ✅
+
+### Daily Security
+- [ ] Password manager for wallet passwords
+- [ ] Antivirus software updated
+- [ ] OS security updates installed
+- [ ] Suspicious activity monitoring
+
+### Weekly Security
+- [ ] Backup verification test
+- [ ] Software update check
+- [ ] Transaction history review
+- [ ] Access log examination
+
+### Monthly Security
+- [ ] Full backup to offline storage
+- [ ] Security audit of practices
+- [ ] Hardware wallet firmware update
+- [ ] Recovery procedure test
+
+### Emergency Procedures
+
+#### Compromised Device
+1. **Immediate**: Transfer funds to new wallet
+2. **Assessment**: Determine extent of compromise
+3. **Recovery**: Restore from clean backup
+4. **Prevention**: Enhanced security measures
+
+#### Lost Seed Phrase
+1. **Don't Panic**: Check all storage locations
+2. **Partial Recovery**: Some words may be recoverable
+3. **Professional Help**: Consider data recovery services
+4. **Prevention**: Multiple backup locations
+
+## Pro Tips 💡
+
+### Efficiency Tips
+- **Keyboard Shortcuts**: Learn common shortcuts
+- **Batch Operations**: Group multiple transactions
+- **Templates**: Save common transaction patterns
+- **Automation**: Set up recurring transactions
+
+### Privacy Tips
+- **Address Rotation**: Use new addresses regularly
+- **Mixing Services**: Enhance transaction privacy
+- **VPN Usage**: Protect network traffic
+- **Coin Selection**: Manual UTXO management
+
+### Organization Tips
+```
+Best Practices:
+📁 Separate wallets by purpose
+🏷️ Consistent labeling system
+📊 Regular balance reconciliation
+📋 Transaction categorization
+📅 Periodic security reviews
+```
+
+## Getting Help 🆘
+
+### Support Resources
+- **Documentation**: [Complete guides](../docs)
+- **Video Tutorials**: [YouTube channel](https://youtube.com/neorust)
+- **Community Forum**: [forum.neorust.org](https://forum.neorust.org)
+- **Discord Chat**: [Real-time help](https://discord.gg/neo-rust)
+
+### Reporting Issues
+1. **Bug Reports**: GitHub issues with logs
+2. **Feature Requests**: Community voting platform
+3. **Security Issues**: Responsible disclosure program
+4. **General Questions**: Community forums
 
 ---
 
-## 📊 Transaction History
-
-### **Advanced Filtering**
-
-Filter transactions by multiple criteria:
-
-```
-Filter Options:
-├─ Date Range: Last 30 days
-├─ Transaction Type: All / Send / Receive / Contract
-├─ Asset: All / NEO / GAS / Custom tokens
-├─ Amount Range: 0.1 - 1000.0
-├─ Status: All / Confirmed / Pending / Failed
-└─ Account: All accounts / Specific account
-```
-
-![Transaction History](../static/img/transaction-history.png)
-
-### **Export Options**
-
-Export transaction data for accounting or analysis:
-
-<div className="row">
-  <div className="col col--4">
-    <div className="card">
-      <div className="card__header">
-        <h3>📄 CSV Export</h3>
-      </div>
-      <div className="card__body">
-        <p>Spreadsheet-compatible format for accounting software.</p>
-      </div>
-    </div>
-  </div>
-  
-  <div className="col col--4">
-    <div className="card">
-      <div className="card__header">
-        <h3>📋 PDF Report</h3>
-      </div>
-      <div className="card__body">
-        <p>Professional formatted report for documentation.</p>
-      </div>
-    </div>
-  </div>
-  
-  <div className="col col--4">
-    <div className="card">
-      <div className="card__header">
-        <h3>🔗 JSON Data</h3>
-      </div>
-      <div className="card__body">
-        <p>Raw data format for custom analysis tools.</p>
-      </div>
-    </div>
-  </div>
-</div>
-
----
-
-## 🔐 Security Features
-
-### **Multi-Factor Authentication**
-
-#### **Hardware Wallet Integration**
-```
-Ledger Device Setup:
-├─ Device: Ledger Nano S Plus
-├─ Status: Connected ✅
-├─ App Version: Neo 1.0.3
-├─ Accounts: 3 imported
-└─ Security: PIN + Passphrase
-```
-
-#### **Biometric Authentication**
-- **Fingerprint**: Quick unlock for frequent operations
-- **Face ID**: Secure authentication on supported devices
-- **PIN Code**: Backup authentication method
-
-### **Transaction Security**
-
-#### **Confirmation Requirements**
-```
-Security Levels:
-├─ Low (< 1 NEO): Password only
-├─ Medium (1-100 NEO): Password + 2FA
-├─ High (> 100 NEO): Hardware wallet required
-└─ Critical (> 1000 NEO): Multi-signature required
-```
-
-#### **Address Verification**
-- **Checksum Validation**: Automatic address format checking
-- **Known Address Warning**: Alerts for suspicious addresses
-- **Whitelist Management**: Pre-approved recipient addresses
-
----
-
-## 🔄 Backup and Recovery
-
-### **Automated Backups**
-
-Configure automatic wallet backups:
-
-```
-Backup Settings:
-├─ Frequency: Daily
-├─ Location: Encrypted cloud storage
-├─ Retention: 30 days
-├─ Encryption: AES-256
-└─ Verification: Weekly integrity checks
-```
-
-### **Manual Backup Options**
-
-<div className="row">
-  <div className="col col--4">
-    <div className="card">
-      <div className="card__header">
-        <h3>💾 Wallet File</h3>
-      </div>
-      <div className="card__body">
-        <p>Complete wallet backup including all accounts and settings.</p>
-        <ul>
-          <li>Encrypted with password</li>
-          <li>Includes transaction history</li>
-          <li>Portable between devices</li>
-        </ul>
-      </div>
-    </div>
-  </div>
-  
-  <div className="col col--4">
-    <div className="card">
-      <div className="card__header">
-        <h3>📝 Recovery Phrase</h3>
-      </div>
-      <div className="card__body">
-        <p>12-word mnemonic phrase for wallet restoration.</p>
-        <ul>
-          <li>Works with any compatible wallet</li>
-          <li>Recovers all derived accounts</li>
-          <li>Store offline securely</li>
-        </ul>
-      </div>
-    </div>
-  </div>
-  
-  <div className="col col--4">
-    <div className="card">
-      <div className="card__header">
-        <h3>🔑 Private Keys</h3>
-      </div>
-      <div className="card__body">
-        <p>Individual account private keys for specific recovery.</p>
-        <ul>
-          <li>Account-specific recovery</li>
-          <li>WIF format compatibility</li>
-          <li>Maximum security control</li>
-        </ul>
-      </div>
-    </div>
-  </div>
-</div>
-
-### **Recovery Process**
-
-#### **From Recovery Phrase**
-1. **Import Wallet**: Click "Import Existing Wallet"
-2. **Select Method**: Choose "Recovery Phrase"
-3. **Enter Phrase**: Input 12-word recovery phrase
-4. **Set Password**: Create new device password
-5. **Restore**: Wait for account discovery and sync
-
-#### **From Wallet File**
-1. **Import Wallet**: Click "Import Existing Wallet"
-2. **Select File**: Choose wallet backup file
-3. **Enter Password**: Provide original wallet password
-4. **Import**: Wallet restored with all accounts
-
----
-
-## ⚙️ Advanced Settings
-
-### **Network Configuration**
-
-#### **Custom RPC Endpoints**
-```
-Network Settings:
-├─ MainNet RPC: https://mainnet1.neo.coz.io:443
-├─ TestNet RPC: https://testnet1.neo.coz.io:443
-├─ Custom RPC: https://private-node.company.com:443
-├─ Failover: Automatic switching enabled
-└─ Health Check: Every 30 seconds
-```
-
-#### **Gas Price Management**
-```
-Fee Settings:
-├─ Default: Auto-calculate optimal fee
-├─ Economy: Lower fee, slower confirmation
-├─ Standard: Balanced fee and speed
-├─ Priority: Higher fee, faster confirmation
-└─ Custom: Manual fee specification
-```
-
-### **Privacy Settings**
-
-#### **Data Collection**
-- **Analytics**: Anonymous usage statistics
-- **Crash Reports**: Error reporting for improvements
-- **Performance Metrics**: Speed and reliability data
-- **Feature Usage**: Popular feature tracking
-
-#### **Display Options**
-- **Currency**: USD, EUR, BTC, NEO
-- **Language**: Multiple language support
-- **Theme**: Light, Dark, Auto
-- **Notifications**: Transaction alerts, price updates
-
----
-
-## 🎯 Best Practices
-
-### **Security Recommendations**
-
-<div className="row">
-  <div className="col col--6">
-    <h4>✅ Do This</h4>
-    <ul>
-      <li>Enable 2FA for all operations</li>
-      <li>Use hardware wallets for large amounts</li>
-      <li>Regularly backup your wallet</li>
-      <li>Verify recipient addresses</li>
-      <li>Keep software updated</li>
-      <li>Use strong, unique passwords</li>
-    </ul>
-  </div>
-  <div className="col col--6">
-    <h4>❌ Avoid This</h4>
-    <ul>
-      <li>Sharing private keys or recovery phrases</li>
-      <li>Using public WiFi for transactions</li>
-      <li>Storing large amounts on hot wallets</li>
-      <li>Ignoring security warnings</li>
-      <li>Using weak passwords</li>
-      <li>Skipping backup procedures</li>
-    </ul>
-  </div>
-</div>
-
-### **Performance Optimization**
-
-#### **Transaction Efficiency**
-- **Batch Operations**: Combine multiple transfers
-- **Optimal Timing**: Send during low network congestion
-- **Fee Management**: Use appropriate fee levels
-- **UTXO Management**: Consolidate small inputs
-
-#### **Wallet Maintenance**
-- **Regular Cleanup**: Remove old transaction data
-- **Index Rebuilding**: Refresh transaction indices
-- **Cache Management**: Clear temporary data
-- **Sync Optimization**: Efficient blockchain synchronization
-
----
-
-## 🆘 Troubleshooting
-
-### **Common Issues**
-
-#### **Transaction Failures**
-```
-Error: Insufficient GAS for network fee
-Solution: 
-├─ Check GAS balance
-├─ Reduce transaction amount
-├─ Wait for network congestion to clear
-└─ Use higher network fee
-```
-
-#### **Sync Problems**
-```
-Error: Wallet not synchronizing
-Solution:
-├─ Check internet connection
-├─ Verify RPC endpoint status
-├─ Restart application
-├─ Clear cache and resync
-└─ Switch to different RPC endpoint
-```
-
-#### **Account Access Issues**
-```
-Error: Cannot unlock account
-Solution:
-├─ Verify password correctness
-├─ Check for caps lock
-├─ Try password recovery
-├─ Restore from backup
-└─ Contact support if needed
-```
-
-### **Getting Help**
-
-- **Built-in Help**: Press F1 or click Help menu
-- **Documentation**: [Complete guides](https://neorust.netlify.app)
-- **Community**: [GitHub Discussions](https://github.com/R3E-Network/NeoRust/discussions)
-- **Support**: [Issue Tracker](https://github.com/R3E-Network/NeoRust/issues)
-
----
-
-**Master your Neo N3 wallet management with confidence! 💪** 
+**Ready to master wallet management?** Start with creating your first secure wallet and explore all the powerful features NeoRust GUI offers! 🚀 

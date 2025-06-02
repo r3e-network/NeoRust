@@ -1,0 +1,24 @@
+{
+  "id": "examples",
+  "title": "Examples",
+  "description": "Practical examples for common NeoRust SDK operations.",
+  "source": "@site/sdk/examples.md",
+  "sourceDirName": ".",
+  "slug": "/examples",
+  "permalink": "/sdk/examples",
+  "draft": false,
+  "unlisted": false,
+  "editUrl": "https://github.com/R3E-Network/NeoRust/tree/main/website/sdk/examples.md",
+  "tags": [],
+  "version": "current",
+  "frontMatter": {},
+  "sidebar": "sdkSidebar",
+  "previous": {
+    "title": "Quick Start",
+    "permalink": "/sdk/quick-start"
+  },
+  "next": {
+    "title": "Wallet Management",
+    "permalink": "/sdk/wallets"
+  }
+}

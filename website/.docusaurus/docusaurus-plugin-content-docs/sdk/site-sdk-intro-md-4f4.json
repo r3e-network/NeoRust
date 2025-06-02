@@ -1,0 +1,22 @@
+{
+  "id": "intro",
+  "title": "Rust SDK - Production-Ready Neo N3 Library",
+  "description": "Welcome to the NeoRust SDK - a comprehensive, production-ready Rust library for Neo N3 blockchain development with zero panics, full test coverage, and enterprise-grade reliability.",
+  "source": "@site/sdk/intro.md",
+  "sourceDirName": ".",
+  "slug": "/intro",
+  "permalink": "/sdk/intro",
+  "draft": false,
+  "unlisted": false,
+  "editUrl": "https://github.com/R3E-Network/NeoRust/tree/main/website/sdk/intro.md",
+  "tags": [],
+  "version": "current",
+  "lastUpdatedBy": "Jimmy",
+  "lastUpdatedAt": 1748820964000,
+  "frontMatter": {},
+  "sidebar": "sdkSidebar",
+  "next": {
+    "title": "Installation",
+    "permalink": "/sdk/installation"
+  }
+}

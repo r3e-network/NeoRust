@@ -1,0 +1,27 @@
+neorust-team:
+  name: NeoRust Team
+  title: Core Development Team
+  url: https://github.com/R3E-Network/NeoRust
+  image_url: https://github.com/R3E-Network.png
+  email: team@neorust.org
+
+john-smith:
+  name: John Smith
+  title: Lead Developer
+  url: https://github.com/johnsmith
+  image_url: /img/blog/authors/john-smith.jpg
+  email: john@neorust.org
+
+sarah-chen:
+  name: Sarah Chen
+  title: Blockchain Engineer
+  url: https://github.com/sarahchen
+  image_url: /img/blog/authors/sarah-chen.jpg
+  email: sarah@neorust.org
+
+alex-petrov:
+  name: Alex Petrov
+  title: Security Researcher
+  url: https://github.com/alexpetrov
+  image_url: /img/blog/authors/alex-petrov.jpg
+  email: alex@neorust.org 

@@ -1,0 +1,20 @@
+{
+  "id": "troubleshooting",
+  "title": "Troubleshooting",
+  "description": "Common issues and solutions for NeoRust SDK.",
+  "source": "@site/sdk/troubleshooting.md",
+  "sourceDirName": ".",
+  "slug": "/troubleshooting",
+  "permalink": "/sdk/troubleshooting",
+  "draft": false,
+  "unlisted": false,
+  "editUrl": "https://github.com/R3E-Network/NeoRust/tree/main/website/sdk/troubleshooting.md",
+  "tags": [],
+  "version": "current",
+  "frontMatter": {},
+  "sidebar": "sdkSidebar",
+  "previous": {
+    "title": "API Reference",
+    "permalink": "/sdk/api-reference"
+  }
+}

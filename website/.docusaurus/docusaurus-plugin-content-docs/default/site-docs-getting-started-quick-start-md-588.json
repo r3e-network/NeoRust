@@ -1,0 +1,26 @@
+{
+  "id": "getting-started/quick-start",
+  "title": "Quick Start",
+  "description": "Get up and running with NeoRust SDK in just a few minutes. This guide will walk you through creating your first Neo N3 application.",
+  "source": "@site/docs/getting-started/quick-start.md",
+  "sourceDirName": "getting-started",
+  "slug": "/getting-started/quick-start",
+  "permalink": "/docs/getting-started/quick-start",
+  "draft": false,
+  "unlisted": false,
+  "editUrl": "https://github.com/R3E-Network/NeoRust/tree/main/website/docs/getting-started/quick-start.md",
+  "tags": [],
+  "version": "current",
+  "lastUpdatedBy": "Jimmy",
+  "lastUpdatedAt": 1748700629000,
+  "frontMatter": {},
+  "sidebar": "tutorialSidebar",
+  "previous": {
+    "title": "Installation",
+    "permalink": "/docs/getting-started/installation"
+  },
+  "next": {
+    "title": "🧪 Testing",
+    "permalink": "/docs/testing"
+  }
+}

@@ -1,31 +1,36 @@
 /**
- * Creating a sidebar enables you to:
- - create an ordered group of docs
- - render a sidebar for each doc of that group
- - provide next/previous navigation
-
- The sidebars can be generated from the filesystem, or explicitly defined here.
-
- Create as many sidebars as you want.
+ * NeoRust Documentation Sidebar Configuration v0.4.1
+ * Creating a simplified navigation structure for the documentation
+ * @type {import('@docusaurus/plugin-content-docs').SidebarsConfig}
  */
 
-// @ts-check
-
-/** @type {import('@docusaurus/plugin-content-docs').SidebarsConfig} */
 const sidebars = {
-  // Main documentation sidebar (docs folder)
+  // Main tutorial sidebar
   tutorialSidebar: [
-    'intro',
+    // Introduction
+    {
+      type: 'doc',
+      id: 'intro',
+      label: '👋 Welcome to NeoRust',
+    },
+
+    // Getting Started
     {
       type: 'category',
-      label: 'Getting Started',
+      label: '🚀 Getting Started',
+      collapsed: false,
       items: [
         'getting-started/installation',
         'getting-started/quick-start',
-        'getting-started/first-wallet',
       ],
     },
-    'testing',
+
+    // Testing
+    {
+      type: 'doc',
+      id: 'testing',
+      label: '🧪 Testing',
+    },
   ],
 };
 

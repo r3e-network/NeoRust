@@ -1,0 +1,24 @@
+{
+  "id": "transactions",
+  "title": "Transaction Management",
+  "description": "Build, sign, and broadcast transactions on the Neo network.",
+  "source": "@site/sdk/transactions.md",
+  "sourceDirName": ".",
+  "slug": "/transactions",
+  "permalink": "/sdk/transactions",
+  "draft": false,
+  "unlisted": false,
+  "editUrl": "https://github.com/R3E-Network/NeoRust/tree/main/website/sdk/transactions.md",
+  "tags": [],
+  "version": "current",
+  "frontMatter": {},
+  "sidebar": "sdkSidebar",
+  "previous": {
+    "title": "Wallet Management",
+    "permalink": "/sdk/wallets"
+  },
+  "next": {
+    "title": "Smart Contracts",
+    "permalink": "/sdk/contracts"
+  }
+}

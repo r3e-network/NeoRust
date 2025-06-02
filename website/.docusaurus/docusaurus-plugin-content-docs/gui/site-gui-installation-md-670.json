@@ -1,0 +1,24 @@
+{
+  "id": "installation",
+  "title": "Installation",
+  "description": "Download and install NeoRust Desktop GUI.",
+  "source": "@site/gui/installation.md",
+  "sourceDirName": ".",
+  "slug": "/installation",
+  "permalink": "/gui/installation",
+  "draft": false,
+  "unlisted": false,
+  "editUrl": "https://github.com/R3E-Network/NeoRust/tree/main/website/gui/installation.md",
+  "tags": [],
+  "version": "current",
+  "frontMatter": {},
+  "sidebar": "guiSidebar",
+  "previous": {
+    "title": "🖥️ Desktop GUI Overview",
+    "permalink": "/gui/intro"
+  },
+  "next": {
+    "title": "First Wallet",
+    "permalink": "/gui/first-wallet"
+  }
+}

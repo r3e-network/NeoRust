@@ -1,0 +1,24 @@
+{
+  "id": "first-wallet",
+  "title": "First Wallet",
+  "description": "Create your first wallet with NeoRust GUI.",
+  "source": "@site/gui/first-wallet.md",
+  "sourceDirName": ".",
+  "slug": "/first-wallet",
+  "permalink": "/gui/first-wallet",
+  "draft": false,
+  "unlisted": false,
+  "editUrl": "https://github.com/R3E-Network/NeoRust/tree/main/website/gui/first-wallet.md",
+  "tags": [],
+  "version": "current",
+  "frontMatter": {},
+  "sidebar": "guiSidebar",
+  "previous": {
+    "title": "Installation",
+    "permalink": "/gui/installation"
+  },
+  "next": {
+    "title": "Basic Operations",
+    "permalink": "/gui/basic-operations"
+  }
+}

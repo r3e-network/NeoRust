@@ -1,0 +1,67 @@
+{
+  "permalink": "/blog/neorust-v0.4.1-release",
+  "editUrl": "https://github.com/R3E-Network/NeoRust/tree/main/website/blog/2024-01-15-neorust-v0.4.1-release.md",
+  "source": "@site/blog/2024-01-15-neorust-v0.4.1-release.md",
+  "title": "🎉 NeoRust v0.4.1 Released - Production-Ready Neo N3 Development",
+  "description": "We're excited to announce the release of NeoRust v0.4.1, marking a significant milestone in Neo N3 blockchain development with Rust. This release brings enhanced cross-platform compatibility, security improvements, and a completely redesigned developer experience.",
+  "date": "2024-01-15T00:00:00.000Z",
+  "tags": [
+    {
+      "inline": true,
+      "label": "release",
+      "permalink": "/blog/tags/release"
+    },
+    {
+      "inline": true,
+      "label": "neo3",
+      "permalink": "/blog/tags/neo-3"
+    },
+    {
+      "inline": true,
+      "label": "rust",
+      "permalink": "/blog/tags/rust"
+    },
+    {
+      "inline": true,
+      "label": "sdk",
+      "permalink": "/blog/tags/sdk"
+    },
+    {
+      "inline": true,
+      "label": "blockchain",
+      "permalink": "/blog/tags/blockchain"
+    }
+  ],
+  "readingTime": 3.6,
+  "hasTruncateMarker": true,
+  "authors": [
+    {
+      "name": "NeoRust Team",
+      "title": "Core Development Team",
+      "url": "https://github.com/R3E-Network/NeoRust",
+      "email": "team@neorust.org",
+      "imageURL": "https://github.com/R3E-Network.png",
+      "key": "neorust-team",
+      "page": null
+    }
+  ],
+  "frontMatter": {
+    "slug": "neorust-v0.4.1-release",
+    "title": "🎉 NeoRust v0.4.1 Released - Production-Ready Neo N3 Development",
+    "authors": [
+      "neorust-team"
+    ],
+    "tags": [
+      "release",
+      "neo3",
+      "rust",
+      "sdk",
+      "blockchain"
+    ]
+  },
+  "unlisted": false,
+  "nextItem": {
+    "title": "🏗️ Building Your First Neo dApp with NeoRust - Complete Guide",
+    "permalink": "/blog/building-first-neo-dapp"
+  }
+}

@@ -1,0 +1,555 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Neo Rust SDK Playground - Interactive environment to experiment with Neo Rust SDK code">
+  <title>Playground | Neo Rust SDK</title>
+  <link rel="icon" href="/images/neo-logo.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/main.css">
+  <style>
+    /* Additional Playground Styles */
+    .playground-editor {
+      min-height: 400px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 8px;
+      overflow: hidden;
+      flex: 1;
+    }
+    
+    .playground-output {
+      min-height: 200px;
+      max-height: 300px;
+      overflow-y: auto;
+      background: rgba(0, 0, 0, 0.2);
+      border-radius: 8px;
+      padding: 1rem;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.9rem;
+      margin-top: 1rem;
+      white-space: pre-wrap;
+    }
+    
+    .playground {
+      display: flex;
+      flex-direction: column;
+      margin: 1rem 0 2rem;
+    }
+    
+    .playground-controls {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1rem;
+    }
+    
+    .playground-examples {
+      position: relative;
+      display: flex;
+      align-items: center;
+    }
+    
+    .playground-examples-select {
+      background: rgba(76, 255, 179, 0.1);
+      border: 1px solid var(--primary);
+      color: var(--text-dark);
+      padding: 0.5rem 2rem 0.5rem 1rem;
+      border-radius: 4px;
+      appearance: none;
+      font-family: 'Inter', sans-serif;
+      cursor: pointer;
+      margin-left: 0.5rem;
+    }
+    
+    .playground-examples-icon {
+      position: absolute;
+      right: 0.5rem;
+      pointer-events: none;
+      color: var(--primary);
+    }
+    
+    .playground-buttons {
+      display: flex;
+      gap: 0.5rem;
+    }
+    
+    .demo-placeholder {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(0, 0, 0, 0.2);
+      padding: 2rem;
+      border-radius: 8px;
+      margin-top: 1rem;
+      text-align: center;
+    }
+    
+    .monaco-placeholder {
+      background: rgba(30, 30, 30, 0.9);
+      color: #ddd;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 14px;
+      padding: 20px;
+      border-radius: 8px;
+      overflow: auto;
+      line-height: 1.5;
+    }
+    
+    .monaco-line {
+      white-space: pre;
+    }
+    
+    .keyword {
+      color: #569CD6;
+    }
+    
+    .type {
+      color: #4EC9B0;
+    }
+    
+    .function {
+      color: #DCDCAA;
+    }
+    
+    .string {
+      color: #CE9178;
+    }
+    
+    .comment {
+      color: #6A9955;
+    }
+    
+    .number {
+      color: #B5CEA8;
+    }
+    
+    .symbol {
+      color: #D4D4D4;
+    }
+  </style>
+</head>
+<body>
+  <!-- Loading animation -->
+  <div class="loading">
+    <div class="loading-spinner"></div>
+  </div>
+
+  <header>
+    <div class="container">
+      <div class="header-content">
+        <a href="/" class="logo-container">
+          <svg class="logo" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+            <rect width="100" height="100" fill="transparent"/>
+            <path d="M20 20 L80 20 L80 80 L20 80 Z" fill="none" stroke="#4CFFB3" stroke-width="4"/>
+            <path d="M35 35 L65 35 L65 65 L35 65 Z" fill="#4CFFB3"/>
+          </svg>
+          <div class="logo-text">Neo Rust SDK</div>
+        </a>
+        <button class="mobile-menu-button" aria-label="Toggle mobile menu">
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="3" y1="12" x2="21" y2="12"></line>
+            <line x1="3" y1="6" x2="21" y2="6"></line>
+            <line x1="3" y1="18" x2="21" y2="18"></line>
+          </svg>
+        </button>
+        <div class="nav-links">
+          <a href="/docs/" class="nav-link">Documentation</a>
+          <a href="/api/" class="nav-link">API Reference</a>
+          <a href="/examples/" class="nav-link">Examples</a>
+          <a href="/playground/" class="nav-link">Playground</a>
+          <a href="https://github.com/R3E-Network/NeoRust" class="nav-link" target="_blank">GitHub</a>
+        </div>
+        <button class="theme-toggle" aria-label="Toggle dark/light mode">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" class="dark-icon">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+          </svg>
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" class="light-icon" style="display: none;">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+          </svg>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <section class="hero">
+      <div id="particles-container"></div>
+      <div class="container">
+        <h1 class="hero-title fade-in">Neo Rust SDK Playground</h1>
+        <p class="hero-subtitle fade-in" style="animation-delay: 0.2s;">Explore Neo Rust SDK code examples in this interactive environment</p>
+      </div>
+    </section>
+
+    <div class="container">
+      <section class="section">
+        <div class="playground-controls">
+          <div class="playground-examples">
+            <label for="example-select">Examples:</label>
+            <select id="example-select" class="playground-examples-select">
+              <option value="wallet">Create Wallet</option>
+              <option value="transaction">Create Transaction</option>
+              <option value="contract">Invoke Contract</option>
+              <option value="custom">Custom Code</option>
+            </select>
+            <svg class="playground-examples-icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="6 9 12 15 18 9"></polyline>
+            </svg>
+          </div>
+          <div class="playground-buttons">
+            <button id="copy-code" class="btn btn-secondary">Copy</button>
+          </div>
+        </div>
+        
+        <div class="playground">
+          <div id="playground-editor" class="playground-editor">
+            <div class="monaco-placeholder">
+              <div class="monaco-line"><span class="keyword">use</span> <span class="type">neo</span>::<span class="type">prelude</span>::*;</div>
+              <div class="monaco-line"></div>
+              <div class="monaco-line"><span class="keyword">fn</span> <span class="function">main</span>() -> <span class="type">Result</span>&lt;()&gt; {</div>
+              <div class="monaco-line">    <span class="comment">// Create a new wallet</span></div>
+              <div class="monaco-line">    <span class="keyword">let</span> wallet = <span class="type">Wallet</span>::<span class="function">new</span>();</div>
+              <div class="monaco-line">    </div>
+              <div class="monaco-line">    <span class="comment">// Print the wallet address</span></div>
+              <div class="monaco-line">    <span class="function">println!</span>(<span class="string">"New wallet address: {}"</span>, wallet.<span class="function">address</span>());</div>
+              <div class="monaco-line">    </div>
+              <div class="monaco-line">    <span class="type">Ok</span>(())</div>
+              <div class="monaco-line">}</div>
+            </div>
+          </div>
+          
+          <div class="demo-notice">
+            <h3>Neo Rust SDK Playground</h3>
+            <p>This playground allows you to experiment with the Neo Rust SDK in a sandboxed environment.<br>
+            Your code is executed securely with resource limits and safety checks.</p>
+            <p><strong>Features:</strong></p>
+            <ul>
+              <li>✅ Real Rust code execution with Neo3 SDK</li>
+              <li>✅ Secure sandboxed environment</li>
+              <li>✅ Resource limits (30s timeout, 1MB output)</li>
+              <li>✅ Multiple language support (Rust, JavaScript, Python)</li>
+              <li>✅ Rate limiting for fair usage</li>
+            </ul>
+            <p>For production applications, please use the Neo Rust SDK in your local development environment.</p>
+          </div>
+        </div>
+        
+        <div class="scroll-animated">
+          <h2>About the Playground</h2>
+          <p>The Neo Rust SDK Playground allows you to explore code examples and understand how to use the SDK without setting up a local development environment. While this demo version doesn't execute code, it helps you get familiar with the syntax and patterns used in Neo Rust SDK development.</p>
+          
+          <div class="card scroll-animated" style="margin-top: 2rem;">
+            <h3 class="card-title">Learning Resources</h3>
+            <ul style="margin-left: 1.5rem; margin-bottom: 1rem;">
+              <li>Browse our <a href="/docs/" style="color: var(--primary);">comprehensive documentation</a></li>
+              <li>Check out the <a href="/examples/" style="color: var(--primary);">example projects</a></li>
+              <li>Explore the <a href="/api/" style="color: var(--primary);">API reference</a></li>
+              <li>Visit our <a href="https://github.com/R3E-Network/NeoRust" target="_blank" style="color: var(--primary);">GitHub repository</a></li>
+              <li>Join the <a href="https://discord.gg/G5WEPwDgYG" target="_blank" style="color: var(--primary);">Neo Discord community</a></li>
+            </ul>
+          </div>
+          
+          <div class="newsletter scroll-animated">
+            <div class="newsletter-content">
+              <h3 class="newsletter-title">Join the Neo Rust Community</h3>
+              <p class="newsletter-description">Get the latest Neo Rust SDK updates, tutorials, and community news delivered to your inbox.</p>
+              <form id="newsletter-form" class="newsletter-form">
+                <input type="email" class="newsletter-input" placeholder="Your email address" required>
+                <button type="submit" class="btn btn-primary">Subscribe</button>
+              </form>
+              <div class="newsletter-status"></div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <footer>
+    <div class="container">
+      <div class="footer-content">
+        <div class="footer-col">
+          <div class="footer-logo">
+            <svg class="footer-logo-img" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+              <rect width="100" height="100" fill="transparent"/>
+              <path d="M20 20 L80 20 L80 80 L20 80 Z" fill="none" stroke="#4CFFB3" stroke-width="4"/>
+              <path d="M35 35 L65 35 L65 65 L35 65 Z" fill="#4CFFB3"/>
+            </svg>
+            <div class="footer-logo-text">Neo Rust SDK</div>
+          </div>
+          <p>A comprehensive Rust library for building applications on the Neo N3 blockchain ecosystem.</p>
+          <div class="footer-social">
+            <a href="https://github.com/R3E-Network/NeoRust" target="_blank" aria-label="GitHub">
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"></path>
+              </svg>
+            </a>
+            <a href="https://discord.gg/G5WEPwDgYG" target="_blank" aria-label="Discord">
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M18 9a5 5 0 0 0-5-5h-2a5 5 0 0 0-5 5v6a5 5 0 0 0 5 5h2a5 5 0 0 0 5-5V9Z"></path>
+                <path d="m8 9 3 3-3 3"></path>
+                <path d="m16 9-3 3 3 3"></path>
+              </svg>
+            </a>
+            <a href="https://twitter.com/neo_blockchain" target="_blank" aria-label="Twitter">
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M22 4s-.7 2.1-2 3.4c1.6 10-9.4 17.3-18 11.6 2.2.1 4.4-.6 6-2C3 15.5.5 9.6 3 5c2.2 2.6 5.6 4.1 9 4-.9-4.2 4-6.6 7-3.8 1.1 0 3-1.2 3-1.2z"></path>
+              </svg>
+            </a>
+          </div>
+        </div>
+        <div class="footer-col footer-links">
+          <h3>Documentation</h3>
+          <ul>
+            <li><a href="/docs/getting-started/" class="footer-link">Getting Started</a></li>
+            <li><a href="/docs/wallets/" class="footer-link">Wallet Management</a></li>
+            <li><a href="/docs/transactions/" class="footer-link">Transactions</a></li>
+            <li><a href="/docs/contracts/" class="footer-link">Smart Contracts</a></li>
+            <li><a href="/docs/crypto/" class="footer-link">Cryptography</a></li>
+          </ul>
+        </div>
+        <div class="footer-col footer-links">
+          <h3>Resources</h3>
+          <ul>
+            <li><a href="/api/" class="footer-link">API Reference</a></li>
+            <li><a href="/examples/" class="footer-link">Examples</a></li>
+            <li><a href="/playground/" class="footer-link">Playground</a></li>
+            <li><a href="https://github.com/R3E-Network/NeoRust/releases" class="footer-link" target="_blank">Releases</a></li>
+            <li><a href="https://github.com/R3E-Network/NeoRust/issues" class="footer-link" target="_blank">Report Issues</a></li>
+          </ul>
+        </div>
+        <div class="footer-col footer-links">
+          <h3>Community</h3>
+          <ul>
+            <li><a href="https://neo.org" class="footer-link" target="_blank">Neo.org</a></li>
+            <li><a href="https://github.com/neo-project" class="footer-link" target="_blank">Neo GitHub</a></li>
+            <li><a href="https://discord.gg/G5WEPwDgYG" class="footer-link" target="_blank">Discord</a></li>
+            <li><a href="https://medium.com/neo-smart-economy" class="footer-link" target="_blank">Medium</a></li>
+            <li><a href="https://twitter.com/neo_blockchain" class="footer-link" target="_blank">Twitter</a></li>
+          </ul>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        <div class="footer-copyright">
+          © 2023 Neo Global Development. All rights reserved.
+        </div>
+        <div class="footer-bottom-links">
+          <a href="/privacy-policy/" class="footer-bottom-link">Privacy Policy</a>
+          <a href="/terms-of-service/" class="footer-bottom-link">Terms of Service</a>
+          <a href="/license/" class="footer-bottom-link">License</a>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/tsparticles@2.12.0/tsparticles.bundle.min.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      // Loading animation
+      setTimeout(function() {
+        document.querySelector('.loading').classList.add('hidden');
+      }, 500);
+      
+      // Example code snippets
+      const examples = {
+        'wallet': '<div class="monaco-line"><span class="keyword">use</span> <span class="type">neo</span>::<span class="type">prelude</span>::*;</div>\n<div class="monaco-line"></div>\n<div class="monaco-line"><span class="keyword">fn</span> <span class="function">main</span>() -> <span class="type">Result</span>&lt;()&gt; {</div>\n<div class="monaco-line">    <span class="comment">// Create a new wallet</span></div>\n<div class="monaco-line">    <span class="keyword">let</span> wallet = <span class="type">Wallet</span>::<span class="function">new</span>();</div>\n<div class="monaco-line">    </div>\n<div class="monaco-line">    <span class="comment">// Print the wallet address</span></div>\n<div class="monaco-line">    <span class="function">println!</span>(<span class="string">"New wallet address: {}"</span>, wallet.<span class="function">address</span>());</div>\n<div class="monaco-line">    </div>\n<div class="monaco-line">    <span class="type">Ok</span>(())</div>\n<div class="monaco-line">}</div>',
+        
+        'transaction': '<div class="monaco-line"><span class="keyword">use</span> <span class="type">neo</span>::<span class="type">prelude</span>::*;</div>\n<div class="monaco-line"></div>\n<div class="monaco-line"><span class="keyword">async</span> <span class="keyword">fn</span> <span class="function">transfer_neo</span>() -> <span class="type">Result</span>&lt;()&gt; {</div>\n<div class="monaco-line">    <span class="keyword">let</span> wallet = <span class="type">Wallet</span>::<span class="function">load</span>(<span class="string">"wallet.json"</span>, <span class="string">"password"</span>)?;</div>\n<div class="monaco-line">    <span class="keyword">let</span> account = wallet.<span class="function">default_account</span>()?;</div>\n<div class="monaco-line">    </div>\n<div class="monaco-line">    <span class="comment">// Connect to Neo node</span></div>\n<div class="monaco-line">    <span class="keyword">let</span> client = <span class="type">NeoClient</span>::<span class="function">connect_to_testnet</span>().<span class="keyword">await</span>?;</div>\n<div class="monaco-line">    </div>\n<div class="monaco-line">    <span class="comment">// Create a transaction to transfer NEO</span></div>\n<div class="monaco-line">    <span class="keyword">let</span> tx = <span class="type">TransactionBuilder</span>::<span class="function">new</span>()</div>\n<div class="monaco-line">        .<span class="function">version</span>(<span class="number">0</span>)</div>\n<div class="monaco-line">        .<span class="function">nonce</span>(<span class="number">1234</span>)</div>\n<div class="monaco-line">        .<span class="function">valid_until_block</span>(client.<span class="function">get_block_count</span>().<span class="keyword">await</span>? + <span class="number">100</span>)</div>\n<div class="monaco-line">        .<span class="function">sender</span>(account.<span class="function">address</span>())</div>\n<div class="monaco-line">        .<span class="function">script</span>(script_builder::<span class="function">build_transfer_script</span>(</div>\n<div class="monaco-line">            <span class="string">"neo"</span>, </div>\n<div class="monaco-line">            account.<span class="function">address</span>(),</div>\n<div class="monaco-line">            <span class="string">"NbnjKGMBJzJ6j5PHeYhjJDaQ5Vy5UYu4Fv"</span>,</div>\n<div class="monaco-line">            <span class="number">100000000</span> <span class="comment">// 1 NEO</span></div>\n<div class="monaco-line">        ))</div>\n<div class="monaco-line">        .<span class="function">sign</span>(account)</div>\n<div class="monaco-line">        .<span class="function">build</span>();</div>\n<div class="monaco-line">    </div>\n<div class="monaco-line">    <span class="comment">// Send the transaction</span></div>\n<div class="monaco-line">    <span class="keyword">let</span> result = client.<span class="function">send_transaction</span>(tx).<span class="keyword">await</span>?;</div>\n<div class="monaco-line">    <span class="function">println!</span>(<span class="string">"Transaction sent: {}"</span>, result);</div>\n<div class="monaco-line">    </div>\n<div class="monaco-line">    <span class="type">Ok</span>(())</div>\n<div class="monaco-line">}</div>',
+        
+        'contract': '<div class="monaco-line"><span class="keyword">use</span> <span class="type">neo</span>::<span class="type">prelude</span>::*;</div>\n<div class="monaco-line"></div>\n<div class="monaco-line"><span class="keyword">async</span> <span class="keyword">fn</span> <span class="function">invoke_contract</span>() -> <span class="type">Result</span>&lt;()&gt; {</div>\n<div class="monaco-line">    <span class="keyword">let</span> wallet = <span class="type">Wallet</span>::<span class="function">load</span>(<span class="string">"wallet.json"</span>, <span class="string">"password"</span>)?;</div>\n<div class="monaco-line">    <span class="keyword">let</span> account = wallet.<span class="function">default_account</span>()?;</div>\n<div class="monaco-line">    </div>\n<div class="monaco-line">    <span class="comment">// Connect to Neo node</span></div>\n<div class="monaco-line">    <span class="keyword">let</span> client = <span class="type">NeoClient</span>::<span class="function">connect_to_testnet</span>().<span class="keyword">await</span>?;</div>\n<div class="monaco-line">    </div>\n<div class="monaco-line">    <span class="comment">// Invoke contract method</span></div>\n<div class="monaco-line">    <span class="keyword">let</span> result = client</div>\n<div class="monaco-line">        .<span class="function">invoke_function</span>(</div>\n<div class="monaco-line">            <span class="string">"0xd2a4cff31913016155e38e474a2c06d08be276cf"</span>,</div>\n<div class="monaco-line">            <span class="string">"transfer"</span>,</div>\n<div class="monaco-line">            [</div>\n<div class="monaco-line">                <span class="type">ContractParameter</span>::<span class="function">hash160</span>(account.<span class="function">address</span>()),</div>\n<div class="monaco-line">                <span class="type">ContractParameter</span>::<span class="function">hash160</span>(<span class="string">"NbnjKGMBJzJ6j5PHeYhjJDaQ5Vy5UYu4Fv"</span>),</div>\n<div class="monaco-line">                <span class="type">ContractParameter</span>::<span class="function">integer</span>(<span class="number">100</span>),</div>\n<div class="monaco-line">                <span class="type">ContractParameter</span>::<span class="function">any</span>(<span class="type">None</span>)</div>\n<div class="monaco-line">            ],</div>\n<div class="monaco-line">            account,</div>\n<div class="monaco-line">        )</div>\n<div class="monaco-line">        .<span class="keyword">await</span>?;</div>\n<div class="monaco-line">    </div>\n<div class="monaco-line">    <span class="function">println!</span>(<span class="string">"Transaction: {}"</span>, result.tx_id);</div>\n<div class="monaco-line">    </div>\n<div class="monaco-line">    <span class="type">Ok</span>(())</div>\n<div class="monaco-line">}</div>',
+        
+        'custom': '<div class="monaco-line"><span class="keyword">use</span> <span class="type">neo</span>::<span class="type">prelude</span>::*;</div>\n<div class="monaco-line"></div>\n<div class="monaco-line"><span class="comment">// Add your custom code here</span></div>\n<div class="monaco-line"><span class="keyword">fn</span> <span class="function">main</span>() -> <span class="type">Result</span>&lt;()&gt; {</div>\n<div class="monaco-line">    <span class="function">println!</span>(<span class="string">"Hello, Neo Rust SDK!"</span>);</div>\n<div class="monaco-line">    <span class="type">Ok</span>(())</div>\n<div class="monaco-line">}</div>'
+      };
+      
+      // Theme toggle
+      const themeToggle = document.querySelector('.theme-toggle');
+      const darkIcon = document.querySelector('.dark-icon');
+      const lightIcon = document.querySelector('.light-icon');
+      
+      themeToggle.addEventListener('click', function() {
+        document.body.classList.toggle('light-theme');
+        
+        if (document.body.classList.contains('light-theme')) {
+          darkIcon.style.display = 'none';
+          lightIcon.style.display = 'block';
+          localStorage.setItem('theme', 'light');
+        } else {
+          darkIcon.style.display = 'block';
+          lightIcon.style.display = 'none';
+          localStorage.setItem('theme', 'dark');
+        }
+      });
+      
+      // Check for saved theme
+      const savedTheme = localStorage.getItem('theme');
+      if (savedTheme === 'light') {
+        document.body.classList.add('light-theme');
+        darkIcon.style.display = 'none';
+        lightIcon.style.display = 'block';
+      }
+      
+      // Example select functionality
+      const exampleSelect = document.getElementById('example-select');
+      const editor = document.getElementById('playground-editor');
+      
+      exampleSelect.addEventListener('change', function() {
+        const example = examples[this.value];
+        if (example) {
+          editor.querySelector('.monaco-placeholder').innerHTML = example;
+        }
+      });
+      
+      // Copy button functionality
+      const copyButton = document.getElementById('copy-code');
+      
+      copyButton.addEventListener('click', function() {
+        const code = editor.textContent.replace(/^\s+|\s+$/g, '');
+        
+        navigator.clipboard.writeText(code).then(() => {
+          const originalText = this.textContent;
+          this.textContent = 'Copied!';
+          
+          setTimeout(() => {
+            this.textContent = originalText;
+          }, 2000);
+        });
+      });
+      
+      // Mobile menu toggle
+      const mobileMenuButton = document.querySelector('.mobile-menu-button');
+      const navLinks = document.querySelector('.nav-links');
+      
+      if (mobileMenuButton) {
+        mobileMenuButton.addEventListener('click', function() {
+          navLinks.classList.toggle('mobile-active');
+        });
+      }
+      
+      // Newsletter form
+      const newsletterForm = document.getElementById('newsletter-form');
+      const newsletterStatus = document.querySelector('.newsletter-status');
+      
+      if (newsletterForm) {
+        newsletterForm.addEventListener('submit', function(e) {
+          e.preventDefault();
+          
+          const emailInput = this.querySelector('input[type="email"]');
+          if (!emailInput) return;
+          
+          const email = emailInput.value.trim();
+          
+          if (!email) {
+            if (newsletterStatus) {
+              newsletterStatus.textContent = 'Please enter your email address';
+              newsletterStatus.className = 'newsletter-status newsletter-error';
+            }
+            return;
+          }
+          
+          // Simulate successful subscription
+          if (newsletterStatus) {
+            newsletterStatus.textContent = 'Thank you for subscribing!';
+            newsletterStatus.className = 'newsletter-status newsletter-success';
+          }
+          
+          // Reset form
+          newsletterForm.reset();
+        });
+      }
+      
+      // Particles effect
+      const particlesContainer = document.getElementById('particles-container');
+      if (particlesContainer && typeof tsParticles !== 'undefined') {
+        tsParticles.load('particles-container', {
+          particles: {
+            number: {
+              value: 50,
+              density: {
+                enable: true,
+                value_area: 800
+              }
+            },
+            color: {
+              value: "#4CFFB3"
+            },
+            shape: {
+              type: "circle"
+            },
+            opacity: {
+              value: 0.3,
+              random: false
+            },
+            size: {
+              value: 3,
+              random: true
+            },
+            line_linked: {
+              enable: true,
+              distance: 150,
+              color: "#4CFFB3",
+              opacity: 0.2,
+              width: 1
+            },
+            move: {
+              enable: true,
+              speed: 2,
+              direction: "none",
+              random: false,
+              straight: false,
+              out_mode: "out",
+              bounce: false
+            }
+          },
+          interactivity: {
+            detect_on: "canvas",
+            events: {
+              onhover: {
+                enable: true,
+                mode: "grab"
+              },
+              onclick: {
+                enable: true,
+                mode: "push"
+              },
+              resize: true
+            },
+            modes: {
+              grab: {
+                distance: 140,
+                line_linked: {
+                  opacity: 0.5
+                }
+              },
+              push: {
+                particles_nb: 4
+              }
+            }
+          },
+          retina_detect: true
+        });
+      }
+      
+      // Scroll animation
+      const scrollAnimated = document.querySelectorAll('.scroll-animated');
+      
+      const observerOptions = {
+        threshold: 0.1
+      };
+      
+      const observer = new IntersectionObserver(function(entries) {
+        entries.forEach(entry => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add('visible');
+          }
+        });
+      }, observerOptions);
+      
+      scrollAnimated.forEach(element => {
+        observer.observe(element);
+      });
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,22 @@
+{
+  "id": "intro",
+  "title": "Welcome to NeoRust",
+  "description": "🚀 NeoRust v0.4.1",
+  "source": "@site/docs/intro.md",
+  "sourceDirName": ".",
+  "slug": "/intro",
+  "permalink": "/docs/intro",
+  "draft": false,
+  "unlisted": false,
+  "editUrl": "https://github.com/R3E-Network/NeoRust/tree/main/website/docs/intro.md",
+  "tags": [],
+  "version": "current",
+  "lastUpdatedBy": "Jimmy",
+  "lastUpdatedAt": 1748820964000,
+  "frontMatter": {},
+  "sidebar": "tutorialSidebar",
+  "next": {
+    "title": "Installation",
+    "permalink": "/docs/getting-started/installation"
+  }
+}

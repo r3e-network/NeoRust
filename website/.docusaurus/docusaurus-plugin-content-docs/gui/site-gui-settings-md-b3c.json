@@ -1,0 +1,24 @@
+{
+  "id": "settings",
+  "title": "Settings",
+  "description": "Configure your NeoRust Desktop GUI to match your preferences and security requirements.",
+  "source": "@site/gui/settings.md",
+  "sourceDirName": ".",
+  "slug": "/settings",
+  "permalink": "/gui/settings",
+  "draft": false,
+  "unlisted": false,
+  "editUrl": "https://github.com/R3E-Network/NeoRust/tree/main/website/gui/settings.md",
+  "tags": [],
+  "version": "current",
+  "frontMatter": {},
+  "sidebar": "guiSidebar",
+  "previous": {
+    "title": "Wallet Management",
+    "permalink": "/gui/wallet-management"
+  },
+  "next": {
+    "title": "Transactions",
+    "permalink": "/gui/transactions"
+  }
+}

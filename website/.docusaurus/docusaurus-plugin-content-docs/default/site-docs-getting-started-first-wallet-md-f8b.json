@@ -1,0 +1,17 @@
+{
+  "id": "getting-started/first-wallet",
+  "title": "Your First Neo Wallet",
+  "description": "💼 Create Your First Wallet",
+  "source": "@site/docs/getting-started/first-wallet.md",
+  "sourceDirName": "getting-started",
+  "slug": "/getting-started/first-wallet",
+  "permalink": "/docs/getting-started/first-wallet",
+  "draft": false,
+  "unlisted": false,
+  "editUrl": "https://github.com/R3E-Network/NeoRust/tree/main/website/docs/getting-started/first-wallet.md",
+  "tags": [],
+  "version": "current",
+  "lastUpdatedBy": "Jimmy",
+  "lastUpdatedAt": 1748702329000,
+  "frontMatter": {}
+}

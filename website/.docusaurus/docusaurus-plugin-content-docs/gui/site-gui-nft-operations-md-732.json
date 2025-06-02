@@ -1,0 +1,26 @@
+{
+  "id": "nft-operations",
+  "title": "NFT Operations",
+  "description": "🎨 NFT Operations",
+  "source": "@site/gui/nft-operations.md",
+  "sourceDirName": ".",
+  "slug": "/nft-operations",
+  "permalink": "/gui/nft-operations",
+  "draft": false,
+  "unlisted": false,
+  "editUrl": "https://github.com/R3E-Network/NeoRust/tree/main/website/gui/nft-operations.md",
+  "tags": [],
+  "version": "current",
+  "lastUpdatedBy": "Jimmy",
+  "lastUpdatedAt": 1748702329000,
+  "frontMatter": {},
+  "sidebar": "guiSidebar",
+  "previous": {
+    "title": "Wallet Management",
+    "permalink": "/gui/wallet-management"
+  },
+  "next": {
+    "title": "Developer Tools",
+    "permalink": "/gui/developer-tools"
+  }
+}

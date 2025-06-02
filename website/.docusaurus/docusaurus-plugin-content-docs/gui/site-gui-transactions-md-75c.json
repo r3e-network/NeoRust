@@ -1,0 +1,20 @@
+{
+  "id": "transactions",
+  "title": "Transactions",
+  "description": "Learn how to send, receive, and manage transactions using the NeoRust Desktop GUI.",
+  "source": "@site/gui/transactions.md",
+  "sourceDirName": ".",
+  "slug": "/transactions",
+  "permalink": "/gui/transactions",
+  "draft": false,
+  "unlisted": false,
+  "editUrl": "https://github.com/R3E-Network/NeoRust/tree/main/website/gui/transactions.md",
+  "tags": [],
+  "version": "current",
+  "frontMatter": {},
+  "sidebar": "guiSidebar",
+  "previous": {
+    "title": "Settings",
+    "permalink": "/gui/settings"
+  }
+}

@@ -1,0 +1,24 @@
+{
+  "id": "wallets",
+  "title": "Wallet Management",
+  "description": "Learn how to create and manage wallets with NeoRust SDK.",
+  "source": "@site/sdk/wallets.md",
+  "sourceDirName": ".",
+  "slug": "/wallets",
+  "permalink": "/sdk/wallets",
+  "draft": false,
+  "unlisted": false,
+  "editUrl": "https://github.com/R3E-Network/NeoRust/tree/main/website/sdk/wallets.md",
+  "tags": [],
+  "version": "current",
+  "frontMatter": {},
+  "sidebar": "sdkSidebar",
+  "previous": {
+    "title": "Examples",
+    "permalink": "/sdk/examples"
+  },
+  "next": {
+    "title": "Transaction Management",
+    "permalink": "/sdk/transactions"
+  }
+}

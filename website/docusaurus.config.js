@@ -9,7 +9,7 @@ const darkCodeTheme = themes.dracula;
 const config = {
   title: 'NeoRust v0.4.1',
   tagline: 'Next-generation Neo N3 blockchain development toolkit built in Rust',
-  favicon: 'img/favicon.ico',
+  favicon: 'img/favicon.svg',
 
   // Set the production url of your site here
   url: 'https://neorust.netlify.app',
@@ -92,8 +92,8 @@ const config = {
         title: 'NeoRust',
         logo: {
           alt: 'NeoRust Logo',
-          src: 'img/logo.svg',
-          srcDark: 'img/logo-dark.svg',
+          src: 'img/logo-icon.svg',
+          srcDark: 'img/logo-icon.svg',
           width: 32,
           height: 32,
         },

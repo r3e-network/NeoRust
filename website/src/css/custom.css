@@ -259,6 +259,8 @@ body {
   background: rgba(15, 23, 42, 0.8);
   border-bottom: 1px solid rgba(16, 185, 129, 0.2);
   padding: 0 1rem;
+  position: relative;
+  z-index: 1000;
 }
 
 .navbar__brand:hover {
@@ -330,13 +332,31 @@ body {
   border: 1px solid rgba(16, 185, 129, 0.2);
   border-radius: var(--ifm-border-radius-lg);
   backdrop-filter: blur(10px);
-  margin-top: 0.5rem;
-  position: relative;
+  margin-top: 0 !important; /* Remove gap between button and menu */
+  position: absolute;
+  top: 100%;
+  left: 0;
+  z-index: 1000;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-10px);
+  transition: all 0.2s ease-in-out;
+  pointer-events: none;
+}
+
+/* Show dropdown menu on hover */
+.navbar__item.dropdown:hover .dropdown__menu,
+.navbar__item.dropdown:focus-within .dropdown__menu {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+  pointer-events: auto;
 }
 
 /* Fix dropdown button alignment */
 .navbar__item.dropdown {
   position: relative;
+  z-index: 1001;
 }
 
 .navbar__item.dropdown .navbar__link {
@@ -344,6 +364,8 @@ body {
   align-items: center;
   justify-content: center;
   position: relative;
+  box-sizing: border-box;
+  min-height: 40px;
 }
 
 .navbar__item.dropdown .navbar__link::after {
@@ -364,19 +386,37 @@ body {
   transform: none !important; /* Prevent any transform that might cause misalignment */
 }
 
-/* Ensure dropdown menu positioning */
+/* Ensure dropdown menu positioning - override default positioning */
 .navbar__item.dropdown .dropdown__menu {
-  position: absolute;
-  top: 100%;
-  left: 0;
-  z-index: 1000;
-  transform: translateY(0);
+  position: absolute !important;
+  top: calc(100% - 1px) !important; /* Slight overlap to prevent gap */
+  left: 0 !important;
+  z-index: 1002 !important;
+  margin: 0 !important;
+  padding-top: 2px; /* Small padding to create seamless hover area */
+  transition: opacity 0.15s ease-in-out, visibility 0.15s ease-in-out, transform 0.15s ease-in-out !important;
 }
 
 /* Right-aligned dropdowns */
 .navbar__items--right .navbar__item.dropdown .dropdown__menu {
-  left: auto;
+  left: auto !important;
+  right: 0 !important;
+}
+
+/* Create hover bridge to prevent dropdown from closing */
+.navbar__item.dropdown::before {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 0;
   right: 0;
+  height: 2px;
+  z-index: 999;
+  pointer-events: none;
+}
+
+.navbar__item.dropdown:hover::before {
+  pointer-events: auto;
 }
 
 .dropdown__link {
@@ -384,19 +424,82 @@ body {
   transition: var(--neo-transition);
   display: block;
   text-decoration: none;
+  color: var(--ifm-color-content);
+  border-radius: 0;
 }
 
 .dropdown__link:hover {
-  background: rgba(16, 185, 129, 0.1);
-  color: var(--ifm-color-primary);
-  text-decoration: none;
+  background: rgba(16, 185, 129, 0.1) !important;
+  color: var(--ifm-color-primary) !important;
+  text-decoration: none !important;
 }
 
-/* Custom dropdown divider */
+/* Ensure dropdown menu items are clickable */
+.dropdown__menu .dropdown__link {
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-height: 36px;
+  display: flex !important;
+  align-items: center;
+  justify-content: flex-start;
+}
+
+/* Fix for Docusaurus dropdown behavior */
+.navbar__item.dropdown[data-toggle="dropdown"] .dropdown__menu {
+  display: block !important;
+}
+
+/* Additional fixes for dropdown stability */
+.navbar__item.dropdown .dropdown__menu:hover {
+  opacity: 1 !important;
+  visibility: visible !important;
+  pointer-events: auto !important;
+}
+
+/* Ensure dropdown doesn't close when moving cursor within the dropdown area */
+.navbar__item.dropdown:hover,
+.navbar__item.dropdown:hover .dropdown__menu,
+.navbar__item.dropdown .dropdown__menu:hover {
+  /* Keep dropdown open */
+}
+
+/* Fix any potential z-index issues */
+.navbar__item.dropdown {
+  z-index: 1001;
+}
+
+.navbar__item.dropdown .dropdown__menu {
+  z-index: 1002 !important;
+}
+
+/* Smooth transitions for better UX */
+.navbar__item.dropdown .dropdown__menu {
+  transition: opacity 0.15s ease-in-out, visibility 0.15s ease-in-out, transform 0.15s ease-in-out !important;
+}
+
+/* Fix first and last dropdown items border radius */
+.dropdown__menu .dropdown__link:first-child {
+  border-top-left-radius: var(--ifm-border-radius-lg);
+  border-top-right-radius: var(--ifm-border-radius-lg);
+}
+
+.dropdown__menu .dropdown__link:last-child {
+  border-bottom-left-radius: var(--ifm-border-radius-lg);
+  border-bottom-right-radius: var(--ifm-border-radius-lg);
+}
+
+/* Custom dropdown divider styling - ensure it doesn't break hover */
 .dropdown-divider-top {
-  border-top: 1px solid rgba(16, 185, 129, 0.2);
-  margin-top: 0.25rem;
-  padding-top: 0.75rem;
+  border-top: 1px solid rgba(16, 185, 129, 0.2) !important;
+  margin-top: 0.25rem !important;
+  padding-top: 0.75rem !important;
+}
+
+.dropdown-divider-top:hover {
+  background: rgba(16, 185, 129, 0.1) !important;
 }
 
 /* Fix dropdown caret alignment */

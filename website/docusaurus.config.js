@@ -134,28 +134,27 @@ const config = {
             position: 'right',
             items: [
               {
-                label: 'API Reference',
+                label: '📖 API Reference',
                 href: 'https://docs.rs/neo3',
               },
               {
-                label: 'Crates.io',
+                label: '📦 Crates.io',
                 href: 'https://crates.io/crates/neo3',
               },
               {
-                label: 'Neo Developer Portal',
+                label: '🌐 Neo Developer Portal',
                 href: 'https://developers.neo.org/',
               },
               {
-                label: 'Neo X Documentation',
+                label: '🔗 Neo X Documentation',
                 href: 'https://docs.neox.network/',
               },
+              {
+                label: '⭐ GitHub Repository',
+                href: 'https://github.com/R3E-Network/NeoRust',
+                className: 'dropdown-divider-top',
+              },
             ],
-          },
-          {
-            href: 'https://github.com/R3E-Network/NeoRust',
-            position: 'right',
-            className: 'header-github-link',
-            'aria-label': 'GitHub repository',
           },
         ],
       },

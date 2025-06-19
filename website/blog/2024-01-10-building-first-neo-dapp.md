@@ -416,8 +416,18 @@ async fn create_proposal(
     let signed_tx = state.owner_account.sign_transaction(transaction)?;
     let result = state.neo_client.send_raw_transaction(signed_tx).await?;
     
-    // Parse proposal ID from result
-    Ok(1) // Simplified for demo
+    // Parse proposal ID from transaction result
+    let proposal_id = result
+        .application_log
+        .executions
+        .first()
+        .and_then(|exec| exec.notifications.first())
+        .and_then(|notif| notif.state.as_array())
+        .and_then(|state| state.first())
+        .and_then(|item| item.as_integer())
+        .ok_or("Failed to parse proposal ID from transaction result")?;
+        
+    Ok(proposal_id as u32)
 }
 
 async fn cast_vote(
@@ -453,8 +463,23 @@ async fn get_all_proposals(
         )
         .await?;
     
-    // Parse and return proposals
-    Ok(vec![]) // Simplified for demo
+    // Parse proposals from contract response
+    let proposals = result
+        .stack
+        .first()
+        .and_then(|item| item.as_array())
+        .map(|array| {
+            array
+                .iter()
+                .filter_map(|item| {
+                    // Parse each proposal from the contract's return format
+                    serde_json::from_value(item.clone()).ok()
+                })
+                .collect()
+        })
+        .unwrap_or_default();
+        
+    Ok(proposals)
 }
 ```
 

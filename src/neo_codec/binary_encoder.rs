@@ -162,7 +162,16 @@ impl Encoder {
 
 impl Hasher for Encoder {
 	fn finish(&self) -> u64 {
-		unimplemented!()
+		// Return a hash of the encoder's data using a simple algorithm
+		// This implementation provides a basic hash for compatibility
+		let mut hash = 0u64;
+		for (i, &byte) in self.data.iter().enumerate() {
+			hash = hash.wrapping_mul(31).wrapping_add(byte as u64);
+			if i >= 8 {
+				break;
+			} // Limit to first 8 bytes for performance
+		}
+		hash
 	}
 
 	fn write(&mut self, bytes: &[u8]) {

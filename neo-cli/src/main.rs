@@ -11,8 +11,7 @@ use commands::{
 	wallet::{handle_wallet_command, CliState, WalletArgs},
 };
 use errors::CliError;
-use neo3::neo_clients::{HttpProvider, RpcClient};
-use std::{path::PathBuf, process};
+use std::path::PathBuf;
 use tokio;
 
 // Import the utils_core module

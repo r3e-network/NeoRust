@@ -2,7 +2,7 @@
 name = "neo_wallets_examples"
 version = "0.1.0"
 edition = "2021"
-authors = ["R3E Network <contact@r3e.network>"]
+authors = ["R3E Network <jimmy@r3e.network>"]
 publish = false
 
 
@@ -10,10 +10,13 @@ publish = false
 default = []
 futures = ["neo3/futures"]
 ledger = ["neo3/ledger"]
+
 [dependencies]
 neo3 = { path = "../../", package = "neo3", features = [] }
 tokio = { version = "1.32", features = ["full"] }
 eyre = "0.6"
+hex = "0.4"
+serde_json = "1.0"
 
 [[example]]
 name = "wallet_management"

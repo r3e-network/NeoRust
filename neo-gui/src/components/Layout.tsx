@@ -14,6 +14,7 @@ import {
   XMarkIcon,
 } from '@heroicons/react/24/outline';
 import { useAppStore } from '../stores/appStore';
+import { useNetworkStore } from '../stores/networkStore';
 
 const navigation = [
   { name: 'Dashboard', href: '/', icon: HomeIcon },
@@ -27,7 +28,8 @@ const navigation = [
 export default function Layout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const location = useLocation();
-  const { networkType, walletConnected, notifications } = useAppStore();
+  const { walletConnected, notifications } = useAppStore();
+  const { status: networkStatus } = useNetworkStore();
 
   const currentPage = navigation.find(item => item.href === location.pathname);
 
@@ -89,9 +91,11 @@ export default function Layout() {
               {/* Network indicator */}
               <div className="flex items-center gap-x-2">
                 <div className={`h-2 w-2 rounded-full ${
-                  networkType === 'mainnet' ? 'bg-green-500' : 'bg-yellow-500'
+                  networkStatus.connected ? 'bg-green-500' : 'bg-red-500'
                 }`} />
-                <span className="text-sm text-gray-600 capitalize">{networkType}</span>
+                <span className="text-sm text-gray-600 capitalize">
+                  {networkStatus.connected ? networkStatus.network_type : 'Disconnected'}
+                </span>
               </div>
             </div>
 

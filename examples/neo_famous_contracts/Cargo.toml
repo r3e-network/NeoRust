@@ -28,3 +28,11 @@ path = "examples/grandshare.rs"
 [[example]]
 name = "neocompound"
 path = "examples/neocompound.rs"
+
+[[example]]
+name = "query_neo"
+path = "examples/query_neo.rs"
+
+[[example]]
+name = "query_gas"
+path = "examples/query_gas.rs"

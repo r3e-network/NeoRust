@@ -1,0 +1,8 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+this is neo rust sdk, and its cli and gui that uses the sdk.
+help me make it correct, complete, production ready, consistent.
+no placeholder, no todo, no simplified, no for now, no in a real implementation, all must be production ready.

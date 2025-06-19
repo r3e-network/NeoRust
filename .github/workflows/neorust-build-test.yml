@@ -1,0 +1,226 @@
+name: NeoRust Build & Test
+
+on:
+  push:
+    branches: [ main, master, develop ]
+  pull_request:
+    branches: [ main, master, develop ]
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+
+jobs:
+  rust-test:
+    name: Rust Tests
+    runs-on: ${{ matrix.os }}
+    
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        rust-version: [stable, beta]
+        
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Install Rust toolchain
+      uses: dtolnay/rust-toolchain@v1
+      with:
+        toolchain: ${{ matrix.rust-version }}
+        components: clippy, rustfmt
+        
+    - name: Cache Rust dependencies
+      uses: Swatinem/rust-cache@v2
+      with:
+        workspaces: |
+          . -> target
+          neo-gui -> target
+          
+    - name: Check Rust formatting
+      run: cargo fmt --all -- --check
+      
+    - name: Run Clippy
+      run: cargo clippy --all-targets --all-features -- -D warnings
+      
+    - name: Run Rust tests
+      run: cargo test --verbose --all-features
+      
+    - name: Run Rust benchmarks
+      run: cargo bench --verbose
+      if: matrix.rust-version == 'stable'
+      
+    - name: Check documentation
+      run: cargo doc --no-deps --document-private-items
+      
+  tauri-build:
+    name: Tauri Build
+    runs-on: ${{ matrix.os }}
+    
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Install Rust toolchain
+      uses: dtolnay/rust-toolchain@v1
+      with:
+        toolchain: stable
+        
+    - name: Cache Rust dependencies
+      uses: Swatinem/rust-cache@v2
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20.x'
+        cache: 'npm'
+        cache-dependency-path: neo-gui/package-lock.json
+        
+    - name: Install system dependencies (Ubuntu)
+      if: matrix.os == 'ubuntu-latest'
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.0-dev libappindicator3-dev librsvg2-dev patchelf
+        
+    - name: Install frontend dependencies
+      working-directory: neo-gui
+      run: npm ci
+      
+    - name: Run frontend tests
+      working-directory: neo-gui
+      run: npm run test:coverage
+      
+    - name: Build Tauri app
+      working-directory: neo-gui
+      run: npm run tauri build
+      
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: tauri-build-${{ matrix.os }}
+        path: |
+          neo-gui/src-tauri/target/release/bundle/
+          neo-gui/src-tauri/target/release/*.exe
+          neo-gui/src-tauri/target/release/*.dmg
+          neo-gui/src-tauri/target/release/*.deb
+          neo-gui/src-tauri/target/release/*.AppImage
+        retention-days: 30
+        
+  coverage:
+    name: Code Coverage
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Install Rust toolchain
+      uses: dtolnay/rust-toolchain@v1
+      with:
+        toolchain: stable
+        components: llvm-tools-preview
+        
+    - name: Cache Rust dependencies
+      uses: Swatinem/rust-cache@v2
+      
+    - name: Install cargo-llvm-cov
+      uses: taiki-e/install-action@cargo-llvm-cov
+      
+    - name: Generate Rust coverage
+      run: cargo llvm-cov --all-features --workspace --lcov --output-path lcov.info
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20.x'
+        cache: 'npm'
+        cache-dependency-path: neo-gui/package-lock.json
+        
+    - name: Install frontend dependencies
+      working-directory: neo-gui
+      run: npm ci
+      
+    - name: Generate frontend coverage
+      working-directory: neo-gui
+      run: npm run test:coverage
+      
+    - name: Upload Rust coverage
+      uses: codecov/codecov-action@v3
+      with:
+        file: ./lcov.info
+        flags: rust
+        name: rust-coverage
+        
+    - name: Upload frontend coverage
+      uses: codecov/codecov-action@v3
+      with:
+        file: ./neo-gui/coverage/lcov.info
+        flags: frontend
+        name: frontend-coverage
+        
+  security-audit:
+    name: Security Audit
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Install Rust toolchain
+      uses: dtolnay/rust-toolchain@v1
+      with:
+        toolchain: stable
+        
+    - name: Cache Rust dependencies
+      uses: Swatinem/rust-cache@v2
+      
+    - name: Install cargo-audit
+      run: cargo install cargo-audit
+      
+    - name: Run Rust security audit
+      run: cargo audit
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20.x'
+        cache: 'npm'
+        cache-dependency-path: neo-gui/package-lock.json
+        
+    - name: Install frontend dependencies
+      working-directory: neo-gui
+      run: npm ci
+      
+    - name: Run frontend security audit
+      working-directory: neo-gui
+      run: npm audit --audit-level=high
+      
+  release-check:
+    name: Release Check
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Install Rust toolchain
+      uses: dtolnay/rust-toolchain@v1
+      with:
+        toolchain: stable
+        
+    - name: Check if release is needed
+      run: |
+        if ! git diff --quiet HEAD~1 HEAD -- Cargo.toml; then
+          echo "Cargo.toml changed, checking version bump"
+          git diff HEAD~1 HEAD -- Cargo.toml
+        fi
+        
+    - name: Dry run cargo publish
+      run: cargo publish --dry-run --all-features 

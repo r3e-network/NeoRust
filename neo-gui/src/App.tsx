@@ -1,6 +1,5 @@
 import React, { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import { AnimatePresence } from 'framer-motion';
 import Layout from './components/Layout';
 
 // Pages
@@ -13,17 +12,28 @@ import Settings from './pages/Settings';
 
 // Stores
 import { useAppStore } from './stores/appStore';
+import { useNetworkStore } from './stores/networkStore';
 
 // Styles
 import './index.css';
 
 const App: React.FC = () => {
-  const { loading, addNotification } = useAppStore();
+  const { loading, addNotification, currentNetwork } = useAppStore();
+  const { connect, getStatus } = useNetworkStore();
 
   useEffect(() => {
     // Initialize app
     const initialize = async () => {
       try {
+        // Connect to default network
+        if (currentNetwork) {
+          console.log('Connecting to network:', currentNetwork);
+          await connect(currentNetwork.rpcUrl, currentNetwork.type);
+        }
+
+        // Get initial network status
+        await getStatus();
+
         // Add welcome notification
         addNotification({
           type: 'success',
@@ -41,7 +51,7 @@ const App: React.FC = () => {
     };
 
     initialize();
-  }, [addNotification]);
+  }, [addNotification, connect, getStatus, currentNetwork]);
 
   if (loading) {
     return (

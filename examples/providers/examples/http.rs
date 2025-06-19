@@ -1,12 +1,10 @@
 //! The Http transport is used to send JSON-RPC requests over HTTP to an Neo node.
 //! This is the most basic connection to a node.
 
-use primitive_types::H256;
-use reqwest::header::{HeaderMap, HeaderValue};
+use neo3::{neo_clients::APITrait, prelude::*};
 use std::sync::Arc;
-use NeoRust::prelude::*;
 
-const RPC_URL: &str = NeoConstants::SEED_1;
+const RPC_URL: &str = "https://testnet1.neo.org:443/";
 
 #[tokio::main]
 async fn main() -> eyre::Result<()> {
@@ -16,52 +14,38 @@ async fn main() -> eyre::Result<()> {
 }
 
 async fn create_instance() -> eyre::Result<()> {
-	// An Http provider can be created from an http(s) URI.
-	// In case of https you must add the "rustls" or "openssl" feature
-	// to the library dependency in `Cargo.toml`.
-	let _provider = Provider::<Http>::try_from(RPC_URL)?;
+	// Create an HTTP provider for Neo N3 TestNet
+	let provider = neo3::neo_clients::HttpProvider::new(RPC_URL)?;
+	let client = neo3::neo_clients::RpcClient::new(provider);
 
-	// Instantiate with auth to append basic authorization headers across requests
-	let url = reqwest::Url::parse(RPC_URL)?;
-	let auth = Authorization::basic("username", "password");
-	let _provider = Http::new_with_auth(url, auth)?;
+	// The client can be used to make RPC calls
+	let block_count = client.get_block_count().await?;
+	println!("Current block count: {}", block_count);
 
-	// Instantiate from custom Http Client if you need
-	// finer control over the Http client configuration
-	// (TLS, Proxy, Cookies, Headers, etc.)
-	let url = reqwest::Url::parse(RPC_URL)?;
-
-	let mut headers = HeaderMap::new();
-	headers.insert("Authorization", HeaderValue::from_static("Bearer my token"));
-	headers.insert("X-MY-HEADERS", HeaderValue::from_static("Some value"));
-
-	let http_client = reqwest::Client::builder()
-		.default_headers(headers)
-		.proxy(reqwest::Proxy::all("http://proxy.example.com:8080")?)
-		.build()?;
-
-	let _provider = Http::new_with_client(url, http_client);
+	// Get the latest block hash
+	let latest_block_hash = client.get_block_hash(block_count - 1).await?;
+	println!("Latest block hash: {:?}", latest_block_hash);
 
 	Ok(())
 }
 
 /// Providers can be easily shared across tasks using `Arc` smart pointers
 async fn share_providers_across_tasks() -> eyre::Result<()> {
-	let provider: Provider<Http> = Provider::<Http>::try_from(RPC_URL)?;
+	let provider = neo3::neo_clients::HttpProvider::new(RPC_URL)?;
+	let client = neo3::neo_clients::RpcClient::new(provider);
 
-	let client_1 = Arc::new(provider);
+	let client_1 = Arc::new(client);
 	let client_2 = Arc::clone(&client_1);
 
-	let handle1 =
-		tokio::spawn(async move { client_1.get_best_block_hash().await.unwrap_or(H256::zero()) });
+	let handle1 = tokio::spawn(async move { client_1.get_block_count().await.unwrap_or(0) });
 
-	let handle2 =
-		tokio::spawn(async move { client_2.get_best_block_hash().await.unwrap_or(H256::zero()) });
+	let handle2 = tokio::spawn(async move { client_2.get_block_count().await.unwrap_or(0) });
 
-	let block1: H256 = handle1.await?;
-	let block2: H256 = handle2.await?;
+	let block1: u32 = handle1.await?;
+	let block2: u32 = handle2.await?;
 
-	println!("{block1:?} {block2:?}");
+	println!("Block count from client 1: {}", block1);
+	println!("Block count from client 2: {}", block2);
 
 	Ok(())
 }

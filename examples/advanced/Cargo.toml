@@ -1,0 +1,29 @@
+[package]
+name = "advanced-examples"
+version = "0.1.0"
+edition = "2021"
+description = "Advanced Neo N3 examples for enterprise applications"
+
+[dependencies]
+neo3 = { path = "../../", features = ["default"] }
+tokio = { version = "1.45", features = ["full"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+colored = "2.0"
+anyhow = "1.0"
+
+[[example]]
+name = "defi_swap"
+path = "defi_swap.rs"
+
+[[example]]
+name = "nft_marketplace"
+path = "nft_marketplace.rs"
+
+[[example]]
+name = "oracle_integration"
+path = "oracle_integration.rs"
+
+[[example]]
+name = "cross_chain_bridge"
+path = "cross_chain_bridge.rs"

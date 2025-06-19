@@ -770,8 +770,18 @@ impl<'a, P: JsonRpcProvider + 'static> TransactionBuilder<'a, P> {
 	///     // Create an account for signing
 	///     let account = Account::from_wif("YOUR_WIF_HERE")?;
 	///     
-	///     // Create a script (simplified for example)
-	///     let script = vec![0x01, 0x02, 0x03]; // Placeholder for actual script
+	///     // Create a proper contract invocation script
+	///     let mut script_builder = ScriptBuilder::new();
+	///     let script = script_builder.contract_call(
+	///         &contract_hash,
+	///         "transfer",
+	///         vec![
+	///             ContractParameter::Hash160(from_address),
+	///             ContractParameter::Hash160(to_address),
+	///             ContractParameter::Integer(amount),
+	///             ContractParameter::Any(None)
+	///         ]
+	///     )?;
 	///     
 	///     // Create and configure the transaction
 	///     let mut tx_builder = TransactionBuilder::with_client(&client);

@@ -8,7 +8,6 @@ import {
   DocumentDuplicateIcon,
   EyeIcon,
   EyeSlashIcon,
-  QrCodeIcon,
   CogIcon,
 } from '@heroicons/react/24/outline';
 import { useAppStore } from '../stores/appStore';
@@ -26,10 +25,10 @@ interface Transaction {
 }
 
 export default function Wallet() {
-  const { currentWallet, wallets, addWallet, setCurrentWallet, addNotification } = useAppStore();
+  const { currentWallet, wallets, addWallet, addNotification } = useAppStore();
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [showImportModal, setShowImportModal] = useState(false);
-  const [showSendModal, setShowSendModal] = useState(false);
+  // const [showImportModal, setShowImportModal] = useState(false);
+  // const [showSendModal, setShowSendModal] = useState(false);
   const [balanceVisible, setBalanceVisible] = useState(true);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(false);
@@ -66,29 +65,42 @@ export default function Wallet() {
     try {
       const result = await invoke('create_wallet', {
         request: { name, password }
-      });
-      
-      const newWallet = result as any;
-      addWallet({
-        id: newWallet.id,
-        name: newWallet.name,
-        address: newWallet.address,
-        balance: { neo: '0', gas: '0', tokens: {} },
-        isDefault: wallets.length === 0
-      });
-      
-      addNotification({
-        type: 'success',
-        title: 'Wallet Created',
-        message: `Wallet "${name}" created successfully`
-      });
-      
-      setShowCreateModal(false);
+      }) as any;
+
+      console.log('Create wallet result:', result);
+
+      if (result.success && result.data) {
+        const walletData = result.data;
+
+        // Create a default address for the wallet
+        const defaultAddress = walletData.accounts && walletData.accounts.length > 0
+          ? walletData.accounts[0].address
+          : 'NX8GreRFGFK5wpGMWetpX93HmtrezGogzk'; // Mock address
+
+        addWallet({
+          id: walletData.id,
+          name: walletData.name,
+          address: defaultAddress,
+          balance: { neo: '0', gas: '0', tokens: {} },
+          isDefault: wallets.length === 0
+        });
+
+        addNotification({
+          type: 'success',
+          title: 'Wallet Created',
+          message: `Wallet "${name}" created successfully`
+        });
+
+        setShowCreateModal(false);
+      } else {
+        throw new Error(result.error || 'Failed to create wallet');
+      }
     } catch (error) {
+      console.error('Failed to create wallet:', error);
       addNotification({
         type: 'error',
         title: 'Error',
-        message: 'Failed to create wallet'
+        message: error instanceof Error ? error.message : 'Failed to create wallet'
       });
     } finally {
       setLoading(false);
@@ -139,7 +151,7 @@ export default function Wallet() {
               Create Wallet
             </button>
             <button
-              onClick={() => setShowImportModal(true)}
+              onClick={() => {/* setShowImportModal(true) */}}
               className="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
             >
               Import Wallet
@@ -172,7 +184,7 @@ export default function Wallet() {
         </div>
         <div className="mt-4 flex space-x-3 md:mt-0 md:ml-4">
           <button
-            onClick={() => setShowSendModal(true)}
+            onClick={() => {/* setShowSendModal(true) */}}
             className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700"
           >
             <ArrowUpIcon className="-ml-1 mr-2 h-5 w-5" />

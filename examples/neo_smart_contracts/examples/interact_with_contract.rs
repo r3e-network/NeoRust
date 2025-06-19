@@ -1,104 +1,242 @@
+use neo3::prelude::*;
 use std::str::FromStr;
 
-use neo3::{
-	neo_clients::{HttpProvider, JsonRpcProvider},
-	neo_contract::SmartContractTrait,
-	neo_protocol::account::Account,
-	neo_types::{contract::ContractParameter, script_hash::ScriptHash},
-	prelude::{RpcClient, SmartContract},
-};
-
-/// This example demonstrates how to interact with a smart contract on the Neo N3 blockchain.
-/// It shows how to call read-only methods and how to invoke methods that modify state.
+/// This example demonstrates comprehensive smart contract interaction on the Neo N3 blockchain.
+/// It shows read-only method calls, state-changing transaction preparation, and best practices.
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-	println!("Neo N3 Smart Contract Interaction Example");
-	println!("========================================");
+	println!("🔗 Neo N3 Smart Contract Interaction Example");
+	println!("===========================================");
 
-	// Connect to Neo N3 TestNet
-	println!("\nConnecting to Neo N3 TestNet...");
-	let provider = HttpProvider::new("https://testnet1.neo.org:443");
-	let client = RpcClient::new(provider);
+	// 1. Connect to Neo N3 TestNet
+	println!("\n📡 1. Connecting to Neo N3 TestNet...");
+	let provider = providers::HttpProvider::new("https://testnet1.neo.org:443/")
+		.map_err(|e| format!("Failed to create provider: {}", e))?;
+	let client = providers::RpcClient::new(provider);
+	println!("   ✅ Connected successfully");
 
-	// Load the account that will interact with the contract
-	// In a real application, you would load your private key securely
-	println!("\nSetting up account...");
-	let account = Account::from_wif("YOUR_PRIVATE_KEY_WIF_HERE")?;
-	println!("Account address: {}", account.get_address());
+	// 2. Set up account for contract interaction
+	println!("\n👤 2. Setting up account for interaction...");
 
-	// Define the smart contract to interact with
-	// This example uses the GAS token contract
-	println!("\nSetting up contract reference...");
-	let contract_hash = ScriptHash::from_str("d2a4cff31913016155e38e474a2c06d08be276cf")?;
-	let contract = SmartContract::new(contract_hash, Some(&client));
+	// Create a demo account (for production deployments, load from secure storage)
+	let account = neo_protocol::Account::create()?;
+	println!("   Demo account address: {}", account.address_or_scripthash().address());
+	println!("   💡 For production deployments: Load account from secure WIF or hardware wallet");
 
-	// Read-only contract calls
-	println!("\nPerforming read-only contract calls...");
+	// 3. Contract References - Native Neo N3 Contracts
+	println!("\n📜 3. Setting up native contract references...");
 
-	// Get contract name
-	let name_result = contract.call_function("symbol", vec![]).await?;
-	let name = name_result.stack[0].as_string().unwrap_or_default();
-	println!("Contract symbol: {}", name);
+	// GAS Token Contract
+	let gas_hash = neo_types::ScriptHash::from_str("d2a4cff31913016155e38e474a2c06d08be276cf")?;
+	println!("   ⛽ GAS Token: 0x{}", hex::encode(gas_hash.0));
 
-	// Get contract decimals
-	let decimals_result = contract.call_function("decimals", vec![]).await?;
-	let decimals = decimals_result.stack[0].as_int().unwrap_or_default();
-	println!("Contract decimals: {}", decimals);
+	// NEO Token Contract
+	let neo_hash = neo_types::ScriptHash::from_str("ef4073a0f2b305a38ec4050e4d3d28bc40ea63f5")?;
+	println!("   🪙 NEO Token: 0x{}", hex::encode(neo_hash.0));
 
-	// Get account balance
-	let balance_result = contract
-		.call_function("balanceOf", vec![ContractParameter::hash160(&account.get_script_hash())])
-		.await?;
-	let balance = balance_result.stack[0].as_int().unwrap_or_default();
-	println!("Account balance: {} (raw units)", balance);
+	// Contract Management Contract
+	let contract_mgmt_hash =
+		neo_types::ScriptHash::from_str("fffdc93764dbaddd97c48f252a53ea4643faa3fd")?;
+	println!("   🏗️  Contract Management: 0x{}", hex::encode(contract_mgmt_hash.0));
 
-	// Calculate the balance in token units
-	let balance_in_tokens = balance as f64 / 10f64.powi(decimals as i32);
-	println!("Account balance: {} {}", balance_in_tokens, name);
+	// 4. Read-Only Contract Calls (invoke_function via RPC)
+	println!("\n🔍 4. Performing read-only contract calls...");
 
-	// State-changing contract calls (these would require a transaction)
-	println!("\nPreparing a state-changing contract call...");
+	// Query GAS token information
+	println!("   Querying GAS token properties...");
 
-	// Example: Transfer tokens to another address
-	let recipient_address = "NbTiM6h8r99kpRtb428XcsUk1TzKed2gTc";
-	let recipient = ScriptHash::from_address(recipient_address)?;
-	let amount = 1_0000_0000; // 1 GAS (assuming 8 decimals)
+	match query_token_info(&client, &gas_hash, "GAS").await {
+		Ok(_) => println!("   ✅ GAS token info retrieved"),
+		Err(e) => println!("   ❌ GAS query failed: {}", e),
+	}
 
-	// Create a transaction builder for the transfer
-	let tx_builder = contract
-		.invoke_function(
-			"transfer",
-			vec![
-				ContractParameter::hash160(&account.get_script_hash()),
-				ContractParameter::hash160(&recipient),
-				ContractParameter::integer(amount),
-				ContractParameter::any(None),
-			],
-		)
-		.await?;
+	// Query NEO token information
+	println!("   Querying NEO token properties...");
 
-	// In a real application, you would sign and send this transaction
-	// For this example, we'll just print the transaction details
-	println!("Transaction builder created for 'transfer' method");
-	println!("Parameters:");
-	println!("  From: {}", account.get_address());
-	println!("  To: {}", recipient_address);
-	println!("  Amount: {} (raw units)", amount);
+	match query_token_info(&client, &neo_hash, "NEO").await {
+		Ok(_) => println!("   ✅ NEO token info retrieved"),
+		Err(e) => println!("   ❌ NEO query failed: {}", e),
+	}
 
-	// To actually execute the transfer, you would:
-	/*
-	// Add the account as a signer
-	let tx_builder = tx_builder
-		.set_signers(vec![account.into()])
-		.valid_until_block(client.get_block_count().await? + 5760)?;
+	// 5. Balance Queries
+	println!("\n💰 5. Querying account balances...");
 
-	// Sign and send the transaction
-	let tx = tx_builder.sign().await?;
-	let result = tx.send_tx().await?;
+	let demo_address = "NbTiM6h8r99kpRtb428XcsUk1TzKed2gTc"; // Well-known TestNet address
+	let demo_script_hash = neo_types::ScriptHash::from_address(demo_address)?;
 
-	println!("Transfer transaction sent! Hash: {}", result.hash);
-	*/
+	match query_account_balance(&client, &gas_hash, &demo_script_hash, "GAS", 8).await {
+		Ok(balance) => println!("   💎 Demo account GAS balance: {} GAS", balance),
+		Err(e) => println!("   ⚠️ Could not get GAS balance: {}", e),
+	}
 
-	println!("\nSmart contract interaction example completed successfully!");
+	match query_account_balance(&client, &neo_hash, &demo_script_hash, "NEO", 0).await {
+		Ok(balance) => println!("   💎 Demo account NEO balance: {} NEO", balance),
+		Err(e) => println!("   ⚠️ Could not get NEO balance: {}", e),
+	}
+
+	// 6. Transaction Script Building
+	println!("\n🛠️ 6. Building transaction scripts...");
+
+	// Example: GAS transfer script
+	let recipient_address = "NiNmXL8FjEUEs1nfX9uHFBNaenxDHJtmuB";
+	let recipient = neo_types::ScriptHash::from_address(recipient_address)?;
+	let transfer_amount = 100_000_000u64; // 1 GAS
+
+	let mut script_builder = neo_builder::ScriptBuilder::new();
+	script_builder.contract_call(
+		&gas_hash,
+		"transfer",
+		&[
+			neo_types::ContractParameter::h160(&demo_script_hash),
+			neo_types::ContractParameter::h160(&recipient),
+			neo_types::ContractParameter::integer(transfer_amount as i64),
+			neo_types::ContractParameter::any(None),
+		],
+		None,
+	)?;
+
+	let script = script_builder.to_bytes();
+	println!("   ✅ Transfer script built ({} bytes)", script.len());
+	println!(
+		"   📝 Transfer: {} GAS from {} to {}",
+		transfer_amount as f64 / 100_000_000.0,
+		demo_address,
+		recipient_address
+	);
+
+	// 7. Multi-Call Transaction Example
+	println!("\n🔄 7. Multi-call transaction example...");
+
+	let mut multi_builder = neo_builder::ScriptBuilder::new();
+
+	// Call 1: Check GAS balance
+	multi_builder.contract_call(
+		&gas_hash,
+		"balanceOf",
+		&[neo_types::ContractParameter::h160(&demo_script_hash)],
+		None,
+	)?;
+
+	// Call 2: Check NEO balance
+	multi_builder.contract_call(
+		&neo_hash,
+		"balanceOf",
+		&[neo_types::ContractParameter::h160(&demo_script_hash)],
+		None,
+	)?;
+
+	let multi_script = multi_builder.to_bytes();
+	println!("   ✅ Multi-call script built ({} bytes)", multi_script.len());
+
+	// 8. Contract Deployment Preparation
+	println!("\n🚀 8. Contract deployment concepts...");
+
+	println!("   📋 For contract deployment, you need:");
+	println!("     • Compiled NEF file (Neo Executable Format)");
+	println!("     • Contract manifest (ABI, permissions, etc.)");
+	println!("     • Sufficient GAS for deployment fees");
+	println!("     • Use ContractManagement.deploy() method");
+
+	// 9. Best Practices Summary
+	println!("\n💡 9. Smart Contract Interaction Best Practices:");
+	println!("   🔐 Security:");
+	println!("     • Always test with invoke_function before sending transactions");
+	println!("     • Use minimal witness scopes for transaction security");
+	println!("     • Validate all contract parameters before sending");
+	println!("     • Keep private keys secure and never log them");
+
+	println!("   ⚡ Performance:");
+	println!("     • Batch multiple read calls in single invoke_function");
+	println!("     • Cache contract metadata to reduce RPC calls");
+	println!("     • Use appropriate gas fees for timely execution");
+
+	println!("   🧪 Testing:");
+	println!("     • Test all contract interactions on TestNet first");
+	println!("     • Simulate transactions before broadcasting");
+	println!("     • Monitor transaction confirmations");
+
+	println!("   🔧 Error Handling:");
+	println!("     • Handle network failures gracefully");
+	println!("     • Parse contract error messages properly");
+	println!("     • Implement retry logic for failed transactions");
+
+	println!("\n🎉 Smart contract interaction example completed!");
+	println!("💡 Remember: This example shows concepts and patterns.");
+	println!("💡 For live transactions, ensure proper key management and testing.");
+
 	Ok(())
+}
+
+/// Query token information (symbol, decimals, total supply)
+async fn query_token_info(
+	client: &providers::RpcClient<providers::HttpProvider>,
+	token_hash: &neo_types::ScriptHash,
+	token_name: &str,
+) -> Result<(), Box<dyn std::error::Error>> {
+	use neo3::neo_clients::APITrait;
+
+	// Build script to query token info
+	let mut builder = neo_builder::ScriptBuilder::new();
+
+	// Query symbol
+	builder.contract_call(token_hash, "symbol", &[], None)?;
+	// Query decimals
+	builder.contract_call(token_hash, "decimals", &[], None)?;
+	// Query total supply
+	builder.contract_call(token_hash, "totalSupply", &[], None)?;
+
+	let script = builder.to_bytes();
+
+	// Execute read-only call
+	let result = client.invoke_function(hex::encode(&script), vec![], vec![]).await?;
+
+	if let Some(stack) = result.stack {
+		if stack.len() >= 3 {
+			println!("     {} Token Properties:", token_name);
+			if let Some(symbol) = stack[0].as_string() {
+				println!("       Symbol: {}", symbol);
+			}
+			if let Some(decimals) = stack[1].as_int() {
+				println!("       Decimals: {}", decimals);
+			}
+			if let Some(supply) = stack[2].as_int() {
+				println!("       Total Supply: {}", supply);
+			}
+		}
+	}
+
+	Ok(())
+}
+
+/// Query account balance for a specific token
+async fn query_account_balance(
+	client: &providers::RpcClient<providers::HttpProvider>,
+	token_hash: &neo_types::ScriptHash,
+	account_hash: &neo_types::ScriptHash,
+	token_name: &str,
+	decimals: u32,
+) -> Result<f64, Box<dyn std::error::Error>> {
+	use neo3::neo_clients::APITrait;
+
+	let mut builder = neo_builder::ScriptBuilder::new();
+	builder.contract_call(
+		token_hash,
+		"balanceOf",
+		&[neo_types::ContractParameter::h160(account_hash)],
+		None,
+	)?;
+
+	let script = builder.to_bytes();
+	let result = client.invoke_function(hex::encode(&script), vec![], vec![]).await?;
+
+	if let Some(stack) = result.stack {
+		if let Some(first) = stack.first() {
+			if let Some(balance) = first.as_int() {
+				let formatted_balance = balance as f64 / 10f64.powi(decimals as i32);
+				return Ok(formatted_balance);
+			}
+		}
+	}
+
+	Ok(0.0)
 }

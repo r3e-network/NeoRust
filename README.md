@@ -1,4 +1,4 @@
-# NeoRust v0.4.1 - Production-Ready Neo N3 SDK
+# NeoRust - Professional Neo N3 SDK for Rust
 
 <div align="center">
   <p>
@@ -7,306 +7,285 @@
     <img src="assets/images/r3e-logo.png" alt="R3E Logo" width="300" align="middle"/>
   </p>
   
-  <h3>🚀 Complete Neo N3 Development Suite</h3>
-  <p><strong>Rust SDK • Beautiful GUI • Powerful CLI • Production Ready</strong></p>
+  <h3>🚀 The Complete Neo N3 Development Suite</h3>
+  <p><strong>Production-Ready SDK • Enterprise GUI • Powerful CLI</strong></p>
+  
+  [![CI](https://github.com/R3E-Network/NeoRust/actions/workflows/ci.yml/badge.svg)](https://github.com/R3E-Network/NeoRust/actions/workflows/ci.yml)
+  [![Security](https://github.com/R3E-Network/NeoRust/actions/workflows/security.yml/badge.svg)](https://github.com/R3E-Network/NeoRust/actions/workflows/security.yml)
+  [![Documentation](https://github.com/R3E-Network/NeoRust/actions/workflows/docs.yml/badge.svg)](https://github.com/R3E-Network/NeoRust/actions/workflows/docs.yml)
+  [![Crates.io](https://img.shields.io/crates/v/neo3.svg)](https://crates.io/crates/neo3)
+  [![Documentation](https://docs.rs/neo3/badge.svg)](https://docs.rs/neo3)
+  [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+  [![License: Apache-2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 </div>
 
-[![Rust](https://github.com/R3E-Network/NeoRust/actions/workflows/rust.yml/badge.svg)](https://github.com/R3E-Network/NeoRust/actions/workflows/rust.yml)
-[![Release](https://github.com/R3E-Network/NeoRust/actions/workflows/release.yml/badge.svg)](https://github.com/R3E-Network/NeoRust/actions/workflows/release.yml)
-[![Netlify Status](https://api.netlify.com/api/v1/badges/bb13b046-abdd-4d5e-962c-31c2a3d06090/deploy-status)](https://app.netlify.com/sites/neorust/deploys)
-[![Crates.io](https://img.shields.io/crates/v/neo3.svg)](https://crates.io/crates/neo3)
-[![Documentation](https://docs.rs/neo3/badge.svg)](https://docs.rs/neo3)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![License: Apache-2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
+---
 
-**NeoRust** is the most comprehensive Rust SDK for the Neo N3 blockchain ecosystem. It provides everything you need to build, deploy, and manage Neo applications - from a powerful Rust library to beautiful desktop applications.
+**NeoRust** is the most comprehensive and production-ready Rust SDK for the Neo N3 blockchain ecosystem. Built with enterprise requirements in mind, it provides everything needed to build, deploy, and manage Neo applications at scale.
+
+## ✨ Key Features
+
+- **🔧 Complete Neo N3 Protocol** - Full implementation of Neo N3 blockchain protocol
+- **🎨 Professional GUI** - Enterprise-grade desktop application built with Tauri
+- **💻 Powerful CLI** - Feature-rich command-line interface for automation
+- **🚀 Production Ready** - Battle-tested with comprehensive test coverage
+- **🔐 Security First** - Industry-standard cryptography and secure key management
+- **📚 Well Documented** - Extensive documentation with real-world examples
+- **🌐 Multi-Network** - Support for MainNet, TestNet, and private networks
+- **⚡ High Performance** - Async/await design with connection pooling
 
 ## 🚀 Quick Start
 
-### 📦 **Installation**
-
-#### Download Pre-built Binaries
-Visit our [Releases Page](https://github.com/R3E-Network/NeoRust/releases/latest) to download pre-built binaries for your platform:
-
-- **Linux**: `neo-cli-linux-x86_64`, `neo-gui-linux-x86_64`
-- **macOS**: `neo-cli-macos-x86_64`, `neo-gui-macos-x86_64` (Intel), `neo-cli-macos-aarch64`, `neo-gui-macos-aarch64` (Apple Silicon)
-- **Windows**: `neo-cli-windows-x86_64.exe`, `neo-gui-windows-x86_64.exe`
-
-#### Install from Crates.io
-```bash
-# Install the CLI globally
-cargo install neo-cli
-
-# Add the SDK to your project
-cargo add neo3
-```
-
-### 📱 Desktop GUI Application
-
-**Download and run the beautiful Neo N3 Wallet:**
+### Installation
 
 ```bash
-# Clone the repository
+# Install from crates.io
+cargo install neo3
+
+# Or clone and build from source
 git clone https://github.com/R3E-Network/NeoRust.git
-cd NeoRust/neo-gui
-
-# Install dependencies and start
-npm install
-npm run dev
-```
-
-**Access at**: http://localhost:1420
-
-**Features:**
-- 💼 Multi-wallet management with secure storage
-- 📊 Real-time portfolio dashboard with interactive charts
-- 🎨 NFT collection browser and minting interface
-- 🔧 Developer tools for encoding, hashing, and debugging
-- 🌐 Network management and blockchain monitoring
-- ⚡ Lightning-fast performance with hot reload
-
-### 💻 Command Line Interface
-
-**Install and use the powerful Neo CLI:**
-
-```bash
-# Build the CLI application
-cd neo-cli
+cd NeoRust
 cargo build --release
-
-# Create your first wallet
-./target/release/neo-cli wallet create --name "MyWallet"
-
-# Check network status
-./target/release/neo-cli network status
-
-# Mint an NFT
-./target/release/neo-cli nft mint --contract "0x..." --to "NX8..." --token-id "001"
-
-# Explore all commands
-./target/release/neo-cli --help
 ```
 
-### 📚 Rust SDK Library
-
-**Add to your Cargo.toml:**
-
-```toml
-[dependencies]
-neo3 = "0.4.1"
-```
-
-**Quick example:**
+### Basic Usage
 
 ```rust
 use neo3::prelude::*;
 
-async fn example() -> Result<(), Box<dyn std::error::Error>> {
-   // Connect to Neo N3 TestNet
-   let provider = neo_providers::JsonRpcClient::new("https://testnet1.neo.coz.io:443");
-   
-   // Get blockchain information
-   let block_count = provider.get_block_count().await?;
-   println!("Current block height: {}", block_count);
-   
-   // Create a new wallet
-   let mut wallet = Wallet::new();
-   let account = Account::create()?;
-   wallet.add_account(account);
-   
-   Ok(())
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // Connect to Neo N3 network
+    let provider = HttpProvider::new("https://mainnet1.neo.org:443")?;
+    let client = RpcClient::new(provider);
+    
+    // Query blockchain
+    let block_count = client.get_block_count().await?;
+    println!("Current block height: {}", block_count);
+    
+    // Create wallet
+    let wallet = Wallet::new();
+    let account = Account::create()?;
+    
+    // Build transaction
+    let tx = TransactionBuilder::new()
+        .add_transfer(from, to, asset, amount)
+        .build()?;
+    
+    Ok(())
 }
 ```
 
-## 🎯 Core Features
+## 📦 Project Structure
 
-### 🏗️ **Complete Neo N3 Support**
-- **Blockchain Integration**: Full Neo N3 protocol compatibility
-- **Smart Contracts**: Deploy, invoke, and manage contracts
-- **Transaction Building**: Construct and sign all transaction types
-- **RPC Client**: High-performance JSON-RPC communication
-
-### 💼 **Wallet & Account Management**
-- **NEP-6 Standard**: Industry-standard wallet format
-- **Multi-Account**: Manage multiple accounts per wallet
-- **Hardware Wallets**: Ledger device support
-- **Secure Storage**: Encrypted private key management
-
-### 🎨 **NFT & Token Operations**
-- **NEP-17 Tokens**: Full token standard support
-- **NFT Management**: Mint, transfer, and manage NFTs
-- **Collection Tools**: Create and manage NFT collections
-- **Metadata Handling**: IPFS and on-chain metadata support
-
-### 🌐 **Network & Infrastructure**
-- **Multi-Network**: MainNet, TestNet, and private networks
-- **Node Management**: Connect to multiple Neo nodes
-- **Network Monitoring**: Real-time blockchain statistics
-- **Health Checks**: Automatic node health monitoring
-
-### 🔧 **Developer Tools**
-- **Contract Debugging**: Advanced debugging capabilities
-- **Transaction Analysis**: Detailed transaction inspection
-- **Gas Optimization**: Fee calculation and optimization
-- **Testing Framework**: Comprehensive testing utilities
-
-## 📸 Screenshots
-
-### Desktop GUI Application
-![Neo N3 Wallet Dashboard](assets/screenshots/dashboard.png)
-*Beautiful dashboard with portfolio overview and real-time charts*
-
-![Wallet Management](assets/screenshots/wallet.png)
-*Comprehensive wallet management with multi-account support*
-
-![NFT Marketplace](assets/screenshots/nft.png)
-*Elegant NFT collection browser with minting capabilities*
-
-### Command Line Interface
-![CLI Commands](assets/screenshots/cli.png)
-*Powerful CLI with beautiful colored output and progress indicators*
-
-## 🏗️ Architecture
-
-### 📦 **Modular Design**
 ```
 NeoRust/
-├── 📚 neo3/              # Core Rust SDK library
-├── 🖥️  neo-gui/          # Desktop GUI application (Tauri + React)
-├── 💻 neo-cli/           # Command line interface
-├── 📖 docs/              # Comprehensive documentation
-├── 🌐 website/           # Project website
-└── 🧪 examples/          # Usage examples and tutorials
+├── crates/              # Core SDK crates (planned workspace)
+│   ├── neo3/           # Main SDK crate
+│   ├── neo3-types/     # Core types and primitives
+│   ├── neo3-crypto/    # Cryptographic operations
+│   ├── neo3-rpc/       # RPC client implementation
+│   ├── neo3-builder/   # Transaction & script builders
+│   ├── neo3-wallets/   # Wallet management
+│   └── neo3-contracts/ # Smart contract tools
+├── apps/               # Applications
+│   ├── neo-cli/       # Command-line interface
+│   └── neo-gui/       # Desktop GUI application
+├── examples/          # Comprehensive examples
+├── docs/             # Documentation
+└── tests/            # Integration tests
 ```
 
-### 🔧 **Technology Stack**
-- **Backend**: Rust with async/await support
-- **GUI**: Tauri + React + TypeScript + Tailwind CSS
-- **CLI**: Clap + Colored output + Interactive prompts
-- **Crypto**: Industry-standard cryptographic libraries
-- **Network**: High-performance HTTP/WebSocket clients
+## 🛠️ Components
 
-## 📖 Documentation
+### Core SDK (`neo3`)
 
-### 📚 **Comprehensive Guides**
-- **[API Reference](https://docs.rs/neo3)**: Complete API documentation
-- **[User Guide](https://neorust.netlify.app/guide)**: Step-by-step tutorials
-- **[Developer Docs](https://neorust.netlify.app/dev)**: Advanced development guides
-- **[Examples](https://neorust.netlify.app/examples)**: Real-world usage examples
-- **[Release Workflow](docs/RELEASE_WORKFLOW.md)**: Automated release process guide
+The foundation library providing:
 
-### 🌐 **Online Resources**
-- **Website**: [https://neorust.netlify.app/](https://neorust.netlify.app/)
-- **Documentation**: [https://r3e-network.github.io/NeoRust/](https://r3e-network.github.io/NeoRust/)
-- **Crate Page**: [https://crates.io/crates/neo3](https://crates.io/crates/neo3)
-- **GitHub**: [https://github.com/R3E-Network/NeoRust](https://github.com/R3E-Network/NeoRust)
+- **RPC Client** - High-performance JSON-RPC client with retry logic
+- **Transaction Builder** - Type-safe transaction construction
+- **Cryptography** - Secp256r1 signatures, SHA256, Base58
+- **Wallet Management** - NEP-6 standard wallet support
+- **Smart Contracts** - Contract deployment and invocation
+- **Type System** - Strongly-typed blockchain primitives
 
-## 🎯 Use Cases
+### Desktop GUI (`neo-gui`)
 
-### 🏢 **Enterprise Applications**
-- **DeFi Platforms**: Build decentralized finance applications
-- **Asset Management**: Tokenize and manage digital assets
-- **Supply Chain**: Track products on the blockchain
-- **Identity Solutions**: Decentralized identity management
+Professional desktop application featuring:
 
-### 👨‍💻 **Developer Tools**
-- **dApp Development**: Build decentralized applications
-- **Smart Contract Testing**: Comprehensive testing frameworks
-- **Blockchain Analytics**: Monitor and analyze blockchain data
-- **Integration Services**: Connect existing systems to Neo
+- **Wallet Management** - Create, import, and manage wallets
+- **Portfolio Dashboard** - Real-time asset tracking
+- **Transaction History** - Comprehensive transaction explorer
+- **NFT Marketplace** - Browse and manage NFT collections
+- **Developer Tools** - Contract deployment and testing
+- **Network Monitor** - Real-time blockchain statistics
 
-### 🎮 **Gaming & NFTs**
-- **Game Asset Management**: In-game item tokenization
-- **NFT Marketplaces**: Create and trade digital collectibles
-- **Metaverse Integration**: Virtual world asset management
-- **Creator Tools**: Content creator monetization platforms
+### Command Line Interface (`neo-cli`)
 
-## 🚀 Getting Started
+Powerful CLI for automation:
 
-### 1. **Choose Your Interface**
-
-#### 🖥️ Desktop GUI (Recommended for Users)
 ```bash
-git clone https://github.com/R3E-Network/NeoRust.git
-cd NeoRust/neo-gui
-npm install && npm run dev
-```
+# Wallet operations
+neo-cli wallet create --name production-wallet
+neo-cli wallet import --wif <private-key>
 
-#### 💻 Command Line (Recommended for Developers)
-```bash
-cd NeoRust/neo-cli
-cargo build --release
-./target/release/neo-cli --help
-```
-
-#### 📚 Rust Library (Recommended for Integration)
-```toml
-[dependencies]
-neo3 = "0.4.1"
-```
-
-### 2. **Create Your First Wallet**
-
-#### GUI Method:
-1. Open the Neo N3 Wallet application
-2. Click "Create Wallet" 
-3. Follow the secure setup wizard
-4. Start managing your Neo assets
-
-#### CLI Method:
-```bash
-neo-cli wallet create --name "MyFirstWallet"
-neo-cli wallet create-address --label "Main Account"
-neo-cli wallet balance --detailed
-```
-
-#### SDK Method:
-```rust
-use neo3::prelude::*;
-
-let mut wallet = Wallet::new();
-wallet.set_name("MyFirstWallet".to_string());
-let account = Account::create()?;
-wallet.add_account(account);
-```
-
-### 3. **Connect to Neo Network**
-
-#### GUI: 
-- Network selector in the top navigation
-- Real-time connection status
-- Automatic health monitoring
-
-#### CLI:
-```bash
-neo-cli network connect --network "Neo N3 Testnet"
+# Network operations
 neo-cli network status
+neo-cli network connect --endpoint https://mainnet1.neo.org
+
+# Transaction operations
+neo-cli transfer --from <address> --to <address> --amount 10 --asset NEO
+
+# Contract operations
+neo-cli contract deploy --nef contract.nef --manifest contract.json
+neo-cli contract invoke --hash <contract-hash> --method transfer
 ```
 
-#### SDK:
-```rust
-let provider = HttpProvider::new("https://testnet1.neo.coz.io:443")?;
-let client = RpcClient::new(provider);
-let block_count = client.get_block_count().await?;
-```
+## 📚 Documentation
 
-## 🔧 Advanced Usage
+### Getting Started
+- [Installation Guide](docs/getting-started/installation.md)
+- [Quick Start Tutorial](docs/getting-started/quick-start.md)
+- [API Reference](https://docs.rs/neo3)
 
-### 🛠️ **Troubleshooting**
+### Guides
+- [Wallet Management](docs/guides/wallet-guide.md)
+- [Smart Contract Interaction](docs/guides/contract-guide.md)
+- [Transaction Building](docs/guides/transaction-guide.md)
+- [Security Best Practices](docs/guides/security.md)
 
-#### Common Build Issues
-If you encounter build errors, especially related to `yubihsm` or `MockHsm`, see our [Build Configuration Guide](docs/guides/build-configuration.md) for solutions.
+### Examples
+- [Basic Operations](examples/basic/)
+- [Advanced Scenarios](examples/advanced/)
+- [DeFi Integration](examples/defi/)
+- [NFT Operations](examples/nft/)
 
-**Quick fix for MockHsm release build error:**
+## 🔧 Development
+
+### Prerequisites
+
+- Rust 1.70+ (2021 edition)
+- Node.js 20+ (for GUI development)
+- Git
+
+### Building from Source
+
 ```bash
-# Use the mock-hsm feature only for development
-cargo build --features "mock-hsm"  # Development
-cargo build --release              # Production (no mock features)
+# Clone repository
+git clone https://github.com/R3E-Network/NeoRust.git
+cd NeoRust
+
+# Build everything
+cargo build --workspace --release
+
+# Run tests
+cargo test --workspace
+
+# Build documentation
+cargo doc --workspace --no-deps --open
 ```
 
-#### Getting Help
-- **Documentation**: [Build Configuration Guide](docs/guides/build-configuration.md)
-- **Issues**: [GitHub Issues](https://github.com/R3E-Network/NeoRust/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/R3E-Network/NeoRust/discussions)
+### Running the GUI
 
-### 🚀 **Production Deployment**
+```bash
+cd neo-gui
+npm install
+npm run tauri dev
+```
+
+### Development Workflow
+
+1. **Code Style** - Run `cargo fmt` before committing
+2. **Linting** - Ensure `cargo clippy` passes
+3. **Testing** - Add tests for new functionality
+4. **Documentation** - Update docs for API changes
+5. **Security** - Run `cargo audit` regularly
+
+## 🧪 Testing
+
+```bash
+# Run all tests
+cargo test --workspace
+
+# Run specific component tests
+cargo test -p neo3-rpc
+cargo test -p neo3-crypto
+
+# Run integration tests
+cargo test --test '*' --features integration
+
+# Run with coverage
+cargo tarpaulin --workspace --out Html
+```
+
+## 🔐 Security
+
+NeoRust follows security best practices:
+
+- **No hardcoded secrets** - All sensitive data encrypted
+- **Secure key storage** - Hardware wallet support
+- **Input validation** - Comprehensive input sanitization
+- **Dependency auditing** - Regular security updates
+- **Secure defaults** - TLS verification enabled
+
+For security issues, please email security@r3e.network
+
+## 🤝 Contributing
+
+We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) for details.
+
+### Areas for Contribution
+
+- 🐛 Bug fixes and issue resolution
+- ✨ New features and enhancements
+- 📚 Documentation improvements
+- 🧪 Test coverage expansion
+- 🌐 Internationalization
+
+## 📊 Production Status
+
+### ✅ Production Ready
+- **Core SDK** - Complete Neo N3 protocol implementation
+- **Wallet Operations** - Full NEP-6 wallet management
+- **RPC Client** - Robust network communication
+- **Transaction Building** - All transaction types supported
+- **Cryptography** - Industry-standard implementations
+
+### 🚧 In Development
+- **Multi-crate workspace** - Modular architecture refactoring
+- **Hardware wallet integration** - Ledger support expansion
+- **Advanced DeFi features** - DEX and lending protocols
+- **Cross-chain bridges** - Neo X integration
+
+## 🌟 Sponsors & Partners
+
+<div align="center">
+  <p>
+    <a href="https://neo.org"><img src="assets/images/neo-logo.png" height="50" alt="Neo" /></a>
+    &nbsp;&nbsp;&nbsp;&nbsp;
+    <a href="https://r3e.network"><img src="assets/images/r3e-logo.png" height="50" alt="R3E Network" /></a>
+  </p>
+</div>
+
+## 📄 License
+
+This project is dual-licensed under:
+- MIT License ([LICENSE-MIT](LICENSE-MIT))
+- Apache License 2.0 ([LICENSE-APACHE](LICENSE-APACHE))
+
+You may choose either license for your use.
+
+## 🔗 Links
+
+- **Documentation**: [https://docs.rs/neo3](https://docs.rs/neo3)
+- **Repository**: [https://github.com/R3E-Network/NeoRust](https://github.com/R3E-Network/NeoRust)
+- **Issue Tracker**: [GitHub Issues](https://github.com/R3E-Network/NeoRust/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/R3E-Network/NeoRust/discussions)
+- **Neo Official**: [https://neo.org](https://neo.org)
+
+---
+
+<div align="center">
+  <p>Built with ❤️ by the NeoRust Team</p>
+  <p>Empowering the Neo N3 ecosystem with professional Rust tooling</p>
+</div>

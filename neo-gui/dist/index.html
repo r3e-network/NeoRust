@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/neo-icon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Neo N3 Wallet</title>
+    <meta name="description" content="Professional Neo N3 blockchain wallet and developer tools" />
+    <meta name="theme-color" content="#22c55e" />
+    
+    <!-- Preload fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    
+    <!-- Prevent FOUC -->
+    <style>
+      html {
+        font-family: 'Inter', system-ui, sans-serif;
+      }
+      
+      body {
+        margin: 0;
+        padding: 0;
+        background-color: #f9fafb;
+        color: #111827;
+      }
+      
+      #root {
+        min-height: 100vh;
+      }
+      
+      /* Loading spinner */
+      .loading-spinner {
+        display: inline-block;
+        width: 20px;
+        height: 20px;
+        border: 3px solid #f3f3f3;
+        border-radius: 50%;
+        border-top-color: #22c55e;
+        animation: spin 1s ease-in-out infinite;
+      }
+      
+      @keyframes spin {
+        to { transform: rotate(360deg); }
+      }
+    </style>
+    <script type="module" crossorigin src="/assets/index-72efyzKR.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/index-L6T1GhRX.css">
+  </head>
+  <body>
+    <div id="root">
+      <div style="display: flex; align-items: center; justify-content: center; height: 100vh; flex-direction: column; gap: 16px;">
+        <div style="width: 48px; height: 48px; background: linear-gradient(135deg, #22c55e, #16a34a); border-radius: 12px; display: flex; align-items: center; justify-content: center;">
+          <span style="color: white; font-weight: bold; font-size: 18px;">N3</span>
+        </div>
+        <div class="loading-spinner"></div>
+        <p style="color: #6b7280; margin: 0;">Loading Neo N3 Wallet...</p>
+      </div>
+    </div>
+  </body>
+</html> 

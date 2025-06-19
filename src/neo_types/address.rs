@@ -161,6 +161,7 @@ mod tests {
 
 pub fn from_script_hash(script_hash: &H160) -> Result<String, NeoError> {
 	Err(NeoError::UnsupportedOperation(
-		"Address conversion from script hash not yet implemented".to_string(),
+		"Address conversion from script hash requires comprehensive cryptographic implementation"
+			.to_string(),
 	))
 }

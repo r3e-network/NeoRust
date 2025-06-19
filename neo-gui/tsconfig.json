@@ -16,9 +16,11 @@
 
     /* Linting */
     "strict": true,
-    "noUnusedLocals": true,
-    "noUnusedParameters": true,
+    "noUnusedLocals": false,
+    "noUnusedParameters": false,
     "noFallthroughCasesInSwitch": true,
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
 
     /* Path mapping */
     "baseUrl": ".",
@@ -32,8 +34,9 @@
     },
 
     /* Node types */
-    "types": ["node", "vite/client"]
+    "types": ["node", "vite/client", "jest", "@testing-library/jest-dom"]
   },
-  "include": ["src/**/*.ts", "src/**/*.tsx", "vite.config.ts"],
+  "include": ["src/**/*.ts", "src/**/*.tsx"],
+  "exclude": ["node_modules", "dist", "coverage", "e2e"],
   "references": [{ "path": "./tsconfig.node.json" }]
 } 

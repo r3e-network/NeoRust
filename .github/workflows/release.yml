@@ -3,346 +3,224 @@ name: Release
 on:
   push:
     tags:
-      - 'v*.*.*'
+      - 'v*'
   workflow_dispatch:
     inputs:
-      tag:
-        description: 'Tag to release'
+      version:
+        description: 'Version to release (e.g., 0.5.0)'
         required: true
-        default: 'v0.2.0'
+        type: string
 
-env:
-  CARGO_TERM_COLOR: always
-  RUST_BACKTRACE: 1
+permissions:
+  contents: write
+  pull-requests: write
 
 jobs:
-  create-release:
-    name: Create Release
+  validate:
+    name: Validate Release
     runs-on: ubuntu-latest
     outputs:
-      upload_url: ${{ steps.create_release.outputs.upload_url }}
-      release_id: ${{ steps.create_release.outputs.id }}
+      version: ${{ steps.version.outputs.version }}
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Get tag name
-        id: tag_name
+      - uses: actions/checkout@v4
+      
+      - name: Determine version
+        id: version
         run: |
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            echo "TAG_NAME=${{ github.event.inputs.tag }}" >> $GITHUB_OUTPUT
+          if [[ "${{ github.event_name }}" == "push" ]]; then
+            VERSION=${GITHUB_REF#refs/tags/v}
           else
-            echo "TAG_NAME=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+            VERSION=${{ github.event.inputs.version }}
           fi
-
-      - name: Extract changelog
-        id: changelog
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+      
+      - name: Validate version format
         run: |
-          # Extract changelog for this version
-          VERSION="${{ steps.tag_name.outputs.TAG_NAME }}"
-          VERSION_NUMBER=${VERSION#v}
-          
-          # Create changelog excerpt
-          awk "/^## \[$VERSION_NUMBER\]/{flag=1; next} /^## \[/{flag=0} flag" CHANGELOG.md > release_notes.md
-          
-          # If no specific changelog found, create a generic one
-          if [ ! -s release_notes.md ]; then
-            echo "### Changes in $VERSION" > release_notes.md
-            echo "" >> release_notes.md
-            echo "- Updated to version $VERSION_NUMBER" >> release_notes.md
-            echo "- See [CHANGELOG.md](CHANGELOG.md) for detailed changes" >> release_notes.md
+          VERSION=${{ steps.version.outputs.version }}
+          if ! [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9]+)?$ ]]; then
+            echo "Invalid version format: $VERSION"
+            exit 1
+          fi
+      
+      - name: Check CHANGELOG
+        run: |
+          VERSION=${{ steps.version.outputs.version }}
+          if ! grep -q "## \[$VERSION\]" CHANGELOG.md; then
+            echo "Version $VERSION not found in CHANGELOG.md"
+            exit 1
           fi
 
-      - name: Create Release
-        id: create_release
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tag_name: ${{ steps.tag_name.outputs.TAG_NAME }}
-          release_name: NeoRust ${{ steps.tag_name.outputs.TAG_NAME }}
-          body_path: release_notes.md
-          draft: false
-          prerelease: false
-
-  build-binaries:
-    name: Build ${{ matrix.target }}
-    needs: create-release
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          # Linux targets
-          - target: x86_64-unknown-linux-gnu
-            os: ubuntu-latest
-            name: linux-x86_64
-            cross: false
-          - target: aarch64-unknown-linux-gnu
-            os: ubuntu-latest
-            name: linux-aarch64
-            cross: true
-          
-          # macOS targets
-          - target: x86_64-apple-darwin
-            os: macos-latest
-            name: macos-x86_64
-            cross: false
-          - target: aarch64-apple-darwin
-            os: macos-latest
-            name: macos-aarch64
-            cross: false
-          
-          # Windows targets
-          - target: x86_64-pc-windows-msvc
-            os: windows-latest
-            name: windows-x86_64
-            cross: false
-          - target: i686-pc-windows-msvc
-            os: windows-latest
-            name: windows-i686
-            cross: false
-
-    runs-on: ${{ matrix.os }}
-    
+  test:
+    name: Test Release
+    needs: validate
+    runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Rust
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
-          target: ${{ matrix.target }}
-          override: true
-          profile: minimal
-
-      - name: Install cross (Linux cross-compilation)
-        if: matrix.cross
-        run: cargo install cross
-
-      - name: Cache cargo registry
-        uses: actions/cache@v3
-        with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            target
-          key: ${{ runner.os }}-cargo-${{ matrix.target }}-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-cargo-${{ matrix.target }}-
-            ${{ runner.os }}-cargo-
-
-      - name: Build CLI binary
-        run: |
-          cd neo-cli
-          if [ "${{ matrix.cross }}" = "true" ]; then
-            cross build --release --target ${{ matrix.target }} --features "network,fs,storage,files,neofs"
-          else
-            cargo build --release --target ${{ matrix.target }} --features "network,fs,storage,files,neofs"
-          fi
-        shell: bash
-
-      - name: Build GUI binary (non-Windows)
-        if: matrix.os != 'windows-latest'
-        run: |
-          cd neo-gui
-          if [ "${{ matrix.cross }}" = "true" ]; then
-            cross build --release --target ${{ matrix.target }}
-          else
-            cargo build --release --target ${{ matrix.target }}
-          fi
-        shell: bash
-
-      - name: Build GUI binary (Windows)
-        if: matrix.os == 'windows-latest'
-        run: |
-          cd neo-gui
-          cargo build --release --target ${{ matrix.target }}
-        shell: bash
-
-      - name: Prepare binaries (Unix)
-        if: matrix.os != 'windows-latest'
-        run: |
-          mkdir -p release
-          
-          # CLI binary
-          cp neo-cli/target/${{ matrix.target }}/release/neo-cli release/neo-cli-${{ matrix.name }}
-          
-          # GUI binary (if exists)
-          if [ -f "neo-gui/target/${{ matrix.target }}/release/neo-gui" ]; then
-            cp neo-gui/target/${{ matrix.target }}/release/neo-gui release/neo-gui-${{ matrix.name }}
-          fi
-          
-          # Create archive
-          cd release
-          tar -czf ../neorust-${{ matrix.name }}.tar.gz *
-        shell: bash
-
-      - name: Prepare binaries (Windows)
-        if: matrix.os == 'windows-latest'
-        run: |
-          mkdir release
-          
-          # CLI binary
-          cp neo-cli/target/${{ matrix.target }}/release/neo-cli.exe release/neo-cli-${{ matrix.name }}.exe
-          
-          # GUI binary (if exists)
-          if (Test-Path "neo-gui/target/${{ matrix.target }}/release/neo-gui.exe") {
-            cp neo-gui/target/${{ matrix.target }}/release/neo-gui.exe release/neo-gui-${{ matrix.name }}.exe
-          }
-          
-          # Create archive
-          cd release
-          Compress-Archive -Path * -DestinationPath ../neorust-${{ matrix.name }}.zip
-        shell: powershell
-
-      - name: Upload CLI binary (Unix)
-        if: matrix.os != 'windows-latest'
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ needs.create-release.outputs.upload_url }}
-          asset_path: ./release/neo-cli-${{ matrix.name }}
-          asset_name: neo-cli-${{ matrix.name }}
-          asset_content_type: application/octet-stream
-
-      - name: Upload CLI binary (Windows)
-        if: matrix.os == 'windows-latest'
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ needs.create-release.outputs.upload_url }}
-          asset_path: ./release/neo-cli-${{ matrix.name }}.exe
-          asset_name: neo-cli-${{ matrix.name }}.exe
-          asset_content_type: application/octet-stream
-
-      - name: Upload GUI binary (Unix)
-        if: matrix.os != 'windows-latest'
-        continue-on-error: true
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ needs.create-release.outputs.upload_url }}
-          asset_path: ./release/neo-gui-${{ matrix.name }}
-          asset_name: neo-gui-${{ matrix.name }}
-          asset_content_type: application/octet-stream
-
-      - name: Upload GUI binary (Windows)
-        if: matrix.os == 'windows-latest'
-        continue-on-error: true
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ needs.create-release.outputs.upload_url }}
-          asset_path: ./release/neo-gui-${{ matrix.name }}.exe
-          asset_name: neo-gui-${{ matrix.name }}.exe
-          asset_content_type: application/octet-stream
-
-      - name: Upload archive (Unix)
-        if: matrix.os != 'windows-latest'
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ needs.create-release.outputs.upload_url }}
-          asset_path: ./neorust-${{ matrix.name }}.tar.gz
-          asset_name: neorust-${{ matrix.name }}.tar.gz
-          asset_content_type: application/gzip
-
-      - name: Upload archive (Windows)
-        if: matrix.os == 'windows-latest'
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ needs.create-release.outputs.upload_url }}
-          asset_path: ./neorust-${{ matrix.name }}.zip
-          asset_name: neorust-${{ matrix.name }}.zip
-          asset_content_type: application/zip
+      - uses: actions/checkout@v4
+      
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+      
+      - name: Cache dependencies
+        uses: Swatinem/rust-cache@v2
+      
+      - name: Run tests
+        run: cargo test --workspace --all-features --release
+      
+      - name: Run clippy
+        run: cargo clippy --workspace --all-features --release -- -D warnings
 
   publish-crates:
     name: Publish to crates.io
-    needs: [create-release, build-binaries]
+    needs: [validate, test]
     runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/v')
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+      
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+      
+      - name: Cache dependencies
+        uses: Swatinem/rust-cache@v2
+      
+      - name: Login to crates.io
+        run: cargo login ${{ secrets.CRATES_IO_TOKEN }}
+      
+      - name: Publish crates in order
+        run: |
+          # Publish in dependency order
+          cargo publish -p neo3-types --allow-dirty
+          sleep 30
+          cargo publish -p neo3-crypto --allow-dirty
+          sleep 30
+          cargo publish -p neo3-rpc --allow-dirty
+          sleep 30
+          cargo publish -p neo3-builder --allow-dirty
+          sleep 30
+          cargo publish -p neo3-wallets --allow-dirty
+          sleep 30
+          cargo publish -p neo3-contracts --allow-dirty
+          sleep 30
+          cargo publish -p neo3-macros --allow-dirty
+          sleep 30
+          cargo publish -p neo3 --allow-dirty
 
-      - name: Setup Rust
-        uses: actions-rs/toolchain@v1
+  build-gui:
+    name: Build GUI
+    needs: [validate, test]
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            ext: .AppImage
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+            ext: .exe
+          - os: macos-latest
+            target: x86_64-apple-darwin
+            ext: .dmg
+          - os: macos-latest
+            target: aarch64-apple-darwin
+            ext: .dmg
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
         with:
-          toolchain: stable
-          override: true
-          profile: minimal
-
-      - name: Cache cargo registry
-        uses: actions/cache@v3
+          targets: ${{ matrix.target }}
+      
+      - name: Install Node.js
+        uses: actions/setup-node@v4
         with:
+          node-version: '20'
+      
+      - name: Install system dependencies (Ubuntu)
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.0-dev libayatana-appindicator3-dev librsvg2-dev
+      
+      - name: Cache Rust dependencies
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: neo-gui -> target
+      
+      - name: Install Node dependencies
+        working-directory: neo-gui
+        run: npm ci
+      
+      - name: Build GUI
+        working-directory: neo-gui
+        run: npm run tauri build -- --target ${{ matrix.target }}
+      
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: neo-gui-${{ matrix.target }}
           path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            target
-          key: ${{ runner.os }}-cargo-publish-${{ hashFiles('**/Cargo.lock') }}
+            neo-gui/target/release/bundle/appimage/*${{ matrix.ext }}
+            neo-gui/target/release/bundle/msi/*${{ matrix.ext }}
+            neo-gui/target/release/bundle/dmg/*${{ matrix.ext }}
 
-      - name: Publish neo3 crate
-        run: |
-          cargo publish --token ${{ secrets.CARGO_REGISTRY_TOKEN }} --allow-dirty
-        continue-on-error: true
-
-      - name: Wait for crate propagation
-        run: sleep 30
-
-      - name: Publish neo-cli crate
-        run: |
-          cd neo-cli
-          cargo publish --token ${{ secrets.CARGO_REGISTRY_TOKEN }} --allow-dirty
-        continue-on-error: true
-
-  update-documentation:
-    name: Update Documentation
-    needs: [create-release, build-binaries]
+  create-release:
+    name: Create GitHub Release
+    needs: [validate, publish-crates, build-gui]
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+      
+      - name: Download artifacts
+        uses: actions/download-artifact@v3
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Update README with latest release
+          path: artifacts
+      
+      - name: Extract changelog
         run: |
-          TAG_NAME=${GITHUB_REF#refs/tags/}
-          sed -i "s/version = \"[0-9]\+\.[0-9]\+\.[0-9]\+\"/version = \"${TAG_NAME#v}\"/g" README.md
-          
-          # Update download links in README
-          sed -i "s|releases/download/v[0-9]\+\.[0-9]\+\.[0-9]\+|releases/download/$TAG_NAME|g" README.md
+          VERSION=${{ needs.validate.outputs.version }}
+          sed -n "/## \[$VERSION\]/,/## \[/p" CHANGELOG.md | sed '$d' > release-notes.md
+      
+      - name: Create release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: v${{ needs.validate.outputs.version }}
+          name: NeoRust v${{ needs.validate.outputs.version }}
+          body_path: release-notes.md
+          draft: false
+          prerelease: ${{ contains(needs.validate.outputs.version, '-') }}
+          files: |
+            artifacts/**/*
 
-      - name: Commit documentation updates
-        run: |
-          git config --local user.email "action@github.com"
-          git config --local user.name "GitHub Action"
-          git add README.md
-          git diff --staged --quiet || git commit -m "docs: update README for release ${{ github.ref_name }}"
-          git push
-        continue-on-error: true
-
-  notify-completion:
-    name: Notify Release Completion
-    needs: [create-release, build-binaries, publish-crates, update-documentation]
+  update-docs:
+    name: Update Documentation
+    needs: [validate, create-release]
     runs-on: ubuntu-latest
-    if: always()
     steps:
-      - name: Release Summary
+      - uses: actions/checkout@v4
+        with:
+          ref: gh-pages
+      
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+      
+      - name: Build docs
         run: |
-          echo "🚀 Release ${{ github.ref_name }} completed!"
-          echo "📦 Binaries built for multiple platforms"
-          echo "📚 Documentation updated"
-          echo "🦀 Crates published to crates.io"
-          echo ""
-          echo "Release URL: https://github.com/${{ github.repository }}/releases/tag/${{ github.ref_name }}" 
+          git checkout main
+          cargo doc --workspace --no-deps --all-features
+          cp -r target/doc/* .
+          git checkout gh-pages
+          git add .
+          git commit -m "Update docs for v${{ needs.validate.outputs.version }}"
+          git push
+
+  announce:
+    name: Announce Release
+    needs: [validate, create-release]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send notification
+        run: |
+          VERSION=${{ needs.validate.outputs.version }}
+          echo "NeoRust v$VERSION has been released!"
+          # Add webhook notifications here (Discord, Slack, etc.)

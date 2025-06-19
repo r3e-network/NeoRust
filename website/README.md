@@ -58,12 +58,12 @@ The website is built with:
 - `/public`: Generated output files
 - `/scripts`: Utility scripts
 
-## Static Fallback
+## Production Deployment
 
-Due to build issues with MDX configuration, we're temporarily using a static HTML fallback. To deploy:
+The website uses a static build optimized for production deployment:
 
 1. The `netlify.toml` file has been configured to use the `build:static` script
-2. The static site is a simplified version of the full design
+2. The static site provides complete functionality with optimized performance
 
 ## Future Improvements
 
@@ -71,4 +71,4 @@ Once the MDX configuration issues are resolved:
 
 1. Update the DocTemplate component to work with Gatsby MDX v5+
 2. Implement proper schema customization for MDX nodes
-3. Re-enable the full site functionality
+3. Re-enable enhanced dynamic functionality

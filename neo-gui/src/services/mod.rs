@@ -1,4 +1,4 @@
-pub mod wallet;
 pub mod network;
+pub mod settings;
 pub mod transaction;
-pub mod settings; 
+pub mod wallet;

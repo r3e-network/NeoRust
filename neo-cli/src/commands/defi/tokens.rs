@@ -23,7 +23,7 @@ use neo3::{
 	prelude::*,
 };
 use num_traits::ToPrimitive;
-use primitive_types::H160;
+use primitive_types::{H160, H256};
 use rand;
 use serde_json;
 use std::str::FromStr;
@@ -367,7 +367,8 @@ pub async fn transfer_token(
 
 	if !will_succeed {
 		return Err(CliError::TransactionFailed(
-			"Transfer would fail - check token balance and recipient address".to_string(),
+			"Transfer validation failed - insufficient balance or invalid recipient address"
+				.to_string(),
 		));
 	}
 
@@ -469,31 +470,19 @@ pub async fn transfer_token(
 
 				// Optionally wait for confirmation
 				if prompt_yes_no("Wait for transaction confirmation?") {
-					print_info("Waiting for transaction confirmation...");
-
-					// Poll for transaction confirmation (simplified)
-					for attempt in 1..=30 {
-						// Wait up to 5 minutes (30 * 10s)
-						tokio::time::sleep(tokio::time::Duration::from_secs(10)).await;
-
-						match rpc_client.get_transaction(result.hash).await {
-							Ok(tx_result) =>
-								if tx_result.confirmations > 0 {
-									print_success(&format!(
-										"✅ Transaction confirmed! (Block: {})",
-										tx_result.block_hash
-									));
-									break;
-								},
-							Err(_) => {
-								// Transaction not found yet, continue waiting
-							},
-						}
-
-						if attempt % 6 == 0 {
-							// Every minute
-							print_info(&format!("Still waiting... (attempt {}/30)", attempt));
-						}
+					match wait_for_transaction_confirmation(rpc_client, &result.hash.to_string())
+						.await
+					{
+						Ok((block_hash, confirmations)) => {
+							print_success(&format!(
+								"✅ Transaction confirmed! (Block: {}, Confirmations: {})",
+								block_hash, confirmations
+							));
+						},
+						Err(e) => {
+							print_error(&format!("❌ Transaction confirmation failed: {}", e));
+							print_info("Transaction may still be pending. Check manually later.");
+						},
 					}
 				}
 
@@ -544,4 +533,94 @@ fn address_to_script_hash(address: &str) -> Result<H160, CliError> {
 		.map_err(|_| CliError::Wallet(format!("Invalid address format: {}", address)))?
 		.address_to_script_hash()
 		.map_err(|e| CliError::Wallet(format!("Failed to convert address to script hash: {}", e)))
+}
+
+/// Production-ready transaction confirmation monitoring with exponential backoff and robust error handling
+async fn wait_for_transaction_confirmation<T: APITrait>(
+	rpc_client: &T,
+	tx_hash: &str,
+) -> Result<(String, u32), CliError> {
+	const MAX_ATTEMPTS: u32 = 60; // Up to 10 minutes with exponential backoff
+	const INITIAL_DELAY_MS: u64 = 1000; // Start with 1 second
+	const MAX_DELAY_MS: u64 = 30000; // Max 30 seconds between attempts
+	const BACKOFF_MULTIPLIER: f64 = 1.5;
+
+	print_info("🔄 Monitoring transaction confirmation...");
+
+	let mut attempt = 1;
+	let mut delay_ms = INITIAL_DELAY_MS;
+	let mut consecutive_errors = 0;
+	const MAX_CONSECUTIVE_ERRORS: u32 = 5;
+
+	while attempt <= MAX_ATTEMPTS {
+		// Sleep with exponential backoff (except first attempt)
+		if attempt > 1 {
+			tokio::time::sleep(tokio::time::Duration::from_millis(delay_ms)).await;
+		}
+
+		let tx_hash_h256 = H256::from_str(&tx_hash)
+			.map_err(|_| CliError::InvalidInput("Invalid transaction hash format".to_string()))?;
+		match rpc_client.get_transaction(tx_hash_h256).await {
+			Ok(tx_result) => {
+				consecutive_errors = 0; // Reset error counter on success
+
+				if tx_result.confirmations > 0 {
+					// Transaction confirmed!
+					return Ok((
+						format!("{}", tx_result.block_hash),
+						tx_result.confirmations.max(0) as u32,
+					));
+				} else {
+					// Transaction found but not yet confirmed
+					if attempt % 10 == 0 {
+						print_info(&format!(
+							"⏳ Transaction found in mempool, waiting for confirmation... (attempt {}/{})",
+							attempt, MAX_ATTEMPTS
+						));
+					}
+				}
+			},
+			Err(e) => {
+				consecutive_errors += 1;
+
+				// Check if it's a "transaction not found" error (normal while pending)
+				let error_message = format!("{}", e);
+				if error_message.contains("not found")
+					|| error_message.contains("Unknown transaction")
+				{
+					// This is expected while transaction is in mempool
+					if attempt % 15 == 0 {
+						print_info(&format!(
+							"🔍 Searching for transaction... (attempt {}/{})",
+							attempt, MAX_ATTEMPTS
+						));
+					}
+				} else {
+					// Unexpected error
+					print_error(&format!("⚠️  Network error during confirmation check: {}", e));
+
+					if consecutive_errors >= MAX_CONSECUTIVE_ERRORS {
+						return Err(CliError::Network(format!(
+							"Too many consecutive network errors ({}). Last error: {}",
+							consecutive_errors, e
+						)));
+					}
+				}
+			},
+		}
+
+		// Update delay for exponential backoff
+		delay_ms = ((delay_ms as f64) * BACKOFF_MULTIPLIER) as u64;
+		if delay_ms > MAX_DELAY_MS {
+			delay_ms = MAX_DELAY_MS;
+		}
+
+		attempt += 1;
+	}
+
+	// Timeout reached
+	Err(CliError::Network(format!(
+		"Transaction confirmation timeout after {} attempts. Transaction may still be pending.",
+		MAX_ATTEMPTS
+	)))
 }

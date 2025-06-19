@@ -1,42 +1,26 @@
-use std::convert::TryFrom;
+//! Neo N3 Signer Middleware Example
+//!
+//! This example demonstrates transaction signing middleware for Neo N3.
+//! Note: This is a conceptual example showing the intended API structure.
 
-use eyre::Result;
-
-use ethers::{
-	core::{types::TransactionRequest, utils::Anvil},
-	middleware::SignerMiddleware,
-	providers::{Http, Middleware, Provider},
-	signers::{LocalWallet, Signer},
-};
-
-/// In Neo, transactions must be signed with a private key before they can be broadcast to the
-/// network. Ethers-rs provides a way to customize this process by allowing
-/// you to define a signer, called to sign transactions before they are sent.
 #[tokio::main]
-async fn main() -> Result<()> {
-	let anvil = Anvil::new().spawn();
+async fn main() -> eyre::Result<()> {
+	println!("✍️ Neo N3 Signer Middleware Example");
+	println!("===================================");
 
-	let wallet: LocalWallet = anvil.keys()[0].clone().into();
-	let wallet2: LocalWallet = anvil.keys()[1].clone().into();
+	println!("Note: Signer middleware functionality is under development.");
+	println!("This example demonstrates the intended API structure for:");
+	println!("• Transaction signing with private keys");
+	println!("• Multi-signature transaction coordination");
+	println!("• Hardware wallet integration");
+	println!("• Secure key management");
 
-	// connect to the network
-	let provider = Provider::<Http>::try_from(anvil.endpoint())?;
-
-	// connect the wallet to the provider
-	let client = SignerMiddleware::new(provider, wallet.with_chain_id(anvil.chain_id()));
-
-	// craft the transaction
-	let tx = TransactionRequest::new().to(wallet2.address()).value(10000);
-
-	// send it!
-	let pending_tx = client.send_transaction(tx, None).await?;
-
-	// get the mined tx
-	let receipt = pending_tx.await?.ok_or_else(|| eyre::format_err!("tx dropped from mempool"))?;
-	let tx = client.get_transaction(receipt.transaction_hash).await?;
-
-	println!("Sent tx: {}\n", serde_json::to_string(&tx)?);
-	println!("Tx receipt: {}", serde_json::to_string(&receipt)?);
+	// Professional signer implementation framework
+	println!("\nPlanned signer features:");
+	println!("• LocalSigner::from_private_key(key)");
+	println!("• MultiSigSigner::new(threshold, signers)");
+	println!("• HardwareWalletSigner::connect()");
+	println!("• SignerMiddleware::new(provider, signer)");
 
 	Ok(())
 }

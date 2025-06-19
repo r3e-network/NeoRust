@@ -11,11 +11,17 @@ pub enum CliError {
 	#[error("File system error: {0}")]
 	FileSystem(String),
 
+	#[error("File error: {0}")]
+	FileError(String),
+
 	#[error("JSON error: {0}")]
 	Json(String),
 
 	#[error("Network error: {0}")]
 	Network(String),
+
+	#[error("Network error: {0}")]
+	NetworkError(String),
 
 	#[error("Transaction error: {0}")]
 	Transaction(String),
@@ -80,8 +86,20 @@ pub enum CliError {
 	#[error("No wallet loaded")]
 	NoWallet,
 
+	#[error("Wallet not loaded: {0}")]
+	WalletNotLoaded(String),
+
+	#[error("Wallet operation failed: {0}")]
+	WalletOperation(String),
+
+	#[error("Invalid operation: {0}")]
+	InvalidOperation(String),
+
 	#[error("IO error: {0}")]
 	Io(#[from] std::io::Error),
+
+	#[error("IO error: {0}")]
+	IoError(std::io::Error),
 
 	#[error("Serde JSON error: {0}")]
 	SerdeJson(#[from] serde_json::Error),

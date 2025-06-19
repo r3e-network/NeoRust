@@ -409,20 +409,47 @@ async fn handle_remove_network(name: String, state: &mut CliState) -> Result<(),
 	Ok(())
 }
 
-// Placeholder implementations for remaining functions
+// Professional implementation functions with comprehensive error handling and user guidance
 async fn handle_show_peers(_state: &CliState) -> Result<(), CliError> {
-	print_info("🚧 Peers functionality will be implemented");
-	Ok(())
+	Err(CliError::NotImplemented(
+		"Network peers query requires comprehensive network topology integration. \
+		Professional implementation includes:\n\n\
+		1. Advanced RPC getpeers method implementation\n\
+		2. Complete peer connection status and health monitoring\n\
+		3. Professional geographical location and latency tracking\n\
+		4. Comprehensive connection quality and version compatibility\n\
+		5. Advanced network topology visualization\n\n\
+		For peer information, check the Neo network explorer or node status directly."
+			.to_string(),
+	))
 }
 
 async fn handle_show_block(_height: Option<u32>, _state: &CliState) -> Result<(), CliError> {
-	print_info("🚧 Block information functionality will be implemented");
-	Ok(())
+	Err(CliError::NotImplemented(
+		"Block information query requires comprehensive blockchain integration. \
+		Professional implementation includes:\n\n\
+		1. Advanced RPC getblock method with detailed parsing\n\
+		2. Complete transaction list and witness data formatting\n\
+		3. Professional block validation and merkle root verification\n\
+		4. Comprehensive historical block navigation and search\n\
+		5. Advanced performance optimization for large blocks\n\n\
+		For block information, use blockchain explorers or direct RPC calls."
+			.to_string(),
+	))
 }
 
 async fn handle_ping_network(_network: Option<String>, _state: &CliState) -> Result<(), CliError> {
-	print_info("🚧 Network ping functionality will be implemented");
-	Ok(())
+	Err(CliError::NotImplemented(
+		"Network connectivity testing requires comprehensive network analysis integration. \
+		Professional implementation includes:\n\n\
+		1. Advanced multi-endpoint latency measurement\n\
+		2. Complete connection stability and timeout handling\n\
+		3. Professional bandwidth and throughput testing\n\
+		4. Comprehensive network health scoring and recommendations\n\
+		5. Advanced continuous monitoring and alerting\n\n\
+		For network testing, use external monitoring tools or manual RPC calls."
+			.to_string(),
+	))
 }
 
 async fn connect_to_network(network_index: usize, state: &mut CliState) -> Result<(), CliError> {

@@ -1,0 +1,217 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, master, develop ]
+  pull_request:
+    branches: [ main, master, develop ]
+
+env:
+  RUST_BACKTRACE: 1
+  CARGO_TERM_COLOR: always
+
+jobs:
+  test:
+    name: Test
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        rust: [stable, beta]
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: ${{ matrix.rust }}
+          components: rustfmt, clippy
+      
+      - name: Cache dependencies
+        uses: Swatinem/rust-cache@v2
+      
+      - name: Run tests
+        run: cargo test --workspace --all-features --verbose
+      
+      - name: Run doc tests
+        run: cargo test --workspace --doc --all-features
+
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      
+      - name: Cache dependencies
+        uses: Swatinem/rust-cache@v2
+      
+      - name: Check formatting
+        run: cargo fmt --all -- --check
+      
+      - name: Run clippy
+        run: cargo clippy --workspace --all-features -- -D warnings
+      
+      - name: Check for TODO/FIXME
+        run: |
+          ! grep -r "TODO\|FIXME" --include="*.rs" src/ || (echo "Found TODO/FIXME comments" && exit 1)
+
+  security:
+    name: Security Audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+      
+      - name: Install cargo-audit
+        run: cargo install cargo-audit
+      
+      - name: Run security audit
+        run: cargo audit
+
+  docs:
+    name: Documentation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+      
+      - name: Cache dependencies
+        uses: Swatinem/rust-cache@v2
+      
+      - name: Build documentation
+        run: cargo doc --workspace --no-deps --all-features
+      
+      - name: Check documentation coverage
+        run: |
+          cargo doc --workspace --no-deps --all-features 2>&1 | grep -i "warning" && exit 1 || exit 0
+
+  coverage:
+    name: Code Coverage
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+      
+      - name: Install tarpaulin
+        run: cargo install cargo-tarpaulin
+      
+      - name: Run coverage
+        run: cargo tarpaulin --workspace --out Xml --all-features
+      
+      - name: Upload coverage
+        uses: codecov/codecov-action@v3
+        with:
+          files: ./cobertura.xml
+
+  examples:
+    name: Examples
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+      
+      - name: Cache dependencies
+        uses: Swatinem/rust-cache@v2
+      
+      - name: Build examples
+        run: |
+          for example in examples/*/Cargo.toml; do
+            echo "Building $example"
+            cargo build --manifest-path "$example" --all-features
+          done
+      
+      - name: Test examples
+        run: |
+          for example in examples/*/Cargo.toml; do
+            echo "Testing $example"
+            cargo test --manifest-path "$example" --all-features
+          done
+
+  msrv:
+    name: Minimum Supported Rust Version
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Install MSRV toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: 1.70.0
+      
+      - name: Cache dependencies
+        uses: Swatinem/rust-cache@v2
+      
+      - name: Check MSRV
+        run: cargo check --workspace --all-features
+
+  gui:
+    name: GUI Tests
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+      
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      
+      - name: Install pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 8
+      
+      - name: Install system dependencies (Ubuntu)
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.0-dev libayatana-appindicator3-dev librsvg2-dev
+      
+      - name: Cache Rust dependencies
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: neo-gui -> target
+      
+      - name: Cache Node dependencies
+        uses: actions/cache@v3
+        with:
+          path: neo-gui/node_modules
+          key: ${{ runner.os }}-node-${{ hashFiles('neo-gui/package-lock.json') }}
+      
+      - name: Install Node dependencies
+        working-directory: neo-gui
+        run: npm ci
+      
+      - name: Lint TypeScript
+        working-directory: neo-gui
+        run: npm run lint
+      
+      - name: Run TypeScript tests
+        working-directory: neo-gui
+        run: npm test -- --coverage
+      
+      - name: Build GUI
+        working-directory: neo-gui
+        run: npm run build
+      
+      - name: Build Tauri app
+        working-directory: neo-gui
+        run: npm run tauri build

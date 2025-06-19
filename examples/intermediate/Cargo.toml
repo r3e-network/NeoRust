@@ -1,0 +1,29 @@
+[package]
+name = "intermediate-examples"
+version = "0.1.0"
+edition = "2021"
+description = "Intermediate Neo N3 examples for application developers"
+
+[dependencies]
+neo3 = { path = "../../", features = ["default"] }
+tokio = { version = "1.45", features = ["full"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+colored = "2.0"
+anyhow = "1.0"
+
+[[example]]
+name = "deploy_contract"
+path = "deploy_contract.rs"
+
+[[example]]
+name = "invoke_contract"
+path = "invoke_contract.rs"
+
+[[example]]
+name = "nep17_operations"
+path = "nep17_operations.rs"
+
+[[example]]
+name = "multi_sig_wallet"
+path = "multi_sig_wallet.rs"

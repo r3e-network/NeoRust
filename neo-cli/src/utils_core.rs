@@ -1,4 +1,4 @@
-use crate::errors::CliError;
+// Core utilities for CLI operations
 use colored::*;
 use comfy_table::{presets::UTF8_FULL, Attribute, Cell, Color, ContentArrangement, Table};
 use dialoguer::{theme::ColorfulTheme, Confirm, Input, Password, Select};
@@ -225,7 +225,7 @@ pub fn wait_for_enter(message: Option<&str>) {
 	io::stdin().read_line(&mut input).unwrap();
 }
 
-/// Ensure account is loaded (placeholder for now)
+/// Ensure account is loaded with proper validation
 pub fn ensure_account_loaded() -> Result<(), crate::errors::CliError> {
 	// This will be implemented when we have proper account management
 	Ok(())

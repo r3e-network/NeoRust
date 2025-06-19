@@ -58,7 +58,7 @@ const recentTransactions = [
 ];
 
 export default function Dashboard() {
-  const { currentWallet, networkType, addNotification } = useAppStore();
+  const { currentWallet, networkType } = useAppStore();
   const [balanceVisible, setBalanceVisible] = useState(true);
   const [stats, setStats] = useState({
     totalValue: 0,

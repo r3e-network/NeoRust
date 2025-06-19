@@ -1,0 +1,104 @@
+# Neo GUI Frontend
+
+A modern React-based GUI frontend for the NeoRust blockchain toolkit, built with Vite, TypeScript, and Tailwind CSS.
+
+## Features
+
+- 🚀 Built with React 18 and TypeScript
+- ⚡ Powered by Vite for fast development
+- 🎨 Styled with Tailwind CSS and Headless UI
+- 📱 Responsive design with modern UI components
+- 🔧 Tauri integration for desktop app functionality
+- 📊 Data visualization with Recharts
+- 🎭 Smooth animations with Framer Motion
+
+## Prerequisites
+
+- Node.js 18.x or higher
+- npm 10.x or higher
+- Rust (for Tauri desktop app functionality)
+
+## Quick Start
+
+1. **Install dependencies:**
+   ```bash
+   npm install
+   ```
+
+2. **Start development server:**
+   ```bash
+   npm run dev
+   ```
+
+3. **Open your browser:**
+   Navigate to `http://localhost:1420/`
+
+## Available Scripts
+
+- `npm run dev` - Start development server
+- `npm run build` - Build for production
+- `npm run preview` - Preview production build
+- `npm run tauri` - Run Tauri commands
+- `npm run clean` - Remove node_modules and package-lock.json
+- `npm run fresh-install` - Clean install (removes cache and reinstalls)
+- `npm run fix-deps` - Fix dependency issues (installs util-deprecate)
+
+## Development Workflow
+
+1. **Start the development server:**
+   ```bash
+   npm run dev
+   ```
+
+2. **Make your changes** to the React components in the `src/` directory
+
+3. **Build for production:**
+   ```bash
+   npm run build
+   ```
+
+## Project Structure
+
+```
+neo-gui/
+├── src/                    # React source code
+├── assets/                 # Static assets
+├── index.html             # HTML template
+├── package.json           # Dependencies and scripts
+├── postcss.config.js      # PostCSS configuration
+├── tailwind.config.js     # Tailwind CSS configuration
+├── tsconfig.json          # TypeScript configuration
+├── vite.config.ts         # Vite configuration
+└── tauri.conf.json        # Tauri configuration
+```
+
+## Technologies Used
+
+- **Frontend Framework:** React 18 with TypeScript
+- **Build Tool:** Vite
+- **Styling:** Tailwind CSS, Headless UI
+- **Desktop App:** Tauri
+- **UI Components:** Heroicons, Headless UI
+- **Charts:** Recharts
+- **Animations:** Framer Motion
+- **State Management:** Zustand
+- **Routing:** React Router
+- **Utilities:** clsx, date-fns
+
+## Troubleshooting
+
+If you encounter any issues during development, please refer to the [TROUBLESHOOTING.md](./TROUBLESHOOTING.md) guide.
+
+**Common Issues:**
+- [Cannot find module 'util-deprecate'](./TROUBLESHOOTING.md#cannot-find-module-util-deprecate-error)
+
+## Contributing
+
+1. Make sure all tests pass
+2. Follow the existing code style
+3. Update documentation as needed
+4. Test your changes thoroughly
+
+## License
+
+This project is part of the NeoRust toolkit. See the main project LICENSE for details. 

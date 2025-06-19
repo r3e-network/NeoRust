@@ -2,64 +2,178 @@ import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import {
   WrenchScrewdriverIcon,
-  DocumentDuplicateIcon,
-  CheckIcon,
+  CodeBracketIcon,
+  CurrencyDollarIcon,
+  DocumentTextIcon,
+  ArrowsRightLeftIcon,
+  KeyIcon,
+  ClipboardDocumentIcon,
+  CheckCircleIcon,
+  ExclamationTriangleIcon,
+  InformationCircleIcon,
+  CubeIcon,
+  LinkIcon,
+  CalculatorIcon,
+  ShieldCheckIcon,
+  GlobeAltIcon,
+  CommandLineIcon,
 } from '@heroicons/react/24/outline';
+import { useAppStore } from '../stores/appStore';
+import { invoke } from '@tauri-apps/api/tauri';
+
+type ToolCategory = 'address' | 'script' | 'contract' | 'transaction' | 'crypto' | 'network';
+
+interface Tool {
+  id: string;
+  name: string;
+  description: string;
+  category: ToolCategory;
+  icon: React.ReactNode;
+  component: React.ComponentType<any>;
+}
 
 export default function Tools() {
-  const [activeTab, setActiveTab] = useState('encode');
-  const [input, setInput] = useState('');
-  const [output, setOutput] = useState('');
-  const [copied, setCopied] = useState(false);
+  const { addNotification } = useAppStore();
+  const [selectedCategory, setSelectedCategory] = useState<ToolCategory>('address');
+  const [selectedTool, setSelectedTool] = useState<string | null>(null);
 
-  const tabs = [
-    { id: 'encode', name: 'Encode/Decode', icon: WrenchScrewdriverIcon },
-    { id: 'hash', name: 'Hash Functions', icon: WrenchScrewdriverIcon },
-    { id: 'address', name: 'Address Utils', icon: WrenchScrewdriverIcon },
-    { id: 'transaction', name: 'Transaction Tools', icon: WrenchScrewdriverIcon },
+  const categories = [
+    { id: 'address' as ToolCategory, name: 'Address Tools', icon: <KeyIcon className="h-5 w-5" /> },
+    { id: 'script' as ToolCategory, name: 'Script Builder', icon: <CodeBracketIcon className="h-5 w-5" /> },
+    { id: 'contract' as ToolCategory, name: 'Contract Tools', icon: <DocumentTextIcon className="h-5 w-5" /> },
+    { id: 'transaction' as ToolCategory, name: 'Transaction Tools', icon: <ArrowsRightLeftIcon className="h-5 w-5" /> },
+    { id: 'crypto' as ToolCategory, name: 'Cryptography', icon: <ShieldCheckIcon className="h-5 w-5" /> },
+    { id: 'network' as ToolCategory, name: 'Network Tools', icon: <GlobeAltIcon className="h-5 w-5" /> },
   ];
 
-  const handleEncode = (type: string) => {
-    try {
-      switch (type) {
-        case 'base64':
-          setOutput(btoa(input));
-          break;
-        case 'hex':
-          setOutput(Array.from(new TextEncoder().encode(input))
-            .map(b => b.toString(16).padStart(2, '0')).join(''));
-          break;
-        default:
-          setOutput('');
-      }
-    } catch (error) {
-      setOutput('Error: Invalid input');
-    }
-  };
+  const tools: Tool[] = [
+    // Address Tools
+    {
+      id: 'address-converter',
+      name: 'Address Converter',
+      description: 'Convert between different Neo address formats',
+      category: 'address',
+      icon: <ArrowsRightLeftIcon className="h-5 w-5" />,
+      component: AddressConverter,
+    },
+    {
+      id: 'address-validator',
+      name: 'Address Validator',
+      description: 'Validate Neo N3 addresses',
+      category: 'address',
+      icon: <CheckCircleIcon className="h-5 w-5" />,
+      component: AddressValidator,
+    },
+    {
+      id: 'key-generator',
+      name: 'Key Generator',
+      description: 'Generate new private/public key pairs',
+      category: 'address',
+      icon: <KeyIcon className="h-5 w-5" />,
+      component: KeyGenerator,
+    },
 
-  const handleDecode = (type: string) => {
-    try {
-      switch (type) {
-        case 'base64':
-          setOutput(atob(input));
-          break;
-        case 'hex':
-          const bytes = input.match(/.{1,2}/g)?.map(byte => parseInt(byte, 16)) || [];
-          setOutput(new TextDecoder().decode(new Uint8Array(bytes)));
-          break;
-        default:
-          setOutput('');
-      }
-    } catch (error) {
-      setOutput('Error: Invalid input');
-    }
-  };
+    // Script Builder
+    {
+      id: 'script-builder',
+      name: 'Script Builder',
+      description: 'Build and test Neo VM scripts',
+      category: 'script',
+      icon: <CodeBracketIcon className="h-5 w-5" />,
+      component: ScriptBuilder,
+    },
+    {
+      id: 'opcode-reference',
+      name: 'OpCode Reference',
+      description: 'Neo VM OpCode documentation and examples',
+      category: 'script',
+      icon: <DocumentTextIcon className="h-5 w-5" />,
+      component: OpCodeReference,
+    },
 
-  const copyToClipboard = () => {
-    navigator.clipboard.writeText(output);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
+    // Contract Tools
+    {
+      id: 'contract-inspector',
+      name: 'Contract Inspector',
+      description: 'Inspect deployed smart contracts',
+      category: 'contract',
+      icon: <CubeIcon className="h-5 w-5" />,
+      component: ContractInspector,
+    },
+    {
+      id: 'abi-decoder',
+      name: 'ABI Decoder',
+      description: 'Decode contract ABI and method calls',
+      category: 'contract',
+      icon: <DocumentTextIcon className="h-5 w-5" />,
+      component: ABIDecoder,
+    },
+
+    // Transaction Tools
+    {
+      id: 'tx-builder',
+      name: 'Transaction Builder',
+      description: 'Build and sign custom transactions',
+      category: 'transaction',
+      icon: <WrenchScrewdriverIcon className="h-5 w-5" />,
+      component: TransactionBuilder,
+    },
+    {
+      id: 'tx-decoder',
+      name: 'Transaction Decoder',
+      description: 'Decode and analyze transactions',
+      category: 'transaction',
+      icon: <DocumentTextIcon className="h-5 w-5" />,
+      component: TransactionDecoder,
+    },
+    {
+      id: 'fee-calculator',
+      name: 'Fee Calculator',
+      description: 'Calculate transaction fees',
+      category: 'transaction',
+      icon: <CalculatorIcon className="h-5 w-5" />,
+      component: FeeCalculator,
+    },
+
+    // Cryptography
+    {
+      id: 'hash-calculator',
+      name: 'Hash Calculator',
+      description: 'Calculate various hash functions',
+      category: 'crypto',
+      icon: <ShieldCheckIcon className="h-5 w-5" />,
+      component: HashCalculator,
+    },
+    {
+      id: 'signature-verifier',
+      name: 'Signature Verifier',
+      description: 'Verify digital signatures',
+      category: 'crypto',
+      icon: <CheckCircleIcon className="h-5 w-5" />,
+      component: SignatureVerifier,
+    },
+
+    // Network Tools
+    {
+      id: 'rpc-client',
+      name: 'RPC Client',
+      description: 'Test Neo RPC endpoints',
+      category: 'network',
+      icon: <LinkIcon className="h-5 w-5" />,
+      component: RPCClient,
+    },
+    {
+      id: 'block-explorer',
+      name: 'Block Explorer',
+      description: 'Explore blocks and transactions',
+      category: 'network',
+      icon: <CubeIcon className="h-5 w-5" />,
+      component: BlockExplorer,
+    },
+  ];
+
+  const filteredTools = tools.filter(tool => tool.category === selectedCategory);
+  const currentTool = selectedTool ? tools.find(t => t.id === selectedTool) : null;
 
   return (
     <div className="space-y-6">
@@ -67,276 +181,508 @@ export default function Tools() {
       <div className="md:flex md:items-center md:justify-between">
         <div className="flex-1 min-w-0">
           <h2 className="text-2xl font-bold leading-7 text-gray-900 sm:text-3xl sm:truncate">
-            Developer Tools
+            Neo N3 Tools
           </h2>
           <p className="mt-1 text-sm text-gray-500">
-            Utilities for encoding, hashing, and blockchain development.
+            Comprehensive toolkit for Neo N3 development and blockchain interaction
           </p>
         </div>
       </div>
 
-      {/* Tabs */}
-      <div className="border-b border-gray-200">
-        <nav className="-mb-px flex space-x-8">
-          {tabs.map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={`py-2 px-1 border-b-2 font-medium text-sm ${
-                activeTab === tab.id
-                  ? 'border-green-500 text-green-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              }`}
-            >
-              <div className="flex items-center">
-                <tab.icon className="h-5 w-5 mr-2" />
-                {tab.name}
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+        {/* Categories Sidebar */}
+        <div className="lg:col-span-1">
+          <div className="bg-white shadow rounded-lg p-4">
+            <h3 className="text-lg font-medium text-gray-900 mb-4">Tool Categories</h3>
+            <nav className="space-y-2">
+              {categories.map((category) => (
+                <button
+                  key={category.id}
+                  onClick={() => {
+                    setSelectedCategory(category.id);
+                    setSelectedTool(null);
+                  }}
+                  className={`w-full flex items-center space-x-3 px-3 py-2 text-sm font-medium rounded-md transition-colors ${
+                    selectedCategory === category.id
+                      ? 'bg-green-100 text-green-700'
+                      : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                  }`}
+                >
+                  {category.icon}
+                  <span>{category.name}</span>
+                </button>
+              ))}
+            </nav>
+          </div>
+        </div>
+
+        {/* Tools List */}
+        <div className="lg:col-span-1">
+          <div className="bg-white shadow rounded-lg p-4">
+            <h3 className="text-lg font-medium text-gray-900 mb-4">
+              {categories.find(c => c.id === selectedCategory)?.name}
+            </h3>
+            <div className="space-y-2">
+              {filteredTools.map((tool) => (
+                <button
+                  key={tool.id}
+                  onClick={() => setSelectedTool(tool.id)}
+                  className={`w-full text-left p-3 rounded-lg border transition-colors ${
+                    selectedTool === tool.id
+                      ? 'border-green-500 bg-green-50'
+                      : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                  }`}
+                >
+                  <div className="flex items-center space-x-3 mb-2">
+                    {tool.icon}
+                    <span className="font-medium text-gray-900">{tool.name}</span>
+                  </div>
+                  <p className="text-sm text-gray-500">{tool.description}</p>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Tool Content */}
+        <div className="lg:col-span-2">
+          <div className="bg-white shadow rounded-lg p-6">
+            {currentTool ? (
+              <div>
+                <div className="flex items-center space-x-3 mb-6">
+                  {currentTool.icon}
+                  <div>
+                    <h3 className="text-lg font-medium text-gray-900">{currentTool.name}</h3>
+                    <p className="text-sm text-gray-500">{currentTool.description}</p>
+                  </div>
+                </div>
+                <currentTool.component addNotification={addNotification} />
               </div>
-            </button>
-          ))}
-        </nav>
+            ) : (
+              <div className="text-center py-12">
+                <WrenchScrewdriverIcon className="mx-auto h-12 w-12 text-gray-400" />
+                <h3 className="mt-2 text-sm font-medium text-gray-900">Select a Tool</h3>
+                <p className="mt-1 text-sm text-gray-500">
+                  Choose a tool from the list to get started
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Tool Components
+
+function AddressConverter({ addNotification }: { addNotification: any }) {
+  const [input, setInput] = useState('');
+  const [output, setOutput] = useState('');
+  const [inputFormat, setInputFormat] = useState('address');
+  const [outputFormat, setOutputFormat] = useState('scripthash');
+
+  const handleConvert = async () => {
+    if (!input.trim()) return;
+
+    try {
+      const result = await invoke('convert_address', {
+        input: input.trim(),
+        inputFormat,
+        outputFormat,
+      });
+      setOutput(result as string);
+    } catch (error) {
+      addNotification({
+        type: 'error',
+        title: 'Conversion Failed',
+        message: 'Invalid input or conversion not supported',
+      });
+    }
+  };
+
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text);
+    addNotification({
+      type: 'success',
+      title: 'Copied',
+      message: 'Result copied to clipboard',
+    });
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">Input Format</label>
+          <select
+            value={inputFormat}
+            onChange={(e) => setInputFormat(e.target.value)}
+            className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-green-500 focus:border-green-500"
+          >
+            <option value="address">Address</option>
+            <option value="scripthash">Script Hash</option>
+            <option value="publickey">Public Key</option>
+          </select>
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">Output Format</label>
+          <select
+            value={outputFormat}
+            onChange={(e) => setOutputFormat(e.target.value)}
+            className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-green-500 focus:border-green-500"
+          >
+            <option value="address">Address</option>
+            <option value="scripthash">Script Hash</option>
+            <option value="publickey">Public Key</option>
+          </select>
+        </div>
       </div>
 
-      {/* Content */}
-      <motion.div
-        key={activeTab}
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.3 }}
-        className="bg-white shadow rounded-lg p-6"
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-2">Input</label>
+        <textarea
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          placeholder="Enter address, script hash, or public key..."
+          className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-green-500 focus:border-green-500"
+          rows={3}
+        />
+      </div>
+
+      <button
+        onClick={handleConvert}
+        className="w-full bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700"
       >
-        {activeTab === 'encode' && (
-          <div className="space-y-6">
-            <h3 className="text-lg font-medium text-gray-900">Encode/Decode Data</h3>
-            
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Input
-                </label>
-                <textarea
-                  value={input}
-                  onChange={(e) => setInput(e.target.value)}
-                  rows={6}
-                  className="block w-full border-gray-300 rounded-md shadow-sm focus:ring-green-500 focus:border-green-500"
-                  placeholder="Enter text to encode/decode..."
-                />
-                
-                <div className="mt-4 flex flex-wrap gap-2">
-                  <button
-                    onClick={() => handleEncode('base64')}
-                    className="px-3 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
-                  >
-                    Encode Base64
-                  </button>
-                  <button
-                    onClick={() => handleDecode('base64')}
-                    className="px-3 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
-                  >
-                    Decode Base64
-                  </button>
-                  <button
-                    onClick={() => handleEncode('hex')}
-                    className="px-3 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
-                  >
-                    Encode Hex
-                  </button>
-                  <button
-                    onClick={() => handleDecode('hex')}
-                    className="px-3 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
-                  >
-                    Decode Hex
-                  </button>
-                </div>
-              </div>
-              
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <label className="block text-sm font-medium text-gray-700">
-                    Output
-                  </label>
-                  {output && (
-                    <button
-                      onClick={copyToClipboard}
-                      className="flex items-center text-sm text-green-600 hover:text-green-500"
-                    >
-                      {copied ? (
-                        <>
-                          <CheckIcon className="h-4 w-4 mr-1" />
-                          Copied!
-                        </>
-                      ) : (
-                        <>
-                          <DocumentDuplicateIcon className="h-4 w-4 mr-1" />
-                          Copy
-                        </>
-                      )}
-                    </button>
-                  )}
-                </div>
-                <textarea
-                  value={output}
-                  readOnly
-                  rows={6}
-                  className="block w-full border-gray-300 rounded-md shadow-sm bg-gray-50 font-mono text-sm"
-                  placeholder="Output will appear here..."
-                />
-              </div>
-            </div>
-          </div>
-        )}
+        Convert
+      </button>
 
-        {activeTab === 'hash' && (
-          <div className="space-y-6">
-            <h3 className="text-lg font-medium text-gray-900">Hash Functions</h3>
-            <p className="text-sm text-gray-500">
-              Generate cryptographic hashes for your data.
-            </p>
-            
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Input Data
-                </label>
-                <textarea
-                  value={input}
-                  onChange={(e) => setInput(e.target.value)}
-                  rows={4}
-                  className="block w-full border-gray-300 rounded-md shadow-sm focus:ring-green-500 focus:border-green-500"
-                  placeholder="Enter data to hash..."
-                />
-                
-                <div className="mt-4 grid grid-cols-2 gap-2">
-                  <button className="px-3 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">
-                    SHA256
-                  </button>
-                  <button className="px-3 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">
-                    RIPEMD160
-                  </button>
-                  <button className="px-3 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">
-                    Keccak256
-                  </button>
-                  <button className="px-3 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">
-                    Blake2b
-                  </button>
-                </div>
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Hash Output
-                </label>
-                <div className="space-y-3">
-                  <div className="p-3 bg-gray-50 rounded-md">
-                    <div className="text-xs text-gray-500 mb-1">SHA256</div>
-                    <div className="font-mono text-sm break-all">
-                      {input ? 'Click SHA256 to generate hash' : 'Enter input data'}
-                    </div>
-                  </div>
-                  <div className="p-3 bg-gray-50 rounded-md">
-                    <div className="text-xs text-gray-500 mb-1">RIPEMD160</div>
-                    <div className="font-mono text-sm break-all">
-                      {input ? 'Click RIPEMD160 to generate hash' : 'Enter input data'}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
+      {output && (
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">Result</label>
+          <div className="relative">
+            <textarea
+              value={output}
+              readOnly
+              className="w-full border border-gray-300 rounded-md px-3 py-2 bg-gray-50"
+              rows={3}
+            />
+            <button
+              onClick={() => copyToClipboard(output)}
+              className="absolute top-2 right-2 p-1 text-gray-400 hover:text-gray-600"
+            >
+              <ClipboardDocumentIcon className="h-4 w-4" />
+            </button>
           </div>
-        )}
+        </div>
+      )}
+    </div>
+  );
+}
 
-        {activeTab === 'address' && (
-          <div className="space-y-6">
-            <h3 className="text-lg font-medium text-gray-900">Address Utilities</h3>
-            <p className="text-sm text-gray-500">
-              Validate and convert Neo addresses and public keys.
-            </p>
-            
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Address/Public Key
-                </label>
-                <input
-                  type="text"
-                  value={input}
-                  onChange={(e) => setInput(e.target.value)}
-                  className="block w-full border-gray-300 rounded-md shadow-sm focus:ring-green-500 focus:border-green-500"
-                  placeholder="Enter Neo address or public key..."
-                />
-              </div>
-              
-              <div className="flex flex-wrap gap-2">
-                <button className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700">
-                  Validate Address
-                </button>
-                <button className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 bg-white hover:bg-gray-50">
-                  Convert to Script Hash
-                </button>
-                <button className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 bg-white hover:bg-gray-50">
-                  Generate from Public Key
-                </button>
-              </div>
-              
-              <div className="mt-6 p-4 bg-gray-50 rounded-md">
-                <h4 className="text-sm font-medium text-gray-900 mb-2">Results</h4>
-                <div className="space-y-2 text-sm">
-                  <div><span className="font-medium">Valid:</span> <span className="text-green-600">Yes</span></div>
-                  <div><span className="font-medium">Type:</span> Neo N3 Address</div>
-                  <div><span className="font-medium">Script Hash:</span> <span className="font-mono">0x1234...abcd</span></div>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
+function AddressValidator({ addNotification }: { addNotification: any }) {
+  const [address, setAddress] = useState('');
+  const [result, setResult] = useState<{ valid: boolean; type?: string; message?: string } | null>(null);
 
-        {activeTab === 'transaction' && (
-          <div className="space-y-6">
-            <h3 className="text-lg font-medium text-gray-900">Transaction Tools</h3>
-            <p className="text-sm text-gray-500">
-              Analyze and decode Neo transactions.
-            </p>
-            
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Transaction Hash or Raw Data
-                </label>
-                <textarea
-                  value={input}
-                  onChange={(e) => setInput(e.target.value)}
-                  rows={4}
-                  className="block w-full border-gray-300 rounded-md shadow-sm focus:ring-green-500 focus:border-green-500"
-                  placeholder="Enter transaction hash or raw transaction data..."
-                />
-              </div>
-              
-              <div className="flex flex-wrap gap-2">
-                <button className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700">
-                  Decode Transaction
-                </button>
-                <button className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 bg-white hover:bg-gray-50">
-                  Calculate Fee
-                </button>
-                <button className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 bg-white hover:bg-gray-50">
-                  Verify Signature
-                </button>
-              </div>
-              
-              <div className="mt-6 p-4 bg-gray-50 rounded-md">
-                <h4 className="text-sm font-medium text-gray-900 mb-2">Transaction Details</h4>
-                <div className="space-y-2 text-sm">
-                  <div><span className="font-medium">Hash:</span> <span className="font-mono">0xabcd...1234</span></div>
-                  <div><span className="font-medium">Block:</span> 1,234,567</div>
-                  <div><span className="font-medium">Size:</span> 250 bytes</div>
-                  <div><span className="font-medium">Network Fee:</span> 0.001 GAS</div>
-                  <div><span className="font-medium">System Fee:</span> 0.005 GAS</div>
-                </div>
-              </div>
-            </div>
+  const handleValidate = async () => {
+    if (!address.trim()) return;
+
+    try {
+      const validation = await invoke('validate_address', {
+        address: address.trim(),
+      });
+      setResult(validation as any);
+    } catch (error) {
+      setResult({
+        valid: false,
+        message: 'Validation failed',
+      });
+    }
+  };
+
+  return (
+    <div className="space-y-4">
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-2">Neo Address</label>
+        <input
+          type="text"
+          value={address}
+          onChange={(e) => setAddress(e.target.value)}
+          placeholder="Enter Neo N3 address..."
+          className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-green-500 focus:border-green-500"
+        />
+      </div>
+
+      <button
+        onClick={handleValidate}
+        className="w-full bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700"
+      >
+        Validate Address
+      </button>
+
+      {result && (
+        <div className={`p-4 rounded-md ${result.valid ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'}`}>
+          <div className="flex items-center space-x-2">
+            {result.valid ? (
+              <CheckCircleIcon className="h-5 w-5 text-green-600" />
+            ) : (
+              <ExclamationTriangleIcon className="h-5 w-5 text-red-600" />
+            )}
+            <span className={`font-medium ${result.valid ? 'text-green-800' : 'text-red-800'}`}>
+              {result.valid ? 'Valid Address' : 'Invalid Address'}
+            </span>
           </div>
-        )}
-      </motion.div>
+          {result.type && (
+            <p className="mt-1 text-sm text-gray-600">Type: {result.type}</p>
+          )}
+          {result.message && (
+            <p className="mt-1 text-sm text-gray-600">{result.message}</p>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function KeyGenerator({ addNotification }: { addNotification: any }) {
+  const [keyPair, setKeyPair] = useState<{ privateKey: string; publicKey: string; address: string } | null>(null);
+  const [generating, setGenerating] = useState(false);
+
+  const generateKeyPair = async () => {
+    setGenerating(true);
+    try {
+      const result = await invoke('generate_key_pair');
+      setKeyPair(result as any);
+    } catch (error) {
+      addNotification({
+        type: 'error',
+        title: 'Generation Failed',
+        message: 'Failed to generate key pair',
+      });
+    } finally {
+      setGenerating(false);
+    }
+  };
+
+  const copyToClipboard = (text: string, label: string) => {
+    navigator.clipboard.writeText(text);
+    addNotification({
+      type: 'success',
+      title: 'Copied',
+      message: `${label} copied to clipboard`,
+    });
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="bg-yellow-50 border border-yellow-200 rounded-md p-4">
+        <div className="flex items-center space-x-2">
+          <ExclamationTriangleIcon className="h-5 w-5 text-yellow-600" />
+          <span className="font-medium text-yellow-800">Security Warning</span>
+        </div>
+        <p className="mt-1 text-sm text-yellow-700">
+          Never share your private key. Store it securely and use it only in trusted environments.
+        </p>
+      </div>
+
+      <button
+        onClick={generateKeyPair}
+        disabled={generating}
+        className="w-full bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 disabled:opacity-50"
+      >
+        {generating ? 'Generating...' : 'Generate New Key Pair'}
+      </button>
+
+      {keyPair && (
+        <div className="space-y-4">
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <label className="block text-sm font-medium text-gray-700">Private Key</label>
+              <button
+                onClick={() => copyToClipboard(keyPair.privateKey, 'Private key')}
+                className="text-sm text-green-600 hover:text-green-500"
+              >
+                Copy
+              </button>
+            </div>
+            <input
+              type="text"
+              value={keyPair.privateKey}
+              readOnly
+              className="w-full border border-gray-300 rounded-md px-3 py-2 bg-gray-50 font-mono text-sm"
+            />
+          </div>
+
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <label className="block text-sm font-medium text-gray-700">Public Key</label>
+              <button
+                onClick={() => copyToClipboard(keyPair.publicKey, 'Public key')}
+                className="text-sm text-green-600 hover:text-green-500"
+              >
+                Copy
+              </button>
+            </div>
+            <input
+              type="text"
+              value={keyPair.publicKey}
+              readOnly
+              className="w-full border border-gray-300 rounded-md px-3 py-2 bg-gray-50 font-mono text-sm"
+            />
+          </div>
+
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <label className="block text-sm font-medium text-gray-700">Address</label>
+              <button
+                onClick={() => copyToClipboard(keyPair.address, 'Address')}
+                className="text-sm text-green-600 hover:text-green-500"
+              >
+                Copy
+              </button>
+            </div>
+            <input
+              type="text"
+              value={keyPair.address}
+              readOnly
+              className="w-full border border-gray-300 rounded-md px-3 py-2 bg-gray-50 font-mono text-sm"
+            />
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Placeholder components for other tools
+function ScriptBuilder({ addNotification }: { addNotification: any }) {
+  return (
+    <div className="text-center py-8">
+      <CommandLineIcon className="mx-auto h-12 w-12 text-gray-400" />
+      <h3 className="mt-2 text-sm font-medium text-gray-900">Script Builder</h3>
+      <p className="mt-1 text-sm text-gray-500">
+        Advanced script building interface coming soon
+      </p>
+    </div>
+  );
+}
+
+function OpCodeReference({ addNotification }: { addNotification: any }) {
+  return (
+    <div className="text-center py-8">
+      <DocumentTextIcon className="mx-auto h-12 w-12 text-gray-400" />
+      <h3 className="mt-2 text-sm font-medium text-gray-900">OpCode Reference</h3>
+      <p className="mt-1 text-sm text-gray-500">
+        Neo VM OpCode documentation and examples
+      </p>
+    </div>
+  );
+}
+
+function ContractInspector({ addNotification }: { addNotification: any }) {
+  return (
+    <div className="text-center py-8">
+      <CubeIcon className="mx-auto h-12 w-12 text-gray-400" />
+      <h3 className="mt-2 text-sm font-medium text-gray-900">Contract Inspector</h3>
+      <p className="mt-1 text-sm text-gray-500">
+        Smart contract inspection tools
+      </p>
+    </div>
+  );
+}
+
+function ABIDecoder({ addNotification }: { addNotification: any }) {
+  return (
+    <div className="text-center py-8">
+      <DocumentTextIcon className="mx-auto h-12 w-12 text-gray-400" />
+      <h3 className="mt-2 text-sm font-medium text-gray-900">ABI Decoder</h3>
+      <p className="mt-1 text-sm text-gray-500">
+        Contract ABI decoding utilities
+      </p>
+    </div>
+  );
+}
+
+function TransactionBuilder({ addNotification }: { addNotification: any }) {
+  return (
+    <div className="text-center py-8">
+      <WrenchScrewdriverIcon className="mx-auto h-12 w-12 text-gray-400" />
+      <h3 className="mt-2 text-sm font-medium text-gray-900">Transaction Builder</h3>
+      <p className="mt-1 text-sm text-gray-500">
+        Custom transaction building interface
+      </p>
+    </div>
+  );
+}
+
+function TransactionDecoder({ addNotification }: { addNotification: any }) {
+  return (
+    <div className="text-center py-8">
+      <DocumentTextIcon className="mx-auto h-12 w-12 text-gray-400" />
+      <h3 className="mt-2 text-sm font-medium text-gray-900">Transaction Decoder</h3>
+      <p className="mt-1 text-sm text-gray-500">
+        Transaction analysis and decoding
+      </p>
+    </div>
+  );
+}
+
+function FeeCalculator({ addNotification }: { addNotification: any }) {
+  return (
+    <div className="text-center py-8">
+      <CalculatorIcon className="mx-auto h-12 w-12 text-gray-400" />
+      <h3 className="mt-2 text-sm font-medium text-gray-900">Fee Calculator</h3>
+      <p className="mt-1 text-sm text-gray-500">
+        Transaction fee estimation tools
+      </p>
+    </div>
+  );
+}
+
+function HashCalculator({ addNotification }: { addNotification: any }) {
+  return (
+    <div className="text-center py-8">
+      <ShieldCheckIcon className="mx-auto h-12 w-12 text-gray-400" />
+      <h3 className="mt-2 text-sm font-medium text-gray-900">Hash Calculator</h3>
+      <p className="mt-1 text-sm text-gray-500">
+        Cryptographic hash function utilities
+      </p>
+    </div>
+  );
+}
+
+function SignatureVerifier({ addNotification }: { addNotification: any }) {
+  return (
+    <div className="text-center py-8">
+      <CheckCircleIcon className="mx-auto h-12 w-12 text-gray-400" />
+      <h3 className="mt-2 text-sm font-medium text-gray-900">Signature Verifier</h3>
+      <p className="mt-1 text-sm text-gray-500">
+        Digital signature verification tools
+      </p>
+    </div>
+  );
+}
+
+function RPCClient({ addNotification }: { addNotification: any }) {
+  return (
+    <div className="text-center py-8">
+      <LinkIcon className="mx-auto h-12 w-12 text-gray-400" />
+      <h3 className="mt-2 text-sm font-medium text-gray-900">RPC Client</h3>
+      <p className="mt-1 text-sm text-gray-500">
+        Neo RPC endpoint testing interface
+      </p>
+    </div>
+  );
+}
+
+function BlockExplorer({ addNotification }: { addNotification: any }) {
+  return (
+    <div className="text-center py-8">
+      <CubeIcon className="mx-auto h-12 w-12 text-gray-400" />
+      <h3 className="mt-2 text-sm font-medium text-gray-900">Block Explorer</h3>
+      <p className="mt-1 text-sm text-gray-500">
+        Blockchain exploration interface
+      </p>
     </div>
   );
 } 

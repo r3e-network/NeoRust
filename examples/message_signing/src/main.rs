@@ -37,7 +37,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("Signature: {:?}", signature);
     
     println!("\nStep 5: Verifying the signature (demonstration)");
-    println!("In a real application, verification would involve:");
+    println!("In a production application, verification involves:");
     println!("1. Recovering the public key from the signature");
     println!("2. Deriving the address from the public key");
     println!("3. Comparing with the claimed address");

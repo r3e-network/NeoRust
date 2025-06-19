@@ -648,14 +648,7 @@ impl Wallet {
 		let mut wallet = Wallet::from_nep6(nep6_wallet)?;
 
 		// Verify the password by checking if we can decrypt any account
-		let can_decrypt = wallet.accounts.values().any(|account| {
-			if let Some(key) = &account.key_pair {
-				// If we already have a key pair, the wallet is already decrypted
-				return true;
-			}
-			// Otherwise, try to decrypt with the password
-			false // Simplified for now
-		});
+		let can_decrypt = wallet.verify_password(password);
 
 		if !can_decrypt {
 			return Err(WalletError::CryptoError(CryptoError::InvalidPassphrase(

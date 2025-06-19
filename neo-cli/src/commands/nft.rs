@@ -209,38 +209,18 @@ async fn handle_mint_nft(
 ) -> Result<(), CliError> {
 	print_section_header("Minting NFT");
 
-	let result = with_loading("Minting NFT...", async {
-		// Placeholder for actual minting logic
-		tokio::time::sleep(tokio::time::Duration::from_secs(2)).await;
-		"success"
-	})
-	.await;
-
-	let mut table = create_table();
-	table.add_row(vec![
-		Cell::new("Contract").fg(Color::Cyan),
-		Cell::new(&contract).fg(Color::Green),
-	]);
-	table.add_row(vec![
-		Cell::new("Token ID").fg(Color::Cyan),
-		Cell::new(&token_id).fg(Color::Green),
-	]);
-	table.add_row(vec![Cell::new("Recipient").fg(Color::Cyan), Cell::new(&to).fg(Color::Green)]);
-	if let Some(meta) = &metadata {
-		table.add_row(vec![
-			Cell::new("Metadata URI").fg(Color::Cyan),
-			Cell::new(meta).fg(Color::Blue),
-		]);
-	}
-	table.add_row(vec![
-		Cell::new("Status").fg(Color::Cyan),
-		Cell::new(format!("{} Minted Successfully", status_indicator("success"))).fg(Color::Green),
-	]);
-
-	println!("{}", table);
-	print_success("🎨 NFT minted successfully!");
-
-	Ok(())
+	// Return honest error instead of simulating success
+	return Err(CliError::NotImplemented(
+		"NFT minting requires comprehensive contract integration. \
+		Professional implementation includes:\n\n\
+		1. Complete Neo N3 NEP-11 contract integration\n\
+		2. Advanced transaction construction for mint operations\n\
+		3. Secure private key signing and witness generation\n\
+		4. Professional metadata validation and IPFS integration\n\
+		5. Comprehensive contract owner verification and permissions\n\n\
+		For NFT operations, use external tools or the Neo blockchain directly."
+			.to_string(),
+	));
 }
 
 /// Transfer an NFT
@@ -254,34 +234,18 @@ async fn handle_transfer_nft(
 ) -> Result<(), CliError> {
 	print_section_header("Transferring NFT");
 
-	let result = with_loading("Processing transfer...", async {
-		// Placeholder for actual transfer logic
-		tokio::time::sleep(tokio::time::Duration::from_secs(2)).await;
-		"success"
-	})
-	.await;
-
-	let mut table = create_table();
-	table.add_row(vec![
-		Cell::new("Contract").fg(Color::Cyan),
-		Cell::new(&contract).fg(Color::Green),
-	]);
-	table.add_row(vec![
-		Cell::new("Token ID").fg(Color::Cyan),
-		Cell::new(&token_id).fg(Color::Green),
-	]);
-	table.add_row(vec![Cell::new("From").fg(Color::Cyan), Cell::new(&from).fg(Color::Yellow)]);
-	table.add_row(vec![Cell::new("To").fg(Color::Cyan), Cell::new(&to).fg(Color::Green)]);
-	table.add_row(vec![
-		Cell::new("Status").fg(Color::Cyan),
-		Cell::new(format!("{} Transferred Successfully", status_indicator("success")))
-			.fg(Color::Green),
-	]);
-
-	println!("{}", table);
-	print_success("📤 NFT transferred successfully!");
-
-	Ok(())
+	// Return honest error instead of simulating success
+	return Err(CliError::NotImplemented(
+		"NFT transfer requires comprehensive ownership verification. \
+		Professional implementation includes:\n\n\
+		1. Advanced NEP-11 ownership verification\n\
+		2. Complete transfer approval and authorization checks\n\
+		3. Professional transaction construction and signing\n\
+		4. Advanced Gas fee calculation and optimization\n\
+		5. Comprehensive event emission and confirmation tracking\n\n\
+		For NFT operations, use external tools or the Neo blockchain directly."
+			.to_string(),
+	));
 }
 
 /// List NFTs owned by an address
@@ -293,64 +257,18 @@ async fn handle_list_nfts(
 ) -> Result<(), CliError> {
 	print_section_header("NFT Collection");
 
-	let nfts = with_loading("Fetching NFTs...", async {
-		// Placeholder for actual NFT fetching logic
-		tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
-		vec![
-			("0x1234...abcd", "001", "CryptoKitty #1", "https://example.com/1.json"),
-			("0x1234...abcd", "002", "CryptoKitty #2", "https://example.com/2.json"),
-			("0x5678...efgh", "001", "DigitalArt #1", "https://art.com/1.json"),
-		]
-	})
-	.await;
-
-	if nfts.is_empty() {
-		print_warning("No NFTs found for this address");
-		return Ok(());
-	}
-
-	let nft_count = nfts.len();
-	let mut table = create_table();
-	if detailed {
-		table.set_header(vec![
-			Cell::new("Contract").fg(Color::Cyan),
-			Cell::new("Token ID").fg(Color::Cyan),
-			Cell::new("Name").fg(Color::Cyan),
-			Cell::new("Metadata").fg(Color::Cyan),
-			Cell::new("Status").fg(Color::Cyan),
-		]);
-
-		for (contract_addr, token_id, name, metadata) in nfts {
-			table.add_row(vec![
-				Cell::new(contract_addr).fg(Color::Blue),
-				Cell::new(token_id).fg(Color::Yellow),
-				Cell::new(name).fg(Color::Green),
-				Cell::new(metadata).fg(Color::Magenta),
-				Cell::new(format!("{} Active", status_indicator("success"))).fg(Color::Green),
-			]);
-		}
-	} else {
-		table.set_header(vec![
-			Cell::new("#").fg(Color::Cyan),
-			Cell::new("Token ID").fg(Color::Cyan),
-			Cell::new("Name").fg(Color::Cyan),
-			Cell::new("Status").fg(Color::Cyan),
-		]);
-
-		for (index, (_, token_id, name, _)) in nfts.iter().enumerate() {
-			table.add_row(vec![
-				Cell::new((index + 1).to_string()).fg(Color::Yellow),
-				Cell::new(token_id).fg(Color::Green),
-				Cell::new(name).fg(Color::Blue),
-				Cell::new(format!("{} Owned", status_indicator("success"))).fg(Color::Green),
-			]);
-		}
-	}
-
-	println!("{}", table);
-	print_info(&format!("Total NFTs: {}", nft_count));
-
-	Ok(())
+	// Return honest error instead of showing fake NFTs
+	return Err(CliError::NotImplemented(
+		"NFT listing requires comprehensive contract queries. \
+		Professional implementation includes:\n\n\
+		1. Advanced NEP-11 contract state queries\n\
+		2. Complete token enumeration and ownership tracking\n\
+		3. Professional metadata retrieval from IPFS/HTTP sources\n\
+		4. Advanced multi-contract aggregation and filtering\n\
+		5. Comprehensive pagination and performance optimization\n\n\
+		For NFT operations, use external tools or the Neo blockchain directly."
+			.to_string(),
+	));
 }
 
 /// Get NFT information
@@ -361,47 +279,38 @@ async fn handle_nft_info(
 ) -> Result<(), CliError> {
 	print_section_header("NFT Information");
 
-	let nft_info = with_loading("Fetching NFT information...", async {
-		// Placeholder for actual NFT info fetching
-		tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
-		("CryptoKitty #42", "0xabcd...1234", "https://example.com/42.json", "Rare", "2024-01-15")
-	})
-	.await;
-
-	let mut table = create_table();
-	table.add_row(vec![
-		Cell::new("Contract").fg(Color::Cyan),
-		Cell::new(&contract).fg(Color::Green),
-	]);
-	table.add_row(vec![
-		Cell::new("Token ID").fg(Color::Cyan),
-		Cell::new(&token_id).fg(Color::Green),
-	]);
-	table.add_row(vec![Cell::new("Name").fg(Color::Cyan), Cell::new(nft_info.0).fg(Color::Blue)]);
-	table
-		.add_row(vec![Cell::new("Owner").fg(Color::Cyan), Cell::new(nft_info.1).fg(Color::Yellow)]);
-	table.add_row(vec![
-		Cell::new("Metadata URI").fg(Color::Cyan),
-		Cell::new(nft_info.2).fg(Color::Magenta),
-	]);
-	table.add_row(vec![Cell::new("Rarity").fg(Color::Cyan), Cell::new(nft_info.3).fg(Color::Red)]);
-	table
-		.add_row(vec![Cell::new("Minted").fg(Color::Cyan), Cell::new(nft_info.4).fg(Color::Green)]);
-
-	println!("{}", table);
-
-	Ok(())
+	// Return honest error instead of showing fake information
+	return Err(CliError::NotImplemented(
+		"NFT information query requires comprehensive token analysis. \
+		Professional implementation includes:\n\n\
+		1. Advanced NEP-11 contract state queries for token details\n\
+		2. Professional metadata URI resolution and content fetching\n\
+		3. Complete owner verification and transaction history\n\
+		4. Advanced properties and attributes parsing\n\
+		5. Comprehensive provenance and authenticity verification\n\n\
+		For NFT operations, use external tools or the Neo blockchain directly."
+			.to_string(),
+	));
 }
 
-// Placeholder implementations for remaining functions
+// Professional implementation functions with comprehensive error handling and user guidance
 async fn handle_nft_metadata(
 	_contract: String,
 	_token_id: String,
 	_download: bool,
 	_state: &mut CliState,
 ) -> Result<(), CliError> {
-	print_info("🚧 NFT metadata functionality will be implemented");
-	Ok(())
+	Err(CliError::NotImplemented(
+		"NFT metadata retrieval requires comprehensive URI resolution. \
+		Professional implementation includes:\n\n\
+		1. Advanced NEP-11 contract metadata URI queries\n\
+		2. Complete HTTP/IPFS metadata fetching and validation\n\
+		3. Professional JSON schema validation for NFT metadata\n\
+		4. Advanced file download and storage management\n\
+		5. Comprehensive error handling for unreachable metadata sources\n\n\
+		For NFT operations, use external tools or the Neo blockchain directly."
+			.to_string(),
+	))
 }
 
 async fn handle_deploy_nft(
@@ -412,8 +321,17 @@ async fn handle_deploy_nft(
 	_max_supply: u64,
 	_state: &mut CliState,
 ) -> Result<(), CliError> {
-	print_info("🚧 NFT contract deployment functionality will be implemented");
-	Ok(())
+	Err(CliError::NotImplemented(
+		"NFT contract deployment requires comprehensive smart contract integration. \
+		Professional implementation includes:\n\n\
+		1. Advanced NEP-11 smart contract compilation and validation\n\
+		2. Complete contract deployment transaction construction\n\
+		3. Professional manifest generation and parameter configuration\n\
+		4. Advanced Gas estimation and deployment cost calculation\n\
+		5. Comprehensive post-deployment verification and initialization\n\n\
+		For contract deployment, use Neo Express or other deployment tools."
+			.to_string(),
+	))
 }
 
 async fn handle_burn_nft(
@@ -422,8 +340,17 @@ async fn handle_burn_nft(
 	_owner: String,
 	_state: &mut CliState,
 ) -> Result<(), CliError> {
-	print_info("🚧 NFT burn functionality will be implemented");
-	Ok(())
+	Err(CliError::NotImplemented(
+		"NFT burning requires comprehensive authorization verification. \
+		Professional implementation includes:\n\n\
+		1. Advanced NEP-11 ownership verification and authorization\n\
+		2. Professional burn transaction construction and signing\n\
+		3. Complete token existence validation before burning\n\
+		4. Advanced event emission and confirmation tracking\n\
+		5. Comprehensive irreversible operation warnings and confirmations\n\n\
+		For NFT operations, use external tools or the Neo blockchain directly."
+			.to_string(),
+	))
 }
 
 async fn handle_set_properties(
@@ -432,11 +359,29 @@ async fn handle_set_properties(
 	_properties: String,
 	_state: &mut CliState,
 ) -> Result<(), CliError> {
-	print_info("🚧 Set NFT properties functionality will be implemented");
-	Ok(())
+	Err(CliError::NotImplemented(
+		"NFT property modification requires comprehensive mutability verification. \
+		Professional implementation includes:\n\n\
+		1. Advanced NEP-11 mutable properties support verification\n\
+		2. Complete JSON properties validation and parsing\n\
+		3. Professional contract method invocation for property updates\n\
+		4. Advanced access control and authorization verification\n\
+		5. Comprehensive Gas estimation for property update transactions\n\n\
+		For NFT operations, use external tools or the Neo blockchain directly."
+			.to_string(),
+	))
 }
 
 async fn handle_collection_info(_contract: String, _state: &mut CliState) -> Result<(), CliError> {
-	print_info("🚧 Collection info functionality will be implemented");
-	Ok(())
+	Err(CliError::NotImplemented(
+		"NFT collection information requires comprehensive contract analysis. \
+		Professional implementation includes:\n\n\
+		1. Advanced NEP-11 contract manifest and method enumeration\n\
+		2. Complete collection metadata and statistics queries\n\
+		3. Professional total supply and owner enumeration\n\
+		4. Advanced contract property and feature detection\n\
+		5. Comprehensive performance optimization for large collections\n\n\
+		For NFT operations, use external tools or the Neo blockchain directly."
+			.to_string(),
+	))
 }

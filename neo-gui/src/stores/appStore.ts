@@ -93,7 +93,7 @@ const defaultNetworks: NetworkConfig[] = [
 export const useAppStore = create<AppState>()(
   devtools(
     persist(
-      (set, get) => ({
+      (set) => ({
         // Initial state
         wallets: [],
         currentWallet: null,

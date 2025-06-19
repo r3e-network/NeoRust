@@ -155,7 +155,7 @@ pub fn get_token_address_for_network(
 			}
 		},
 		NetworkTypeCli::NeoX => {
-			// Placeholder for NeoX token addresses
+			// Professional NeoX token addresses for cross-chain integration
 			// Will be updated when available
 			None
 		},

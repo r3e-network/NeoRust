@@ -1,0 +1,32 @@
+[build]
+# Enable all warnings as errors for production builds
+rustflags = ["-D", "warnings"]
+
+[target.x86_64-unknown-linux-gnu]
+linker = "clang"
+rustflags = ["-C", "link-arg=-fuse-ld=lld"]
+
+[target.x86_64-pc-windows-msvc]
+rustflags = ["-C", "target-feature=+crt-static"]
+
+[target.aarch64-apple-darwin]
+rustflags = ["-C", "link-arg=-Wl,-rpath,@loader_path"]
+
+# Test configuration
+[env]
+RUST_TEST_THREADS = "1"  # For serial tests
+RUST_BACKTRACE = "1"     # Enable backtraces in tests
+RUST_LOG = "debug"       # Enable debug logging in tests
+
+# Benchmark configuration
+[profile.bench]
+debug = true
+lto = true
+codegen-units = 1
+panic = "abort"
+
+# Test profile optimizations
+[profile.test]
+opt-level = 1
+debug = true
+overflow-checks = true

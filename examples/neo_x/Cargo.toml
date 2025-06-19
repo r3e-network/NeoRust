@@ -1,8 +1,20 @@
 [package]
-name = "neo_x_example"
+name = "neo_x_examples"
 version = "0.1.0"
 edition = "2021"
+authors = ["R3E Network <jimmy@r3e.network>"]
+publish = false
 
 [dependencies]
-neo3 = { path = "../.." }
-tokio = { version = "1.0", features = ["full"] }
+neo3 = { path = "../..", package = "neo3", features = [] }
+tokio = { version = "1.32", features = ["full"] }
+primitive-types = "0.12"
+eyre = "0.6"
+
+[[example]]
+name = "neo_x_bridge"
+path = "examples/neo_x_bridge.rs"
+
+[[example]]
+name = "neo_x_evm"
+path = "examples/neo_x_evm.rs"

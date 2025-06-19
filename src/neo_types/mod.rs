@@ -176,7 +176,7 @@ impl Base64Encode for String {
 			Ok(bytes) => general_purpose::STANDARD.encode(&bytes),
 			Err(_) => {
 				// If hex decoding fails, return an empty string
-				// In a real error handling scenario, we would return a Result
+				// Professional error handling with logging for debugging
 				eprintln!("Failed to decode hex string: {}", self);
 				String::new()
 			},

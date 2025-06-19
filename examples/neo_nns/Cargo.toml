@@ -2,7 +2,7 @@
 name = "neo_nns_examples"
 version = "0.1.0"
 edition = "2021"
-authors = ["R3E Network <contact@r3e.network>"]
+authors = ["R3E Network <jimmy@r3e.network>"]
 publish = false
 
 

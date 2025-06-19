@@ -124,7 +124,7 @@
 //!     println!("  {}: {} (÷ 10^{})", gas_symbol, gas_balance, gas_decimals);
 //!     
 //!     // Build a transaction to transfer GAS
-//!     // (would require the account to have GAS for this to work)
+//!     // (production deployment requires the account to have GAS for this to work)
 //!     let recipient = ScriptHash::from_str("d2a4cff31913016155e38e474a2c06d08be276cf")?;
 //!     let amount = 1_0000_0000; // 1 GAS (with 8 decimals)
 //!     

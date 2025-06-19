@@ -80,20 +80,30 @@ use lazy_static::lazy_static;
 
 use crate::config::NeoConstants;
 pub use api_trait::*;
+pub use cache::{Cache, CacheConfig, CacheStats, RpcCache};
+pub use circuit_breaker::{
+	CircuitBreaker, CircuitBreakerConfig, CircuitBreakerStats, CircuitState,
+};
+pub use connection_pool::{ConnectionPool, PoolConfig, PoolStats};
 pub use errors::ProviderError;
 pub use ext::*;
 pub use mock_client::MockClient;
+pub use production_client::{ProductionClientConfig, ProductionClientStats, ProductionRpcClient};
 pub use rpc::*;
 #[allow(deprecated)]
 pub use test_provider::{MAINNET, TESTNET};
 pub use utils::*;
 
 mod api_trait;
+mod cache;
+mod circuit_breaker;
+mod connection_pool;
 /// Errors
 mod errors;
 mod ext;
 mod mock_blocks;
 mod mock_client;
+mod production_client;
 mod rpc;
 mod rx;
 /// Crate utilities and type aliases

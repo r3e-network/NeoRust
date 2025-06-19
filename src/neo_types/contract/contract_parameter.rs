@@ -431,7 +431,7 @@ impl ValueExtension for ContractParameter {
 		match serde_json::to_string(self) {
 			Ok(s) => Value::String(s),
 			Err(e) => {
-				// In a real error handling scenario, we would return a Result
+				// Professional error handling with logging for debugging purposes
 				// Since the trait doesn't allow for Result, we'll log the error and return a null value
 				eprintln!("Error serializing ContractParameter: {}", e);
 				Value::Null

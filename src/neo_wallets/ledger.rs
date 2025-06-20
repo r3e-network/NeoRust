@@ -13,7 +13,6 @@ use p256::NistP256;
 use primitive_types::{H160, H256};
 use sha2::Digest;
 use signature::hazmat::{PrehashSigner, PrehashVerifier};
-use yubihsm::ecdsa::Signature;
 
 /// Neo N3 APDU commands for Ledger devices.
 pub mod apdu {

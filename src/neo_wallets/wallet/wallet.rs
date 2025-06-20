@@ -291,7 +291,12 @@ impl Wallet {
 
 	pub fn encrypt_accounts(&mut self, password: &str) {
 		for account in self.accounts.values_mut() {
-			account.encrypt_private_key(password).expect("Failed to encrypt private key");
+			// Only encrypt accounts that have a key pair
+			if account.key_pair().is_some() {
+				if let Err(e) = account.encrypt_private_key(password) {
+					eprintln!("Warning: Failed to encrypt private key for account {}: {}", account.get_address(), e);
+				}
+			}
 		}
 	}
 
@@ -400,6 +405,19 @@ impl Wallet {
 	) -> Result<(), WalletError> {
 		if !self.verify_password(current_password) {
 			return Err(WalletError::AccountState("Invalid password".to_string()));
+		}
+
+		// First decrypt all accounts with the current password
+		for account in self.accounts.values_mut() {
+			if account.encrypted_private_key().is_some() && account.key_pair().is_none() {
+				if let Err(e) = account.decrypt_private_key(current_password) {
+					return Err(WalletError::DecryptionError(format!(
+						"Failed to decrypt account {}: {}",
+						account.get_address(),
+						e
+					)));
+				}
+			}
 		}
 
 		// Re-encrypt all accounts with the new password

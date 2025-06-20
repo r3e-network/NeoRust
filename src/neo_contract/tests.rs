@@ -12,8 +12,18 @@ mod tests {
 	use super::*;
 	use std::sync::Arc;
 
-	// Create a real RPC client for testing against testnet
+	// Create a test RPC client (uses mock in fast mode)
 	fn create_test_client() -> providers::RpcClient<providers::HttpProvider> {
+		#[cfg(test)]
+		{
+			// Skip network tests if environment variable is set
+			if std::env::var("NEORUST_SKIP_NETWORK_TESTS").is_ok() {
+				let provider = providers::HttpProvider::new("http://localhost:9999/")
+					.expect("Failed to create mock provider");
+				return providers::RpcClient::new(provider);
+			}
+		}
+		
 		let provider = providers::HttpProvider::new("https://testnet1.neo.org:443/")
 			.expect("Failed to create provider");
 		providers::RpcClient::new(provider)
@@ -103,6 +113,12 @@ mod tests {
 
 	#[tokio::test]
 	async fn test_contract_management_deploy() {
+		// Skip this test in fast mode
+		if std::env::var("NEORUST_SKIP_NETWORK_TESTS").is_ok() {
+			eprintln!("Skipping network test 'test_contract_management_deploy'");
+			return;
+		}
+		
 		// Create a real RPC client for testing
 		let client = create_test_client();
 
@@ -131,6 +147,12 @@ mod tests {
 
 	#[tokio::test]
 	async fn test_contract_management_update() {
+		// Skip this test in fast mode
+		if std::env::var("NEORUST_SKIP_NETWORK_TESTS").is_ok() {
+			eprintln!("Skipping network test 'test_contract_management_update'");
+			return;
+		}
+		
 		// Create a real RPC client for testing
 		let client = create_test_client();
 

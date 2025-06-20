@@ -9,7 +9,7 @@ import {
   TrophyIcon,
 } from '@heroicons/react/24/outline';
 import { useAppStore } from '../stores/appStore';
-import { invoke } from '@tauri-apps/api/tauri';
+import { invoke } from '@tauri-apps/api/core';
 
 interface Pool {
   id: string;

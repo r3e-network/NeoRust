@@ -3,7 +3,7 @@ import { useWalletStore } from '../walletStore';
 
 // Mock Tauri invoke function
 const mockInvoke = jest.fn();
-jest.mock('@tauri-apps/api/tauri', () => ({
+jest.mock('@tauri-apps/api/core', () => ({
   invoke: (...args: any[]) => mockInvoke(...args),
 }));
 

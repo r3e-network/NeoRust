@@ -361,4 +361,3 @@ fn display_security_practices() {
 	println!("      • Documentation: https://docs.x.neo.org");
 	println!("      • Block explorers for transaction tracking");
 }
-

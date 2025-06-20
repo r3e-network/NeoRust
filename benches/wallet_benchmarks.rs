@@ -3,7 +3,6 @@ use neo3::{
 	neo_protocol::{Account, AccountTrait},
 	neo_wallets::{Wallet, WalletBackup, WalletTrait},
 };
-use std::path::PathBuf;
 use tempfile::TempDir;
 
 fn benchmark_wallet_creation(c: &mut Criterion) {

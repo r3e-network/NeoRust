@@ -197,8 +197,8 @@ ring = { version = "0.17.12", features = [] }
 # ledger
 coins-ledger = { version = "0.12.0", default-features = false, optional = true }
 protobuf = { version = "3.7.2", optional = true }
-# yubi
-yubihsm = { version = "0.42", features = ["http", "usb"] }
+# yubi - conditional compilation for release builds
+yubihsm = { version = "0.42", features = ["http", "usb"], optional = true }
 block-padding = "0.3.3"
 async-stream = "0.3.5"
 
@@ -225,5 +225,6 @@ futures = []
 ledger = ["coins-ledger", "protobuf"]
 # aws = ["rusoto_core", "rusoto_kms"]  # DISABLED: Security vulnerabilities in rusoto dependencies
 default = []
-# Development feature for mock HSM (only for testing/development)
-mock-hsm = ["yubihsm/mockhsm"]
+# YubiHSM features - only for development/testing
+yubi = ["dep:yubihsm"]
+mock-hsm = ["dep:yubihsm", "yubihsm/mockhsm"]

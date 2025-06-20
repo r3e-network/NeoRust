@@ -1,7 +1,11 @@
 //! Helpers for creating wallets for YubiHSM2
+#[cfg(feature = "yubi")]
 use elliptic_curve::sec1::{FromEncodedPoint, ToEncodedPoint};
+#[cfg(feature = "yubi")]
 use p256::{NistP256, PublicKey};
+#[cfg(feature = "yubi")]
 use signature::Verifier;
+#[cfg(feature = "yubi")]
 use yubihsm::{
 	asymmetric::Algorithm::EcP256, ecdsa::Signer as YubiSigner, object, object::Label, Capability,
 	Client, Connector, Credentials, Domain,
@@ -14,6 +18,7 @@ use crate::{
 	neo_wallets::{WalletError, WalletSigner},
 };
 
+#[cfg(feature = "yubi")]
 impl WalletSigner<YubiSigner<NistP256>> {
 	/// Connects to a yubi key's ECDSA account at the provided id
 	pub fn connect(
@@ -107,6 +112,7 @@ impl WalletSigner<YubiSigner<NistP256>> {
 	// }
 }
 
+#[cfg(feature = "yubi")]
 impl From<YubiSigner<NistP256>> for WalletSigner<YubiSigner<NistP256>> {
 	fn from(signer: YubiSigner<NistP256>) -> Self {
 		// this should never fail for a valid YubiSigner
@@ -213,8 +219,11 @@ pub mod tests {
 		// Add tests that don't require actual hardware here
 
 		// Test that the WalletSigner type exists and has correct type parameters
-		use std::marker::PhantomData;
-		let _phantom: PhantomData<WalletSigner<YubiSigner<NistP256>>> = PhantomData;
+		#[cfg(feature = "yubi")]
+		{
+			use std::marker::PhantomData;
+			let _phantom: PhantomData<WalletSigner<YubiSigner<NistP256>>> = PhantomData;
+		}
 
 		// Test that required error types exist
 		let _error = WalletError::YubiHsmError("test".to_string());

@@ -33,12 +33,6 @@ export default function Wallet() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    if (currentWallet) {
-      loadTransactions();
-    }
-  }, [currentWallet, loadTransactions]);
-
   const loadTransactions = useCallback(async () => {
     if (!currentWallet) return;
     
@@ -59,6 +53,12 @@ export default function Wallet() {
       setLoading(false);
     }
   }, [currentWallet, addNotification]);
+
+  useEffect(() => {
+    if (currentWallet) {
+      loadTransactions();
+    }
+  }, [currentWallet, loadTransactions]);
 
   const handleCreateWallet = async (name: string, password: string) => {
     setLoading(true);

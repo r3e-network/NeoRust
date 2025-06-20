@@ -50,12 +50,12 @@ async fn test_complete_wallet_lifecycle() {
 
 	// Verify all accounts are recovered correctly
 	let original_addresses: Vec<String> =
-		wallet.accounts().iter().map(|a| a.get_address()).collect();
+		wallet.accounts().iter().map(neo3::neo_protocol::Account::get_address).collect();
 	let recovered_addresses: Vec<String> =
-		recovered_wallet.accounts().iter().map(|a| a.get_address()).collect();
+		recovered_wallet.accounts().iter().map(neo3::neo_protocol::Account::get_address).collect();
 
 	for addr in &original_addresses {
-		assert!(recovered_addresses.contains(addr), "Address {} should be recovered", addr);
+		assert!(recovered_addresses.contains(addr), "Address {addr} should be recovered");
 	}
 
 	// 6. Test password change
@@ -90,7 +90,10 @@ async fn test_wallet_security_edge_cases() {
 	let special_password = "!@#$%^&*()_+-=[]{}|;':\",./<>?`~";
 	let mut test_wallet3 = wallet.clone();
 	test_wallet3.encrypt_accounts(special_password);
-	assert!(test_wallet3.verify_password(special_password), "Special character password should work");
+	assert!(
+		test_wallet3.verify_password(special_password),
+		"Special character password should work"
+	);
 }
 
 #[tokio::test]
@@ -111,7 +114,7 @@ async fn test_large_wallet_performance() {
 	wallet.encrypt_accounts("performance_test_password");
 	let encryption_time = start.elapsed();
 
-	println!("Encrypted {} accounts in {:?}", account_count, encryption_time);
+	println!("Encrypted {account_count} accounts in {encryption_time:?}");
 	assert!(encryption_time.as_secs() < 15, "Encryption should complete within 15 seconds");
 
 	// Test backup performance
@@ -122,7 +125,7 @@ async fn test_large_wallet_performance() {
 	WalletBackup::backup(&wallet, backup_path.clone()).expect("Should backup wallet");
 	let backup_time = start.elapsed();
 
-	println!("Backed up {} accounts in {:?}", account_count, backup_time);
+	println!("Backed up {account_count} accounts in {backup_time:?}");
 	assert!(backup_time.as_secs() < 2, "Backup should complete within 2 seconds");
 
 	// Test recovery performance
@@ -130,7 +133,7 @@ async fn test_large_wallet_performance() {
 	let _recovered_wallet = WalletBackup::recover(backup_path).expect("Should recover wallet");
 	let recovery_time = start.elapsed();
 
-	println!("Recovered {} accounts in {:?}", account_count, recovery_time);
+	println!("Recovered {account_count} accounts in {recovery_time:?}");
 	assert!(recovery_time.as_secs() < 2, "Recovery should complete within 2 seconds");
 }
 

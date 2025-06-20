@@ -1,11 +1,7 @@
 #[cfg(test)]
 mod tests {
-	use crate::integration::utils::{
-		assert_output_contains, assert_output_matches, assert_success, script_hash_from_string,
-		CliTest,
-	};
+	use crate::integration::utils::{assert_output_contains, assert_success, CliTest};
 	use regex;
-	use std::process::Output;
 
 	#[test]
 	fn test_defi_pools() {

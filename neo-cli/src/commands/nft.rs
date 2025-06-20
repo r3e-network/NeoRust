@@ -2,13 +2,10 @@ use crate::{
 	commands::wallet::CliState,
 	errors::CliError,
 	utils_core::{
-		create_table, display_key_value, print_info, print_section_header, print_success,
-		print_warning, prompt_input, status_indicator, with_loading,
+		print_section_header,
 	},
 };
 use clap::{Args, Subcommand};
-use colored::*;
-use comfy_table::{Cell, Color};
 
 #[derive(Args, Debug)]
 pub struct NftArgs {
@@ -200,11 +197,11 @@ pub async fn handle_nft_command(args: NftArgs, state: &mut CliState) -> Result<(
 
 /// Mint a new NFT
 async fn handle_mint_nft(
-	contract: String,
-	to: String,
-	token_id: String,
-	metadata: Option<String>,
-	properties: Option<String>,
+	_contract: String,
+	_to: String,
+	_token_id: String,
+	_metadata: Option<String>,
+	_properties: Option<String>,
 	_state: &mut CliState,
 ) -> Result<(), CliError> {
 	print_section_header("Minting NFT");
@@ -225,10 +222,10 @@ async fn handle_mint_nft(
 
 /// Transfer an NFT
 async fn handle_transfer_nft(
-	contract: String,
-	token_id: String,
-	from: String,
-	to: String,
+	_contract: String,
+	_token_id: String,
+	_from: String,
+	_to: String,
 	_data: Option<String>,
 	_state: &mut CliState,
 ) -> Result<(), CliError> {
@@ -250,9 +247,9 @@ async fn handle_transfer_nft(
 
 /// List NFTs owned by an address
 async fn handle_list_nfts(
-	owner: String,
-	contract: Option<String>,
-	detailed: bool,
+	_owner: String,
+	_contract: Option<String>,
+	_detailed: bool,
 	_state: &mut CliState,
 ) -> Result<(), CliError> {
 	print_section_header("NFT Collection");
@@ -273,8 +270,8 @@ async fn handle_list_nfts(
 
 /// Get NFT information
 async fn handle_nft_info(
-	contract: String,
-	token_id: String,
+	_contract: String,
+	_token_id: String,
 	_state: &mut CliState,
 ) -> Result<(), CliError> {
 	print_section_header("NFT Information");

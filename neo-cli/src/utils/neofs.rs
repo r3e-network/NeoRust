@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 use crate::errors::CliError;
 use std::path::Path;
 
@@ -26,10 +27,10 @@ pub fn validate_container_id(container_id: &str) -> Result<(), CliError> {
 /// Validates a file path exists
 pub fn validate_file_path(path: &Path) -> Result<(), CliError> {
 	if !path.exists() {
-		return Err(CliError::FileSystem(format!("File not found: {}", path.display())));
+		return Err(CliError::FileSystem(format!("File not found: {path}", path = path.display())));
 	}
 	if !path.is_file() {
-		return Err(CliError::FileSystem(format!("Path is not a file: {}", path.display())));
+		return Err(CliError::FileSystem(format!("Path is not a file: {path}", path = path.display())));
 	}
 	Ok(())
 }
@@ -37,10 +38,10 @@ pub fn validate_file_path(path: &Path) -> Result<(), CliError> {
 /// Validates a directory path exists
 pub fn validate_directory_path(path: &Path) -> Result<(), CliError> {
 	if !path.exists() {
-		return Err(CliError::FileSystem(format!("Directory not found: {}", path.display())));
+		return Err(CliError::FileSystem(format!("Directory not found: {path}", path = path.display())));
 	}
 	if !path.is_dir() {
-		return Err(CliError::FileSystem(format!("Path is not a directory: {}", path.display())));
+		return Err(CliError::FileSystem(format!("Path is not a directory: {path}", path = path.display())));
 	}
 	Ok(())
 }
@@ -52,7 +53,7 @@ pub fn format_size(size: u64) -> String {
 	const GB: u64 = MB * 1024;
 
 	if size < KB {
-		format!("{} B", size)
+		format!("{size} B")
 	} else if size < MB {
 		format!("{:.2} KB", size as f64 / KB as f64)
 	} else if size < GB {
@@ -83,7 +84,7 @@ pub fn validate_endpoint(endpoint: &str) -> Result<(), CliError> {
 }
 
 /// Extracts storage node info from an endpoint
-pub fn get_node_info(endpoint: &str) -> Result<String, CliError> {
+pub fn get_node_info(_endpoint: &str) -> Result<String, CliError> {
 	// Professional NeoFS node information retrieval with comprehensive network queries
 	// This functionality requires:
 	// 1. NeoFS node API client implementation

@@ -1,6 +1,8 @@
-use neo3::prelude::*;
-use neo3::neo_clients::{HttpProvider, RpcClient, APITrait};
-use neo3::neo_types::{ContractParameter, ScriptHash, StackItem};
+use neo3::{
+	neo_clients::{APITrait, HttpProvider, RpcClient},
+	neo_types::{ContractParameter, ScriptHash, StackItem},
+	prelude::*,
+};
 use std::str::FromStr;
 
 /// This example demonstrates how to work with the Neo Name Service (NNS) on the Neo N3 blockchain.

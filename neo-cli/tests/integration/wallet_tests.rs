@@ -10,7 +10,7 @@ fn test_wallet_create() {
 	let wallet_path = cli.temp_dir.path().join("test-wallet.json").to_string_lossy().to_string();
 	let output = cli.run_with_input(
 		&["wallet", "create", "--path", &wallet_path],
-		&format!("{0}\n{0}\n", TEST_WALLET_PASSWORD),
+		&format!("{TEST_WALLET_PASSWORD}\n{TEST_WALLET_PASSWORD}\n"),
 	);
 
 	assert_success(&output);
@@ -28,14 +28,14 @@ fn test_wallet_open_and_close() {
 	let wallet_path = cli.temp_dir.path().join("test-wallet.json").to_string_lossy().to_string();
 	let create_output = cli.run_with_input(
 		&["wallet", "create", "--path", &wallet_path],
-		&format!("{0}\n{0}\n", TEST_WALLET_PASSWORD),
+		&format!("{TEST_WALLET_PASSWORD}\n{TEST_WALLET_PASSWORD}\n"),
 	);
 	assert_success(&create_output);
 
 	// Test open wallet
 	let open_output = cli.run_with_input(
 		&["wallet", "open", "--path", &wallet_path],
-		&format!("{}\n", TEST_WALLET_PASSWORD),
+		&format!("{TEST_WALLET_PASSWORD}\n"),
 	);
 	assert_success(&open_output);
 	assert_output_contains(&open_output, "Wallet opened successfully");
@@ -54,17 +54,17 @@ fn test_wallet_create_address() {
 	let wallet_path = cli.temp_dir.path().join("test-wallet.json").to_string_lossy().to_string();
 	cli.run_with_input(
 		&["wallet", "create", "--path", &wallet_path],
-		&format!("{0}\n{0}\n", TEST_WALLET_PASSWORD),
+		&format!("{TEST_WALLET_PASSWORD}\n{TEST_WALLET_PASSWORD}\n"),
 	);
 	cli.run_with_input(
 		&["wallet", "open", "--path", &wallet_path],
-		&format!("{}\n", TEST_WALLET_PASSWORD),
+		&format!("{TEST_WALLET_PASSWORD}\n"),
 	);
 
 	// Create a new address
 	let output = cli.run_with_input(
 		&["wallet", "create-address", "--count", "1"],
-		&format!("{}\n", TEST_WALLET_PASSWORD),
+		&format!("{TEST_WALLET_PASSWORD}\n"),
 	);
 
 	assert_success(&output);
@@ -79,11 +79,11 @@ fn test_wallet_list_address() {
 	let wallet_path = cli.temp_dir.path().join("test-wallet.json").to_string_lossy().to_string();
 	cli.run_with_input(
 		&["wallet", "create", "--path", &wallet_path],
-		&format!("{0}\n{0}\n", TEST_WALLET_PASSWORD),
+		&format!("{TEST_WALLET_PASSWORD}\n{TEST_WALLET_PASSWORD}\n"),
 	);
 	cli.run_with_input(
 		&["wallet", "open", "--path", &wallet_path],
-		&format!("{}\n", TEST_WALLET_PASSWORD),
+		&format!("{TEST_WALLET_PASSWORD}\n"),
 	);
 
 	// List addresses
@@ -102,17 +102,17 @@ fn test_wallet_balance() {
 	let wallet_path = cli.temp_dir.path().join("test-wallet.json").to_string_lossy().to_string();
 	cli.run_with_input(
 		&["wallet", "create", "--path", &wallet_path],
-		&format!("{0}\n{0}\n", TEST_WALLET_PASSWORD),
+		&format!("{TEST_WALLET_PASSWORD}\n{TEST_WALLET_PASSWORD}\n"),
 	);
 	cli.run_with_input(
 		&["wallet", "open", "--path", &wallet_path],
-		&format!("{}\n", TEST_WALLET_PASSWORD),
+		&format!("{TEST_WALLET_PASSWORD}\n"),
 	);
 
 	// Create an address
 	cli.run_with_input(
 		&["wallet", "create-address", "--count", "1"],
-		&format!("{}\n", TEST_WALLET_PASSWORD),
+		&format!("{TEST_WALLET_PASSWORD}\n"),
 	);
 
 	// Check balance (will be zero, but should run successfully)

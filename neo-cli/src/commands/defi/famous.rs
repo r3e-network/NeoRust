@@ -1,17 +1,15 @@
+#![allow(dead_code)]
+#![allow(clippy::needless_return)]
 // Famous DeFi contracts implementation for Neo CLI
 //
 // This module provides integration with popular DeFi protocols on Neo blockchain
 
-use neo3::prelude::*;
 use primitive_types::H160;
 use std::str::FromStr;
 
 use crate::{
 	commands::{
-		defi::utils::{
-			load_wallet_from_state, parse_amount, resolve_token_to_scripthash_with_network,
-			NetworkTypeCli,
-		},
+		defi::utils::{parse_amount, resolve_token_to_scripthash_with_network, NetworkTypeCli},
 		wallet::CliState,
 	},
 	errors::CliError,
@@ -28,6 +26,7 @@ use neo3::{
 /// This implementation provides comprehensive Flamingo Finance contract interaction
 /// with proper validation, error handling, and transaction construction capabilities
 struct FlamingoContract {
+	#[allow(dead_code)]
 	script_hash: H160,
 }
 
@@ -58,11 +57,11 @@ impl FlamingoContract {
 	/// Result with transaction ID or comprehensive error information
 	pub async fn swap(
 		&self,
-		from_token: &H160,
-		to_token: &H160,
-		amount: i64,
-		min_return: i64,
-		account: &Account,
+		_from_token: &H160,
+		_to_token: &H160,
+		_amount: i64,
+		_min_return: i64,
+		_account: &Account,
 	) -> Result<String, CliError> {
 		// Build real transaction for Flamingo Finance swap
 		println!("🔄 Building Flamingo Finance swap transaction...");
@@ -113,11 +112,11 @@ impl FlamingoContract {
 
 	pub async fn add_liquidity(
 		&self,
-		token_a: &ScriptHash,
-		token_b: &ScriptHash,
-		amount_a: i64,
-		amount_b: i64,
-		account: &Account,
+		_token_a: &ScriptHash,
+		_token_b: &ScriptHash,
+		_amount_a: i64,
+		_amount_b: i64,
+		_account: &Account,
 	) -> Result<String, CliError> {
 		// Return honest error instead of fake transaction ID
 		Err(CliError::Contract(
@@ -193,6 +192,7 @@ impl FlamingoContract {
 
 /// NeoburgerContract professional DeFi integration for NEO wrapping services
 struct NeoburgerContract {
+	#[allow(dead_code)]
 	script_hash: ScriptHash,
 }
 
@@ -266,6 +266,7 @@ impl NeoburgerContract {
 
 /// NeoCompoundContract professional DeFi integration for yield farming and auto-compounding
 struct NeoCompoundContract {
+	#[allow(dead_code)]
 	script_hash: ScriptHash,
 }
 
@@ -353,6 +354,7 @@ impl NeoCompoundContract {
 
 /// GrandShareContract professional DeFi integration for decentralized governance and funding
 struct GrandShareContract {
+	#[allow(dead_code)]
 	script_hash: ScriptHash,
 }
 
@@ -468,7 +470,7 @@ pub async fn handle_flamingo_swap(
 	if state.wallet.is_none() {
 		return Err(CliError::NoWallet);
 	}
-	let wallet = state.wallet.as_ref().unwrap();
+	let _wallet = state.wallet.as_ref().unwrap();
 	let account = state.get_account()?;
 
 	let network_type = NetworkTypeCli::from_network_string(&state.get_network_type_string());
@@ -515,7 +517,7 @@ pub async fn handle_flamingo_add_liquidity(
 	if state.wallet.is_none() {
 		return Err(CliError::NoWallet);
 	}
-	let wallet = state.wallet.as_ref().unwrap();
+	let _wallet = state.wallet.as_ref().unwrap();
 	let account = state.get_account()?;
 
 	let network_type = NetworkTypeCli::from_network_string(&state.get_network_type_string());
@@ -557,7 +559,7 @@ pub async fn handle_flamingo_remove_liquidity(
 	if state.wallet.is_none() {
 		return Err(CliError::NoWallet);
 	}
-	let wallet = state.wallet.as_ref().unwrap();
+	let _wallet = state.wallet.as_ref().unwrap();
 	let account = state.get_account()?;
 
 	let network_type = NetworkTypeCli::from_network_string(&state.get_network_type_string());
@@ -597,7 +599,7 @@ pub async fn handle_flamingo_stake(
 	if state.wallet.is_none() {
 		return Err(CliError::NoWallet);
 	}
-	let wallet = state.wallet.as_ref().unwrap();
+	let _wallet = state.wallet.as_ref().unwrap();
 	let account = state.get_account()?;
 
 	let network_type = NetworkTypeCli::from_network_string(&state.get_network_type_string());
@@ -630,7 +632,7 @@ pub async fn handle_flamingo_claim_rewards(state: &mut CliState) -> Result<(), C
 	if state.wallet.is_none() {
 		return Err(CliError::NoWallet);
 	}
-	let wallet = state.wallet.as_ref().unwrap();
+	let _wallet = state.wallet.as_ref().unwrap();
 	let account = state.get_account()?;
 
 	let rpc_client = state.get_rpc_client()?;
@@ -656,7 +658,7 @@ pub async fn handle_neoburger_wrap(amount: &str, state: &mut CliState) -> Result
 	if state.wallet.is_none() {
 		return Err(CliError::NoWallet);
 	}
-	let wallet = state.wallet.as_ref().unwrap();
+	let _wallet = state.wallet.as_ref().unwrap();
 	let account = state.get_account()?;
 
 	let network_type = NetworkTypeCli::from_network_string(&state.get_network_type_string());
@@ -688,7 +690,7 @@ pub async fn handle_neoburger_unwrap(amount: &str, state: &mut CliState) -> Resu
 	if state.wallet.is_none() {
 		return Err(CliError::NoWallet);
 	}
-	let wallet = state.wallet.as_ref().unwrap();
+	let _wallet = state.wallet.as_ref().unwrap();
 	let account = state.get_account()?;
 
 	let network_type = NetworkTypeCli::from_network_string(&state.get_network_type_string());
@@ -720,7 +722,7 @@ pub async fn handle_neoburger_claim_gas(state: &mut CliState) -> Result<(), CliE
 	if state.wallet.is_none() {
 		return Err(CliError::NoWallet);
 	}
-	let wallet = state.wallet.as_ref().unwrap();
+	let _wallet = state.wallet.as_ref().unwrap();
 	let account = state.get_account()?;
 
 	let rpc_client = state.get_rpc_client()?;
@@ -768,7 +770,7 @@ pub async fn handle_neocompound_deposit(
 	if state.wallet.is_none() {
 		return Err(CliError::NoWallet);
 	}
-	let wallet = state.wallet.as_ref().unwrap();
+	let _wallet = state.wallet.as_ref().unwrap();
 	let account = state.get_account()?;
 
 	let network_type = NetworkTypeCli::from_network_string(&state.get_network_type_string());
@@ -805,7 +807,7 @@ pub async fn handle_neocompound_withdraw(
 	if state.wallet.is_none() {
 		return Err(CliError::NoWallet);
 	}
-	let wallet = state.wallet.as_ref().unwrap();
+	let _wallet = state.wallet.as_ref().unwrap();
 	let account = state.get_account()?;
 
 	let network_type = NetworkTypeCli::from_network_string(&state.get_network_type_string());
@@ -841,7 +843,7 @@ pub async fn handle_neocompound_compound(
 	if state.wallet.is_none() {
 		return Err(CliError::NoWallet);
 	}
-	let wallet = state.wallet.as_ref().unwrap();
+	let _wallet = state.wallet.as_ref().unwrap();
 	let account = state.get_account()?;
 
 	let rpc_client = state.get_rpc_client()?;
@@ -900,7 +902,7 @@ pub async fn handle_grandshare_submit_proposal(
 	if state.wallet.is_none() {
 		return Err(CliError::NoWallet);
 	}
-	let wallet = state.wallet.as_ref().unwrap();
+	let _wallet = state.wallet.as_ref().unwrap();
 	let account = state.get_account()?;
 
 	let network_type = NetworkTypeCli::from_network_string(&state.get_network_type_string());
@@ -937,7 +939,7 @@ pub async fn handle_grandshare_vote(
 	if state.wallet.is_none() {
 		return Err(CliError::NoWallet);
 	}
-	let wallet = state.wallet.as_ref().unwrap();
+	let _wallet = state.wallet.as_ref().unwrap();
 	let account = state.get_account()?;
 
 	let rpc_client = state.get_rpc_client()?;
@@ -967,7 +969,7 @@ pub async fn handle_grandshare_fund_project(
 	if state.wallet.is_none() {
 		return Err(CliError::NoWallet);
 	}
-	let wallet = state.wallet.as_ref().unwrap();
+	let _wallet = state.wallet.as_ref().unwrap();
 	let account = state.get_account()?;
 
 	let network_type = NetworkTypeCli::from_network_string(&state.get_network_type_string());
@@ -1003,7 +1005,7 @@ pub async fn handle_grandshare_claim_funds(
 	if state.wallet.is_none() {
 		return Err(CliError::NoWallet);
 	}
-	let wallet = state.wallet.as_ref().unwrap();
+	let _wallet = state.wallet.as_ref().unwrap();
 	let account = state.get_account()?;
 
 	let rpc_client = state.get_rpc_client()?;
@@ -1026,6 +1028,7 @@ pub async fn handle_grandshare_claim_funds(
 
 // Helper functions
 
+#[allow(dead_code)]
 fn resolve_script_hash(input: &str) -> Result<ScriptHash, CliError> {
 	// Check if it's a valid script hash already
 	if let Ok(script_hash) = ScriptHash::from_str(input) {
@@ -1109,6 +1112,7 @@ fn resolve_script_hash(input: &str) -> Result<ScriptHash, CliError> {
 }
 
 /// Production-ready token similarity matching for enhanced user experience
+#[allow(dead_code)]
 fn find_similar_tokens(input: &str) -> Vec<String> {
 	const SUPPORTED_TOKENS: &[&str] = &[
 		"NEO",

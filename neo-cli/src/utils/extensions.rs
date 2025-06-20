@@ -1,5 +1,5 @@
 use neo3::{
-	neo_builder::Transaction, neo_clients::JsonRpcProvider, neo_protocol::RTransaction, prelude::*,
+	neo_builder::Transaction, neo_clients::JsonRpcProvider, neo_protocol::RTransaction,
 };
 
 /// Extension trait for Transaction to get human-readable transaction type name
@@ -14,7 +14,7 @@ where
 	fn type_name(&self) -> String {
 		match self.version {
 			0 => "Invocation".to_string(),
-			_ => format!("Unknown (Version {})", self.version),
+			_ => format!("Unknown (Version {version})", version = self.version),
 		}
 	}
 }
@@ -24,7 +24,7 @@ impl TransactionExtensions for RTransaction {
 	fn type_name(&self) -> String {
 		match self.version {
 			0 => "Invocation".to_string(),
-			_ => format!("Unknown (Version {})", self.version),
+			_ => format!("Unknown (Version {version})", version = self.version),
 		}
 	}
 }

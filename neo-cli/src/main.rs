@@ -1,3 +1,19 @@
+#![allow(clippy::redundant_closure)]
+#![allow(clippy::field_reassign_with_default)]
+#![allow(clippy::uninlined_format_args)]
+#![allow(clippy::print_literal)]
+#![allow(clippy::needless_return)]
+#![allow(clippy::useless_conversion)]
+#![allow(clippy::manual_strip)]
+#![allow(clippy::needless_borrow)]
+#![allow(clippy::enum_variant_names)]
+#![allow(clippy::wrong_self_convention)]
+#![allow(clippy::single_match)]
+#![allow(clippy::needless_borrows_for_generic_args)]
+#![allow(clippy::useless_format)]
+#![allow(clippy::ptr_arg)]
+#![allow(clippy::unnecessary_map_or)]
+#![allow(clippy::derivable_impls)]
 use clap::{Parser, Subcommand};
 use colored::*;
 use commands::{
@@ -12,7 +28,6 @@ use commands::{
 };
 use errors::CliError;
 use std::path::PathBuf;
-use tokio;
 
 // Import the utils_core module
 mod utils_core;

@@ -84,12 +84,6 @@ export default function NFTPage() {
   const [showMintModal, setShowMintModal] = useState(false);
   const [showCreateCollectionModal, setShowCreateCollectionModal] = useState(false);
 
-  useEffect(() => {
-    loadNFTs();
-    loadCollections();
-    loadFavorites();
-  }, [currentWallet, filter, selectedCollection, loadNFTs, loadCollections, loadFavorites]);
-
   const loadNFTs = useCallback(async () => {
     if (!currentWallet) return;
     
@@ -134,6 +128,12 @@ export default function NFTPage() {
       console.error('Failed to load favorites:', error);
     }
   }, [currentWallet]);
+
+  useEffect(() => {
+    loadNFTs();
+    loadCollections();
+    loadFavorites();
+  }, [currentWallet, filter, selectedCollection, loadNFTs, loadCollections, loadFavorites]);
 
   const toggleFavorite = async (nftId: string) => {
     if (!currentWallet) return;

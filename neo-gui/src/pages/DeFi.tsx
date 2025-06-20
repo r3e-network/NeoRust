@@ -45,6 +45,15 @@ export default function DeFi() {
   const [toAmount, setToAmount] = useState('');
   const [slippage, setSlippage] = useState(0.5);
 
+  const calculateSwapAmount = useCallback(async () => {
+    if (!fromToken || !toToken || !fromAmount) return;
+
+    // Mock calculation - in real implementation, this would call the DEX contract
+    const rate = toToken.price / fromToken.price;
+    const calculatedAmount = (parseFloat(fromAmount) * rate * (1 - slippage / 100)).toFixed(8);
+    setToAmount(calculatedAmount);
+  }, [fromToken, toToken, fromAmount, slippage]);
+
   useEffect(() => {
     loadTokens();
     loadPools();
@@ -117,15 +126,6 @@ export default function DeFi() {
       console.error('Failed to load pools:', error);
     }
   };
-
-  const calculateSwapAmount = useCallback(async () => {
-    if (!fromToken || !toToken || !fromAmount) return;
-
-    // Mock calculation - in real implementation, this would call the DEX contract
-    const rate = toToken.price / fromToken.price;
-    const calculatedAmount = (parseFloat(fromAmount) * rate * (1 - slippage / 100)).toFixed(8);
-    setToAmount(calculatedAmount);
-  }, [fromToken, toToken, fromAmount, slippage]);
 
   const handleSwap = async () => {
     if (!currentWallet || !fromToken || !toToken || !fromAmount) return;

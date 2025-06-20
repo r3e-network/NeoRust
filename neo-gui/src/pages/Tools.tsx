@@ -1,16 +1,13 @@
 import React, { useState } from 'react';
-import { motion } from 'framer-motion';
 import {
   WrenchScrewdriverIcon,
   CodeBracketIcon,
-  CurrencyDollarIcon,
   DocumentTextIcon,
   ArrowsRightLeftIcon,
   KeyIcon,
   ClipboardDocumentIcon,
   CheckCircleIcon,
   ExclamationTriangleIcon,
-  InformationCircleIcon,
   CubeIcon,
   LinkIcon,
   CalculatorIcon,
@@ -385,7 +382,14 @@ function AddressValidator({ addNotification }: { addNotification: any }) {
   const [result, setResult] = useState<{ valid: boolean; type?: string; message?: string } | null>(null);
 
   const handleValidate = async () => {
-    if (!address.trim()) return;
+    if (!address.trim()) {
+      addNotification({
+        type: 'error',
+        title: 'Validation Error',
+        message: 'Please enter an address to validate',
+      });
+      return;
+    }
 
     try {
       const validation = await invoke('validate_address', {
@@ -396,6 +400,11 @@ function AddressValidator({ addNotification }: { addNotification: any }) {
       setResult({
         valid: false,
         message: 'Validation failed',
+      });
+      addNotification({
+        type: 'error',
+        title: 'Validation Failed',
+        message: 'Unable to validate the address. Please check the format and try again.',
       });
     }
   };
@@ -555,7 +564,7 @@ function KeyGenerator({ addNotification }: { addNotification: any }) {
 }
 
 // Placeholder components for other tools
-function ScriptBuilder({ addNotification }: { addNotification: any }) {
+function ScriptBuilder() {
   return (
     <div className="text-center py-8">
       <CommandLineIcon className="mx-auto h-12 w-12 text-gray-400" />
@@ -567,7 +576,7 @@ function ScriptBuilder({ addNotification }: { addNotification: any }) {
   );
 }
 
-function OpCodeReference({ addNotification }: { addNotification: any }) {
+function OpCodeReference() {
   return (
     <div className="text-center py-8">
       <DocumentTextIcon className="mx-auto h-12 w-12 text-gray-400" />
@@ -579,7 +588,7 @@ function OpCodeReference({ addNotification }: { addNotification: any }) {
   );
 }
 
-function ContractInspector({ addNotification }: { addNotification: any }) {
+function ContractInspector() {
   return (
     <div className="text-center py-8">
       <CubeIcon className="mx-auto h-12 w-12 text-gray-400" />
@@ -591,7 +600,7 @@ function ContractInspector({ addNotification }: { addNotification: any }) {
   );
 }
 
-function ABIDecoder({ addNotification }: { addNotification: any }) {
+function ABIDecoder() {
   return (
     <div className="text-center py-8">
       <DocumentTextIcon className="mx-auto h-12 w-12 text-gray-400" />
@@ -603,7 +612,7 @@ function ABIDecoder({ addNotification }: { addNotification: any }) {
   );
 }
 
-function TransactionBuilder({ addNotification }: { addNotification: any }) {
+function TransactionBuilder() {
   return (
     <div className="text-center py-8">
       <WrenchScrewdriverIcon className="mx-auto h-12 w-12 text-gray-400" />
@@ -615,7 +624,7 @@ function TransactionBuilder({ addNotification }: { addNotification: any }) {
   );
 }
 
-function TransactionDecoder({ addNotification }: { addNotification: any }) {
+function TransactionDecoder() {
   return (
     <div className="text-center py-8">
       <DocumentTextIcon className="mx-auto h-12 w-12 text-gray-400" />
@@ -627,7 +636,7 @@ function TransactionDecoder({ addNotification }: { addNotification: any }) {
   );
 }
 
-function FeeCalculator({ addNotification }: { addNotification: any }) {
+function FeeCalculator() {
   return (
     <div className="text-center py-8">
       <CalculatorIcon className="mx-auto h-12 w-12 text-gray-400" />
@@ -639,7 +648,7 @@ function FeeCalculator({ addNotification }: { addNotification: any }) {
   );
 }
 
-function HashCalculator({ addNotification }: { addNotification: any }) {
+function HashCalculator() {
   return (
     <div className="text-center py-8">
       <ShieldCheckIcon className="mx-auto h-12 w-12 text-gray-400" />
@@ -651,7 +660,7 @@ function HashCalculator({ addNotification }: { addNotification: any }) {
   );
 }
 
-function SignatureVerifier({ addNotification }: { addNotification: any }) {
+function SignatureVerifier() {
   return (
     <div className="text-center py-8">
       <CheckCircleIcon className="mx-auto h-12 w-12 text-gray-400" />
@@ -663,7 +672,7 @@ function SignatureVerifier({ addNotification }: { addNotification: any }) {
   );
 }
 
-function RPCClient({ addNotification }: { addNotification: any }) {
+function RPCClient() {
   return (
     <div className="text-center py-8">
       <LinkIcon className="mx-auto h-12 w-12 text-gray-400" />
@@ -675,7 +684,7 @@ function RPCClient({ addNotification }: { addNotification: any }) {
   );
 }
 
-function BlockExplorer({ addNotification }: { addNotification: any }) {
+function BlockExplorer() {
   return (
     <div className="text-center py-8">
       <CubeIcon className="mx-auto h-12 w-12 text-gray-400" />

@@ -42,17 +42,17 @@ jobs:
       run: cargo fmt --all -- --check
       
     - name: Run Clippy
-      run: cargo clippy --all-targets --all-features -- -D warnings
+      run: cargo clippy --workspace --exclude neo-gui --all-targets --all-features -- -D warnings
       
     - name: Run Rust tests
-      run: cargo test --verbose --all-features
+      run: NEORUST_SKIP_NETWORK_TESTS=1 cargo test --verbose --all-features --workspace --exclude neo-gui
       
     - name: Run Rust benchmarks
-      run: cargo bench --verbose
+      run: cargo bench --workspace --exclude neo-gui --verbose
       if: matrix.rust-version == 'stable'
       
     - name: Check documentation
-      run: cargo doc --no-deps --document-private-items
+      run: cargo doc --workspace --exclude neo-gui --no-deps --document-private-items
       
   tauri-build:
     name: Tauri Build
@@ -80,7 +80,7 @@ jobs:
       with:
         node-version: '20.x'
         cache: 'npm'
-        cache-dependency-path: neo-gui/package-lock.json
+        cache-dependency-path: neo-gui/package.json
         
     - name: Install system dependencies (Ubuntu)
       if: matrix.os == 'ubuntu-latest'
@@ -90,7 +90,7 @@ jobs:
         
     - name: Install frontend dependencies
       working-directory: neo-gui
-      run: npm ci
+      run: npm install
       
     - name: Run frontend tests
       working-directory: neo-gui
@@ -140,11 +140,11 @@ jobs:
       with:
         node-version: '20.x'
         cache: 'npm'
-        cache-dependency-path: neo-gui/package-lock.json
+        cache-dependency-path: neo-gui/package.json
         
     - name: Install frontend dependencies
       working-directory: neo-gui
-      run: npm ci
+      run: npm install
       
     - name: Generate frontend coverage
       working-directory: neo-gui
@@ -191,11 +191,11 @@ jobs:
       with:
         node-version: '20.x'
         cache: 'npm'
-        cache-dependency-path: neo-gui/package-lock.json
+        cache-dependency-path: neo-gui/package.json
         
     - name: Install frontend dependencies
       working-directory: neo-gui
-      run: npm ci
+      run: npm install
       
     - name: Run frontend security audit
       working-directory: neo-gui

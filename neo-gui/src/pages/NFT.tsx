@@ -1,9 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import {
   PlusIcon,
   MagnifyingGlassIcon,
-  FunnelIcon,
   Squares2X2Icon as GridIcon,
   ListBulletIcon as ListIcon,
   HeartIcon,
@@ -71,7 +70,7 @@ type ViewMode = 'grid' | 'list';
 type FilterType = 'all' | 'owned' | 'created' | 'favorited' | 'listed';
 type SortType = 'recent' | 'price_low' | 'price_high' | 'rarity' | 'name';
 
-export default function NFT() {
+export default function NFTPage() {
   const { currentWallet, addNotification } = useAppStore();
   const [nfts, setNfts] = useState<NFT[]>([]);
   const [collections, setCollections] = useState<Collection[]>([]);
@@ -89,9 +88,9 @@ export default function NFT() {
     loadNFTs();
     loadCollections();
     loadFavorites();
-  }, [currentWallet, filter, selectedCollection]);
+  }, [currentWallet, filter, selectedCollection, loadNFTs, loadCollections, loadFavorites]);
 
-  const loadNFTs = async () => {
+  const loadNFTs = useCallback(async () => {
     if (!currentWallet) return;
     
     setLoading(true);
@@ -112,18 +111,18 @@ export default function NFT() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [currentWallet, filter, selectedCollection, addNotification]);
 
-  const loadCollections = async () => {
+  const loadCollections = useCallback(async () => {
     try {
       const result = await invoke('get_nft_collections');
       setCollections(result as Collection[]);
     } catch (error) {
       console.error('Failed to load collections:', error);
     }
-  };
+  }, []);
 
-  const loadFavorites = async () => {
+  const loadFavorites = useCallback(async () => {
     if (!currentWallet) return;
     
     try {
@@ -134,7 +133,7 @@ export default function NFT() {
     } catch (error) {
       console.error('Failed to load favorites:', error);
     }
-  };
+  }, [currentWallet]);
 
   const toggleFavorite = async (nftId: string) => {
     if (!currentWallet) return;
@@ -649,7 +648,6 @@ function MintNFTModal({ collections, onClose, onMint, loading }: any) {
     external_url: '',
     animation_url: '',
   });
-  const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string>('');
   const [uploading, setUploading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -677,7 +675,7 @@ function MintNFTModal({ collections, onClose, onMint, loading }: any) {
     }));
   };
 
-  const handleImageUpload = async (file: File) => {
+  const handleImageUpload = async (file: globalThis.File) => {
     if (!file) return;
 
     // Validate file type
@@ -692,13 +690,12 @@ function MintNFTModal({ collections, onClose, onMint, loading }: any) {
       return;
     }
 
-    setImageFile(file);
     setUploading(true);
     setErrors(prev => ({ ...prev, image: '' }));
 
     try {
       // Create preview
-      const reader = new FileReader();
+      const reader = new globalThis.FileReader();
       reader.onload = (e) => {
         setImagePreview(e.target?.result as string);
       };

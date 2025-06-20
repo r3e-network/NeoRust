@@ -91,7 +91,7 @@ export default function Settings() {
   };
 
   const resetSettings = async () => {
-    if (confirm('Are you sure you want to reset all settings to default values?')) {
+    if (globalThis.confirm('Are you sure you want to reset all settings to default values?')) {
       setLoading(true);
       try {
         await invoke('reset_settings');

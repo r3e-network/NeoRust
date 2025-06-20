@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, fireEvent, waitFor } from '../../__tests__/utils/test-utils';
+import { render, screen, fireEvent } from '../../__tests__/utils/test-utils';
 import NotificationCenter from '../NotificationCenter';
 import { useAppStore } from '../../stores/appStore';
 
@@ -7,6 +7,7 @@ import { useAppStore } from '../../stores/appStore';
 jest.mock('../../stores/appStore');
 const mockUseAppStore = useAppStore as jest.MockedFunction<typeof useAppStore>;
 
+/* global afterEach */
 describe('NotificationCenter Component', () => {
   const mockNotifications = [
     {

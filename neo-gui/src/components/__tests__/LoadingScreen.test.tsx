@@ -64,7 +64,7 @@ describe('LoadingScreen Component', () => {
     const { container } = render(<LoadingScreen />);
     
     // Check main container has fixed positioning and gradient background
-    const mainDiv = container.firstChild as HTMLElement;
+    const mainDiv = container.firstChild as globalThis.HTMLElement;
     expect(mainDiv).toHaveClass('fixed', 'inset-0', 'bg-gradient-to-br');
   });
 

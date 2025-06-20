@@ -67,7 +67,7 @@ export function MintNFTModal({
     background_color: '',
   });
   
-  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imageFile, setImageFile] = useState<globalThis.File | null>(null);
   const [imagePreview, setImagePreview] = useState<string>('');
   const [uploading, setUploading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -100,7 +100,7 @@ export function MintNFTModal({
   };
 
   // Handle image upload with validation and progress
-  const handleImageUpload = async (file: File) => {
+  const handleImageUpload = async (file: globalThis.File) => {
     if (!file) return;
 
     // Validate file type
@@ -129,17 +129,17 @@ export function MintNFTModal({
 
     try {
       // Create preview
-      const reader = new FileReader();
+      const reader = new globalThis.FileReader();
       reader.onload = (e) => {
         setImagePreview(e.target?.result as string);
       };
       reader.readAsDataURL(file);
 
       // Simulate upload progress
-      const progressInterval = setInterval(() => {
+      const progressInterval = globalThis.setInterval(() => {
         setUploadProgress(prev => {
           if (prev >= 90) {
-            clearInterval(progressInterval);
+            globalThis.clearInterval(progressInterval);
             return 90;
           }
           return prev + Math.random() * 30;
@@ -154,7 +154,7 @@ export function MintNFTModal({
         contentType: file.type,
       });
 
-      clearInterval(progressInterval);
+      globalThis.clearInterval(progressInterval);
       setUploadProgress(100);
       setFormData(prev => ({ ...prev, image: uploadResult as string }));
       
@@ -167,7 +167,7 @@ export function MintNFTModal({
       setImagePreview('');
     } finally {
       setUploading(false);
-      setTimeout(() => setUploadProgress(0), 1000);
+      globalThis.setTimeout(() => setUploadProgress(0), 1000);
     }
   };
 
@@ -234,7 +234,7 @@ export function MintNFTModal({
   // URL validation helper
   const isValidUrl = (url: string): boolean => {
     try {
-      new URL(url);
+      new globalThis.URL(url);
       return true;
     } catch {
       return false;

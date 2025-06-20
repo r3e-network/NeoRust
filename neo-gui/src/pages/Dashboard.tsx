@@ -127,7 +127,7 @@ export default function Dashboard() {
             Dashboard
           </h2>
           <p className="mt-1 text-sm text-gray-500">
-            Welcome back! Here's what's happening with your Neo wallet.
+            Welcome back! Here&apos;s what&apos;s happening with your Neo wallet.
           </p>
         </div>
         <div className="mt-4 flex md:mt-0 md:ml-4">

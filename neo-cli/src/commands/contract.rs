@@ -1,7 +1,6 @@
 use crate::{
-	commands::defi::create_h160_param,
-	errors::CliError,
-	print_error, print_info, print_success, prompt_password,
+	commands::defi::create_h160_param, errors::CliError, print_error, print_info, print_success,
+	prompt_password,
 };
 use base64::{engine::general_purpose, Engine as _};
 use clap::{Args, Subcommand};

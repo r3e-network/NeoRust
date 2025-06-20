@@ -26,7 +26,6 @@ use primitive_types::{H160, H256};
 use rand;
 use std::str::FromStr;
 
-
 // Local helper functions
 fn print_success(message: &str) {
 	println!("{}", message.green());
@@ -93,8 +92,7 @@ pub async fn get_token_info(contract: &str, state: &CliState) -> Result<(), CliE
 
 	// Resolve token to script hash
 	let token_hash =
-		resolve_token_to_scripthash_with_network(contract, rpc_client, network_type)
-			.await?;
+		resolve_token_to_scripthash_with_network(contract, rpc_client, network_type).await?;
 
 	// Get token name
 	match rpc_client
@@ -191,8 +189,7 @@ pub async fn get_token_balance(
 
 	// Resolve token to script hash
 	let token_hash =
-		resolve_token_to_scripthash_with_network(contract, rpc_client, network_type)
-			.await?;
+		resolve_token_to_scripthash_with_network(contract, rpc_client, network_type).await?;
 
 	// Convert address to script hash
 	let addr_script_hash = address_to_script_hash(target_address).map_err(|e| {
@@ -283,8 +280,7 @@ pub async fn transfer_token(
 
 	// Resolve token to script hash
 	let token_hash =
-		resolve_token_to_scripthash_with_network(contract, rpc_client, network_type)
-			.await?;
+		resolve_token_to_scripthash_with_network(contract, rpc_client, network_type).await?;
 
 	// Get token symbol for display
 	let token_symbol = match rpc_client

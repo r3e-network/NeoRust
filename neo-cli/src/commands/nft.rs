@@ -1,10 +1,4 @@
-use crate::{
-	commands::wallet::CliState,
-	errors::CliError,
-	utils_core::{
-		print_section_header,
-	},
-};
+use crate::{commands::wallet::CliState, errors::CliError, utils_core::print_section_header};
 use clap::{Args, Subcommand};
 
 #[derive(Args, Debug)]

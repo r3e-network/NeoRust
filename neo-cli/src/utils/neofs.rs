@@ -30,7 +30,10 @@ pub fn validate_file_path(path: &Path) -> Result<(), CliError> {
 		return Err(CliError::FileSystem(format!("File not found: {path}", path = path.display())));
 	}
 	if !path.is_file() {
-		return Err(CliError::FileSystem(format!("Path is not a file: {path}", path = path.display())));
+		return Err(CliError::FileSystem(format!(
+			"Path is not a file: {path}",
+			path = path.display()
+		)));
 	}
 	Ok(())
 }
@@ -38,10 +41,16 @@ pub fn validate_file_path(path: &Path) -> Result<(), CliError> {
 /// Validates a directory path exists
 pub fn validate_directory_path(path: &Path) -> Result<(), CliError> {
 	if !path.exists() {
-		return Err(CliError::FileSystem(format!("Directory not found: {path}", path = path.display())));
+		return Err(CliError::FileSystem(format!(
+			"Directory not found: {path}",
+			path = path.display()
+		)));
 	}
 	if !path.is_dir() {
-		return Err(CliError::FileSystem(format!("Path is not a directory: {path}", path = path.display())));
+		return Err(CliError::FileSystem(format!(
+			"Path is not a directory: {path}",
+			path = path.display()
+		)));
 	}
 	Ok(())
 }

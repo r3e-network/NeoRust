@@ -1,5 +1,7 @@
-use neo3::{neo_clients::APITrait, prelude::*};
-use primitive_types::H160;
+use neo3::prelude::*;
+use neo3::neo_clients::{HttpProvider, RpcClient, APITrait};
+use neo3::neo_types::{ContractParameter, ScriptHash, StackItem};
+use neo3::neo_builder::ScriptBuilder;
 use std::str::FromStr;
 
 /// This example demonstrates comprehensive NEP-17 token operations on the Neo N3 blockchain.
@@ -11,20 +13,20 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 	// 1. Connect to Neo N3 TestNet
 	println!("\n📡 1. Connecting to Neo N3 TestNet...");
-	let provider = providers::HttpProvider::new("https://testnet1.neo.org:443/")
+	let provider = HttpProvider::new("https://testnet1.neo.org:443/")
 		.map_err(|e| format!("Failed to create provider: {}", e))?;
-	let client = providers::RpcClient::new(provider);
+	let client = RpcClient::new(provider);
 	println!("   ✅ Connected successfully");
 
 	// 2. Native Token Contract Setup
 	println!("\n🪙 2. Setting up native token contracts...");
 
 	// GAS Token Contract (Neo's utility token)
-	let gas_hash = neo_types::ScriptHash::from_str("d2a4cff31913016155e38e474a2c06d08be276cf")?;
+	let gas_hash = ScriptHash::from_str("d2a4cff31913016155e38e474a2c06d08be276cf")?;
 	println!("   ⛽ GAS Token: 0x{}", hex::encode(gas_hash.0));
 
 	// NEO Token Contract (Neo's governance token)
-	let neo_hash = neo_types::ScriptHash::from_str("ef4073a0f2b305a38ec4050e4d3d28bc40ea63f5")?;
+	let neo_hash = ScriptHash::from_str("ef4073a0f2b305a38ec4050e4d3d28bc40ea63f5")?;
 	println!("   🔷 NEO Token: 0x{}", hex::encode(neo_hash.0));
 
 	// 3. Token Information Retrieval
@@ -63,7 +65,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 	for address in &sample_addresses {
 		println!("   📍 Address: {}", address);
 
-		if let Ok(script_hash) = neo_types::ScriptHash::from_address(address) {
+		if let Ok(script_hash) = ScriptHash::from_address(address) {
 			// Check GAS balance
 			match get_token_balance(&client, &gas_hash, &script_hash, 8).await {
 				Ok(balance) => println!("     ⛽ GAS Balance: {} GAS", balance),
@@ -85,21 +87,21 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 	let sender_address = "NbTiM6h8r99kpRtb428XcsUk1TzKed2gTc";
 	let recipient_address = "NiNmXL8FjEUEs1nfX9uHFBNaenxDHJtmuB";
 
-	let sender_hash = neo_types::ScriptHash::from_address(sender_address)?;
-	let recipient_hash = neo_types::ScriptHash::from_address(recipient_address)?;
+	let sender_hash = ScriptHash::from_address(sender_address)?;
+	let recipient_hash = ScriptHash::from_address(recipient_address)?;
 
 	// GAS transfer script (1 GAS)
 	let gas_transfer_amount = 100_000_000u64; // 1 GAS (8 decimals)
 
-	let mut gas_script_builder = neo_builder::ScriptBuilder::new();
+	let mut gas_script_builder = ScriptBuilder::new();
 	gas_script_builder.contract_call(
 		&gas_hash,
 		"transfer",
 		&[
-			neo_types::ContractParameter::h160(&sender_hash),
-			neo_types::ContractParameter::h160(&recipient_hash),
-			neo_types::ContractParameter::integer(gas_transfer_amount as i64),
-			neo_types::ContractParameter::any(None),
+			ContractParameter::h160(&sender_hash),
+			ContractParameter::h160(&recipient_hash),
+			ContractParameter::integer(gas_transfer_amount as i64),
+			ContractParameter::any(None),
 		],
 		None,
 	)?;
@@ -116,15 +118,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 	// NEO transfer script (1 NEO)
 	let neo_transfer_amount = 1u64; // 1 NEO (indivisible)
 
-	let mut neo_script_builder = neo_builder::ScriptBuilder::new();
+	let mut neo_script_builder = ScriptBuilder::new();
 	neo_script_builder.contract_call(
 		&neo_hash,
 		"transfer",
 		&[
-			neo_types::ContractParameter::h160(&sender_hash),
-			neo_types::ContractParameter::h160(&recipient_hash),
-			neo_types::ContractParameter::integer(neo_transfer_amount as i64),
-			neo_types::ContractParameter::any(None),
+			ContractParameter::h160(&sender_hash),
+			ContractParameter::h160(&recipient_hash),
+			ContractParameter::integer(neo_transfer_amount as i64),
+			ContractParameter::any(None),
 		],
 		None,
 	)?;
@@ -139,17 +141,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 	// 6. Multi-Token Transfer Example
 	println!("\n🔀 6. Multi-token transfer transaction...");
 
-	let mut multi_script_builder = neo_builder::ScriptBuilder::new();
+	let mut multi_script_builder = ScriptBuilder::new();
 
 	// Transfer GAS
 	multi_script_builder.contract_call(
 		&gas_hash,
 		"transfer",
 		&[
-			neo_types::ContractParameter::h160(&sender_hash),
-			neo_types::ContractParameter::h160(&recipient_hash),
-			neo_types::ContractParameter::integer(50_000_000), // 0.5 GAS
-			neo_types::ContractParameter::any(None),
+			ContractParameter::h160(&sender_hash),
+			ContractParameter::h160(&recipient_hash),
+			ContractParameter::integer(50_000_000), // 0.5 GAS
+			ContractParameter::any(None),
 		],
 		None,
 	)?;
@@ -159,10 +161,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 		&neo_hash,
 		"transfer",
 		&[
-			neo_types::ContractParameter::h160(&sender_hash),
-			neo_types::ContractParameter::h160(&recipient_hash),
-			neo_types::ContractParameter::integer(1), // 1 NEO
-			neo_types::ContractParameter::any(None),
+			ContractParameter::h160(&sender_hash),
+			ContractParameter::h160(&recipient_hash),
+			ContractParameter::integer(1), // 1 NEO
+			ContractParameter::any(None),
 		],
 		None,
 	)?;
@@ -236,65 +238,51 @@ struct TokenInfo {
 
 /// Get comprehensive token information
 async fn get_token_info(
-	client: &providers::RpcClient<providers::HttpProvider>,
-	token_hash: &neo_types::ScriptHash,
+	client: &RpcClient<HttpProvider>,
+	token_hash: &ScriptHash,
 	token_name: &str,
 ) -> Result<TokenInfo, Box<dyn std::error::Error>> {
 	// Query symbol
 	let symbol_result = client
-		.invoke_function(&H160::from(token_hash.0), "symbol".to_string(), vec![], None)
+		.invoke_function(token_hash, "symbol", None, None, None)
 		.await?;
+	let symbol = symbol_result.stack.first()
+		.and_then(|s| s.as_string())
+		.unwrap_or_else(|| token_name.to_string());
 
 	// Query decimals
 	let decimals_result = client
-		.invoke_function(&H160::from(token_hash.0), "decimals".to_string(), vec![], None)
+		.invoke_function(token_hash, "decimals", None, None, None)
 		.await?;
+	let decimals = decimals_result.stack.first()
+		.and_then(|s| s.as_int())
+		.unwrap_or(0) as u32;
 
 	// Query total supply
 	let supply_result = client
-		.invoke_function(&H160::from(token_hash.0), "totalSupply".to_string(), vec![], None)
+		.invoke_function(token_hash, "totalSupply", None, None, None)
 		.await?;
+	let total_supply = supply_result.stack.first()
+		.and_then(|s| s.as_int())
+		.unwrap_or(0) as u64;
+	let total_supply_formatted = total_supply as f64 / 10f64.powi(decimals as i32);
 
-	if let Some(stack) = result.stack {
-		if stack.len() >= 3 {
-			let symbol = stack[0].as_string().unwrap_or_else(|| token_name.to_string());
-			let decimals = stack[1].as_int().unwrap_or(0) as u32;
-			let total_supply = stack[2].as_int().unwrap_or(0) as u64;
-			let total_supply_formatted = total_supply as f64 / 10f64.powi(decimals as i32);
-
-			return Ok(TokenInfo { symbol, decimals, total_supply, total_supply_formatted });
-		}
-	}
-
-	Err("Failed to parse token info".into())
+	Ok(TokenInfo { symbol, decimals, total_supply, total_supply_formatted })
 }
 
 /// Get token balance for an account
 async fn get_token_balance(
-	client: &providers::RpcClient<providers::HttpProvider>,
-	token_hash: &neo_types::ScriptHash,
-	account_hash: &neo_types::ScriptHash,
+	client: &RpcClient<HttpProvider>,
+	token_hash: &ScriptHash,
+	account_hash: &ScriptHash,
 	decimals: u32,
 ) -> Result<f64, Box<dyn std::error::Error>> {
-	let mut builder = neo_builder::ScriptBuilder::new();
-	builder.contract_call(
-		token_hash,
-		"balanceOf",
-		&[neo_types::ContractParameter::h160(account_hash)],
-		None,
-	)?;
-
-	let script = builder.to_bytes();
-	let result = client.invoke_function(hex::encode(&script), vec![], vec![]).await?;
-
-	if let Some(stack) = result.stack {
-		if let Some(first) = stack.first() {
-			if let Some(balance) = first.as_int() {
-				let formatted_balance = balance as f64 / 10f64.powi(decimals as i32);
-				return Ok(formatted_balance);
-			}
-		}
+	// Use the NEP-17 balance query method
+	match client.get_nep17_balance(account_hash, token_hash).await {
+		Ok(balance) => {
+			let formatted_balance = balance as f64 / 10f64.powi(decimals as i32);
+			Ok(formatted_balance)
+		},
+		Err(_) => Ok(0.0),
 	}
-
-	Ok(0.0)
 }

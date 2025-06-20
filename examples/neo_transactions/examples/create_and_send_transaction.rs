@@ -1,4 +1,10 @@
 use neo3::prelude::*;
+use neo3::neo_clients::{HttpProvider, RpcClient, APITrait};
+use neo3::neo_builder::{ScriptBuilder, TransactionBuilder};
+use neo3::neo_crypto::KeyPair;
+use neo3::neo_protocol::{Account, AccountTrait};
+use neo3::neo_types::{ContractParameter, ScriptHash};
+use neo3::neo_wallets::WalletTrait;
 use std::str::FromStr;
 
 /// This example demonstrates comprehensive transaction creation, signing, and sending on the Neo N3 blockchain.
@@ -10,9 +16,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 	// Connect to Neo N3 TestNet
 	println!("\n1. Connecting to Neo N3 TestNet...");
-	let provider = providers::HttpProvider::new("https://testnet1.neo.org:443/")
+	let provider = HttpProvider::new("https://testnet1.neo.org:443/")
 		.map_err(|e| format!("Failed to create provider: {}", e))?;
-	let client = providers::RpcClient::new(provider);
+	let client = RpcClient::new(provider);
 
 	println!("   ✅ Connected to TestNet");
 
@@ -20,24 +26,26 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 	println!("\n2. Setting up accounts...");
 
 	// Create a sender account (for production deployments, load from secure storage)
-	let sender = neo_protocol::Account::create()?;
-	println!("   Sender address: {}", sender.address_or_scripthash().address());
+	// Create a sender account
+	let key_pair = KeyPair::new_random();
+	let sender = Account::from_key_pair(key_pair, None, None)?;
+	println!("   Sender address: {}", sender.get_address());
 	println!("   💡 For production deployments, load account from secure WIF or hardware wallet");
 
 	// Define recipient
 	let recipient_address = "NbTiM6h8r99kpRtb428XcsUk1TzKed2gTc";
-	let recipient = neo_types::ScriptHash::from_address(recipient_address)?;
+	let recipient = ScriptHash::from_address(recipient_address)?;
 	println!("   Recipient address: {}", recipient_address);
 
 	// 3. Get Token Contract References
 	println!("\n3. Setting up token contracts...");
 
 	// GAS token contract
-	let gas_hash = neo_types::ScriptHash::from_str("d2a4cff31913016155e38e474a2c06d08be276cf")?;
+	let gas_hash = ScriptHash::from_str("d2a4cff31913016155e38e474a2c06d08be276cf")?;
 	println!("   GAS token hash: 0x{}", hex::encode(gas_hash.0));
 
 	// NEO token contract
-	let neo_hash = neo_types::ScriptHash::from_str("ef4073a0f2b305a38ec4050e4d3d28bc40ea63f5")?;
+	let neo_hash = ScriptHash::from_str("ef4073a0f2b305a38ec4050e4d3d28bc40ea63f5")?;
 	println!("   NEO token hash: 0x{}", hex::encode(neo_hash.0));
 
 	// 4. Create a GAS Transfer Transaction
@@ -47,15 +55,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 	println!("   Transfer amount: {} GAS", gas_amount as f64 / 100_000_000.0);
 
 	// Build transaction script for GAS transfer
-	let mut script_builder = neo_builder::ScriptBuilder::new();
+	let mut script_builder = ScriptBuilder::new();
 	script_builder.contract_call(
 		&gas_hash,
 		"transfer",
 		&[
-			neo_types::ContractParameter::h160(&sender.get_script_hash()),
-			neo_types::ContractParameter::h160(&recipient),
-			neo_types::ContractParameter::integer(gas_amount as i64),
-			neo_types::ContractParameter::any(None),
+			ContractParameter::h160(&sender.get_script_hash()),
+			ContractParameter::h160(&recipient),
+			ContractParameter::integer(gas_amount as i64),
+			ContractParameter::any(None),
 		],
 		None,
 	)?;
@@ -64,7 +72,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 	println!("   ✅ Transaction script built ({} bytes)", script.len());
 
 	// Create transaction builder
-	let mut tx_builder = neo_builder::TransactionBuilder::with_client(&client);
+	let mut tx_builder = TransactionBuilder::new();
 
 	// Get current block count for validity
 	let current_block = client
@@ -86,15 +94,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 	println!("   Transfer amount: {} NEO", neo_amount);
 
 	// Build NEO transfer script
-	let mut neo_script_builder = neo_builder::ScriptBuilder::new();
+	let mut neo_script_builder = ScriptBuilder::new();
 	neo_script_builder.contract_call(
 		&neo_hash,
 		"transfer",
 		&[
-			neo_types::ContractParameter::h160(&sender.get_script_hash()),
-			neo_types::ContractParameter::h160(&recipient),
-			neo_types::ContractParameter::integer(neo_amount as i64),
-			neo_types::ContractParameter::any(None),
+			ContractParameter::h160(&sender.get_script_hash()),
+			ContractParameter::h160(&recipient),
+			ContractParameter::integer(neo_amount as i64),
+			ContractParameter::any(None),
 		],
 		None,
 	)?;
@@ -105,17 +113,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 	// 6. Multi-Call Transaction (Transfer both NEO and GAS)
 	println!("\n6. Creating multi-call transaction (NEO + GAS)...");
 
-	let mut multi_script_builder = neo_builder::ScriptBuilder::new();
+	let mut multi_script_builder = ScriptBuilder::new();
 
 	// Add NEO transfer
 	multi_script_builder.contract_call(
 		&neo_hash,
 		"transfer",
 		&[
-			neo_types::ContractParameter::h160(&sender.get_script_hash()),
-			neo_types::ContractParameter::h160(&recipient),
-			neo_types::ContractParameter::integer(1),
-			neo_types::ContractParameter::any(None),
+			ContractParameter::h160(&sender.get_script_hash()),
+			ContractParameter::h160(&recipient),
+			ContractParameter::integer(1),
+			ContractParameter::any(None),
 		],
 		None,
 	)?;
@@ -125,10 +133,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 		&gas_hash,
 		"transfer",
 		&[
-			neo_types::ContractParameter::h160(&sender.get_script_hash()),
-			neo_types::ContractParameter::h160(&recipient),
-			neo_types::ContractParameter::integer(50_000_000), // 0.5 GAS
-			neo_types::ContractParameter::any(None),
+			ContractParameter::h160(&sender.get_script_hash()),
+			ContractParameter::h160(&recipient),
+			ContractParameter::integer(50_000_000), // 0.5 GAS
+			ContractParameter::any(None),
 		],
 		None,
 	)?;
@@ -154,7 +162,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 	println!("\n8. Transaction signing demonstration...");
 
 	// Create a simple transaction for demonstration
-	let mut demo_tx_builder = neo_builder::TransactionBuilder::with_client(&client);
+	let mut demo_tx_builder = TransactionBuilder::new();
 	demo_tx_builder
 		.script(Some(script.clone()))
 		.valid_until_block(current_block + 100)?;

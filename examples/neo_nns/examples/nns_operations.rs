@@ -1,4 +1,6 @@
-use neo3::{neo_clients::APITrait, prelude::*};
+use neo3::prelude::*;
+use neo3::neo_clients::{HttpProvider, RpcClient, APITrait};
+use neo3::neo_types::{ContractParameter, ScriptHash, StackItem};
 use std::str::FromStr;
 
 /// This example demonstrates how to work with the Neo Name Service (NNS) on the Neo N3 blockchain.
@@ -10,9 +12,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 	// Connect to Neo N3 TestNet
 	println!("\n📡 Connecting to Neo N3 TestNet...");
-	let provider = providers::HttpProvider::new("https://testnet1.neo.org:443/")
+	let provider = HttpProvider::new("https://testnet1.neo.org:443/")
 		.map_err(|e| format!("Failed to create provider: {}", e))?;
-	let client = providers::RpcClient::new(provider);
+	let client = RpcClient::new(provider);
 	println!("   ✅ Connected successfully");
 
 	// Get current blockchain status
@@ -77,17 +79,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 /// Check domain availability by querying the NNS contract
 async fn check_domain_availability(
-	client: &providers::RpcClient<providers::HttpProvider>,
+	client: &RpcClient<HttpProvider>,
 	domain: &str,
 ) -> Result<bool, Box<dyn std::error::Error>> {
 	println!("   🔍 Checking availability for: {}", domain);
 
 	// NNS contract hash on Neo N3
-	let nns_contract_hash =
-		neo_types::ScriptHash::from_str("50ac1c37690cc2cfc594472833cf57505d5f46de")?;
+	let nns_contract_hash = ScriptHash::from_str("50ac1c37690cc2cfc594472833cf57505d5f46de")?;
 
 	// Create parameter for domain name
-	let domain_param = neo_types::ContractParameter::string(domain);
+	let domain_param = ContractParameter::string(domain);
 	let parameters = vec![domain_param];
 
 	// Call the 'isAvailable' method on the NNS contract

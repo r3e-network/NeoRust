@@ -14,8 +14,9 @@ fn benchmark_account_addition(c: &mut Criterion) {
 		b.iter(|| {
 			let mut wallet = Wallet::new();
 			let account = Account::create().unwrap();
-			black_box(wallet.add_account(account))
-		})
+			let _: () = wallet.add_account(account);
+			black_box(());
+		});
 	});
 }
 
@@ -30,8 +31,9 @@ fn benchmark_wallet_encryption(c: &mut Criterion) {
 	c.bench_function("wallet_encryption_10_accounts", |b| {
 		b.iter(|| {
 			let mut test_wallet = wallet.clone();
-			black_box(test_wallet.encrypt_accounts(password))
-		})
+			test_wallet.encrypt_accounts(password);
+			black_box(());
+		});
 	});
 }
 
@@ -49,9 +51,12 @@ fn benchmark_wallet_backup(c: &mut Criterion) {
 				let temp_dir = TempDir::new().unwrap();
 				temp_dir.path().join("benchmark_wallet.json")
 			},
-			|backup_path| black_box(WalletBackup::backup(&wallet, backup_path).unwrap()),
+			|backup_path| {
+				WalletBackup::backup(&wallet, backup_path).unwrap();
+				black_box(());
+			},
 			criterion::BatchSize::SmallInput,
-		)
+		);
 	});
 }
 
@@ -69,7 +74,7 @@ fn benchmark_wallet_recovery(c: &mut Criterion) {
 	WalletBackup::backup(&wallet, backup_path.clone()).unwrap();
 
 	c.bench_function("wallet_recovery_5_accounts", |b| {
-		b.iter(|| black_box(WalletBackup::recover(backup_path.clone()).unwrap()))
+		b.iter(|| black_box(WalletBackup::recover(backup_path.clone()).unwrap()));
 	});
 }
 
@@ -84,8 +89,9 @@ fn benchmark_large_wallet_operations(c: &mut Criterion) {
 	c.bench_function("large_wallet_encryption_100_accounts", |b| {
 		b.iter(|| {
 			let mut test_wallet = large_wallet.clone();
-			black_box(test_wallet.encrypt_accounts("benchmark_password"))
-		})
+			test_wallet.encrypt_accounts("benchmark_password");
+			black_box(());
+		});
 	});
 
 	large_wallet.encrypt_accounts("test_password");
@@ -96,9 +102,12 @@ fn benchmark_large_wallet_operations(c: &mut Criterion) {
 				let temp_dir = TempDir::new().unwrap();
 				temp_dir.path().join("large_benchmark_wallet.json")
 			},
-			|backup_path| black_box(WalletBackup::backup(&large_wallet, backup_path).unwrap()),
+			|backup_path| {
+				WalletBackup::backup(&large_wallet, backup_path).unwrap();
+				black_box(());
+			},
 			criterion::BatchSize::SmallInput,
-		)
+		);
 	});
 }
 
@@ -109,11 +118,11 @@ fn benchmark_password_verification(c: &mut Criterion) {
 	wallet.encrypt_accounts("correct_password");
 
 	c.bench_function("password_verification_correct", |b| {
-		b.iter(|| black_box(wallet.verify_password("correct_password")))
+		b.iter(|| black_box(wallet.verify_password("correct_password")));
 	});
 
 	c.bench_function("password_verification_incorrect", |b| {
-		b.iter(|| black_box(wallet.verify_password("wrong_password")))
+		b.iter(|| black_box(wallet.verify_password("wrong_password")));
 	});
 }
 

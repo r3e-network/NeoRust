@@ -41,7 +41,10 @@ async fn main() -> eyre::Result<()> {
 		.add_middleware(Box::new(logging_middleware))
 		.add_middleware(Box::new(validation_middleware))
 		.add_middleware(Box::new(gas_middleware));
-	println!("   ✅ Middleware chain configured with {} layers", middleware_chain.middleware_count());
+	println!(
+		"   ✅ Middleware chain configured with {} layers",
+		middleware_chain.middleware_count()
+	);
 
 	// 4. Test middleware with different transaction types
 	println!("\n4. Testing middleware with different transactions...");
@@ -89,13 +92,15 @@ async fn main() -> eyre::Result<()> {
 	let invalid_tx = TransactionRequest {
 		recipient: ScriptHash::from_address("NbTiM6h8r99kpRtb428XcsUk1TzKed2gTc")?,
 		asset: ScriptHash::gas(),
-		amount: 0, // This will trigger validation error
+		amount: 0,      // This will trigger validation error
 		gas_limit: 100, // Very low gas limit
 		transaction_type: TransactionType::Transfer,
 	};
 
 	println!("\n   📋 Processing invalid transaction (should fail):");
-	if let Err(e) = process_transaction_with_middleware(&client, &middleware_chain, &invalid_tx).await {
+	if let Err(e) =
+		process_transaction_with_middleware(&client, &middleware_chain, &invalid_tx).await
+	{
 		println!("     ✅ Expected error caught: {}", e);
 	}
 
@@ -166,7 +171,7 @@ impl GasOptimizationMiddleware {
 impl TransactionMiddleware for GasOptimizationMiddleware {
 	fn process(&self, tx: &mut TransactionRequest) -> Result<(), MiddlewareError> {
 		let original_gas = tx.gas_limit;
-		
+
 		// Add buffer based on transaction type
 		let base_gas = match tx.transaction_type {
 			TransactionType::Transfer => 1_000_000,
@@ -176,13 +181,15 @@ impl TransactionMiddleware for GasOptimizationMiddleware {
 
 		let optimized_gas = std::cmp::max(
 			original_gas,
-			base_gas + (base_gas * self.buffer_percentage as u64 / 100)
+			base_gas + (base_gas * self.buffer_percentage as u64 / 100),
 		);
 
 		tx.gas_limit = optimized_gas;
 
-		println!("     🔧 Gas optimization: {} → {} (+{}%)", 
-			original_gas, optimized_gas, self.buffer_percentage);
+		println!(
+			"     🔧 Gas optimization: {} → {} (+{}%)",
+			original_gas, optimized_gas, self.buffer_percentage
+		);
 
 		Ok(())
 	}
@@ -271,7 +278,10 @@ impl MiddlewareChain {
 		self.middlewares.len()
 	}
 
-	async fn process_transaction(&self, tx: &mut TransactionRequest) -> Result<(), MiddlewareError> {
+	async fn process_transaction(
+		&self,
+		tx: &mut TransactionRequest,
+	) -> Result<(), MiddlewareError> {
 		for middleware in &self.middlewares {
 			println!("   🔄 Processing with {} middleware", middleware.name());
 			middleware.process(tx)?;

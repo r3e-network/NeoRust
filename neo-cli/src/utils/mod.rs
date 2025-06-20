@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 pub mod config;
 pub mod error;
 pub mod extensions;
@@ -42,7 +43,7 @@ pub fn prompt_password(prompt: &str) -> Result<String, CliError> {
 }
 
 pub fn prompt_yes_no(prompt: &str) -> Result<bool, CliError> {
-	let input = prompt_input::<String>(&format!("{} (y/n)", prompt))?;
+	let input = prompt_input::<String>(&format!("{prompt} (y/n)"))?;
 	let input = input.to_lowercase();
 
 	Ok(input == "y" || input == "yes")

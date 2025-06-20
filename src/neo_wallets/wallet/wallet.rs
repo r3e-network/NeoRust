@@ -294,7 +294,11 @@ impl Wallet {
 			// Only encrypt accounts that have a key pair
 			if account.key_pair().is_some() {
 				if let Err(e) = account.encrypt_private_key(password) {
-					eprintln!("Warning: Failed to encrypt private key for account {}: {}", account.get_address(), e);
+					eprintln!(
+						"Warning: Failed to encrypt private key for account {}: {}",
+						account.get_address(),
+						e
+					);
 				}
 			}
 		}

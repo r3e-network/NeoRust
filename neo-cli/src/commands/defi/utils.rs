@@ -1,17 +1,15 @@
+#![allow(dead_code)]
 // DeFi utilities for Neo CLI
 //
 // This module contains utility functions for DeFi operations
 
-use crate::{commands::wallet::CliState, errors::CliError};
+use crate::{commands::wallet::{CliState, Wallet}, errors::CliError};
 use neo3::{
-	neo_clients::{HttpProvider, ProviderError, RpcClient},
+	neo_clients::{APITrait, HttpProvider, RpcClient},
 	neo_types::AddressExtension,
-	neo_wallets::Wallet,
 	prelude::*,
-	providers::APITrait,
 };
 use num_traits::cast::ToPrimitive;
-use primitive_types::H160;
 use std::{path::PathBuf, str::FromStr};
 
 /// Network type enum for CLI operations

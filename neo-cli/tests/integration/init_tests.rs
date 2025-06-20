@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
 	use crate::integration::utils::{assert_output_contains, assert_success, CliTest};
-	use std::{fs, process::Output};
+	use std::fs;
 
 	#[test]
 	fn test_init_default() {

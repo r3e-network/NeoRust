@@ -1,23 +1,19 @@
+#![allow(dead_code)]
 use crate::{
 	commands::wallet::CliState,
 	errors::CliError,
-	utils::config::{load_config, save_config},
 	utils_core::{
-		create_table, display_key_value, print_error, print_info, print_section_header,
-		print_success, print_warning, prompt_input, prompt_select, prompt_yes_no, status_indicator,
+		create_table, print_error, print_info, print_section_header,
+		print_success, print_warning, prompt_select, prompt_yes_no, status_indicator,
 		with_loading,
 	},
 };
 use clap::{Args, Subcommand};
-use colored::*;
 use comfy_table::{Cell, Color};
 use neo3::{
-	neo_clients::{APITrait, HttpProvider, JsonRpcProvider, RpcClient},
-	neo_protocol::{NeoBlock, Peers},
-	prelude::*,
+	neo_clients::{APITrait, HttpProvider, RpcClient},
 };
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
 use url::Url;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -336,7 +332,7 @@ async fn handle_add_network(
 	.map_err(|e| CliError::Network(e))?;
 
 	let actual_chain_id = match client.get_version().await {
-		Ok(version) => {
+		Ok(_version) => {
 			// Try to get actual chain ID if not provided
 			chain_id.unwrap_or(0)
 		},
@@ -386,7 +382,7 @@ async fn handle_remove_network(name: String, state: &mut CliState) -> Result<(),
 		.position(|n| n.name == name)
 		.ok_or_else(|| CliError::Network(format!("Network '{}' not found", name)))?;
 
-	let network = &state.networks[network_index];
+	let _network = &state.networks[network_index];
 
 	// Check if it's the current network
 	if state.current_network.as_ref().map(|n| &n.name) == Some(&name) {

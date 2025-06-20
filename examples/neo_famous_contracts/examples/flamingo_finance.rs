@@ -1,7 +1,9 @@
-use neo3::prelude::*;
-use neo3::neo_clients::{HttpProvider, RpcClient, APITrait};
-use neo3::neo_types::{ContractParameter, ScriptHash, StackItem};
-use neo3::neo_builder::ScriptBuilder;
+use neo3::{
+	neo_builder::ScriptBuilder,
+	neo_clients::{APITrait, HttpProvider, RpcClient},
+	neo_types::{ContractParameter, ScriptHash, StackItem},
+	prelude::*,
+};
 use std::str::FromStr;
 
 /// This example demonstrates interaction with Flamingo Finance, one of Neo's leading DeFi protocols.
@@ -24,7 +26,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 	let swap_router = ScriptHash::from_str("f970f4ccecd765b63732b821775dc38c25d74f23")?;
 	let flund_token = ScriptHash::from_str("48c40d4666f93408be1bef038b6722404d9a4c2a")?;
 	let fusd_token = ScriptHash::from_str("17c76859c11bc14da5b3e9c88fa695513442c606")?;
-	
+
 	println!("   FLM Token:     0x{}", hex::encode(&flm_token.0));
 	println!("   Swap Router:   0x{}", hex::encode(&swap_router.0));
 	println!("   FLUND Token:   0x{}", hex::encode(&flund_token.0));
@@ -74,40 +76,29 @@ async fn query_token_info(
 	println!("   📊 {} Token Information:", token_name);
 
 	// Get token symbol
-	match client
-		.invoke_function(token_hash, "symbol", None, None, None)
-		.await
-	{
-		Ok(result) => {
+	match client.invoke_function(token_hash, "symbol", None, None, None).await {
+		Ok(result) =>
 			if let Some(stack_item) = result.stack.first() {
 				if let Some(symbol) = stack_item.as_string() {
 					println!("      Symbol: {}", symbol);
 				}
-			}
-		},
+			},
 		Err(e) => println!("      ⚠️ Failed to get symbol: {}", e),
 	}
 
 	// Get token decimals
-	match client
-		.invoke_function(token_hash, "decimals", None, None, None)
-		.await
-	{
-		Ok(result) => {
+	match client.invoke_function(token_hash, "decimals", None, None, None).await {
+		Ok(result) =>
 			if let Some(stack_item) = result.stack.first() {
 				if let Some(decimals) = stack_item.as_int() {
 					println!("      Decimals: {}", decimals);
 				}
-			}
-		},
+			},
 		Err(e) => println!("      ⚠️ Failed to get decimals: {}", e),
 	}
 
 	// Get total supply
-	match client
-		.invoke_function(token_hash, "totalSupply", None, None, None)
-		.await
-	{
+	match client.invoke_function(token_hash, "totalSupply", None, None, None).await {
 		Ok(result) => {
 			if let Some(stack_item) = result.stack.first() {
 				if let Some(supply) = stack_item.as_int() {
@@ -130,7 +121,7 @@ async fn demonstrate_swap_concepts() -> Result<(), Box<dyn std::error::Error>> {
 	println!("      • Multi-hop swaps: Token A → Token B → Token C");
 	println!("      • Optimal path finding for best rates");
 	println!("      • Slippage protection mechanisms");
-	
+
 	println!("\n   📝 Example Swap Process:");
 	println!("      1. Query available pools");
 	println!("      2. Calculate optimal swap path");
@@ -149,7 +140,7 @@ async fn demonstrate_pool_concepts() -> Result<(), Box<dyn std::error::Error>> {
 	println!("      • Remove liquidity: Withdraw tokens + fees");
 	println!("      • LP token minting/burning");
 	println!("      • Fee accrual mechanisms");
-	
+
 	println!("\n   📊 Pool Metrics to Monitor:");
 	println!("      • Total Value Locked (TVL)");
 	println!("      • 24h trading volume");
@@ -167,7 +158,7 @@ async fn demonstrate_farming_concepts() -> Result<(), Box<dyn std::error::Error>
 	println!("      • LP token staking");
 	println!("      • Auto-compounding vaults");
 	println!("      • Reward token claiming");
-	
+
 	println!("\n   🎯 Farming Considerations:");
 	println!("      • APY vs APR calculations");
 	println!("      • Vesting schedules");

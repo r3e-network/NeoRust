@@ -22,29 +22,12 @@ mod tokens;
 mod types;
 pub mod utils;
 
-// Re-export utility types and functions
-pub use utils::{
-	format_token_amount, get_token_address_for_network, get_token_decimals,
-	load_wallet_from_state as load_wallet, parse_amount, prepare_state_from_existing,
-	resolve_token_hash, resolve_token_to_scripthash_with_network, NetworkTypeCli as NetworkType,
-};
 
-// Re-export command types
-pub use types::*;
 
-// Re-export famous module handlers
-pub use famous::{
-	handle_flamingo_add_liquidity, handle_flamingo_claim_rewards, handle_flamingo_remove_liquidity,
-	handle_flamingo_stake, handle_flamingo_swap, handle_grandshare_claim_funds,
-	handle_grandshare_fund_project, handle_grandshare_submit_proposal, handle_grandshare_vote,
-	handle_neoburger_claim_gas, handle_neoburger_get_rate, handle_neoburger_unwrap,
-	handle_neoburger_wrap, handle_neocompound_compound, handle_neocompound_deposit,
-	handle_neocompound_get_apy, handle_neocompound_withdraw,
-};
 
 use crate::{commands::wallet::CliState, errors::CliError};
 use clap::Args;
-use neo3::{neo_types::AddressExtension, prelude::*};
+use neo3::prelude::*;
 use primitive_types::H160;
 use std::{path::PathBuf, str::FromStr}; // Import AddressExtension trait for address_to_scripthash
 
@@ -347,7 +330,7 @@ pub async fn handle_defi_command(args: DefiArgs, state: &mut CliState) -> Result
 		DefiCommands::Token { contract } => tokens::get_token_info(&contract, state).await,
 		DefiCommands::Balance { contract, address } =>
 			tokens::get_token_balance(&contract, address.as_deref().unwrap_or(""), state).await,
-		DefiCommands::Transfer { token, to, amount, data } =>
+		DefiCommands::Transfer { token, to, amount, data: _ } =>
 			tokens::transfer_token(&token, &to, &amount, state).await,
 		DefiCommands::Flamingo { command } => match command {
 			FlamingoCommands::Swap { from_token, to_token, amount, min_return } =>

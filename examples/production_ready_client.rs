@@ -55,10 +55,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 	// Get block count (cached for 5 seconds)
 	match client.get_block_count().await {
 		Ok(block_count) => {
-			println!("   Current block count: {}", block_count);
+			println!("   Current block count: {block_count}");
 		},
 		Err(e) => {
-			println!("   ❌ Failed to get block count: {}", e);
+			println!("   ❌ Failed to get block count: {e}");
 		},
 	}
 
@@ -72,10 +72,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 	match client.get_block(serde_json::json!(latest_block_index)).await {
 		Ok(block) =>
 			if let Some(hash) = block.get("hash").and_then(|h| h.as_str()) {
-				println!("   Latest block hash: {}", hash);
+				println!("   Latest block hash: {hash}");
 			},
 		Err(e) => {
-			println!("   ❌ Failed to get latest block: {}", e);
+			println!("   ❌ Failed to get latest block: {e}");
 		},
 	}
 
@@ -89,8 +89,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 	let _ = client.get_block_count().await;
 	let second_call = start.elapsed();
 
-	println!("   First call (no cache): {:?}", first_call);
-	println!("   Second call (cached): {:?}", second_call);
+	println!("   First call (no cache): {first_call:?}");
+	println!("   Second call (cached): {second_call:?}");
 	println!(
 		"   Cache speedup: {:.2}x faster",
 		first_call.as_nanos() as f64 / second_call.as_nanos() as f64
@@ -108,11 +108,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 				.and_then(|m| m.get("name"))
 				.and_then(|n| n.as_str())
 			{
-				println!("   Contract name: {}", name);
+				println!("   Contract name: {name}");
 			}
 		},
 		Err(e) => {
-			println!("   ❌ Failed to get contract state: {}", e);
+			println!("   ❌ Failed to get contract state: {e}");
 		},
 	}
 
@@ -125,7 +125,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 			}
 		},
 		Err(e) => {
-			println!("   ❌ Failed to get balances: {}", e);
+			println!("   ❌ Failed to get balances: {e}");
 		},
 	}
 
@@ -161,8 +161,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 	println!("   Making requests to failing endpoint...");
 	for i in 1..=7 {
 		match failing_client.get_block_count().await {
-			Ok(_) => println!("   Request {}: ✅ Success", i),
-			Err(_) => println!("   Request {}: ❌ Failed", i),
+			Ok(_) => println!("   Request {i}: ✅ Success"),
+			Err(_) => println!("   Request {i}: ❌ Failed"),
 		}
 
 		if i == 5 {
@@ -175,7 +175,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 	match client.health_check().await {
 		Ok(true) => println!("   ✅ Client is healthy and responsive"),
 		Ok(false) => println!("   ⚠️  Client is not responding properly"),
-		Err(e) => println!("   ❌ Health check failed: {}", e),
+		Err(e) => println!("   ❌ Health check failed: {e}"),
 	}
 
 	// Final statistics
@@ -197,10 +197,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 	if let Some(pool_stats) = final_health.get("stats").and_then(|s| s.get("pool")) {
 		if let (Some(active), Some(idle)) = (
-			pool_stats.get("active_connections").and_then(|a| a.as_u64()),
-			pool_stats.get("idle_connections").and_then(|i| i.as_u64()),
+			pool_stats.get("active_connections").and_then(serde_json::Value::as_u64),
+			pool_stats.get("idle_connections").and_then(serde_json::Value::as_u64),
 		) {
-			println!("   Connection pool: {} active, {} idle", active, idle);
+			println!("   Connection pool: {active} active, {idle} idle");
 		}
 	}
 

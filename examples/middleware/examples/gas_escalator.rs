@@ -24,19 +24,19 @@ async fn main() -> eyre::Result<()> {
 
 	// Linear escalation strategy
 	let linear_strategy = LinearGasStrategy::new(
-		500_000,  // base_gas_limit
-		100_000,  // increase_amount per attempt
+		500_000,                 // base_gas_limit
+		100_000,                 // increase_amount per attempt
 		Duration::from_secs(30), // check_interval
-		Some(5_000_000), // max_gas_limit
+		Some(5_000_000),         // max_gas_limit
 	);
 	println!("   ✅ Linear gas escalation strategy configured");
 
-	// Exponential escalation strategy  
+	// Exponential escalation strategy
 	let exponential_strategy = ExponentialGasStrategy::new(
-		500_000,  // base_gas_limit
-		1.25,     // multiplier (25% increase)
+		500_000,                 // base_gas_limit
+		1.25,                    // multiplier (25% increase)
 		Duration::from_secs(20), // check_interval
-		Some(5_000_000), // max_gas_limit
+		Some(5_000_000),         // max_gas_limit
 	);
 	println!("   ✅ Exponential gas escalation strategy configured");
 
@@ -99,7 +99,7 @@ impl LinearGasStrategy {
 
 	fn calculate_gas_limit(&self, attempt: u32) -> u64 {
 		let gas_limit = self.base_gas_limit + (self.increase_amount * attempt as u64);
-		
+
 		if let Some(max_limit) = self.max_gas_limit {
 			gas_limit.min(max_limit)
 		} else {
@@ -129,7 +129,7 @@ impl ExponentialGasStrategy {
 
 	fn calculate_gas_limit(&self, attempt: u32) -> u64 {
 		let gas_limit = (self.base_gas_limit as f64 * self.multiplier.powi(attempt as i32)) as u64;
-		
+
 		if let Some(max_limit) = self.max_gas_limit {
 			gas_limit.min(max_limit)
 		} else {
@@ -267,10 +267,7 @@ async fn simulate_network_conditions(client: &RpcClient<HttpProvider>) -> eyre::
 		let adjusted_gas = (base_gas as f64 * multiplier) as u64;
 		let estimated_cost = adjusted_gas as f64 * 0.00000001;
 
-		println!(
-			"       Recommended gas: {}, Est. cost: {:.8} GAS",
-			adjusted_gas, estimated_cost
-		);
+		println!("       Recommended gas: {}, Est. cost: {:.8} GAS", adjusted_gas, estimated_cost);
 	}
 
 	Ok(())

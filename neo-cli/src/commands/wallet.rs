@@ -1,7 +1,8 @@
+#![allow(dead_code)]
 use crate::{
 	errors::CliError,
 	utils_core::{
-		create_table, display_key_value, format_number, print_error, print_info,
+		create_table, display_key_value, print_info,
 		print_section_header, print_success, print_warning, prompt_input, prompt_password,
 		prompt_yes_no, status_indicator, with_loading,
 	},
@@ -9,14 +10,14 @@ use crate::{
 use clap::{Args, Subcommand};
 use comfy_table::{Cell, Color};
 use neo3::{
-	neo_clients::{APITrait, HttpProvider, RpcClient},
+	neo_clients::{HttpProvider, RpcClient},
 	neo_protocol::Account,
 	neo_wallets::WalletTrait,
 };
 use std::{collections::HashMap, io::Write, path::PathBuf};
 
 // Create a wrapper for neo3's Wallet for CLI operations
-#[derive(Clone)]
+#[derive(Clone, serde::Serialize, serde::Deserialize)]
 pub struct Wallet {
 	pub extra: Option<HashMap<String, String>>,
 	pub accounts: Vec<Account>,

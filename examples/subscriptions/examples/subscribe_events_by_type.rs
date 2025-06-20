@@ -1,10 +1,9 @@
 use neo3::prelude::*;
-use std::collections::HashMap;
-use std::time::Duration;
+use std::{collections::HashMap, time::Duration};
 use tokio::time::{interval, timeout};
 
 /// Neo N3 Event Subscription by Type Example
-/// 
+///
 /// This example demonstrates how to monitor specific contract events on the Neo N3 blockchain.
 /// Since Neo N3 doesn't have native WebSocket event subscriptions like Ethereum, we implement
 /// polling-based event monitoring with filtering by event type and contract address.
@@ -55,28 +54,29 @@ async fn main() -> eyre::Result<()> {
 	let subscription_result = timeout(Duration::from_secs(65), async {
 		loop {
 			poll_interval.tick().await;
-			
+
 			match event_monitor.check_for_new_events().await {
 				Ok(new_events) => {
 					for event in new_events {
 						print_event_details(&event);
 						events_found += 1;
-						
+
 						if events_found >= max_events {
 							return Ok::<(), eyre::Report>(());
 						}
 					}
-					
+
 					if events_found == 0 {
 						println!("   🔍 No new events found in this cycle...");
 					}
 				},
 				Err(e) => {
 					println!("   ⚠️  Error checking for events: {}", e);
-				}
+				},
 			}
 		}
-	}).await;
+	})
+	.await;
 
 	match subscription_result {
 		Ok(_) => println!("\n   ✅ Event subscription completed successfully"),
@@ -171,7 +171,7 @@ impl<'a> EventMonitor<'a> {
 	) -> eyre::Result<Self> {
 		let current_block = client.get_block_count().await?;
 		let contracts_count = contracts.len();
-		
+
 		Ok(Self {
 			client,
 			contracts,
@@ -215,7 +215,8 @@ impl<'a> EventMonitor<'a> {
 					}
 
 					// Get application log for this transaction
-					if let Ok(app_log) = self.client.get_application_log(tx_hash.to_string()).await {
+					if let Ok(app_log) = self.client.get_application_log(tx_hash.to_string()).await
+					{
 						let tx_events = self.parse_application_log(&app_log, block_index, tx_hash);
 						events.extend(tx_events);
 						self.processed_transactions.insert(tx_hash.to_string());
@@ -237,9 +238,13 @@ impl<'a> EventMonitor<'a> {
 
 		if let Some(executions) = app_log.get("executions").and_then(|e| e.as_array()) {
 			for execution in executions {
-				if let Some(notifications) = execution.get("notifications").and_then(|n| n.as_array()) {
+				if let Some(notifications) =
+					execution.get("notifications").and_then(|n| n.as_array())
+				{
 					for notification in notifications {
-						if let Some(event) = self.parse_notification(notification, block_index, tx_hash) {
+						if let Some(event) =
+							self.parse_notification(notification, block_index, tx_hash)
+						{
 							events.push(event);
 							self.statistics.events_processed += 1;
 							self.statistics.unique_event_types.insert(event.event_name.clone());
@@ -260,7 +265,7 @@ impl<'a> EventMonitor<'a> {
 	) -> Option<EventInfo> {
 		let contract_hash_str = notification.get("contract")?.as_str()?;
 		let event_name = notification.get("eventname")?.as_str()?.to_string();
-		
+
 		// Convert contract hash string to ScriptHash
 		let contract_hash = ScriptHash::from_str(contract_hash_str).ok()?;
 
@@ -293,13 +298,21 @@ impl<'a> EventMonitor<'a> {
 /// Print detailed event information
 fn print_event_details(event: &EventInfo) {
 	println!("\n   🎯 New Event Detected:");
-	println!("     Contract: {} (0x{})", event.contract_name, hex::encode(event.contract_address.0));
+	println!(
+		"     Contract: {} (0x{})",
+		event.contract_name,
+		hex::encode(event.contract_address.0)
+	);
 	println!("     Event: {}", event.event_name);
 	println!("     Block: {}", event.block_index);
 	println!("     Transaction: {}", event.transaction_hash);
-	
+
 	if !event.event_data.is_null() {
-		println!("     Data: {}", serde_json::to_string_pretty(&event.event_data).unwrap_or_else(|_| "Invalid JSON".to_string()));
+		println!(
+			"     Data: {}",
+			serde_json::to_string_pretty(&event.event_data)
+				.unwrap_or_else(|_| "Invalid JSON".to_string())
+		);
 	}
 }
 
@@ -313,16 +326,24 @@ async fn demonstrate_event_filtering(client: &RpcClient<HttpProvider>) -> eyre::
 
 	if let Ok(block_data) = client.get_block(serde_json::json!(recent_block_index)).await {
 		if let Some(transactions) = block_data.get("tx").and_then(|tx| tx.as_array()) {
-			println!("     📋 Analyzing recent block {} with {} transactions", 
-				recent_block_index, transactions.len());
+			println!(
+				"     📋 Analyzing recent block {} with {} transactions",
+				recent_block_index,
+				transactions.len()
+			);
 
 			let mut event_types = std::collections::HashMap::new();
 			let mut contract_activity = std::collections::HashMap::new();
 
-			for tx in transactions.iter().take(3) { // Analyze first 3 transactions
+			for tx in transactions.iter().take(3) {
+				// Analyze first 3 transactions
 				if let Some(tx_hash) = tx.get("hash").and_then(|h| h.as_str()) {
 					if let Ok(app_log) = client.get_application_log(tx_hash.to_string()).await {
-						analyze_transaction_events(&app_log, &mut event_types, &mut contract_activity);
+						analyze_transaction_events(
+							&app_log,
+							&mut event_types,
+							&mut contract_activity,
+						);
 					}
 				}
 			}
@@ -330,7 +351,7 @@ async fn demonstrate_event_filtering(client: &RpcClient<HttpProvider>) -> eyre::
 			if !event_types.is_empty() {
 				println!("     📊 Event types found: {:?}", event_types);
 			}
-			
+
 			if !contract_activity.is_empty() {
 				println!("     🏢 Contract activity: {:?}", contract_activity);
 			}
@@ -350,10 +371,11 @@ fn analyze_transaction_events(
 		for execution in executions {
 			if let Some(notifications) = execution.get("notifications").and_then(|n| n.as_array()) {
 				for notification in notifications {
-					if let Some(event_name) = notification.get("eventname").and_then(|e| e.as_str()) {
+					if let Some(event_name) = notification.get("eventname").and_then(|e| e.as_str())
+					{
 						*event_types.entry(event_name.to_string()).or_insert(0) += 1;
 					}
-					
+
 					if let Some(contract) = notification.get("contract").and_then(|c| c.as_str()) {
 						*contract_activity.entry(contract.to_string()).or_insert(0) += 1;
 					}

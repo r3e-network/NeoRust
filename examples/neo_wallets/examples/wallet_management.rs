@@ -1,9 +1,11 @@
-use neo3::prelude::*;
-use neo3::neo_wallets::{Account, Wallet, WalletBackup, WalletTrait};
-use neo3::neo_clients::{HttpProvider, RpcClient, APITrait};
-use neo3::neo_crypto::KeyPair;
-use neo3::neo_protocol::AccountTrait;
-use neo3::neo_types::ScriptHash;
+use neo3::{
+	neo_clients::{APITrait, HttpProvider, RpcClient},
+	neo_crypto::KeyPair,
+	neo_protocol::AccountTrait,
+	neo_types::ScriptHash,
+	neo_wallets::{Account, Wallet, WalletBackup, WalletTrait},
+	prelude::*,
+};
 use primitive_types::H160;
 use std::{collections::HashMap, path::PathBuf, str::FromStr};
 
@@ -91,7 +93,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 	let account_keys: Vec<H160> = wallet.accounts.keys().cloned().collect();
 	for key in account_keys {
 		if let Some(account) = wallet.accounts.get_mut(&key) {
-			account.encrypt_private_key(password).map_err(|e| format!("Encryption error: {}", e))?;
+			account
+				.encrypt_private_key(password)
+				.map_err(|e| format!("Encryption error: {}", e))?;
 		}
 	}
 	println!("   ✅ Wallet encrypted with password");
@@ -177,7 +181,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 				// Get NEO balance
 				match client
-					.get_nep17_balance(&account.get_script_hash(), &ScriptHash::from_str("ef4073a0f2b305a38ec4050e4d3d28bc40ea63f5").unwrap())
+					.get_nep17_balance(
+						&account.get_script_hash(),
+						&ScriptHash::from_str("ef4073a0f2b305a38ec4050e4d3d28bc40ea63f5").unwrap(),
+					)
 					.await
 				{
 					Ok(neo_balance) => {
@@ -190,7 +197,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 				// Get GAS balance
 				match client
-					.get_nep17_balance(&account.get_script_hash(), &ScriptHash::from_str("d2a4cff31913016155e38e474a2c06d08be276cf").unwrap())
+					.get_nep17_balance(
+						&account.get_script_hash(),
+						&ScriptHash::from_str("d2a4cff31913016155e38e474a2c06d08be276cf").unwrap(),
+					)
 					.await
 				{
 					Ok(gas_balance) => {

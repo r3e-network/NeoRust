@@ -1,16 +1,13 @@
 use crate::{
-	commands::{defi::create_h160_param, wallet::CliState},
+	commands::defi::create_h160_param,
 	errors::CliError,
-	print_error, print_info, print_success, prompt_password, prompt_yes_no,
+	print_error, print_info, print_success, prompt_password,
 };
 use base64::{engine::general_purpose, Engine as _};
 use clap::{Args, Subcommand};
-use futures::TryFutureExt;
 use neo3::{
-	builder::{
-		AccountSigner, ScriptBuilder, Signer, Transaction, TransactionBuilder, WitnessScope,
-	},
-	codec::{Encoder, NeoSerializable},
+	builder::{AccountSigner, ScriptBuilder, Signer, TransactionBuilder},
+	codec::NeoSerializable,
 	neo_clients::APITrait,
 	neo_protocol::AccountTrait,
 	neo_types::{ContractManifest, NefFile},
@@ -89,7 +86,6 @@ pub enum ContractCommands {
 }
 
 /// CLI state is defined in wallet.rs
-
 pub async fn handle_contract_command(
 	args: ContractArgs,
 	state: &mut crate::commands::wallet::CliState,
@@ -139,9 +135,9 @@ async fn deploy_contract(
 	let manifest_json = std::fs::read_to_string(&manifest_path).map_err(|e| CliError::Io(e))?;
 
 	// Parse NEF and manifest
-	let nef = NefFile::deserialize(&nef_bytes)
+	let _nef = NefFile::deserialize(&nef_bytes)
 		.map_err(|e| CliError::Input(format!("Failed to parse NEF file: {}", e)))?;
-	let manifest: ContractManifest = serde_json::from_str(&manifest_json)
+	let _manifest: ContractManifest = serde_json::from_str(&manifest_json)
 		.map_err(|e| CliError::Input(format!("Failed to parse manifest file: {}", e)))?;
 
 	// Get account to pay for deployment
@@ -336,9 +332,9 @@ async fn update_contract(
 	let manifest_json = std::fs::read_to_string(&manifest_path).map_err(|e| CliError::Io(e))?;
 
 	// Parse NEF and manifest
-	let nef = NefFile::deserialize(&nef_bytes)
+	let _nef = NefFile::deserialize(&nef_bytes)
 		.map_err(|e| CliError::Input(format!("Failed to parse NEF file: {}", e)))?;
-	let manifest: ContractManifest = serde_json::from_str(&manifest_json)
+	let _manifest: ContractManifest = serde_json::from_str(&manifest_json)
 		.map_err(|e| CliError::Input(format!("Failed to parse manifest file: {}", e)))?;
 
 	// Get account to pay for update
@@ -743,7 +739,7 @@ fn contract_parameter_from_json(value: serde_json::Value) -> Result<ContractPara
 		serde_json::Value::Bool(b) => Ok(ContractParameter::bool(b)),
 		serde_json::Value::Number(n) =>
 			if n.is_i64() {
-				Ok(ContractParameter::integer(n.as_i64().unwrap().into()))
+				Ok(ContractParameter::integer(n.as_i64().unwrap()))
 			} else if n.is_f64() {
 				Ok(ContractParameter::string(n.to_string()))
 			} else {
@@ -751,15 +747,13 @@ fn contract_parameter_from_json(value: serde_json::Value) -> Result<ContractPara
 			},
 		serde_json::Value::String(s) => {
 			// Check if it's a hex string (for ByteArray)
-			if s.starts_with("0x") {
-				let hex_str = &s[2..];
+			if let Some(hex_str) = s.strip_prefix("0x") {
 				match hex::decode(hex_str) {
 					Ok(bytes) => Ok(ContractParameter::byte_array(bytes)),
 					Err(_) => Ok(ContractParameter::string(s)),
 				}
-			} else if s.starts_with("@") {
+			} else if let Some(hash_str) = s.strip_prefix("@") {
 				// Special format for Hash160
-				let hash_str = &s[1..];
 				match H160::from_str(hash_str) {
 					Ok(hash) => create_h160_param(&format!("{:x}", hash)),
 					Err(_) => Ok(ContractParameter::string(s)),

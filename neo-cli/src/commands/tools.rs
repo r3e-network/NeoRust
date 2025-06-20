@@ -2,8 +2,8 @@ use crate::{
 	commands::wallet::CliState,
 	errors::CliError,
 	utils_core::{
-		create_table, display_key_value, print_info, print_section_header, print_success,
-		print_warning, prompt_input, status_indicator, with_loading,
+		create_table, print_section_header, print_success,
+		status_indicator,
 	},
 };
 use base64::{engine::general_purpose, Engine as _};

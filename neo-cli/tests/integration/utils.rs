@@ -1,13 +1,4 @@
-use assert_cmd::prelude::*;
-use hex;
-use predicates::prelude::*;
-use sha2::{Digest, Sha256};
-use std::{
-	fs,
-	io::Write,
-	path::PathBuf,
-	process::{Command, Output},
-};
+use std::{io::Write, path::PathBuf, process::{Command, Output}};
 use tempfile::{NamedTempFile, TempDir};
 
 pub struct CliTest {
@@ -72,15 +63,12 @@ impl CliTest {
 		path_buf
 	}
 
-	/// Create a config file for testing
-	pub fn create_config_file(&self, content: &str) -> PathBuf {
-		self.create_temp_file(content)
-	}
 }
 
 /// Helper function to assert that command was successful
 pub fn assert_success(output: &Output) {
-	assert!(output.status.success(), "Command failed: {}", String::from_utf8_lossy(&output.stderr));
+	let stderr = String::from_utf8_lossy(&output.stderr);
+	assert!(output.status.success(), "Command failed: {stderr}");
 }
 
 /// Helper function to assert command output contains a string
@@ -88,33 +76,9 @@ pub fn assert_output_contains(output: &Output, expected: &str) {
 	let stdout = String::from_utf8_lossy(&output.stdout);
 	assert!(
 		stdout.contains(expected),
-		"Expected output to contain '{}', but got:\n{}",
-		expected,
-		stdout
+		"Expected output to contain '{expected}', but got:\n{stdout}"
 	);
 }
 
-/// Helper function to assert command output matches a regular expression
-pub fn assert_output_matches(output: &Output, pattern: &str) {
-	let stdout = String::from_utf8_lossy(&output.stdout);
-	let re = regex::Regex::new(pattern).unwrap();
-	assert!(re.is_match(&stdout), "Expected output to match '{}', but got:\n{}", pattern, stdout);
-}
 
-/// Helper to create a script hash from a string
-pub fn script_hash_from_string(s: &str) -> String {
-	// Use SHA256 for proper hashing instead of a simple sum
-	let mut hasher = Sha256::new();
-	hasher.update(s.as_bytes());
-	let result = hasher.finalize();
-	format!("0x{}", hex::encode(result))
-}
 
-/// Compute a simple hash of a string for testing purposes
-pub fn simple_hash(s: &str) -> String {
-	// Use SHA256 for proper hashing instead of a simple sum
-	let mut hasher = Sha256::new();
-	hasher.update(s.as_bytes());
-	let result = hasher.finalize();
-	format!("0x{}", hex::encode(result))
-}

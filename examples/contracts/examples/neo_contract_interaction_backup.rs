@@ -142,36 +142,36 @@ async fn interact_with_nep17_token(
 
 	// Get decimals
 	match client.invoke_function(&gas_hash, "decimals".to_string(), vec![], None).await {
-		Ok(result) => {
-			let stack = result.stack;
-			if let Some(item) = stack.first() {
-				println!(
-					"      • Decimals: {}",
-					item.value
-						.as_ref()
-						.and_then(|v| v.as_str())
-						.and_then(|s| s.parse::<u8>().ok())
-						.unwrap_or(8)
-				);
-			}
-		},
+		Ok(result) =>
+			if let Some(stack) = result.stack {
+				if let Some(item) = stack.first() {
+					println!(
+						"      • Decimals: {}",
+						item.value
+							.as_ref()
+							.and_then(|v| v.as_str())
+							.and_then(|s| s.parse::<u8>().ok())
+							.unwrap_or(8)
+					);
+				}
+			},
 		Err(e) => println!("      • Decimals query failed: {}", e),
 	}
 
 	// Get total supply
-	match client.invoke_function(&gas_hash, "totalSupply".to_string(), vec![], None).await {
-		Ok(result) => {
-			let stack = result.stack;
-			if let Some(item) = stack.first() {
-				let supply = item
-					.value
-					.as_ref()
-					.and_then(|v| v.as_str())
-					.and_then(|s| s.parse::<i64>().ok())
-					.unwrap_or(0);
-				println!("      • Total Supply: {} GAS", supply as f64 / 100_000_000.0);
-			}
-		},
+	match client.invoke_function(&gas_hash, "totalSupply", &[]).await {
+		Ok(result) =>
+			if let Some(stack) = result.stack {
+				if let Some(item) = stack.first() {
+					let supply = item
+						.value
+						.as_ref()
+						.and_then(|v| v.as_str())
+						.and_then(|s| s.parse::<i64>().ok())
+						.unwrap_or(0);
+					println!("      • Total Supply: {} GAS", supply as f64 / 100_000_000.0);
+				}
+			},
 		Err(e) => println!("      • Total supply query failed: {}", e),
 	}
 
@@ -182,28 +182,27 @@ async fn interact_with_nep17_token(
 	match client
 		.invoke_function(
 			&gas_hash,
-			"balanceOf".to_string(),
-			vec![neo3::neo_types::ContractParameter::h160(&address_hash)],
-			None,
+			"balanceOf",
+			&[neo3::neo_types::ContractParameter::h160(&address_hash)],
 		)
 		.await
 	{
-		Ok(result) => {
-			let stack = result.stack;
-			if let Some(item) = stack.first() {
-				let balance = item
-					.value
-					.as_ref()
-					.and_then(|v| v.as_str())
-					.and_then(|s| s.parse::<i64>().ok())
-					.unwrap_or(0);
-				println!(
-					"      • Balance of {}: {} GAS",
-					example_address,
-					balance as f64 / 100_000_000.0
-				);
-			}
-		},
+		Ok(result) =>
+			if let Some(stack) = result.stack {
+				if let Some(item) = stack.first() {
+					let balance = item
+						.value
+						.as_ref()
+						.and_then(|v| v.as_str())
+						.and_then(|s| s.parse::<i64>().ok())
+						.unwrap_or(0);
+					println!(
+						"      • Balance of {}: {} GAS",
+						example_address,
+						balance as f64 / 100_000_000.0
+					);
+				}
+			},
 		Err(e) => println!("      • Balance query failed: {}", e),
 	}
 
@@ -231,18 +230,17 @@ async fn demonstrate_contract_invocation(
 	match client
 		.invoke_function(
 			&nns_hash,
-			"resolve".to_string(),
-			vec![
-				neo3::neo_types::ContractParameter::string(domain.to_string()),
+			"resolve",
+			&[
+				neo3::neo_types::ContractParameter::string(domain),
 				neo3::neo_types::ContractParameter::integer(16), // Record type A
 			],
-			None,
 		)
 		.await
 	{
 		Ok(result) => {
 			println!("\n      Example: NNS resolve(\"{}\", A)", domain);
-			println!("      Gas consumed: {} GAS", result.gas_consumed.parse::<f64>().unwrap_or(0.0) / 100_000_000.0);
+			println!("      Gas consumed: {} GAS", result.gas_consumed as f64 / 100_000_000.0);
 			println!("      State: {}", result.state);
 			if let Some(exception) = result.exception {
 				println!("      Exception: {}", exception);
@@ -264,9 +262,9 @@ async fn demonstrate_contract_invocation(
 		&nns_hash,
 		"setRecord",
 		&[
-			neo3::neo_types::ContractParameter::string("mydomain.neo".to_string()),
+			neo3::neo_types::ContractParameter::string("mydomain.neo"),
 			neo3::neo_types::ContractParameter::integer(16), // Type A
-			neo3::neo_types::ContractParameter::string("127.0.0.1".to_string()),
+			neo3::neo_types::ContractParameter::string("127.0.0.1"),
 		],
 		Some(neo3::neo_builder::CallFlags::All),
 	)?;
@@ -316,10 +314,10 @@ async fn demonstrate_transaction_building(
 	let current_height = client.get_block_count().await?;
 
 	tx_builder
-		.script_mut(Some(script_builder.to_bytes()))
-		.valid_until_block_mut(Some(current_height + 1000))
+		.script(script_builder.to_bytes())
+		.valid_until_block(current_height + 1000)
 		.add_signer(neo3::neo_builder::AccountSigner::called_by_entry(
-			&neo3::neo_protocol::Account::from_address(sender),
+			&neo3::neo_protocol::Account::from_address(sender)?,
 		)?.into());
 
 	// Calculate fees
@@ -346,11 +344,15 @@ async fn demonstrate_transaction_building(
 
 /// Monitor contract events
 async fn monitor_contract_events(
-	_client: &neo3::providers::RpcClient<neo3::providers::HttpProvider>,
+	client: &neo3::providers::RpcClient<neo3::providers::HttpProvider>,
 ) -> Result<(), Box<dyn std::error::Error>> {
 	println!("   📢 Monitoring contract events:");
 
-	println!("\n   🔍 Scanning last {} blocks for events...", 10);
+	// Get recent blocks for event scanning
+	let current_height = client.get_block_count().await?;
+	let scan_blocks = 10;
+
+	println!("\n   🔍 Scanning last {} blocks for events...", scan_blocks);
 
 	// In production, you would use get_application_log for each transaction
 	println!("   📋 Common NEP-17 events:");
@@ -384,7 +386,7 @@ async fn monitor_contract_events(
 
 /// Demonstrate advanced patterns
 async fn demonstrate_advanced_patterns(
-	_client: &neo3::providers::RpcClient<neo3::providers::HttpProvider>,
+	client: &neo3::providers::RpcClient<neo3::providers::HttpProvider>,
 ) -> Result<(), Box<dyn std::error::Error>> {
 	println!("   🚀 Advanced contract patterns:");
 

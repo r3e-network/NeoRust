@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 use crate::{
 	commands::wallet::CliState,
 	errors::CliError,
@@ -12,12 +13,7 @@ use neo3::neo_fs::{
 	Container, ContainerId, NeoFSClient, NeoFSService, Object, ObjectId, OwnerId,
 };
 use serde_json::Value;
-use std::{
-	fs,
-	io::{self, Read, Write},
-	path::{Path, PathBuf},
-	str::FromStr,
-};
+use std::{fs, path::PathBuf};
 
 // For compatibility with the new API
 const DEFAULT_MAINNET_ENDPOINT: &str = "https://grpc.fs.neo.org";
@@ -38,7 +34,9 @@ struct NeoFSClientImpl {
 	grpc_endpoint: String,
 	http_gateway: String,
 	rest_endpoint: String,
+	#[allow(dead_code)]
 	http_client: HttpClient,
+	#[allow(dead_code)]
 	timeout: Duration,
 }
 
@@ -706,7 +704,7 @@ pub async fn handle_endpoint_command(command: EndpointCommands) -> Result<(), Cl
 /// Handle container-related commands
 async fn handle_container_command(
 	command: ContainerCommands,
-	client: &NeoFSClientImpl,
+	_client: &NeoFSClientImpl,
 	state: &mut CliState,
 ) -> Result<(), CliError> {
 	match command {
@@ -892,7 +890,7 @@ async fn handle_container_command(
 /// Handle object-related commands
 async fn handle_object_command(
 	command: ObjectCommands,
-	client: &NeoFSClientImpl,
+	_client: &NeoFSClientImpl,
 ) -> Result<(), CliError> {
 	match command {
 		ObjectCommands::Put { container, file } => {

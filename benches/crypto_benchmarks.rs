@@ -5,9 +5,7 @@ use neo3::{
 };
 
 fn benchmark_key_generation(c: &mut Criterion) {
-	c.bench_function("key_pair_generation", |b| {
-		b.iter(|| black_box(KeyPair::new_random()))
-	});
+	c.bench_function("key_pair_generation", |b| b.iter(|| black_box(KeyPair::new_random())));
 }
 
 fn benchmark_account_creation(c: &mut Criterion) {
@@ -20,7 +18,7 @@ fn benchmark_signature_creation(c: &mut Criterion) {
 	let message_hash = message.hash256();
 
 	c.bench_function("signature_creation", |b| {
-		b.iter(|| black_box(key_pair.private_key.sign_prehash(&message_hash).unwrap()))
+		b.iter(|| black_box(key_pair.private_key.sign_prehash(&message_hash).unwrap()));
 	});
 }
 
@@ -31,7 +29,7 @@ fn benchmark_signature_verification(c: &mut Criterion) {
 	let signature = key_pair.private_key.sign_prehash(&message_hash).unwrap();
 
 	c.bench_function("signature_verification", |b| {
-		b.iter(|| black_box(key_pair.public_key.verify(&message_hash, &signature).is_ok()))
+		b.iter(|| black_box(key_pair.public_key.verify(&message_hash, &signature).is_ok()));
 	});
 }
 
@@ -51,7 +49,7 @@ fn benchmark_address_generation(c: &mut Criterion) {
 		b.iter(|| {
 			let account = Account::from_key_pair(key_pair.clone(), None, None).unwrap();
 			black_box(account.get_address())
-		})
+		});
 	});
 }
 

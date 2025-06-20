@@ -215,19 +215,6 @@ async fn query_token_info(
 		},
 		Err(e) => println!("     Failed to get total supply: {}", e),
 	}
-		if stack.len() >= 3 {
-			println!("     {} Token Properties:", token_name);
-			if let Some(symbol) = stack[0].as_string() {
-				println!("       Symbol: {}", symbol);
-			}
-			if let Some(decimals) = stack[1].as_int() {
-				println!("       Decimals: {}", decimals);
-			}
-			if let Some(supply) = stack[2].as_int() {
-				println!("       Total Supply: {}", supply);
-			}
-		}
-	}
 
 	Ok(())
 }

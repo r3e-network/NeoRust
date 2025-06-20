@@ -96,7 +96,7 @@ jobs:
           cargo sbom > sbom.json
       
       - name: Upload SBOM
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: sbom
           path: sbom.json
@@ -200,7 +200,7 @@ jobs:
           echo "- GUI Security: ${{ needs.gui-security.result }}" >> security-report.md
       
       - name: Upload report
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: security-report
           path: security-report.md

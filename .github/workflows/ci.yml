@@ -194,11 +194,11 @@ jobs:
         uses: actions/cache@v3
         with:
           path: neo-gui/node_modules
-          key: ${{ runner.os }}-node-${{ hashFiles('neo-gui/package.json') }}
+          key: ${{ runner.os }}-node-${{ hashFiles('neo-gui/package-lock.json') }}
       
       - name: Install Node dependencies
         working-directory: neo-gui
-        run: npm install
+        run: npm ci
       
       - name: Lint TypeScript
         working-directory: neo-gui

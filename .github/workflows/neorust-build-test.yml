@@ -80,7 +80,7 @@ jobs:
       with:
         node-version: '20.x'
         cache: 'npm'
-        cache-dependency-path: neo-gui/package.json
+        cache-dependency-path: neo-gui/package-lock.json
         
     - name: Install system dependencies (Ubuntu)
       if: matrix.os == 'ubuntu-latest'
@@ -90,7 +90,7 @@ jobs:
         
     - name: Install frontend dependencies
       working-directory: neo-gui
-      run: npm install
+      run: npm ci
       
     - name: Run frontend tests
       working-directory: neo-gui
@@ -140,11 +140,11 @@ jobs:
       with:
         node-version: '20.x'
         cache: 'npm'
-        cache-dependency-path: neo-gui/package.json
+        cache-dependency-path: neo-gui/package-lock.json
         
     - name: Install frontend dependencies
       working-directory: neo-gui
-      run: npm install
+      run: npm ci
       
     - name: Generate frontend coverage
       working-directory: neo-gui
@@ -191,11 +191,11 @@ jobs:
       with:
         node-version: '20.x'
         cache: 'npm'
-        cache-dependency-path: neo-gui/package.json
+        cache-dependency-path: neo-gui/package-lock.json
         
     - name: Install frontend dependencies
       working-directory: neo-gui
-      run: npm install
+      run: npm ci
       
     - name: Run frontend security audit
       working-directory: neo-gui

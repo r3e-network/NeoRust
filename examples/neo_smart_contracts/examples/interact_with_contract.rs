@@ -187,10 +187,34 @@ async fn query_token_info(
 
 	let script = builder.to_bytes();
 
-	// Execute read-only call
-	let result = client.invoke_function(hex::encode(&script), vec![], vec![]).await?;
+	// Execute read-only call via invoke_function
+	match client.invoke_function(token_hash, "symbol", None, None, None).await {
+		Ok(symbol_result) => {
+			if let Some(symbol) = symbol_result.stack.first().and_then(|s| s.as_string()) {
+				println!("     {} Token Properties:", token_name);
+				println!("       Symbol: {}", symbol);
+			}
+		},
+		Err(e) => println!("     Failed to get symbol: {}", e),
+	}
 
-	if let Some(stack) = result.stack {
+	match client.invoke_function(token_hash, "decimals", None, None, None).await {
+		Ok(decimals_result) => {
+			if let Some(decimals) = decimals_result.stack.first().and_then(|s| s.as_int()) {
+				println!("       Decimals: {}", decimals);
+			}
+		},
+		Err(e) => println!("     Failed to get decimals: {}", e),
+	}
+
+	match client.invoke_function(token_hash, "totalSupply", None, None, None).await {
+		Ok(supply_result) => {
+			if let Some(supply) = supply_result.stack.first().and_then(|s| s.as_int()) {
+				println!("       Total Supply: {}", supply);
+			}
+		},
+		Err(e) => println!("     Failed to get total supply: {}", e),
+	}
 		if stack.len() >= 3 {
 			println!("     {} Token Properties:", token_name);
 			if let Some(symbol) = stack[0].as_string() {

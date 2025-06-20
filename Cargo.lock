@@ -1827,6 +1827,7 @@ name = "examples-contracts"
 version = "0.0.0"
 dependencies = [
  "eyre",
+ "hex",
  "neo3",
  "serde",
  "serde_json",

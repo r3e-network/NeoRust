@@ -90,11 +90,14 @@ async fn main() -> eyre::Result<()> {
 
 	// 7. Transaction ordering and batching
 	println!("\n6. Transaction ordering and batching...");
-	
+
 	let batch_result = tx_manager.create_transaction_batch(&transactions).await;
 	match batch_result {
 		Ok(batch) => {
-			println!("   ✅ Created transaction batch with {} transactions", batch.transactions.len());
+			println!(
+				"   ✅ Created transaction batch with {} transactions",
+				batch.transactions.len()
+			);
 			println!("   📊 Total estimated gas: {}", batch.total_gas_estimate);
 			println!("   ⏱️  Estimated confirmation time: {:?}", batch.estimated_confirmation_time);
 		},
@@ -208,16 +211,13 @@ impl<'a> NeoTransactionManager<'a> {
 	) -> Result<PreparedTransaction, Box<dyn std::error::Error>> {
 		// Estimate gas based on transaction type and complexity
 		let estimated_gas = match scenario.description.as_str() {
-			"NEO Transfer" => 9_977_780,      // Standard NEO transfer
-			"GAS Transfer" => 9_977_780,      // Standard GAS transfer
+			"NEO Transfer" => 9_977_780,         // Standard NEO transfer
+			"GAS Transfer" => 9_977_780,         // Standard GAS transfer
 			"Contract Invocation" => 20_000_000, // Contract call estimate
-			_ => 10_000_000,                  // Default estimate
+			_ => 10_000_000,                     // Default estimate
 		};
 
-		let prepared = PreparedTransaction {
-			estimated_gas,
-			priority: scenario.priority.clone(),
-		};
+		let prepared = PreparedTransaction { estimated_gas, priority: scenario.priority.clone() };
 
 		// Store in pending transactions (in real implementation, use better key)
 		let tx_id = format!("{}_{}", scenario.description, chrono::Utc::now().timestamp());
@@ -244,10 +244,8 @@ impl<'a> NeoTransactionManager<'a> {
 
 			total_gas += estimated_gas;
 
-			transactions.push(PreparedTransaction {
-				estimated_gas,
-				priority: scenario.priority.clone(),
-			});
+			transactions
+				.push(PreparedTransaction { estimated_gas, priority: scenario.priority.clone() });
 		}
 
 		// Estimate confirmation time based on priority and network load

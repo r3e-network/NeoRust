@@ -3,7 +3,7 @@ use std::time::Duration;
 use tokio::time::{interval, timeout};
 
 /// Neo N3 Block Subscription Example
-/// 
+///
 /// This example demonstrates how to monitor new blocks on the Neo N3 blockchain
 /// in real-time. Since Neo N3 doesn't have native WebSocket subscriptions like Ethereum,
 /// we implement polling-based block monitoring with efficient caching and notifications.
@@ -36,24 +36,24 @@ async fn main() -> eyre::Result<()> {
 	let subscription_result = timeout(Duration::from_secs(35), async {
 		loop {
 			poll_interval.tick().await;
-			
+
 			match block_monitor.check_for_new_blocks().await {
-				Ok(new_blocks) => {
+				Ok(new_blocks) =>
 					for block in new_blocks {
 						print_block_info(&block);
 						blocks_received += 1;
-						
+
 						if blocks_received >= max_blocks {
 							return Ok::<(), eyre::Report>(());
 						}
-					}
-				},
+					},
 				Err(e) => {
 					println!("   ⚠️  Error checking for blocks: {}", e);
-				}
+				},
 			}
 		}
-	}).await;
+	})
+	.await;
 
 	match subscription_result {
 		Ok(_) => println!("\n   ✅ Block subscription completed successfully"),
@@ -70,7 +70,7 @@ async fn main() -> eyre::Result<()> {
 
 	// 5. Demonstrate block filtering and notifications
 	println!("\n5. Advanced block monitoring features:");
-	
+
 	// Get latest block with detailed information
 	if let Ok(latest_block) = client.get_block(serde_json::json!("latest")).await {
 		analyze_block_content(&latest_block);
@@ -145,12 +145,8 @@ struct BlockMonitor<'a> {
 impl<'a> BlockMonitor<'a> {
 	async fn new(client: &'a RpcClient<HttpProvider>) -> eyre::Result<Self> {
 		let current_block = client.get_block_count().await?;
-		
-		Ok(Self {
-			client,
-			last_known_block: current_block,
-			statistics: BlockStatistics::new(),
-		})
+
+		Ok(Self { client, last_known_block: current_block, statistics: BlockStatistics::new() })
 	}
 
 	fn get_current_block(&self) -> u64 {
@@ -166,7 +162,8 @@ impl<'a> BlockMonitor<'a> {
 		if current_block_count > self.last_known_block {
 			// Process new blocks
 			for block_index in (self.last_known_block + 1)..=current_block_count {
-				if let Ok(block_data) = self.client.get_block(serde_json::json!(block_index)).await {
+				if let Ok(block_data) = self.client.get_block(serde_json::json!(block_index)).await
+				{
 					if let Some(block_info) = self.parse_block_data(&block_data) {
 						new_blocks.push(block_info);
 						self.update_statistics(&block_data);
@@ -185,19 +182,12 @@ impl<'a> BlockMonitor<'a> {
 		let hash = block_data.get("hash")?.as_str()?.to_string();
 		let timestamp = block_data.get("time")?.as_u64()?;
 		let merkle_root = block_data.get("merkleroot")?.as_str().unwrap_or("").to_string();
-		
+
 		let transactions = block_data.get("tx")?.as_array()?;
 		let transaction_count = transactions.len();
 		let size = block_data.get("size").and_then(|s| s.as_u64()).unwrap_or(0) as usize;
 
-		Some(BlockInfo {
-			index,
-			hash,
-			timestamp,
-			transaction_count,
-			size,
-			merkle_root,
-		})
+		Some(BlockInfo { index, hash, timestamp, transaction_count, size, merkle_root })
 	}
 
 	fn update_statistics(&mut self, block_data: &serde_json::Value) {
@@ -228,11 +218,10 @@ fn print_block_info(block: &BlockInfo) {
 	println!("\n   📦 New Block Received:");
 	println!("     Block Index: {}", block.index);
 	println!("     Block Hash: {}", block.hash);
-	println!("     Timestamp: {} ({})", 
-		datetime.format("%Y-%m-%d %H:%M:%S UTC"), block.timestamp);
+	println!("     Timestamp: {} ({})", datetime.format("%Y-%m-%d %H:%M:%S UTC"), block.timestamp);
 	println!("     Transactions: {}", block.transaction_count);
 	println!("     Size: {} bytes", block.size);
-	
+
 	if !block.merkle_root.is_empty() {
 		println!("     Merkle Root: {}...", &block.merkle_root[..20]);
 	}

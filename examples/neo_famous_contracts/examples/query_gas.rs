@@ -1,8 +1,10 @@
-use neo3::prelude::*;
-use neo3::neo_clients::{HttpProvider, RpcClient, APITrait};
-use neo3::neo_types::{ContractParameter, ScriptHash};
-use neo3::neo_crypto::KeyPair;
-use neo3::neo_protocol::{Account, AccountTrait};
+use neo3::{
+	neo_clients::{APITrait, HttpProvider, RpcClient},
+	neo_crypto::KeyPair,
+	neo_protocol::{Account, AccountTrait},
+	neo_types::{ContractParameter, ScriptHash},
+	prelude::*,
+};
 use std::str::FromStr;
 
 /// This example demonstrates how to query GAS token information and balances on the Neo N3 blockchain.
@@ -83,40 +85,29 @@ async fn query_gas_info(
 	gas_hash: &ScriptHash,
 ) -> Result<(), Box<dyn std::error::Error>> {
 	// Get token symbol
-	match client
-		.invoke_function(gas_hash, "symbol", None, None, None)
-		.await
-	{
-		Ok(result) => {
+	match client.invoke_function(gas_hash, "symbol", None, None, None).await {
+		Ok(result) =>
 			if let Some(stack_item) = result.stack.first() {
 				if let Some(symbol) = stack_item.as_string() {
 					println!("   🏷️ Symbol: {}", symbol);
 				}
-			}
-		},
+			},
 		Err(e) => println!("   ⚠️ Failed to get symbol: {}", e),
 	}
 
 	// Get token decimals
-	match client
-		.invoke_function(gas_hash, "decimals", None, None, None)
-		.await
-	{
-		Ok(result) => {
+	match client.invoke_function(gas_hash, "decimals", None, None, None).await {
+		Ok(result) =>
 			if let Some(stack_item) = result.stack.first() {
 				if let Some(decimals) = stack_item.as_int() {
 					println!("   🔢 Decimals: {}", decimals);
 				}
-			}
-		},
+			},
 		Err(e) => println!("   ⚠️ Failed to get decimals: {}", e),
 	}
 
 	// Get total supply
-	match client
-		.invoke_function(gas_hash, "totalSupply", None, None, None)
-		.await
-	{
+	match client.invoke_function(gas_hash, "totalSupply", None, None, None).await {
 		Ok(result) => {
 			if let Some(stack_item) = result.stack.first() {
 				if let Some(supply) = stack_item.as_int() {
@@ -139,13 +130,13 @@ async fn check_gas_balance(
 	account: &Account,
 ) -> Result<(), Box<dyn std::error::Error>> {
 	let script_hash = account.get_script_hash();
-	
+
 	match client.get_nep17_balance(&script_hash, gas_hash).await {
 		Ok(balance) => {
 			let gas_balance = balance as f64 / 100_000_000.0;
 			println!("   💰 GAS Balance: {} GAS", gas_balance);
 			println!("   🔍 Raw Balance: {} (in smallest unit)", balance);
-			
+
 			if balance == 0 {
 				println!("   💭 This is a new account with no GAS");
 				println!("   💡 To get TestNet GAS, visit: https://neowish.ngd.network/");

@@ -85,11 +85,8 @@ async fn check_address_balances(client: &RpcClient<HttpProvider>, address_str: &
 	};
 
 	// Check NEP-17 token balances
-	match tokio::time::timeout(
-		Duration::from_secs(10),
-		client.get_nep17_balances(script_hash),
-	)
-	.await
+	match tokio::time::timeout(Duration::from_secs(10), client.get_nep17_balances(script_hash))
+		.await
 	{
 		Ok(Ok(balances)) => {
 			// Look for NEO and GAS in the balances

@@ -1,14 +1,12 @@
+#![allow(dead_code)]
 use crate::{
-	commands::wallet::CliState,
 	errors::CliError,
-	utils::{
-		extensions::TransactionExtensions, print_error, print_info, print_success, prompt_yes_no,
-	},
+	utils::{extensions::TransactionExtensions, print_error, print_info, print_success},
 };
 use clap::{Args, Subcommand};
 use hex;
-use neo3::{neo_clients::APITrait, neo_protocol::NeoBlock, neo_types::Address, prelude::*};
-use primitive_types::{H160, H256};
+use neo3::{neo_clients::APITrait, neo_protocol::NeoBlock};
+use primitive_types::H160;
 use std::{io, io::Write, path::PathBuf, str::FromStr};
 
 #[derive(Args, Debug)]
@@ -57,7 +55,7 @@ pub enum BlockchainCommands {
 }
 
 /// CLI state is defined in wallet.rs
-
+#[allow(dead_code)]
 pub async fn handle_blockchain_command(
 	args: BlockchainArgs,
 	state: &mut crate::commands::wallet::CliState,
@@ -71,6 +69,7 @@ pub async fn handle_blockchain_command(
 	}
 }
 
+#[allow(dead_code)]
 async fn export_blockchain(
 	path: PathBuf,
 	start: u32,
@@ -143,6 +142,7 @@ async fn export_blockchain(
 	Ok(())
 }
 
+#[allow(dead_code)]
 async fn show_block(
 	identifier: String,
 	state: &mut crate::commands::wallet::CliState,
@@ -164,7 +164,7 @@ async fn show_block(
 			Ok(block) => show_block_by_hash(block),
 			Err(e) => {
 				print_error(&format!("Failed to get block by hash: {}", e));
-				return Err(CliError::Network(format!("Failed to get block by hash: {}", e)));
+				Err(CliError::Network(format!("Failed to get block by hash: {}", e)))
 			},
 		}
 	} else {
@@ -180,6 +180,7 @@ async fn show_block(
 	}
 }
 
+#[allow(dead_code)]
 async fn show_block_by_index(
 	index: u32,
 	state: &mut crate::commands::wallet::CliState,
@@ -223,6 +224,7 @@ async fn show_block_by_index(
 	Ok(())
 }
 
+#[allow(dead_code)]
 fn show_block_by_hash(block: NeoBlock) -> Result<(), CliError> {
 	// Display block information
 	println!("Block Hash: {}", block.hash);
@@ -248,6 +250,7 @@ fn show_block_by_hash(block: NeoBlock) -> Result<(), CliError> {
 	Ok(())
 }
 
+#[allow(dead_code)]
 async fn show_transaction(
 	hash: String,
 	state: &mut crate::commands::wallet::CliState,
@@ -262,7 +265,7 @@ async fn show_transaction(
 	let rpc_client = state.rpc_client.as_ref().unwrap();
 
 	// Remove '0x' prefix if present
-	let hash_str = if hash.starts_with("0x") { &hash[2..] } else { &hash };
+	let hash_str = hash.strip_prefix("0x").unwrap_or(&hash);
 
 	// Convert to H256
 	let hash_bytes = hex::decode(hash_str)
@@ -319,6 +322,7 @@ async fn show_transaction(
 	Ok(())
 }
 
+#[allow(dead_code)]
 async fn show_contract(
 	hash: String,
 	state: &mut crate::commands::wallet::CliState,

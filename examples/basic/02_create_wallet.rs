@@ -35,7 +35,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 	let address = script_hash.to_address();
 
 	println!("  📍 Address: {}", address.to_string().green());
-	println!("  🔐 Public Key: {}", hex::encode(key_pair.public_key().get_encoded_point(false).as_bytes()).dimmed());
+	println!(
+		"  🔐 Public Key: {}",
+		hex::encode(key_pair.public_key().get_encoded_point(false).as_bytes()).dimmed()
+	);
 	println!("  🎯 Script Hash: {}", key_pair.get_script_hash().to_string().dimmed());
 
 	// Example 2: Create wallet from WIF
@@ -116,7 +119,10 @@ mod tests {
 		let loaded_key = KeyPair::from_wif(&wif).unwrap();
 
 		// Keys should be identical after WIF roundtrip
-		assert_eq!(original_key.private_key().to_raw_bytes(), loaded_key.private_key().to_raw_bytes());
+		assert_eq!(
+			original_key.private_key().to_raw_bytes(),
+			loaded_key.private_key().to_raw_bytes()
+		);
 	}
 
 	#[test]

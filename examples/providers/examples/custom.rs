@@ -3,7 +3,7 @@
 use neo3::prelude::*;
 use std::sync::Arc;
 use thiserror::Error;
-use tokio::time::{Duration, timeout};
+use tokio::time::{timeout, Duration};
 
 /// This example demonstrates how to create custom transport abstractions for Neo N3.
 /// Since Neo N3 primarily uses HTTP RPC, we create a custom transport layer that
@@ -15,7 +15,7 @@ async fn main() -> eyre::Result<()> {
 
 	// 1. Create custom multi-endpoint transport
 	println!("\n1. Setting up custom multi-endpoint transport...");
-	
+
 	let endpoints = vec![
 		"https://testnet1.neo.coz.io:443/".to_string(),
 		"https://testnet2.neo.coz.io:443/".to_string(),
@@ -23,7 +23,10 @@ async fn main() -> eyre::Result<()> {
 	];
 
 	let custom_transport = CustomNeoTransport::new(endpoints)?;
-	println!("   ✅ Custom transport initialized with {} endpoints", custom_transport.endpoint_count());
+	println!(
+		"   ✅ Custom transport initialized with {} endpoints",
+		custom_transport.endpoint_count()
+	);
 
 	// 2. Test basic connectivity
 	println!("\n2. Testing transport connectivity...");
@@ -109,12 +112,15 @@ impl CustomNeoTransport {
 
 		let mut endpoint_health = std::collections::HashMap::new();
 		for endpoint in &endpoints {
-			endpoint_health.insert(endpoint.clone(), EndpointHealth {
-				is_healthy: true,
-				last_success: None,
-				consecutive_failures: 0,
-				average_response_time_ms: 0.0,
-			});
+			endpoint_health.insert(
+				endpoint.clone(),
+				EndpointHealth {
+					is_healthy: true,
+					last_success: None,
+					consecutive_failures: 0,
+					average_response_time_ms: 0.0,
+				},
+			);
 		}
 
 		let metrics = TransportMetrics {
@@ -137,9 +143,12 @@ impl CustomNeoTransport {
 		self.endpoints.len()
 	}
 
-	async fn execute_request(&self, request_description: &str) -> Result<serde_json::Value, CustomTransportError> {
+	async fn execute_request(
+		&self,
+		request_description: &str,
+	) -> Result<serde_json::Value, CustomTransportError> {
 		let start_time = std::time::Instant::now();
-		
+
 		// Try each endpoint until one succeeds
 		for attempt in 0..self.endpoints.len() {
 			let endpoint_index = {
@@ -150,7 +159,7 @@ impl CustomNeoTransport {
 			};
 
 			let endpoint = &self.endpoints[endpoint_index];
-			
+
 			match self.try_endpoint(endpoint, request_description).await {
 				Ok(response) => {
 					let duration = start_time.elapsed();
@@ -161,11 +170,11 @@ impl CustomNeoTransport {
 					println!("   ⚠️  Endpoint {} failed: {}", endpoint, e);
 					let duration = start_time.elapsed();
 					self.update_metrics(false, duration, endpoint).await;
-					
+
 					if attempt == self.endpoints.len() - 1 {
 						return Err(CustomTransportError::AllEndpointsFailed);
 					}
-				}
+				},
 			}
 		}
 
@@ -187,26 +196,33 @@ impl CustomNeoTransport {
 			// Execute the actual request based on description
 			match request_description {
 				"get_block_count" => {
-					let block_count = client.get_block_count().await
+					let block_count = client
+						.get_block_count()
+						.await
 						.map_err(|e| CustomTransportError::TransportError(e.to_string()))?;
 					Ok(serde_json::json!({"block_count": block_count}))
 				},
 				"get_version" => {
-					let version = client.get_version().await
+					let version = client
+						.get_version()
+						.await
 						.map_err(|e| CustomTransportError::TransportError(e.to_string()))?;
 					Ok(version)
 				},
 				_ => {
 					// Simulate generic request
-					let block_count = client.get_block_count().await
+					let block_count = client
+						.get_block_count()
+						.await
 						.map_err(|e| CustomTransportError::TransportError(e.to_string()))?;
 					Ok(serde_json::json!({"result": "success", "block_count": block_count}))
-				}
+				},
 			}
 		};
 
 		// Apply timeout
-		timeout(Duration::from_secs(10), request_future).await
+		timeout(Duration::from_secs(10), request_future)
+			.await
 			.map_err(|_| CustomTransportError::TimeoutError("Request timed out".to_string()))?
 	}
 
@@ -216,17 +232,17 @@ impl CustomNeoTransport {
 
 		if success {
 			metrics.successful_requests += 1;
-			
+
 			if let Some(health) = metrics.endpoint_health.get_mut(endpoint) {
 				health.is_healthy = true;
 				health.last_success = Some(chrono::Utc::now());
 				health.consecutive_failures = 0;
-				health.average_response_time_ms = 
+				health.average_response_time_ms =
 					(health.average_response_time_ms + duration.as_millis() as f64) / 2.0;
 			}
 		} else {
 			metrics.failed_requests += 1;
-			
+
 			if let Some(health) = metrics.endpoint_health.get_mut(endpoint) {
 				health.consecutive_failures += 1;
 				if health.consecutive_failures >= 3 {
@@ -237,7 +253,7 @@ impl CustomNeoTransport {
 
 		// Update average response time
 		let total_time = metrics.average_response_time_ms * (metrics.total_requests - 1) as f64;
-		metrics.average_response_time_ms = 
+		metrics.average_response_time_ms =
 			(total_time + duration.as_millis() as f64) / metrics.total_requests as f64;
 	}
 
@@ -250,18 +266,17 @@ impl CustomNeoTransport {
 async fn test_connectivity(transport: &CustomNeoTransport) -> Result<(), CustomTransportError> {
 	for i in 0..3 {
 		println!("   🔄 Testing connectivity attempt {}...", i + 1);
-		
+
 		match transport.execute_request("get_block_count").await {
-			Ok(response) => {
+			Ok(response) =>
 				if let Some(block_count) = response.get("block_count") {
 					println!("     ✅ Connection successful, block count: {}", block_count);
-				}
-			},
+				},
 			Err(e) => {
 				println!("     ❌ Connection failed: {}", e);
-			}
+			},
 		}
-		
+
 		// Small delay between tests
 		tokio::time::sleep(Duration::from_millis(500)).await;
 	}
@@ -270,7 +285,9 @@ async fn test_connectivity(transport: &CustomNeoTransport) -> Result<(), CustomT
 }
 
 /// Test failover behavior
-async fn test_failover_behavior(transport: &CustomNeoTransport) -> Result<(), CustomTransportError> {
+async fn test_failover_behavior(
+	transport: &CustomNeoTransport,
+) -> Result<(), CustomTransportError> {
 	println!("   🔄 Simulating endpoint failures...");
 
 	for i in 0..5 {
@@ -278,7 +295,7 @@ async fn test_failover_behavior(transport: &CustomNeoTransport) -> Result<(), Cu
 			Ok(_) => println!("     ✅ Request {} succeeded (failover working)", i + 1),
 			Err(e) => println!("     ❌ Request {} failed: {}", i + 1, e),
 		}
-		
+
 		tokio::time::sleep(Duration::from_millis(200)).await;
 	}
 
@@ -290,7 +307,7 @@ async fn test_load_balancing(transport: &CustomNeoTransport) -> Result<(), Custo
 	println!("   ⚖️  Testing load balancing across endpoints...");
 
 	let mut handles = Vec::new();
-	
+
 	for i in 0..6 {
 		let transport_ref = unsafe { &*(transport as *const _) }; // Safe in this context
 		let handle = tokio::spawn(async move {
@@ -316,7 +333,8 @@ fn print_transport_metrics(metrics: &TransportMetrics) {
 	println!("     Total requests: {}", metrics.total_requests);
 	println!("     Successful requests: {}", metrics.successful_requests);
 	println!("     Failed requests: {}", metrics.failed_requests);
-	println!("     Success rate: {:.1}%", 
+	println!(
+		"     Success rate: {:.1}%",
 		if metrics.total_requests > 0 {
 			(metrics.successful_requests as f64 / metrics.total_requests as f64) * 100.0
 		} else {
@@ -328,7 +346,9 @@ fn print_transport_metrics(metrics: &TransportMetrics) {
 	println!("\n   🏥 Endpoint Health:");
 	for (endpoint, health) in &metrics.endpoint_health {
 		let status = if health.is_healthy { "🟢 Healthy" } else { "🔴 Unhealthy" };
-		println!("     {}: {} (failures: {}, avg: {:.1}ms)", 
-			endpoint, status, health.consecutive_failures, health.average_response_time_ms);
+		println!(
+			"     {}: {} (failures: {}, avg: {:.1}ms)",
+			endpoint, status, health.consecutive_failures, health.average_response_time_ms
+		);
 	}
 }

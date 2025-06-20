@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 use crate::{
 	commands::wallet::CliState,
 	errors::CliError,
@@ -16,8 +17,6 @@ const DEFAULT_TESTNET_REST_ENDPOINT: &str = "https://rest.testnet.fs.neo.org";
 
 use reqwest::Client as HttpClient;
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
-use std::collections::HashMap;
 
 // Production-ready NeoFS client
 struct NeoFSClient {
@@ -522,7 +521,7 @@ pub enum ConfigCommands {
 }
 
 /// Handle NeoFS commands
-pub async fn handle_neofs_command(args: NeoFSArgs, state: &mut CliState) -> Result<(), CliError> {
+pub async fn handle_neofs_command(args: NeoFSArgs, _state: &mut CliState) -> Result<(), CliError> {
 	// Create NeoFS client
 	let client = match args.endpoint {
 		Some(endpoint) => NeoFSClient::with_endpoint(&endpoint),
@@ -545,7 +544,7 @@ async fn handle_container_command(
 	client: &NeoFSClient,
 ) -> Result<(), CliError> {
 	match command {
-		ContainerCommands::Create { name, acl, options } => {
+		ContainerCommands::Create { name, acl: _, options: _ } => {
 			print_info(&format!("Creating container '{}' on NeoFS network...", name));
 			// Professional NeoFS container creation with comprehensive blockchain integration
 			// This functionality provides complete container management including:

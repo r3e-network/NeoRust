@@ -1,9 +1,6 @@
 #[cfg(test)]
 mod tests {
-	use crate::integration::utils::{
-		assert_output_contains, assert_success, script_hash_from_string, CliTest,
-	};
-	use std::process::Output;
+	use crate::integration::utils::{assert_output_contains, assert_success, CliTest};
 
 	#[test]
 	fn test_contract_info() {

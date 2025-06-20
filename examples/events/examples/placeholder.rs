@@ -1,7 +1,7 @@
 use neo3::prelude::*;
 
 /// Neo N3 Event Monitoring Placeholder Example
-/// 
+///
 /// This example demonstrates the foundation for event monitoring in Neo N3.
 /// It shows how to set up the basic infrastructure for listening to contract
 /// notifications and blockchain events.
@@ -18,7 +18,7 @@ async fn main() -> eyre::Result<()> {
 
 	// 2. Set up event monitoring foundation
 	println!("\n2. Setting up event monitoring infrastructure...");
-	
+
 	let current_block = client.get_block_count().await?;
 	println!("   📊 Current block height: {}", current_block);
 
@@ -28,7 +28,7 @@ async fn main() -> eyre::Result<()> {
 	println!("     • Use getapplicationlog to retrieve transaction events");
 	println!("     • Filter notifications by contract hash");
 	println!("     • Parse event data from notification payloads");
-	
+
 	println!("\n   🔄 Real-time Monitoring:");
 	println!("     • Poll for new blocks at regular intervals");
 	println!("     • Check each transaction for relevant notifications");
@@ -54,22 +54,32 @@ async fn main() -> eyre::Result<()> {
 
 	// 5. Get a sample transaction to show event structure
 	println!("\n5. Analyzing recent transaction for event structure...");
-	
+
 	if let Ok(recent_block) = client.get_block(serde_json::json!(current_block - 1)).await {
 		if let Some(transactions) = recent_block.get("tx").and_then(|tx| tx.as_array()) {
 			if let Some(first_tx) = transactions.first() {
 				if let Some(tx_hash) = first_tx.get("hash").and_then(|h| h.as_str()) {
 					println!("   📋 Sample transaction: {}", tx_hash);
-					
+
 					// Try to get application log to show event structure
 					if let Ok(app_log) = client.get_application_log(tx_hash.to_string()).await {
-						if let Some(executions) = app_log.get("executions").and_then(|e| e.as_array()) {
-							let notification_count = executions.iter()
-								.flat_map(|e| e.get("notifications").and_then(|n| n.as_array()).unwrap_or(&vec![]))
+						if let Some(executions) =
+							app_log.get("executions").and_then(|e| e.as_array())
+						{
+							let notification_count = executions
+								.iter()
+								.flat_map(|e| {
+									e.get("notifications")
+										.and_then(|n| n.as_array())
+										.unwrap_or(&vec![])
+								})
 								.count();
-							
+
 							if notification_count > 0 {
-								println!("   🎯 Found {} notifications in this transaction", notification_count);
+								println!(
+									"   🎯 Found {} notifications in this transaction",
+									notification_count
+								);
 								println!("   💡 This shows real event data is available!");
 							} else {
 								println!("   📝 No notifications in this transaction (normal for simple transactions)");

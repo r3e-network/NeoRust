@@ -1,7 +1,9 @@
-use neo3::prelude::*;
-use neo3::neo_clients::{HttpProvider, RpcClient, APITrait};
-use neo3::neo_types::{ContractParameter, ScriptHash, StackItem};
-use neo3::neo_builder::ScriptBuilder;
+use neo3::{
+	neo_builder::ScriptBuilder,
+	neo_clients::{APITrait, HttpProvider, RpcClient},
+	neo_types::{ContractParameter, ScriptHash, StackItem},
+	prelude::*,
+};
 use std::str::FromStr;
 
 /// This example demonstrates comprehensive NEP-17 token operations on the Neo N3 blockchain.
@@ -243,28 +245,20 @@ async fn get_token_info(
 	token_name: &str,
 ) -> Result<TokenInfo, Box<dyn std::error::Error>> {
 	// Query symbol
-	let symbol_result = client
-		.invoke_function(token_hash, "symbol", None, None, None)
-		.await?;
-	let symbol = symbol_result.stack.first()
+	let symbol_result = client.invoke_function(token_hash, "symbol", None, None, None).await?;
+	let symbol = symbol_result
+		.stack
+		.first()
 		.and_then(|s| s.as_string())
 		.unwrap_or_else(|| token_name.to_string());
 
 	// Query decimals
-	let decimals_result = client
-		.invoke_function(token_hash, "decimals", None, None, None)
-		.await?;
-	let decimals = decimals_result.stack.first()
-		.and_then(|s| s.as_int())
-		.unwrap_or(0) as u32;
+	let decimals_result = client.invoke_function(token_hash, "decimals", None, None, None).await?;
+	let decimals = decimals_result.stack.first().and_then(|s| s.as_int()).unwrap_or(0) as u32;
 
 	// Query total supply
-	let supply_result = client
-		.invoke_function(token_hash, "totalSupply", None, None, None)
-		.await?;
-	let total_supply = supply_result.stack.first()
-		.and_then(|s| s.as_int())
-		.unwrap_or(0) as u64;
+	let supply_result = client.invoke_function(token_hash, "totalSupply", None, None, None).await?;
+	let total_supply = supply_result.stack.first().and_then(|s| s.as_int()).unwrap_or(0) as u64;
 	let total_supply_formatted = total_supply as f64 / 10f64.powi(decimals as i32);
 
 	Ok(TokenInfo { symbol, decimals, total_supply, total_supply_formatted })

@@ -1,8 +1,7 @@
 /// This example demonstrates Neo X integration with NeoRust SDK.
-use neo3::prelude::*;
 use neo3::{
 	neo_clients::{APITrait, HttpProvider, RpcClient},
-	neo_x::{bridge::*, *},
+	neo_x::*,
 };
 use std::error::Error;
 
@@ -16,14 +15,14 @@ async fn main() -> Result<(), Box<dyn Error>> {
 	let neo_client = RpcClient::new(neo_provider);
 
 	// Create Neo X provider
-	let neo_x_provider: neo3::neo_x::NeoXProvider<neo3::neo_clients::HttpProvider> =
+	let _neo_x_provider: neo3::neo_x::NeoXProvider<neo3::neo_clients::HttpProvider> =
 		NeoXProvider::new("https://neoxt4seed1.ngd.network", None);
 
 	println!("\n📊 Getting blockchain information:");
 
 	// Get Neo N3 block count
 	let neo_block_count = neo_client.get_block_count().await?;
-	println!("   Neo N3 block count: {}", neo_block_count);
+	println!("   Neo N3 block count: {neo_block_count}");
 
 	// Get Neo X block number (professional implementation provides actual network data)
 	println!("   Neo X block number: [Connected to Neo X network]");

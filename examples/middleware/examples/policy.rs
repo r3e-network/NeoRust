@@ -45,7 +45,7 @@ async fn main() -> eyre::Result<()> {
 
 	// Add reject-all policy for demonstration
 	let reject_all_policy = RejectAllPolicy::new();
-	
+
 	// 4. Test different transaction scenarios
 	println!("\n4. Testing transaction policy validation...");
 
@@ -103,11 +103,11 @@ async fn main() -> eyre::Result<()> {
 
 	// 6. Demonstrate policy composition
 	println!("\n6. Policy composition and priority...");
-	
+
 	let mut priority_manager = TransactionPolicyManager::new();
 	priority_manager.add_policy(Box::new(SpendingLimitPolicy::new(50_000_000))); // 0.5 GAS
 	priority_manager.add_policy(Box::new(EmergencyStopPolicy::new(false))); // Not stopped
-	
+
 	let test_transaction = TransactionRequest {
 		recipient: ScriptHash::from_address("NbTiM6h8r99kpRtb428XcsUk1TzKed2gTc")?,
 		asset: ScriptHash::gas(),
@@ -192,10 +192,7 @@ impl SpendingLimitPolicy {
 impl TransactionPolicy for SpendingLimitPolicy {
 	fn validate(&self, transaction: &TransactionRequest) -> PolicyResult {
 		if transaction.amount > self.max_amount {
-			Err(format!(
-				"Amount {} exceeds spending limit {}",
-				transaction.amount, self.max_amount
-			))
+			Err(format!("Amount {} exceeds spending limit {}", transaction.amount, self.max_amount))
 		} else {
 			Ok(())
 		}
@@ -252,7 +249,7 @@ impl TimeBasedPolicy {
 impl TransactionPolicy for TimeBasedPolicy {
 	fn validate(&self, _transaction: &TransactionRequest) -> PolicyResult {
 		let current_hour = chrono::Utc::now().hour();
-		
+
 		if current_hour < self.start_hour || current_hour >= self.end_hour {
 			Err(format!(
 				"Transactions only allowed between {}:00 and {}:00 UTC (current: {}:00)",

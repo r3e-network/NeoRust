@@ -1,15 +1,17 @@
+use futures::future::join_all;
 /// NeoFS Multipart Upload Example
 ///
 /// This example demonstrates comprehensive multipart upload functionality for large files
 /// in NeoFS, including chunking, parallel uploads, progress tracking, and error recovery.
 use neo3::neo_fs::{
-	Container, ContainerId, NeoFSClient, Object, OwnerId, ObjectId,
-	MultipartUpload, UploadPart, Session, PlacementPolicy, BasicACL
+	BasicACL, Container, ContainerId, MultipartUpload, NeoFSClient, Object, ObjectId, OwnerId,
+	PlacementPolicy, Session, UploadPart,
 };
-use std::sync::{Arc, Mutex};
-use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
+use std::{
+	sync::{Arc, Mutex},
+	time::{Duration, Instant, SystemTime, UNIX_EPOCH},
+};
 use tokio::sync::Semaphore;
-use futures::future::join_all;
 
 const DEFAULT_PART_SIZE: usize = 5 * 1024 * 1024; // 5 MB
 const MAX_CONCURRENT_UPLOADS: usize = 4;
@@ -27,7 +29,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 		timeout: Duration::from_secs(300), // 5 minutes for large uploads
 		secure: true,
 	};
-	
+
 	let client = Arc::new(NeoFSClient::with_config(config));
 	println!("   ✅ Client configured for large file uploads");
 
@@ -41,14 +43,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 	// 3. Create container for large files
 	println!("\n📦 3. Preparing container for large files...");
-	let container = Container::new(
-		ContainerId::generate()?,
-		owner_id.clone()
-	)
+	let container = Container::new(ContainerId::generate()?, owner_id.clone())
 		.with_placement_policy(
 			PlacementPolicy::new()
 				.with_replicas(3) // More replicas for reliability
-				.with_selector("StorageType", vec!["SSD"])
+				.with_selector("StorageType", vec!["SSD"]),
 		)
 		.with_basic_acl(BasicACL::Private)
 		.with_attribute("Name", "Large Files Container")
@@ -64,11 +63,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 	let file_size = 50 * 1024 * 1024; // 50 MB
 	let file_data = generate_test_data(file_size);
 	let file_checksum = calculate_checksum(&file_data);
-	
+
 	println!("   📏 File size: {:.2} MB", file_size as f64 / (1024.0 * 1024.0));
 	println!("   🔢 Checksum: 0x{:08x}", file_checksum);
 	println!("   📦 Part size: {:.2} MB", DEFAULT_PART_SIZE as f64 / (1024.0 * 1024.0));
-	
+
 	let total_parts = (file_size + DEFAULT_PART_SIZE - 1) / DEFAULT_PART_SIZE;
 	println!("   📊 Total parts: {}", total_parts);
 
@@ -85,11 +84,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 			("Checksum", &format!("0x{:08x}", file_checksum)),
 			("UploadMethod", "multipart"),
 			("Compression", "none"),
-		].into_iter().map(|(k, v)| (k.to_string(), v.to_string())).collect(),
+		]
+		.into_iter()
+		.map(|(k, v)| (k.to_string(), v.to_string()))
+		.collect(),
 		parts: vec![],
 		created_at: SystemTime::now(),
 	};
-	
+
 	match client.init_multipart_upload(&multipart, &session).await {
 		Ok(_) => println!("   ✅ Multipart upload initialized: {}", upload_id),
 		Err(e) => println!("   ⚠️  Initialization pending: {}", e),
@@ -100,10 +102,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 	let start_time = Instant::now();
 	let progress = Arc::new(Mutex::new(UploadProgress::new(total_parts)));
 	let semaphore = Arc::new(Semaphore::new(MAX_CONCURRENT_UPLOADS));
-	
+
 	// Create upload tasks for all parts
 	let mut upload_tasks = vec![];
-	
+
 	for part_number in 1..=total_parts {
 		let client = Arc::clone(&client);
 		let session = session.clone();
@@ -111,17 +113,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 		let container_id = container.id.clone();
 		let progress = Arc::clone(&progress);
 		let semaphore = Arc::clone(&semaphore);
-		
+
 		// Calculate part boundaries
 		let start_offset = (part_number - 1) * DEFAULT_PART_SIZE;
 		let end_offset = std::cmp::min(start_offset + DEFAULT_PART_SIZE, file_size);
 		let part_data = file_data[start_offset..end_offset].to_vec();
-		
+
 		// Create upload task
 		let task = tokio::spawn(async move {
 			// Acquire semaphore to limit concurrent uploads
 			let _permit = semaphore.acquire().await?;
-			
+
 			upload_part_with_retry(
 				client,
 				session,
@@ -130,30 +132,34 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 				part_number,
 				part_data,
 				progress,
-			).await
+			)
+			.await
 		});
-		
+
 		upload_tasks.push(task);
 	}
-	
+
 	// Wait for all uploads to complete
 	let results = join_all(upload_tasks).await;
-	
+
 	// Check results
 	let mut successful_parts = vec![];
 	let mut failed_parts = vec![];
-	
+
 	for (idx, result) in results.iter().enumerate() {
 		match result {
 			Ok(Ok(part_info)) => successful_parts.push(part_info.clone()),
 			_ => failed_parts.push(idx + 1),
 		}
 	}
-	
+
 	let elapsed = start_time.elapsed();
 	println!("\n   📈 Upload Statistics:");
 	println!("      • Total time: {:.2}s", elapsed.as_secs_f64());
-	println!("      • Throughput: {:.2} MB/s", (file_size as f64 / (1024.0 * 1024.0)) / elapsed.as_secs_f64());
+	println!(
+		"      • Throughput: {:.2} MB/s",
+		(file_size as f64 / (1024.0 * 1024.0)) / elapsed.as_secs_f64()
+	);
 	println!("      • Successful parts: {}/{}", successful_parts.len(), total_parts);
 	if !failed_parts.is_empty() {
 		println!("      • Failed parts: {:?}", failed_parts);
@@ -161,7 +167,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 	// 7. Complete multipart upload
 	println!("\n✅ 7. Completing multipart upload...");
-	
+
 	if successful_parts.len() == total_parts {
 		match client.complete_multipart_upload(&upload_id, successful_parts, &session).await {
 			Ok(object_id) => {
@@ -172,7 +178,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 		}
 	} else {
 		println!("   ❌ Upload incomplete - retry failed parts");
-		
+
 		// Abort incomplete upload
 		match client.abort_multipart_upload(&upload_id, &session).await {
 			Ok(_) => println!("   🧹 Incomplete upload cleaned up"),
@@ -182,13 +188,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 	// 8. Verify uploaded object
 	println!("\n🔍 8. Verifying uploaded object...");
-	
+
 	// Search for the uploaded object
-	let search_filters = vec![
-		("FileName", "large_dataset.bin"),
-		("UploadMethod", "multipart"),
-	];
-	
+	let search_filters = vec![("FileName", "large_dataset.bin"), ("UploadMethod", "multipart")];
+
 	match client.search_objects(&container.id, search_filters, &session).await {
 		Ok(results) => {
 			println!("   ✅ Object found in container");
@@ -236,10 +239,10 @@ async fn upload_part_with_retry(
 ) -> Result<PartInfo, Box<dyn std::error::Error + Send + Sync>> {
 	let mut attempts = 0;
 	let mut last_error = None;
-	
+
 	while attempts < MAX_RETRY_ATTEMPTS {
 		attempts += 1;
-		
+
 		// Create part object
 		let part = UploadPart {
 			upload_id: upload_id.clone(),
@@ -247,40 +250,43 @@ async fn upload_part_with_retry(
 			data: part_data.clone(),
 			checksum: calculate_checksum(&part_data),
 		};
-		
+
 		// Attempt upload
 		match client.upload_part(&container_id, &part, &session).await {
 			Ok(etag) => {
 				// Update progress
 				progress.lock().unwrap().complete_part(part_number);
-				
+
 				// Print progress every 5 parts or on last part
 				if part_number % 5 == 0 || part_number == progress.lock().unwrap().total_parts {
 					let p = progress.lock().unwrap();
-					println!("   📊 Progress: {}/{} parts ({:.1}%)", 
-						p.completed_parts, p.total_parts, p.percentage());
+					println!(
+						"   📊 Progress: {}/{} parts ({:.1}%)",
+						p.completed_parts,
+						p.total_parts,
+						p.percentage()
+					);
 				}
-				
-				return Ok(PartInfo {
-					part_number,
-					etag,
-					size: part_data.len(),
-				});
+
+				return Ok(PartInfo { part_number, etag, size: part_data.len() });
 			},
 			Err(e) => {
 				last_error = Some(e);
-				
+
 				// Exponential backoff
 				if attempts < MAX_RETRY_ATTEMPTS {
 					let delay = Duration::from_millis(100 * 2u64.pow(attempts - 1));
 					tokio::time::sleep(delay).await;
 				}
-			}
+			},
 		}
 	}
-	
-	Err(format!("Failed to upload part {} after {} attempts: {:?}", 
-		part_number, attempts, last_error).into())
+
+	Err(format!(
+		"Failed to upload part {} after {} attempts: {:?}",
+		part_number, attempts, last_error
+	)
+	.into())
 }
 
 /// Generate test data with some pattern
@@ -306,17 +312,13 @@ struct UploadProgress {
 
 impl UploadProgress {
 	fn new(total_parts: usize) -> Self {
-		Self {
-			total_parts,
-			completed_parts: 0,
-			start_time: Instant::now(),
-		}
+		Self { total_parts, completed_parts: 0, start_time: Instant::now() }
 	}
-	
+
 	fn complete_part(&mut self, _part_number: usize) {
 		self.completed_parts += 1;
 	}
-	
+
 	fn percentage(&self) -> f64 {
 		(self.completed_parts as f64 / self.total_parts as f64) * 100.0
 	}
@@ -332,8 +334,12 @@ struct PartInfo {
 
 // Helper trait implementations for example
 trait ExampleHelpers {
-	fn generate() -> Result<Self, Box<dyn std::error::Error>> where Self: Sized;
-	fn from_wallet_address(address: &str) -> Result<Self, Box<dyn std::error::Error>> where Self: Sized;
+	fn generate() -> Result<Self, Box<dyn std::error::Error>>
+	where
+		Self: Sized;
+	fn from_wallet_address(address: &str) -> Result<Self, Box<dyn std::error::Error>>
+	where
+		Self: Sized;
 }
 
 impl ExampleHelpers for ContainerId {

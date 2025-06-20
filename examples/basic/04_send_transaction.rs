@@ -130,7 +130,10 @@ async fn demonstrate_transaction_building(
 
 	// Get network fee for transaction size estimation
 	if let Ok(network_fee) = client.calculate_network_fee("".to_string()).await {
-		println!("    💸 Estimated Network Fee: {:.8} GAS", network_fee.network_fee as f64 / 100_000_000.0);
+		println!(
+			"    💸 Estimated Network Fee: {:.8} GAS",
+			network_fee.network_fee as f64 / 100_000_000.0
+		);
 	}
 
 	// Transaction parameters

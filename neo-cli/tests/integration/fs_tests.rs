@@ -1,7 +1,4 @@
-use crate::integration::utils::{
-	assert_output_contains, assert_output_matches, assert_success, CliTest,
-};
-use std::{path::Path, process::Command};
+use crate::integration::utils::{assert_output_contains, assert_success, CliTest};
 use tempfile::NamedTempFile;
 
 /// Test the NeoFS endpoints list command
@@ -200,20 +197,6 @@ fn test_fs_acl_operations() {
     }"#,
 	);
 
-	// Create a mock extended ACL config
-	let acl_config = cli.create_temp_file(
-		r#"{
-        "records": [
-            {
-                "operation": "PUT",
-                "action": "ALLOW",
-                "filters": [
-                    {"key": "address", "value": "NZKvXidwBhnV8rNXh2eXtpm5bH1rkofaDz"}
-                ]
-            }
-        ]
-    }"#,
-	);
 
 	// Test ACL set (will fail without an actual connection, but we can verify command structure)
 	let output = cli.run(&[

@@ -1,7 +1,7 @@
 use neo3::prelude::*;
 
 /// Neo N3 GAS Transfer Example
-/// 
+///
 /// This example demonstrates how to perform a basic GAS (utility token) transfer
 /// on the Neo N3 blockchain. It shows the complete process from creating a transaction
 /// to monitoring the results.
@@ -18,7 +18,7 @@ async fn main() -> eyre::Result<()> {
 
 	// 2. Set up transfer parameters
 	println!("\n2. Setting up transfer parameters...");
-	
+
 	// Demo addresses (in practice, you'd use real addresses from your wallet)
 	let from_address = ScriptHash::from_address("NbTiM6h8r99kpRtb428XcsUk1TzKed2gTc")?;
 	let to_address = ScriptHash::from_address("NZNos2WqTbu5oCgyfss9kUJgBXJqhuYAaj")?;
@@ -30,13 +30,12 @@ async fn main() -> eyre::Result<()> {
 
 	// 3. Check balances before transfer
 	println!("\n3. Checking balances before transfer...");
-	
+
 	let gas_token = ScriptHash::gas();
-	
-	let from_balance_before = client.get_nep17_balance(&from_address, &gas_token).await
-		.unwrap_or(0);
-	let to_balance_before = client.get_nep17_balance(&to_address, &gas_token).await
-		.unwrap_or(0);
+
+	let from_balance_before =
+		client.get_nep17_balance(&from_address, &gas_token).await.unwrap_or(0);
+	let to_balance_before = client.get_nep17_balance(&to_address, &gas_token).await.unwrap_or(0);
 
 	println!("   📊 From balance: {} GAS", from_balance_before as f64 / 100_000_000.0);
 	println!("   📊 To balance: {} GAS", to_balance_before as f64 / 100_000_000.0);
@@ -44,7 +43,7 @@ async fn main() -> eyre::Result<()> {
 	// 4. Demonstrate transaction construction (conceptual)
 	println!("\n4. Transaction construction process:");
 	println!("   🔧 In a real application, you would:");
-	
+
 	// Transaction building steps
 	let tx_steps = vec![
 		"Create transaction builder with GAS token contract",
@@ -61,7 +60,7 @@ async fn main() -> eyre::Result<()> {
 
 	// 5. Show what the transaction would look like
 	println!("\n5. Transaction structure (conceptual):");
-	
+
 	let conceptual_tx = serde_json::json!({
 		"version": 0,
 		"nonce": 1234567890,
@@ -75,7 +74,7 @@ async fn main() -> eyre::Result<()> {
 			}
 		],
 		"attributes": [],
-		"script": format!("0x0c14{} 0c14{} 0c08{} 41627d5b52", 
+		"script": format!("0x0c14{} 0c14{} 0c08{} 41627d5b52",
 			hex::encode(to_address.0),
 			hex::encode(from_address.0),
 			hex::encode(transfer_amount.to_le_bytes())
@@ -93,7 +92,7 @@ async fn main() -> eyre::Result<()> {
 
 	// 6. Estimate transaction costs
 	println!("\n6. Transaction cost estimation:");
-	
+
 	let estimated_system_fee = 997_780u64; // Typical GAS transfer system fee
 	let estimated_network_fee = 1_230_610u64; // Typical network fee
 	let total_cost = estimated_system_fee + estimated_network_fee;
@@ -101,8 +100,10 @@ async fn main() -> eyre::Result<()> {
 	println!("   ⚙️  System fee: {} GAS", estimated_system_fee as f64 / 100_000_000.0);
 	println!("   🌐 Network fee: {} GAS", estimated_network_fee as f64 / 100_000_000.0);
 	println!("   💸 Total cost: {} GAS", total_cost as f64 / 100_000_000.0);
-	println!("   💰 Total with transfer: {} GAS", 
-		(total_cost + transfer_amount) as f64 / 100_000_000.0);
+	println!(
+		"   💰 Total with transfer: {} GAS",
+		(total_cost + transfer_amount) as f64 / 100_000_000.0
+	);
 
 	// 7. Security considerations
 	println!("\n7. 🔐 Security considerations for transfers:");
@@ -131,7 +132,7 @@ async fn main() -> eyre::Result<()> {
 
 	// 10. Sample transaction monitoring
 	println!("\n10. Transaction monitoring example:");
-	
+
 	// Get a recent transaction to show monitoring
 	let current_block = client.get_block_count().await?;
 	if let Ok(recent_block) = client.get_block(serde_json::json!(current_block - 1)).await {
@@ -142,12 +143,16 @@ async fn main() -> eyre::Result<()> {
 					println!("    Hash: {}", tx_hash);
 					println!("    Block: {}", current_block - 1);
 					println!("    Status: Confirmed");
-					
+
 					// Check if this transaction has application logs (events)
 					if let Ok(app_log) = client.get_application_log(tx_hash.to_string()).await {
-						if let Some(executions) = app_log.get("executions").and_then(|e| e.as_array()) {
+						if let Some(executions) =
+							app_log.get("executions").and_then(|e| e.as_array())
+						{
 							for execution in executions {
-								if let Some(vm_state) = execution.get("vmstate").and_then(|s| s.as_str()) {
+								if let Some(vm_state) =
+									execution.get("vmstate").and_then(|s| s.as_str())
+								{
 									println!("    VM State: {}", vm_state);
 								}
 							}

@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 // Token operations for Neo CLI
 //
 // This module provides commands for interacting with NEP-17 tokens on the Neo N3 blockchain.
@@ -7,27 +8,24 @@
 // Token operations require connection to a Neo N3 RPC node and a properly configured wallet.
 
 use super::utils::{
-	format_token_amount, get_token_address_for_network, get_token_decimals, load_wallet,
-	parse_amount, resolve_token_hash, resolve_token_to_scripthash_with_network, NetworkTypeCli,
+	format_token_amount, get_token_decimals, parse_amount,
+	resolve_token_to_scripthash_with_network, NetworkTypeCli,
 };
 use crate::{commands::wallet::CliState, errors::CliError};
-use base64::{engine::general_purpose, Engine as _};
 use colored::*;
 use hex;
 use neo3::{
-	builder::{AccountSigner, CallFlags, ScriptBuilder, Signer, WitnessScope},
+	builder::{AccountSigner, CallFlags, ScriptBuilder, Signer},
 	neo_clients::APITrait,
 	neo_codec::NeoSerializable,
 	neo_protocol::AccountTrait,
-	neo_types::{Address, AddressExtension},
+	neo_types::AddressExtension,
 	prelude::*,
 };
-use num_traits::ToPrimitive;
 use primitive_types::{H160, H256};
 use rand;
-use serde_json;
 use std::str::FromStr;
-use tokio;
+
 
 // Local helper functions
 fn print_success(message: &str) {
@@ -95,7 +93,7 @@ pub async fn get_token_info(contract: &str, state: &CliState) -> Result<(), CliE
 
 	// Resolve token to script hash
 	let token_hash =
-		resolve_token_to_scripthash_with_network(contract, rpc_client, network_type.clone())
+		resolve_token_to_scripthash_with_network(contract, rpc_client, network_type)
 			.await?;
 
 	// Get token name
@@ -141,7 +139,7 @@ pub async fn get_token_info(contract: &str, state: &CliState) -> Result<(), CliE
 	}
 
 	// Get token decimals
-	match get_token_decimals(&token_hash, rpc_client, network_type.clone()).await {
+	match get_token_decimals(&token_hash, rpc_client, network_type).await {
 		Ok(decimals) => {
 			print_info(&format!("Token Decimals: {}", decimals));
 		},
@@ -193,7 +191,7 @@ pub async fn get_token_balance(
 
 	// Resolve token to script hash
 	let token_hash =
-		resolve_token_to_scripthash_with_network(contract, rpc_client, network_type.clone())
+		resolve_token_to_scripthash_with_network(contract, rpc_client, network_type)
 			.await?;
 
 	// Convert address to script hash
@@ -239,7 +237,7 @@ pub async fn get_token_balance(
 
 					// Format with decimals if available
 					if let Ok(decimals) =
-						get_token_decimals(&token_hash, rpc_client, network_type.clone()).await
+						get_token_decimals(&token_hash, rpc_client, network_type).await
 					{
 						let formatted = format_token_amount(amount, decimals);
 						print_info(&format!("Balance: {} {}", formatted, token_symbol));
@@ -272,7 +270,7 @@ pub async fn transfer_token(
 	let account = ensure_account_loaded(state)?;
 
 	// Convert address to script hash
-	let to_address_obj = Address::from_str(to_address)
+	let _to_address_obj = Address::from_str(to_address)
 		.map_err(|_| CliError::Wallet(format!("Failed to parse address: {}", to_address)))?;
 	let to_script_hash = address_to_script_hash(to_address).map_err(|e| {
 		CliError::Wallet(format!("Failed to convert address to script hash: {}", e))
@@ -285,7 +283,7 @@ pub async fn transfer_token(
 
 	// Resolve token to script hash
 	let token_hash =
-		resolve_token_to_scripthash_with_network(contract, rpc_client, network_type.clone())
+		resolve_token_to_scripthash_with_network(contract, rpc_client, network_type)
 			.await?;
 
 	// Get token symbol for display
@@ -307,7 +305,7 @@ pub async fn transfer_token(
 	};
 
 	// Get token decimals
-	let decimals = get_token_decimals(&token_hash, rpc_client, network_type.clone()).await?;
+	let decimals = get_token_decimals(&token_hash, rpc_client, network_type).await?;
 
 	// Parse and validate amount
 	let token_amount = parse_amount(amount, &token_hash, rpc_client, network_type).await?;

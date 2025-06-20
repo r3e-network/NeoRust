@@ -3,8 +3,8 @@
 /// This example demonstrates comprehensive NeoFS operations including container
 /// management, object storage, access control, and session handling.
 use neo3::neo_fs::{
-	AccessPermission, Container, ContainerId, NeoFSClient, Object, OwnerId,
-	PlacementPolicy, BasicACL, Session, ObjectHeader
+	AccessPermission, BasicACL, Container, ContainerId, NeoFSClient, Object, ObjectHeader, OwnerId,
+	PlacementPolicy, Session,
 };
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -20,7 +20,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 		timeout: std::time::Duration::from_secs(60),
 		secure: true,
 	};
-	
+
 	let client = NeoFSClient::with_config(config);
 	println!("   ✅ Client configured for TestNet");
 	println!("   📍 Endpoint: grpc.testnet.fs.neo.org:8082");
@@ -31,7 +31,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 	// In production, this would come from a Neo wallet
 	let owner_id = OwnerId::from_wallet_address("NPvKVTGZapmFWABLsyvfreuqn73jCjJtN1")?;
 	println!("   👤 Owner: {}", owner_id);
-	
+
 	// Create session for operations
 	let session = Session::new(owner_id.clone())
 		.with_expiration(SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs() + 3600)
@@ -40,18 +40,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 	// 3. Container creation example
 	println!("\n📦 3. Container Management...");
-	
+
 	// Define placement policy
 	let placement = PlacementPolicy::new()
 		.with_replicas(2)
 		.with_selector("Country", vec!["USA", "EU"])
 		.with_filter("StorageType", "SSD");
-	
+
 	// Create container with attributes
-	let container = Container::new(
-		ContainerId::generate()?,
-		owner_id.clone()
-	)
+	let container = Container::new(ContainerId::generate()?, owner_id.clone())
 		.with_placement_policy(placement)
 		.with_basic_acl(BasicACL::PublicReadWrite)
 		.with_attribute("Name", "Example Storage Container")
@@ -72,14 +69,18 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 	// 4. Object storage example
 	println!("\n📄 4. Object Storage Operations...");
-	
+
 	// Create object with metadata
-	let object_data = b"Hello from NeoFS! This is sample data stored in the decentralized storage network.";
+	let object_data =
+		b"Hello from NeoFS! This is sample data stored in the decentralized storage network.";
 	let object = Object::new(container.id.clone(), owner_id.clone())
 		.with_payload(object_data.to_vec())
 		.with_attribute("ContentType", "text/plain")
 		.with_attribute("FileName", "hello.txt")
-		.with_attribute("Timestamp", &SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs().to_string())
+		.with_attribute(
+			"Timestamp",
+			&SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs().to_string(),
+		)
 		.with_attribute("Compression", "none")
 		.with_attribute("Encryption", "none");
 
@@ -103,7 +104,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 	// 5. Object retrieval example
 	println!("\n🔍 5. Object Retrieval...");
-	
+
 	// Get object header
 	match client.head_object(&container.id, &object_id, &session).await {
 		Ok(header) => {
@@ -128,7 +129,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 	// 6. Access control demonstration
 	println!("\n🔐 6. Access Control Management...");
-	
+
 	// Create ACL for container
 	let acl_rules = vec![
 		(AccessPermission::GetObject, vec![owner_id.clone()]),
@@ -144,12 +145,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 	// 7. Search operations
 	println!("\n🔎 7. Object Search...");
-	
+
 	// Search by attributes
-	let search_filters = vec![
-		("ContentType", "text/plain"),
-		("Compression", "none"),
-	];
+	let search_filters = vec![("ContentType", "text/plain"), ("Compression", "none")];
 
 	match client.search_objects(&container.id, search_filters, &session).await {
 		Ok(results) => {
@@ -161,7 +159,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 	// 8. Container listing
 	println!("\n📋 8. Container Listing...");
-	
+
 	match client.list_containers(&owner_id, &session).await {
 		Ok(containers) => {
 			println!("   ✅ Containers for owner:");
@@ -174,7 +172,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 	// 9. Cleanup operations
 	println!("\n🧹 9. Cleanup Operations...");
-	
+
 	// Delete object
 	match client.delete_object(&container.id, &object_id, &session).await {
 		Ok(_) => println!("   ✅ Object deleted"),
@@ -199,7 +197,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 	println!("\n✅ NeoFS basic usage example completed!");
 	println!("💡 Note: Full gRPC implementation enables all operations shown above");
-	
+
 	Ok(())
 }
 
@@ -226,7 +224,7 @@ impl NeoFSHelpers for OwnerId {
 		// Convert Neo address to owner ID
 		Ok(OwnerId::from(address.to_string()))
 	}
-	
+
 	fn anyone() -> OwnerId {
 		OwnerId::from("*".to_string())
 	}

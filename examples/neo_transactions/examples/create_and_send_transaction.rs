@@ -1,10 +1,12 @@
-use neo3::prelude::*;
-use neo3::neo_clients::{HttpProvider, RpcClient, APITrait};
-use neo3::neo_builder::{ScriptBuilder, TransactionBuilder};
-use neo3::neo_crypto::KeyPair;
-use neo3::neo_protocol::{Account, AccountTrait};
-use neo3::neo_types::{ContractParameter, ScriptHash};
-use neo3::neo_wallets::WalletTrait;
+use neo3::{
+	neo_builder::{ScriptBuilder, TransactionBuilder},
+	neo_clients::{APITrait, HttpProvider, RpcClient},
+	neo_crypto::KeyPair,
+	neo_protocol::{Account, AccountTrait},
+	neo_types::{ContractParameter, ScriptHash},
+	neo_wallets::WalletTrait,
+	prelude::*,
+};
 use std::str::FromStr;
 
 /// This example demonstrates comprehensive transaction creation, signing, and sending on the Neo N3 blockchain.

@@ -29,6 +29,7 @@ pub fn print_warning(message: &str) {
 }
 
 /// Print a debug message (only in verbose mode)
+#[allow(dead_code)]
 pub fn print_debug(message: &str) {
 	if std::env::var("RUST_LOG").unwrap_or_default().contains("debug") {
 		println!("{} {}", "🔍".bright_magenta(), message.bright_black());
@@ -49,6 +50,7 @@ pub fn create_table() -> Table {
 }
 
 /// Create a progress bar with custom style
+#[allow(dead_code)]
 pub fn create_progress_bar(len: u64, message: &str) -> ProgressBar {
 	let pb = ProgressBar::new(len);
 	pb.set_style(
@@ -81,7 +83,7 @@ pub fn prompt_yes_no(message: &str) -> Result<bool, io::Error> {
 		.with_prompt(message)
 		.default(false)
 		.interact()
-		.map_err(|e| io::Error::new(io::ErrorKind::Other, e))
+		.map_err(|e| io::Error::other(e))
 }
 
 /// Prompt user for password input
@@ -89,7 +91,7 @@ pub fn prompt_password(message: &str) -> Result<String, io::Error> {
 	Password::with_theme(&ColorfulTheme::default())
 		.with_prompt(message)
 		.interact()
-		.map_err(|e| io::Error::new(io::ErrorKind::Other, e))
+		.map_err(|e| io::Error::other(e))
 }
 
 /// Prompt user for text input
@@ -97,16 +99,17 @@ pub fn prompt_input(message: &str) -> Result<String, io::Error> {
 	Input::with_theme(&ColorfulTheme::default())
 		.with_prompt(message)
 		.interact_text()
-		.map_err(|e| io::Error::new(io::ErrorKind::Other, e))
+		.map_err(|e| io::Error::other(e))
 }
 
 /// Prompt user for text input with default value
+#[allow(dead_code)]
 pub fn prompt_input_with_default(message: &str, default: &str) -> Result<String, io::Error> {
 	Input::with_theme(&ColorfulTheme::default())
 		.with_prompt(message)
 		.default(default.to_string())
 		.interact_text()
-		.map_err(|e| io::Error::new(io::ErrorKind::Other, e))
+		.map_err(|e| io::Error::other(e))
 }
 
 /// Prompt user to select from a list of options
@@ -116,7 +119,7 @@ pub fn prompt_select(message: &str, options: &[&str]) -> Result<usize, io::Error
 		.items(options)
 		.default(0)
 		.interact()
-		.map_err(|e| io::Error::new(io::ErrorKind::Other, e))
+		.map_err(|e| io::Error::other(e))
 }
 
 /// Display a formatted key-value pair
@@ -125,6 +128,7 @@ pub fn display_key_value(key: &str, value: &str) {
 }
 
 /// Display a formatted key-value pair with custom colors
+#[allow(dead_code)]
 pub fn display_key_value_colored(key: &str, value: &str, key_color: Color, value_color: Color) {
 	let key_colored = match key_color {
 		Color::Red => key.bright_red(),
@@ -150,6 +154,7 @@ pub fn display_key_value_colored(key: &str, value: &str, key_color: Color, value
 }
 
 /// Format a large number with thousands separators
+#[allow(dead_code)]
 pub fn format_number(num: u64) -> String {
 	num.to_string()
 		.as_bytes()
@@ -162,6 +167,7 @@ pub fn format_number(num: u64) -> String {
 }
 
 /// Format bytes in human-readable format
+#[allow(dead_code)]
 pub fn format_bytes(bytes: u64) -> String {
 	const UNITS: &[&str] = &["B", "KB", "MB", "GB", "TB"];
 	let mut size = bytes as f64;
@@ -180,6 +186,7 @@ pub fn format_bytes(bytes: u64) -> String {
 }
 
 /// Format duration in human-readable format
+#[allow(dead_code)]
 pub fn format_duration(seconds: u64) -> String {
 	let days = seconds / 86400;
 	let hours = (seconds % 86400) / 3600;
@@ -205,18 +212,21 @@ pub fn print_section_header(title: &str) {
 }
 
 /// Print a subsection header
+#[allow(dead_code)]
 pub fn print_subsection_header(title: &str) {
 	println!();
 	println!("{}", title.bright_cyan().bold());
 }
 
 /// Clear the terminal screen
+#[allow(dead_code)]
 pub fn clear_screen() {
 	print!("\x1B[2J\x1B[1;1H");
 	io::stdout().flush().unwrap();
 }
 
 /// Wait for user to press Enter
+#[allow(dead_code)]
 pub fn wait_for_enter(message: Option<&str>) {
 	let msg = message.unwrap_or("Press Enter to continue...");
 	print!("{} ", msg.bright_yellow());
@@ -243,6 +253,7 @@ where
 }
 
 /// Display error details in a formatted way
+#[allow(dead_code)]
 pub fn display_error_details(error: &dyn std::error::Error) {
 	print_error(&format!("Error: {}", error));
 

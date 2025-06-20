@@ -104,7 +104,7 @@ pub fn load_config() -> Result<Config, CliError> {
 	if config_path.exists() {
 		let config_str = fs::read_to_string(config_path).map_err(|e| CliError::Io(e))?;
 		serde_json::from_str(&config_str)
-			.map_err(|e| CliError::Config(format!("Failed to parse config file: {}", e)))
+			.map_err(|e| CliError::Config(format!("Failed to parse config file: {e}")))
 	} else {
 		let config = Config::default();
 		save_config(&config)?;
@@ -115,7 +115,7 @@ pub fn load_config() -> Result<Config, CliError> {
 pub fn save_config(config: &Config) -> Result<(), CliError> {
 	let config_path = get_config_path()?;
 	let config_str = serde_json::to_string_pretty(config)
-		.map_err(|e| CliError::Config(format!("Failed to serialize config: {}", e)))?;
+		.map_err(|e| CliError::Config(format!("Failed to serialize config: {e}")))?;
 	fs::write(config_path, config_str).map_err(|e| CliError::Io(e))?;
 	Ok(())
 }

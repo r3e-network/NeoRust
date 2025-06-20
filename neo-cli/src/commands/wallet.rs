@@ -2,9 +2,9 @@
 use crate::{
 	errors::CliError,
 	utils_core::{
-		create_table, display_key_value, print_info,
-		print_section_header, print_success, print_warning, prompt_input, prompt_password,
-		prompt_yes_no, status_indicator, with_loading,
+		create_table, display_key_value, print_info, print_section_header, print_success,
+		print_warning, prompt_input, prompt_password, prompt_yes_no, status_indicator,
+		with_loading,
 	},
 };
 use clap::{Args, Subcommand};

@@ -3,7 +3,10 @@
 //
 // This module contains utility functions for DeFi operations
 
-use crate::{commands::wallet::{CliState, Wallet}, errors::CliError};
+use crate::{
+	commands::wallet::{CliState, Wallet},
+	errors::CliError,
+};
 use neo3::{
 	neo_clients::{APITrait, HttpProvider, RpcClient},
 	neo_types::AddressExtension,

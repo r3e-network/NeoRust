@@ -1,4 +1,8 @@
-use std::{io::Write, path::PathBuf, process::{Command, Output}};
+use std::{
+	io::Write,
+	path::PathBuf,
+	process::{Command, Output},
+};
 use tempfile::{NamedTempFile, TempDir};
 
 pub struct CliTest {
@@ -62,7 +66,6 @@ impl CliTest {
 		path.keep().unwrap();
 		path_buf
 	}
-
 }
 
 /// Helper function to assert that command was successful
@@ -79,6 +82,3 @@ pub fn assert_output_contains(output: &Output, expected: &str) {
 		"Expected output to contain '{expected}', but got:\n{stdout}"
 	);
 }
-
-
-

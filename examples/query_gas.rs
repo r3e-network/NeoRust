@@ -78,6 +78,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 struct GasTokenInfo {
 	symbol: String,
 	decimals: u32,
+	#[allow(dead_code)]
 	total_supply: u64,
 	total_supply_formatted: String,
 }

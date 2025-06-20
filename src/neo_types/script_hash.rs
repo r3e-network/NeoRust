@@ -220,12 +220,15 @@ mod tests {
 	}
 
 	#[test]
-	#[should_panic]
 	fn test_creation_failures() {
-		H160::from_hex("23ba2703c53263e8d6e522dc32203339dcd8eee").unwrap();
-		H160::from_hex("g3ba2703c53263e8d6e522dc32203339dcd8eee9").unwrap();
-		H160::from_hex("23ba2703c53263e8d6e522dc32203339dcd8ee").unwrap();
-		H160::from_hex("c56f33fc6ecfcd0c225c4ab356fee59390af8560be0e930faebe74a6daff7c9b").unwrap();
+		// Test odd length hex string
+		assert!(H160::from_hex("23ba2703c53263e8d6e522dc32203339dcd8eee").is_err());
+		// Test invalid hex character
+		assert!(H160::from_hex("g3ba2703c53263e8d6e522dc32203339dcd8eee9").is_err());
+		// Test too short hex string
+		assert!(H160::from_hex("23ba2703c53263e8d6e522dc32203339dcd8ee").is_err());
+		// Test too long hex string
+		assert!(H160::from_hex("c56f33fc6ecfcd0c225c4ab356fee59390af8560be0e930faebe74a6daff7c9b").is_err());
 	}
 
 	#[test]

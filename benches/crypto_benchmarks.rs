@@ -6,7 +6,7 @@ use neo3::{
 
 fn benchmark_key_generation(c: &mut Criterion) {
 	c.bench_function("key_pair_generation", |b| {
-		b.iter(|| black_box(KeyPair::new_random().unwrap()))
+		b.iter(|| black_box(KeyPair::new_random()))
 	});
 }
 
@@ -15,7 +15,7 @@ fn benchmark_account_creation(c: &mut Criterion) {
 }
 
 fn benchmark_signature_creation(c: &mut Criterion) {
-	let key_pair = KeyPair::new_random().unwrap();
+	let key_pair = KeyPair::new_random();
 	let message = b"Hello Neo N3 Blockchain! This is a benchmark message.";
 	let message_hash = message.hash256();
 
@@ -25,7 +25,7 @@ fn benchmark_signature_creation(c: &mut Criterion) {
 }
 
 fn benchmark_signature_verification(c: &mut Criterion) {
-	let key_pair = KeyPair::new_random().unwrap();
+	let key_pair = KeyPair::new_random();
 	let message = b"Hello Neo N3 Blockchain! This is a benchmark message.";
 	let message_hash = message.hash256();
 	let signature = key_pair.private_key.sign_prehash(&message_hash).unwrap();
@@ -45,7 +45,7 @@ fn benchmark_hash_operations(c: &mut Criterion) {
 }
 
 fn benchmark_address_generation(c: &mut Criterion) {
-	let key_pair = KeyPair::new_random().unwrap();
+	let key_pair = KeyPair::new_random();
 
 	c.bench_function("address_from_public_key", |b| {
 		b.iter(|| {
@@ -56,7 +56,7 @@ fn benchmark_address_generation(c: &mut Criterion) {
 }
 
 fn benchmark_wif_operations(c: &mut Criterion) {
-	let key_pair = KeyPair::new_random().unwrap();
+	let key_pair = KeyPair::new_random();
 	let wif = key_pair.export_as_wif();
 
 	c.bench_function("wif_export", |b| b.iter(|| black_box(key_pair.export_as_wif())));

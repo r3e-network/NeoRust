@@ -478,4 +478,3 @@ fn display_best_practices() {
 	println!("      • Use contract versioning");
 	println!("      • Document ABI thoroughly");
 }
-

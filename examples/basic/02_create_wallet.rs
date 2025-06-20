@@ -100,8 +100,9 @@ mod tests {
 
 	#[test]
 	fn test_wallet_creation() {
-		let key_pair = KeyPair::<Secp256r1>::random();
-		let address = Address::from_script_hash(&key_pair.get_script_hash());
+		let key_pair = KeyPair::new_random();
+		let script_hash = key_pair.get_script_hash();
+		let address = script_hash.to_address();
 
 		// Wallet should have valid address format
 		assert!(address.to_string().starts_with('N'));
@@ -111,18 +112,19 @@ mod tests {
 	#[test]
 	fn test_wif_roundtrip() {
 		let original_key = KeyPair::new_random();
-		let wif = original_key.export_wif();
+		let wif = original_key.export_as_wif();
 		let loaded_key = KeyPair::from_wif(&wif).unwrap();
 
 		// Keys should be identical after WIF roundtrip
-		assert_eq!(original_key.private_key().to_bytes(), loaded_key.private_key().to_bytes());
+		assert_eq!(original_key.private_key().to_raw_bytes(), loaded_key.private_key().to_raw_bytes());
 	}
 
 	#[test]
 	fn test_address_validation() {
 		// Valid addresses should parse successfully
-		let key_pair = KeyPair::<Secp256r1>::random();
-		let address = Address::from_script_hash(&key_pair.get_script_hash());
+		let key_pair = KeyPair::new_random();
+		let script_hash = key_pair.get_script_hash();
+		let address = script_hash.to_address();
 		let address_str = address.to_string();
 
 		assert!(ScriptHash::from_address(&address_str).is_ok());

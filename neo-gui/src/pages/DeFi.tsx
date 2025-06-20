@@ -1,10 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import {
   ArrowsRightLeftIcon,
   PlusIcon,
   MinusIcon,
-  ChartBarIcon,
   CurrencyDollarIcon,
   TrophyIcon,
 } from '@heroicons/react/24/outline';
@@ -55,7 +54,7 @@ export default function DeFi() {
     if (fromToken && toToken && fromAmount) {
       calculateSwapAmount();
     }
-  }, [fromToken, toToken, fromAmount]);
+  }, [fromToken, toToken, fromAmount, calculateSwapAmount]);
 
   const loadTokens = async () => {
     // Mock token data
@@ -119,21 +118,21 @@ export default function DeFi() {
     }
   };
 
-  const calculateSwapAmount = async () => {
+  const calculateSwapAmount = useCallback(async () => {
     if (!fromToken || !toToken || !fromAmount) return;
 
     // Mock calculation - in real implementation, this would call the DEX contract
     const rate = toToken.price / fromToken.price;
     const calculatedAmount = (parseFloat(fromAmount) * rate * (1 - slippage / 100)).toFixed(8);
     setToAmount(calculatedAmount);
-  };
+  }, [fromToken, toToken, fromAmount, slippage]);
 
   const handleSwap = async () => {
     if (!currentWallet || !fromToken || !toToken || !fromAmount) return;
 
     setLoading(true);
     try {
-      const result = await invoke('swap_tokens', {
+      await invoke('swap_tokens', {
         request: {
           fromToken: fromToken.hash,
           toToken: toToken.hash,

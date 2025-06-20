@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import {
   PlusIcon,
@@ -37,9 +37,9 @@ export default function Wallet() {
     if (currentWallet) {
       loadTransactions();
     }
-  }, [currentWallet]);
+  }, [currentWallet, loadTransactions]);
 
-  const loadTransactions = async () => {
+  const loadTransactions = useCallback(async () => {
     if (!currentWallet) return;
     
     setLoading(true);
@@ -58,7 +58,7 @@ export default function Wallet() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [currentWallet, addNotification]);
 
   const handleCreateWallet = async (name: string, password: string) => {
     setLoading(true);
@@ -399,7 +399,7 @@ function CreateWalletModal({ onClose, onSubmit, loading }: {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (password !== confirmPassword) {
-      alert('Passwords do not match');
+      globalThis.alert('Passwords do not match');
       return;
     }
     onSubmit(name, password);

@@ -194,7 +194,7 @@ describe('Wallet Page', () => {
 
     it('shows loading state when loading transactions', async () => {
       mockInvoke.mockImplementation(() => new Promise(resolve => {
-        setTimeout(() => resolve([]), 100);
+        globalThis.setTimeout(() => resolve([]), 100);
       }));
 
       render(<Wallet />);

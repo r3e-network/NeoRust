@@ -1,5 +1,11 @@
 use neo3::prelude::*;
-use std::{collections::HashMap, path::PathBuf};
+use neo3::neo_wallets::{Account, Wallet, WalletBackup, WalletTrait};
+use neo3::neo_clients::{HttpProvider, RpcClient, APITrait};
+use neo3::neo_crypto::KeyPair;
+use neo3::neo_protocol::AccountTrait;
+use neo3::neo_types::ScriptHash;
+use primitive_types::H160;
+use std::{collections::HashMap, path::PathBuf, str::FromStr};
 
 /// This example demonstrates real wallet management functionality in Neo N3.
 /// It includes actual wallet creation, account operations, encryption, and persistence.
@@ -10,8 +16,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 	// 1. Create a new wallet
 	println!("\n1. Creating new wallet...");
-	let mut wallet = neo_wallets::Wallet::default();
-	wallet.set_name("NeoRust Example Wallet".to_string());
+	let mut wallet = Wallet::new();
+	wallet.name = "NeoRust Example Wallet".to_string();
 
 	// Set wallet metadata
 	let mut extra = HashMap::new();
@@ -25,29 +31,31 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 	);
 	extra.insert("version".to_string(), "1.0.0".to_string());
 	extra.insert("description".to_string(), "Example wallet for NeoRust SDK".to_string());
-	wallet.set_extra(extra);
+	wallet.extra = Some(extra);
 
-	println!("   ✅ Wallet created: {}", wallet.name());
+	println!("   ✅ Wallet created: {}", wallet.name);
 
 	// 2. Create accounts
 	println!("\n2. Creating accounts...");
 
 	// Create account from new private key
-	let account1 = neo_protocol::Account::create()?;
+	let key_pair1 = KeyPair::new_random();
+	let account1 = Account::from_key_pair(key_pair1.clone(), None, None)?;
 	wallet.add_account(account1.clone());
-	println!("   Account 1: {}", account1.address_or_scripthash().address());
+	println!("   Account 1: {}", account1.get_address());
 
 	// Create another account
-	let account2 = neo_protocol::Account::create()?;
+	let key_pair2 = KeyPair::new_random();
+	let account2 = Account::from_key_pair(key_pair2.clone(), None, None)?;
 	wallet.add_account(account2.clone());
-	println!("   Account 2: {}", account2.address_or_scripthash().address());
+	println!("   Account 2: {}", account2.get_address());
 
 	// Import account from WIF (example - would use real WIF in production)
 	let example_wif = "L1WMhxazScMhUrdv34JqQb1HFSQmWeN2Kpc1R9JGKwL7CDNP21uR";
-	match neo_protocol::Account::from_wif(example_wif) {
+	match Account::from_wif(example_wif) {
 		Ok(imported_account) => {
 			wallet.add_account(imported_account.clone());
-			println!("   Imported account: {}", imported_account.address_or_scripthash().address());
+			println!("   Imported account: {}", imported_account.get_address());
 		},
 		Err(e) => {
 			println!("   Note: Import example failed (expected): {}", e);
@@ -61,7 +69,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 	println!("\n3. Account operations...");
 
 	for (index, account) in wallet.accounts().iter().enumerate() {
-		println!("   Account {}: {}", index + 1, account.address_or_scripthash().address());
+		println!("   Account {}: {}", index + 1, account.get_address());
 		println!("     Script Hash: 0x{}", hex::encode(account.get_script_hash().0));
 
 		// Show public key if available
@@ -80,11 +88,26 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 	let password = "SecurePassword123!";
 
 	// Encrypt all accounts
-	wallet.encrypt_accounts(password);
+	let account_keys: Vec<H160> = wallet.accounts.keys().cloned().collect();
+	for key in account_keys {
+		if let Some(account) = wallet.accounts.get_mut(&key) {
+			account.encrypt_private_key(password).map_err(|e| format!("Encryption error: {}", e))?;
+		}
+	}
 	println!("   ✅ Wallet encrypted with password");
 
 	// Decrypt to verify
-	if wallet.decrypt_accounts(password).is_ok() {
+	// Decrypt accounts to verify
+	let mut decrypted_count = 0;
+	let account_keys: Vec<H160> = wallet.accounts.keys().cloned().collect();
+	for key in account_keys {
+		if let Some(account) = wallet.accounts.get_mut(&key) {
+			if account.decrypt_private_key(password).is_ok() {
+				decrypted_count += 1;
+			}
+		}
+	}
+	if decrypted_count > 0 {
 		println!("   ✅ Wallet decrypted successfully");
 	} else {
 		println!("   ❌ Failed to decrypt wallet");
@@ -94,15 +117,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 	println!("\n5. Wallet persistence...");
 	let wallet_path = PathBuf::from("example_wallet.json");
 
-	match neo_wallets::WalletBackup::backup(&wallet, wallet_path.clone()) {
+	match WalletBackup::backup(&wallet, wallet_path.clone()) {
 		Ok(_) => {
 			println!("   ✅ Wallet saved to: {}", wallet_path.display());
 
 			// Load wallet from file
-			match neo_wallets::WalletBackup::recover(wallet_path.clone()) {
+			match WalletBackup::recover(wallet_path.clone()) {
 				Ok(loaded_wallet) => {
 					println!("   ✅ Wallet loaded successfully");
-					println!("     Name: {}", loaded_wallet.name());
+					println!("     Name: {}", loaded_wallet.name);
 					println!("     Accounts: {}", loaded_wallet.accounts().len());
 				},
 				Err(e) => {
@@ -121,8 +144,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 	// Create multiple accounts for multi-sig
 	let mut sig_accounts = Vec::new();
 	for i in 0..3 {
-		let acc = neo_protocol::Account::create()?;
-		println!("   Multi-sig participant {}: {}", i + 1, acc.address_or_scripthash().address());
+		let key_pair = KeyPair::new_random();
+		let acc = Account::from_key_pair(key_pair, None, None)?;
+		println!("   Multi-sig participant {}: {}", i + 1, acc.get_address());
 		sig_accounts.push(acc);
 	}
 
@@ -143,17 +167,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 	println!("\n7. Account balance checking...");
 
 	// Connect to testnet for balance checking
-	match neo_providers::HttpProvider::new("https://testnet1.neo.coz.io:443") {
+	match HttpProvider::new("https://testnet1.neo.coz.io:443") {
 		Ok(provider) => {
-			let client = neo_providers::RpcClient::new(provider);
+			let client = RpcClient::new(provider);
 
 			for (index, account) in wallet.accounts().iter().take(2).enumerate() {
-				let address = account.address_or_scripthash().address();
+				let address = account.get_address();
 				println!("   Checking balance for account {}: {}", index + 1, address);
 
 				// Get NEO balance
 				match client
-					.get_nep17_balance(&account.get_script_hash(), &neo_types::ScriptHash::neo())
+					.get_nep17_balance(&account.get_script_hash(), &ScriptHash::from_str("ef4073a0f2b305a38ec4050e4d3d28bc40ea63f5").unwrap())
 					.await
 				{
 					Ok(neo_balance) => {
@@ -166,7 +190,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 				// Get GAS balance
 				match client
-					.get_nep17_balance(&account.get_script_hash(), &neo_types::ScriptHash::gas())
+					.get_nep17_balance(&account.get_script_hash(), &ScriptHash::from_str("d2a4cff31913016155e38e474a2c06d08be276cf").unwrap())
 					.await
 				{
 					Ok(gas_balance) => {

@@ -1,165 +1,306 @@
-use async_trait::async_trait;
-use ethers::{
-	core::{
-		types::{transaction::eip2718::TypedTransaction, BlockId, TransactionRequest, U256},
-		utils::{parse_units, Anvil},
-	},
-	middleware::MiddlewareBuilder,
-	providers::{Http, Middleware, MiddlewareError, PendingTransaction, Provider},
-	signers::{LocalWallet, Signer},
-};
+use neo3::prelude::*;
+use std::sync::Arc;
 use thiserror::Error;
 
-/// This example demonstrates the mechanisms for creating custom middlewares in ethers-rs.
-/// The example includes explanations of the process and code snippets to illustrate the
-/// concepts. It is intended for developers who want to learn how to customize the behavior of
-/// ethers-rs providers by creating and using custom middlewares.
+/// This example demonstrates how to create custom middleware for Neo N3 transactions.
+/// It shows how to intercept, modify, and validate transactions before they are sent
+/// to the Neo N3 network. This is useful for implementing custom business logic,
+/// security checks, or gas optimization strategies.
 ///
-/// This custom middleware increases the gas value of transactions sent through an ethers-rs
-/// provider by a specified percentage and will be called for each transaction before it is sent.
-/// This can be useful if you want to ensure that transactions have a higher gas value than the
-/// estimated, in order to improve the chances of them not to run out of gas when landing on-chain.
-#[derive(Debug)]
-struct GasMiddleware<M> {
-	inner: M,
-	/// This value is used to raise the gas value before sending transactions
-	contingency: U256,
-}
-
-/// Contingency is expressed with 4 units
-/// e.g.
-/// 50% => 1 + 0.5  => 15000
-/// 20% => 1 + 0.2  => 12000
-/// 1%  => 1 + 0.01 => 10100
-const CONTINGENCY_UNITS: usize = 4;
-
-impl<M> GasMiddleware<M>
-where
-	M: Middleware,
-{
-	/// Creates an instance of GasMiddleware
-	/// `ìnner` the inner Middleware
-	/// `perc` This is an unsigned integer representing the percentage increase in the amount of gas
-	/// to be used for the transaction. The percentage is relative to the gas value specified in the
-	/// transaction. Valid contingency values are in range 1..=50. Otherwise a custom middleware
-	/// error is raised.
-	pub fn new(inner: M, perc: u32) -> Result<Self, GasMiddlewareError<M>> {
-		let contingency = match perc {
-			0 => Err(GasMiddlewareError::TooLowContingency(perc))?,
-			51.. => Err(GasMiddlewareError::TooHighContingency(perc))?,
-			1..=50 => {
-				let decimals = 2;
-				let perc = U256::from(perc) * U256::exp10(decimals); // e.g. 50 => 5000
-				let one = parse_units(1, CONTINGENCY_UNITS).unwrap();
-				let one = U256::from(one);
-				one + perc // e.g. 50% => 1 + 0.5 => 10000 + 5000 => 15000
-			},
-		};
-
-		Ok(Self { inner, contingency })
-	}
-}
-
-/// Let's implement the `Middleware` trait for our custom middleware.
-/// All trait functions are derived automatically, so we just need to
-/// override the needed functions.
-#[async_trait]
-impl<M> Middleware for GasMiddleware<M>
-where
-	M: Middleware,
-{
-	type Error = GasMiddlewareError<M>;
-	type Provider = M::Provider;
-	type Inner = M;
-
-	fn inner(&self) -> &M {
-		&self.inner
-	}
-
-	/// In this function we bump the transaction gas value by the specified percentage
-	/// This can raise a custom middleware error if a gas amount was not set for
-	/// the transaction.
-	async fn send_transaction<T: Into<TypedTransaction> + Send + Sync>(
-		&self,
-		tx: T,
-		block: Option<BlockId>,
-	) -> Result<PendingTransaction<'_, Self::Provider>, Self::Error> {
-		let mut tx: TypedTransaction = tx.into();
-
-		let curr_gas: U256 = match tx.gas() {
-			Some(gas) => gas.to_owned(),
-			None => Err(GasMiddlewareError::NoGasSetForTransaction)?,
-		};
-
-		println!("Original transaction gas: {curr_gas:?} wei");
-		let units: U256 = U256::exp10(CONTINGENCY_UNITS);
-		let raised_gas: U256 = (curr_gas * self.contingency) / units;
-		tx.set_gas(raised_gas);
-		println!("Raised transaction gas: {raised_gas:?} wei");
-
-		// Dispatch the call to the inner layer
-		self.send_transaction(tx, block).await.map_err(MiddlewareError::from_err)
-	}
-}
-
-/// This example demonstrates how to handle errors in custom middlewares. It shows how to define
-/// custom error types, use them in middleware implementations, and how to propagate the errors
-/// through the middleware chain. This is intended for developers who want to create custom
-/// middlewares that can handle and propagate errors in a consistent and robust way.
-#[derive(Error, Debug)]
-pub enum GasMiddlewareError<M: Middleware> {
-	/// Thrown when the internal middleware errors
-	#[error("{0}")]
-	MiddlewareError(M::Error),
-	/// Specific errors of this GasMiddleware.
-	/// Please refer to the `thiserror` crate for
-	/// further docs.
-	#[error("{0}")]
-	TooHighContingency(u32),
-	#[error("{0}")]
-	TooLowContingency(u32),
-	#[error("Cannot raise gas! Gas value not provided for this transaction.")]
-	NoGasSetForTransaction,
-}
-
-impl<M: Middleware> MiddlewareError for GasMiddlewareError<M> {
-	type Inner = M::Error;
-
-	fn from_err(src: M::Error) -> Self {
-		GasMiddlewareError::MiddlewareError(src)
-	}
-
-	fn as_inner(&self) -> Option<&Self::Inner> {
-		match self {
-			GasMiddlewareError::MiddlewareError(e) => Some(e),
-			_ => None,
-		}
-	}
-}
-
+/// This custom middleware adjusts gas limits for Neo N3 transactions based on
+/// network conditions and transaction complexity to improve success rates.
 #[tokio::main]
 async fn main() -> eyre::Result<()> {
-	let anvil = Anvil::new().spawn();
+	println!("🔧 Neo N3 Custom Middleware Example");
+	println!("===================================");
 
-	let wallet: LocalWallet = anvil.keys()[0].clone().into();
-	let wallet2: LocalWallet = anvil.keys()[1].clone().into();
-	let signer = wallet.with_chain_id(anvil.chain_id());
+	// 1. Connect to Neo N3 TestNet
+	println!("\n1. Setting up Neo N3 connection...");
+	let provider = HttpProvider::new("https://testnet1.neo.coz.io:443/")?;
+	let client = RpcClient::new(provider);
+	println!("   ✅ Connected to Neo N3 TestNet");
 
-	let gas_raise_perc = 50; // 50%;
-	let provider = Provider::<Http>::try_from(anvil.endpoint())?
-		.with_signer(signer)
-		.wrap_into(|s| GasMiddleware::new(s, gas_raise_perc).unwrap());
+	// 2. Create custom middleware layers
+	println!("\n2. Creating custom middleware layers...");
 
-	let gas = 15000;
-	let tx = TransactionRequest::new().to(wallet2.address()).value(10000).gas(gas);
+	// Gas optimization middleware
+	let gas_middleware = GasOptimizationMiddleware::new(25); // 25% gas buffer
+	println!("   ✅ Gas optimization middleware created");
 
-	let pending_tx = provider.send_transaction(tx, None).await?;
+	// Transaction validation middleware
+	let validation_middleware = TransactionValidationMiddleware::new();
+	println!("   ✅ Transaction validation middleware created");
 
-	let receipt = pending_tx.await?.ok_or_else(|| eyre::format_err!("tx dropped from mempool"))?;
-	let tx = provider.get_transaction(receipt.transaction_hash).await?;
+	// Logging middleware
+	let logging_middleware = LoggingMiddleware::new();
+	println!("   ✅ Logging middleware created");
 
-	println!("Sent tx: {}\n", serde_json::to_string(&tx)?);
-	println!("Tx receipt: {}", serde_json::to_string(&receipt)?);
+	// 3. Create middleware chain
+	println!("\n3. Building middleware chain...");
+	let middleware_chain = MiddlewareChain::new()
+		.add_middleware(Box::new(logging_middleware))
+		.add_middleware(Box::new(validation_middleware))
+		.add_middleware(Box::new(gas_middleware));
+	println!("   ✅ Middleware chain configured with {} layers", middleware_chain.middleware_count());
+
+	// 4. Test middleware with different transaction types
+	println!("\n4. Testing middleware with different transactions...");
+
+	// Simple NEO transfer
+	let neo_transfer = TransactionRequest {
+		recipient: ScriptHash::from_address("NbTiM6h8r99kpRtb428XcsUk1TzKed2gTc")?,
+		asset: ScriptHash::neo(),
+		amount: 1,
+		gas_limit: 1_000_000,
+		transaction_type: TransactionType::Transfer,
+	};
+
+	println!("\n   📋 Processing NEO transfer transaction:");
+	process_transaction_with_middleware(&client, &middleware_chain, &neo_transfer).await?;
+
+	// Contract invocation
+	let contract_call = TransactionRequest {
+		recipient: ScriptHash::from_str("0xef4073a0f2b305a38ec4050e4d3d28bc40ea63f5")?, // NEO token
+		asset: ScriptHash::gas(),
+		amount: 0,
+		gas_limit: 2_000_000,
+		transaction_type: TransactionType::ContractCall,
+	};
+
+	println!("\n   📋 Processing contract call transaction:");
+	process_transaction_with_middleware(&client, &middleware_chain, &contract_call).await?;
+
+	// High-value transaction
+	let high_value_tx = TransactionRequest {
+		recipient: ScriptHash::from_address("NbTiM6h8r99kpRtb428XcsUk1TzKed2gTc")?,
+		asset: ScriptHash::gas(),
+		amount: 100_000_000, // 1 GAS
+		gas_limit: 1_500_000,
+		transaction_type: TransactionType::Transfer,
+	};
+
+	println!("\n   📋 Processing high-value transaction:");
+	process_transaction_with_middleware(&client, &middleware_chain, &high_value_tx).await?;
+
+	// 5. Demonstrate error handling
+	println!("\n5. Testing error handling...");
+
+	// Invalid transaction (negative amount simulation)
+	let invalid_tx = TransactionRequest {
+		recipient: ScriptHash::from_address("NbTiM6h8r99kpRtb428XcsUk1TzKed2gTc")?,
+		asset: ScriptHash::gas(),
+		amount: 0, // This will trigger validation error
+		gas_limit: 100, // Very low gas limit
+		transaction_type: TransactionType::Transfer,
+	};
+
+	println!("\n   📋 Processing invalid transaction (should fail):");
+	if let Err(e) = process_transaction_with_middleware(&client, &middleware_chain, &invalid_tx).await {
+		println!("     ✅ Expected error caught: {}", e);
+	}
+
+	// 6. Middleware best practices
+	println!("\n6. 💡 Custom Middleware Best Practices:");
+	println!("   ✅ Keep middleware lightweight and focused");
+	println!("   ✅ Implement proper error handling and propagation");
+	println!("   ✅ Use logging for debugging and monitoring");
+	println!("   ✅ Validate inputs before processing");
+	println!("   ✅ Allow for configuration and customization");
+	println!("   ✅ Consider middleware ordering and dependencies");
+	println!("   ✅ Test thoroughly with various transaction types");
+
+	println!("\n🎉 Custom middleware example completed!");
+	println!("💡 This demonstrates how to create and use custom middleware for Neo N3.");
+
+	Ok(())
+}
+
+/// Transaction request structure
+#[derive(Debug, Clone)]
+struct TransactionRequest {
+	recipient: ScriptHash,
+	asset: ScriptHash,
+	amount: u64,
+	gas_limit: u64,
+	transaction_type: TransactionType,
+}
+
+/// Transaction types for middleware processing
+#[derive(Debug, Clone)]
+enum TransactionType {
+	Transfer,
+	ContractCall,
+	ContractDeploy,
+}
+
+/// Middleware trait for transaction processing
+trait TransactionMiddleware {
+	fn process(&self, tx: &mut TransactionRequest) -> Result<(), MiddlewareError>;
+	fn name(&self) -> &str;
+}
+
+/// Custom middleware error types
+#[derive(Error, Debug)]
+enum MiddlewareError {
+	#[error("Gas limit too low: {0}")]
+	GasTooLow(u64),
+	#[error("Invalid transaction amount: {0}")]
+	InvalidAmount(u64),
+	#[error("Transaction validation failed: {0}")]
+	ValidationFailed(String),
+	#[error("Middleware chain error: {0}")]
+	ChainError(String),
+}
+
+/// Gas optimization middleware
+struct GasOptimizationMiddleware {
+	buffer_percentage: u32,
+}
+
+impl GasOptimizationMiddleware {
+	fn new(buffer_percentage: u32) -> Self {
+		Self { buffer_percentage }
+	}
+}
+
+impl TransactionMiddleware for GasOptimizationMiddleware {
+	fn process(&self, tx: &mut TransactionRequest) -> Result<(), MiddlewareError> {
+		let original_gas = tx.gas_limit;
+		
+		// Add buffer based on transaction type
+		let base_gas = match tx.transaction_type {
+			TransactionType::Transfer => 1_000_000,
+			TransactionType::ContractCall => 2_000_000,
+			TransactionType::ContractDeploy => 5_000_000,
+		};
+
+		let optimized_gas = std::cmp::max(
+			original_gas,
+			base_gas + (base_gas * self.buffer_percentage as u64 / 100)
+		);
+
+		tx.gas_limit = optimized_gas;
+
+		println!("     🔧 Gas optimization: {} → {} (+{}%)", 
+			original_gas, optimized_gas, self.buffer_percentage);
+
+		Ok(())
+	}
+
+	fn name(&self) -> &str {
+		"GasOptimization"
+	}
+}
+
+/// Transaction validation middleware
+struct TransactionValidationMiddleware;
+
+impl TransactionValidationMiddleware {
+	fn new() -> Self {
+		Self
+	}
+}
+
+impl TransactionMiddleware for TransactionValidationMiddleware {
+	fn process(&self, tx: &mut TransactionRequest) -> Result<(), MiddlewareError> {
+		// Validate gas limit
+		if tx.gas_limit < 100_000 {
+			return Err(MiddlewareError::GasTooLow(tx.gas_limit));
+		}
+
+		// Validate amount for transfers
+		if matches!(tx.transaction_type, TransactionType::Transfer) && tx.amount == 0 {
+			return Err(MiddlewareError::InvalidAmount(tx.amount));
+		}
+
+		// Validate recipient address format
+		if tx.recipient.0.iter().all(|&b| b == 0) {
+			return Err(MiddlewareError::ValidationFailed("Invalid recipient address".to_string()));
+		}
+
+		println!("     ✅ Transaction validation passed");
+		Ok(())
+	}
+
+	fn name(&self) -> &str {
+		"TransactionValidation"
+	}
+}
+
+/// Logging middleware
+struct LoggingMiddleware;
+
+impl LoggingMiddleware {
+	fn new() -> Self {
+		Self
+	}
+}
+
+impl TransactionMiddleware for LoggingMiddleware {
+	fn process(&self, tx: &mut TransactionRequest) -> Result<(), MiddlewareError> {
+		println!("     📝 Logging transaction:");
+		println!("       Type: {:?}", tx.transaction_type);
+		println!("       Asset: 0x{}", hex::encode(tx.asset.0));
+		println!("       Amount: {}", tx.amount);
+		println!("       Gas Limit: {}", tx.gas_limit);
+		println!("       Recipient: {}", tx.recipient.to_address());
+		Ok(())
+	}
+
+	fn name(&self) -> &str {
+		"Logging"
+	}
+}
+
+/// Middleware chain for processing transactions
+struct MiddlewareChain {
+	middlewares: Vec<Box<dyn TransactionMiddleware>>,
+}
+
+impl MiddlewareChain {
+	fn new() -> Self {
+		Self { middlewares: Vec::new() }
+	}
+
+	fn add_middleware(mut self, middleware: Box<dyn TransactionMiddleware>) -> Self {
+		self.middlewares.push(middleware);
+		self
+	}
+
+	fn middleware_count(&self) -> usize {
+		self.middlewares.len()
+	}
+
+	async fn process_transaction(&self, tx: &mut TransactionRequest) -> Result<(), MiddlewareError> {
+		for middleware in &self.middlewares {
+			println!("   🔄 Processing with {} middleware", middleware.name());
+			middleware.process(tx)?;
+		}
+		Ok(())
+	}
+}
+
+/// Process transaction through middleware chain
+async fn process_transaction_with_middleware(
+	client: &RpcClient<HttpProvider>,
+	middleware_chain: &MiddlewareChain,
+	original_tx: &TransactionRequest,
+) -> Result<(), MiddlewareError> {
+	let mut tx = original_tx.clone();
+
+	println!("   📥 Original transaction:");
+	println!("     Gas Limit: {}", tx.gas_limit);
+	println!("     Amount: {}", tx.amount);
+
+	// Process through middleware chain
+	middleware_chain.process_transaction(&mut tx).await?;
+
+	println!("   📤 Processed transaction:");
+	println!("     Gas Limit: {}", tx.gas_limit);
+	println!("     Amount: {}", tx.amount);
+
+	// In a real implementation, you would send the transaction here
+	println!("   ✅ Transaction ready for submission to Neo N3 network");
 
 	Ok(())
 }

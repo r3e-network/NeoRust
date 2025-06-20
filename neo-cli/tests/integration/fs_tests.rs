@@ -197,7 +197,6 @@ fn test_fs_acl_operations() {
     }"#,
 	);
 
-
 	// Test ACL set (will fail without an actual connection, but we can verify command structure)
 	let output = cli.run(&[
 		"fs",

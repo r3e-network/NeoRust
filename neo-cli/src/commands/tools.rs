@@ -1,10 +1,7 @@
 use crate::{
 	commands::wallet::CliState,
 	errors::CliError,
-	utils_core::{
-		create_table, print_section_header, print_success,
-		status_indicator,
-	},
+	utils_core::{create_table, print_section_header, print_success, status_indicator},
 };
 use base64::{engine::general_purpose, Engine as _};
 use clap::{Args, Subcommand};

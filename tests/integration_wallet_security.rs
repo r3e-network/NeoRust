@@ -51,8 +51,11 @@ async fn test_complete_wallet_lifecycle() {
 	// Verify all accounts are recovered correctly
 	let original_addresses: Vec<String> =
 		wallet.accounts().iter().map(neo3::neo_protocol::Account::get_address).collect();
-	let recovered_addresses: Vec<String> =
-		recovered_wallet.accounts().iter().map(neo3::neo_protocol::Account::get_address).collect();
+	let recovered_addresses: Vec<String> = recovered_wallet
+		.accounts()
+		.iter()
+		.map(neo3::neo_protocol::Account::get_address)
+		.collect();
 
 	for addr in &original_addresses {
 		assert!(recovered_addresses.contains(addr), "Address {addr} should be recovered");

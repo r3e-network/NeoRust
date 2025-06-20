@@ -220,9 +220,9 @@ async fn demonstrate_deposit_process(
 		&config.gas_token_neo,
 		"transfer",
 		&[
-			neo3::neo_types::ContractParameter::h160(
-				&neo3::neo_types::ScriptHash::from_address(user_address)?,
-			),
+			neo3::neo_types::ContractParameter::h160(&neo3::neo_types::ScriptHash::from_address(
+				user_address,
+			)?),
 			neo3::neo_types::ContractParameter::h160(&config.neo_bridge_contract),
 			neo3::neo_types::ContractParameter::integer(deposit_amount),
 			neo3::neo_types::ContractParameter::any(),
@@ -361,3 +361,4 @@ fn display_security_practices() {
 	println!("      • Documentation: https://docs.x.neo.org");
 	println!("      • Block explorers for transaction tracking");
 }
+

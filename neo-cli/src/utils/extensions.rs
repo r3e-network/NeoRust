@@ -1,6 +1,4 @@
-use neo3::{
-	neo_builder::Transaction, neo_clients::JsonRpcProvider, neo_protocol::RTransaction,
-};
+use neo3::{neo_builder::Transaction, neo_clients::JsonRpcProvider, neo_protocol::RTransaction};
 
 /// Extension trait for Transaction to get human-readable transaction type name
 pub trait TransactionExtensions {

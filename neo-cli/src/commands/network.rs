@@ -3,16 +3,13 @@ use crate::{
 	commands::wallet::CliState,
 	errors::CliError,
 	utils_core::{
-		create_table, print_error, print_info, print_section_header,
-		print_success, print_warning, prompt_select, prompt_yes_no, status_indicator,
-		with_loading,
+		create_table, print_error, print_info, print_section_header, print_success, print_warning,
+		prompt_select, prompt_yes_no, status_indicator, with_loading,
 	},
 };
 use clap::{Args, Subcommand};
 use comfy_table::{Cell, Color};
-use neo3::{
-	neo_clients::{APITrait, HttpProvider, RpcClient},
-};
+use neo3::neo_clients::{APITrait, HttpProvider, RpcClient};
 use serde::{Deserialize, Serialize};
 use url::Url;
 

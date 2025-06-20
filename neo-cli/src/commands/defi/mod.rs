@@ -22,9 +22,6 @@ mod tokens;
 mod types;
 pub mod utils;
 
-
-
-
 use crate::{commands::wallet::CliState, errors::CliError};
 use clap::Args;
 use neo3::prelude::*;

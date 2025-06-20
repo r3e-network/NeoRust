@@ -3,9 +3,9 @@
 //! This example demonstrates comprehensive smart contract interaction on Neo N3,
 //! including contract invocation, state queries, event monitoring, and transaction building.
 
-use neo3::{prelude::*, neo_clients::APITrait, neo_protocol::AccountTrait};
-use std::str::FromStr;
 use hex;
+use neo3::{neo_clients::APITrait, neo_protocol::AccountTrait, prelude::*};
+use std::str::FromStr;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -297,12 +297,12 @@ async fn demonstrate_transaction_building(
 		&gas_hash,
 		"transfer",
 		&[
-			neo3::neo_types::ContractParameter::h160(
-				&neo3::neo_types::ScriptHash::from_address(sender)?,
-			),
-			neo3::neo_types::ContractParameter::h160(
-				&neo3::neo_types::ScriptHash::from_address(recipient)?,
-			),
+			neo3::neo_types::ContractParameter::h160(&neo3::neo_types::ScriptHash::from_address(
+				sender,
+			)?),
+			neo3::neo_types::ContractParameter::h160(&neo3::neo_types::ScriptHash::from_address(
+				recipient,
+			)?),
 			neo3::neo_types::ContractParameter::integer(amount),
 			neo3::neo_types::ContractParameter::any(),
 		],
@@ -316,9 +316,12 @@ async fn demonstrate_transaction_building(
 	tx_builder
 		.script(script_builder.to_bytes())
 		.valid_until_block(current_height + 1000)
-		.add_signer(neo3::neo_builder::AccountSigner::called_by_entry(
-			&neo3::neo_protocol::Account::from_address(sender)?,
-		)?.into());
+		.add_signer(
+			neo3::neo_builder::AccountSigner::called_by_entry(
+				&neo3::neo_protocol::Account::from_address(sender)?,
+			)?
+			.into(),
+		);
 
 	// Calculate fees
 	let base_fee = 0.001; // Network fee

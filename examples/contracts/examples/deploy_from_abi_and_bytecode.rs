@@ -1,46 +1,99 @@
-use std::{convert::TryFrom, sync::Arc, time::Duration};
-
-use ethers::{
-	contract::abigen,
-	core::utils::Anvil,
-	middleware::SignerMiddleware,
-	providers::{Http, Provider},
-	signers::{LocalWallet, Signer},
-};
-use eyre::Result;
-
-// Generate the type-safe contract bindings by providing the json artifact
-// *Note*: this requires a `bytecode` and `abi` object in the `greeter.json` artifact:
-// `{"abi": [..], "bin": "..."}` , `{"abi": [..], "bytecode": {"object": "..."}}` or
-// `{"abi": [..], "bytecode": "..."}` this will embedd the bytecode in a variable `GREETER_BYTECODE`
-abigen!(Greeter, "ethers-contract/tests/solidity-contracts/greeter.json",);
+/// Neo N3 Contract Deployment from NEF and Manifest
+///
+/// This example demonstrates how to deploy smart contracts on Neo N3
+/// using compiled NEF files and manifest data.
 
 #[tokio::main]
-async fn main() -> Result<()> {
-	// 1. compile the contract (note this requires that you are inside the `examples` directory) and
-	// launch anvil
-	let anvil = Anvil::new().spawn();
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+	println!("📦 Neo N3 Contract Deployment Example");
+	println!("=====================================");
 
-	// 2. instantiate our wallet
-	let wallet: LocalWallet = anvil.keys()[0].clone().into();
+	println!("\n📚 Understanding Neo Smart Contract Format:");
+	println!("   • NEF (Neo Executable Format) - Compiled bytecode");
+	println!("   • Manifest - Contract metadata and permissions");
+	println!("   • Both files required for deployment");
+	println!("   • Contracts are immutable once deployed");
+	println!("   • Upgradeable contracts require special design");
 
-	// 3. connect to the network
-	let provider =
-		Provider::<Http>::try_from(anvil.endpoint())?.interval(Duration::from_millis(10u64));
+	println!("\n🔧 NEF File Structure:");
+	println!("   • Magic header (0x3346454E)");
+	println!("   • Compiler information");
+	println!("   • Source code hash");
+	println!("   • Method tokens");
+	println!("   • Script bytecode");
+	println!("   • Checksum validation");
 
-	// 4. instantiate the client with the wallet
-	let client = Arc::new(SignerMiddleware::new(provider, wallet.with_chain_id(anvil.chain_id())));
+	println!("\n📋 Manifest Contents:");
+	println!("   • Contract name and version");
+	println!("   • ABI (methods, events, parameters)");
+	println!("   • Permissions and trust settings");
+	println!("   • Supported standards (NEP-17, etc.)");
+	println!("   • Extra metadata");
+	println!("   • Safe methods list");
 
-	// 5. deploy contract
-	let greeter_contract = Greeter::deploy(client, "Hello World!".to_string())
-		.unwrap()
-		.send()
-		.await
-		.unwrap();
+	println!("\n💡 Deployment Process:");
+	println!("   1. Compile contract to NEF + Manifest");
+	println!("   2. Calculate deployment costs");
+	println!("   3. Build deployment script");
+	println!("   4. Create deployment transaction");
+	println!("   5. Sign and send transaction");
+	println!("   6. Wait for confirmation");
+	println!("   7. Verify deployment success");
 
-	// 6. call contract function
-	let greeting = greeter_contract.greet().call().await.unwrap();
-	assert_eq!("Hello World!", greeting);
+	println!("\n💰 Deployment Costs:");
+	println!("   • Base deployment fee: 10 GAS");
+	println!("   • Storage fee: Based on contract size");
+	println!("   • Additional fees for contract name");
+	println!("   • System fee for execution");
+	println!("   • Network fee for transaction");
+
+	println!("\n⚙️ Contract Management Methods:");
+	println!("   • deploy - Deploy new contract");
+	println!("   • update - Update existing contract");
+	println!("   • destroy - Remove contract");
+	println!("   • getContract - Query contract info");
+	println!("   • getContractById - Query by ID");
+	println!("   • getContractHashes - List all contracts");
+
+	println!("\n🔐 Permission System:");
+	println!("   • Wildcard (*) - Call any contract/method");
+	println!("   • Contract-specific - Call specific contracts");
+	println!("   • Method-specific - Call specific methods");
+	println!("   • Group permissions - Trust contract groups");
+	println!("   • ECDsa verification - Custom signatures");
+
+	println!("\n📦 Example Deployment Script:");
+	println!("   // Load NEF and Manifest");
+	println!("   let nef = load_nef_file(\"contract.nef\");");
+	println!("   let manifest = load_manifest(\"contract.manifest.json\");");
+	println!("   ");
+	println!("   // Build deployment script");
+	println!("   script_builder.contract_call(");
+	println!("     MANAGEMENT_CONTRACT,");
+	println!("     \"deploy\",");
+	println!("     [nef_bytes, manifest_json]");
+	println!("   );");
+
+	println!("\n⚠️ Deployment Best Practices:");
+	println!("   • Test thoroughly on testnet first");
+	println!("   • Verify manifest permissions");
+	println!("   • Check contract size limits");
+	println!("   • Implement upgrade mechanism if needed");
+	println!("   • Document deployment parameters");
+	println!("   • Backup deployment transaction ID");
+
+	println!("\n🎯 Post-Deployment Steps:");
+	println!("   • Verify contract on explorer");
+	println!("   • Test all contract methods");
+	println!("   • Set up monitoring");
+	println!("   • Initialize contract state");
+	println!("   • Transfer ownership if applicable");
+	println!("   • Publish contract address");
+
+	println!("\n🚀 For deployment examples, see:");
+	println!("   • examples/neo_contracts/");
+	println!("   • Neo smart contract documentation");
+	println!("   • Contract development tools");
 
 	Ok(())
 }

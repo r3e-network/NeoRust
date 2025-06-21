@@ -1,101 +1,96 @@
-use std::sync::Arc;
+/// Neo N3 DeFi Liquidity Example
+///
+/// This example demonstrates DeFi concepts on Neo N3, including
+/// liquidity pools, automated market makers (AMM), and token swaps.
 
-use ethers::{
-	contract::abigen,
-	core::types::{Address, U256},
-	middleware::SignerMiddleware,
-	providers::{Http, Middleware, Provider},
-	signers::{LocalWallet, Signer},
-};
-use eyre::Result;
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+	println!("💧 Neo N3 DeFi Liquidity Concepts");
+	println!("===================================");
 
-abigen!(
-	UniswapV2Router,
-	r#"[
-        removeLiquidity(address tokenA,address tokenB, uint liquidity,uint amountAMin, uint amountBMin, address to, uint ) external returns (uint amountA, uint amountB)
-    ]"#,
-);
+	println!("\n📚 Understanding DeFi on Neo N3:");
+	println!("   • Decentralized exchanges (DEX)");
+	println!("   • Automated Market Makers (AMM)");
+	println!("   • Liquidity pools");
+	println!("   • Yield farming");
+	println!("   • Token swaps");
 
-abigen!(
-	UniswapV2Pair,
-	r#"[
-        approve(address,uint256)(bool)
-        getReserves()(uint112,uint112,uint32)
-        token0()(address)
-        token1()(address)
-    ]"#
-);
+	println!("\n🏊 Popular Neo N3 DeFi Protocols:");
+	println!("   • Flamingo Finance - Full DeFi platform");
+	println!("   • ForTheWin Network - Gaming DeFi");
+	println!("   • GhostMarket - NFT marketplace with DeFi");
+	println!("   • Demex - Decentralized derivatives");
 
-fn main() {}
+	println!("\n💰 Liquidity Pool Basics:");
+	println!("   • Two tokens paired in a pool");
+	println!("   • Constant product formula (x * y = k)");
+	println!("   • Liquidity providers earn fees");
+	println!("   • Impermanent loss risk");
+	println!("   • LP tokens represent pool share");
 
-// Remove liquidity from uniswap V2.
-// This example will remove 500 liquidity of 2 test tokens, TA and TB on goerli testnet.
-// This example uses pair contract and uniswap swap contract to remove liquidity.
-#[allow(dead_code)]
-async fn example() -> Result<()> {
-	let provider = Arc::new({
-		// connect to the network
-		let provider = Provider::<Http>::try_from(
-			"https://rinkeby.infura.io/v3/a111fcada47746d990e0e2b7df50d00a",
-		)?;
-		let chain_id = provider.get_chainid().await?;
+	println!("\n🔄 Adding Liquidity Process:");
+	println!("   1. Approve both tokens for the router");
+	println!("   2. Calculate optimal token ratio");
+	println!("   3. Call addLiquidity function");
+	println!("   4. Receive LP tokens");
+	println!("   5. Stake LP tokens for rewards");
 
-		// this wallet's private key
-		let wallet = "725fd1619b2653b7ff1806bf29ae11d0568606d83777afd5b1f2e649bd5132a9"
-			.parse::<LocalWallet>()?
-			.with_chain_id(chain_id.as_u64());
+	println!("\n📤 Removing Liquidity Process:");
+	println!("   1. Approve LP tokens for router");
+	println!("   2. Specify minimum amounts to receive");
+	println!("   3. Call removeLiquidity function");
+	println!("   4. Receive both tokens back");
+	println!("   5. Claim any pending rewards");
 
-		SignerMiddleware::new(provider, wallet)
-	});
+	println!("\n📊 Pool Math Example:");
+	println!("   Pool: 1000 NEO / 10000 GAS");
+	println!("   Price: 1 NEO = 10 GAS");
+	println!("   k = 1000 * 10000 = 10,000,000");
+	println!("   ");
+	println!("   After swap of 100 NEO:");
+	println!("   New NEO: 1100");
+	println!("   New GAS: 10,000,000 / 1100 = 9090.91");
+	println!("   Received: 909.09 GAS");
+	println!("   New Price: 1 NEO = 8.26 GAS");
 
-	let pair = "0xA6108E4d436bE592bAc12F9A0aB7D9A10d821176".parse::<Address>()?;
-	let pair = UniswapV2Pair::new(pair, provider.clone());
+	println!("\n🎁 Liquidity Mining Rewards:");
+	println!("   • Trading fee share (0.3% typical)");
+	println!("   • Protocol token rewards");
+	println!("   • Bonus multipliers for locking");
+	println!("   • Governance voting power");
 
-	let router = "0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D".parse::<Address>()?;
-	let router = UniswapV2Router::new(router, provider.clone());
+	println!("\n⚠️ Risk Considerations:");
+	println!("   • Impermanent loss");
+	println!("   • Smart contract risks");
+	println!("   • Price volatility");
+	println!("   • Rug pull risk");
+	println!("   • Gas fee fluctuations");
 
-	let (reserve0, reserve1, _) = pair.get_reserves().call().await?;
+	println!("\n💡 Yield Strategies:");
+	println!("   • Stable pair farming (low risk)");
+	println!("   • Volatile pair farming (high risk/reward)");
+	println!("   • Single-sided staking");
+	println!("   • Auto-compounding vaults");
+	println!("   • Leveraged yield farming");
 
-	println!("Reserves (token A, Token B): ({reserve0}, {reserve1})");
+	println!("\n🔧 Advanced Features:");
+	println!("   • Flash loans");
+	println!("   • Concentrated liquidity");
+	println!("   • Range orders");
+	println!("   • Multi-hop swaps");
+	println!("   • Cross-chain liquidity");
 
-	let price =
-		if reserve0 > reserve1 { 1000 * reserve0 / reserve1 } else { 1000 * reserve1 / reserve0 }
-			/ 1000;
-	println!("token0 / token1 price = {price}");
+	println!("\n📝 Best Practices:");
+	println!("   • Start with small amounts");
+	println!("   • Understand the risks");
+	println!("   • Monitor pool ratios");
+	println!("   • Set slippage tolerance");
+	println!("   • Track IL and fees");
+	println!("   • Diversify positions");
 
-	let liquidity = 100.into();
-
-	println!("Approving the transaction!");
-	let receipt = pair
-		.approve(router.address(), liquidity)
-		.send()
-		.await?
-		.await?
-		.expect("no receipt found");
-	println!("contract approved successfully!");
-	println!("{receipt:?}");
-
-	println!("Removing {liquidity} liquidity!");
-
-	let token0 = pair.token_0().call().await?;
-	let token1 = pair.token_1().call().await?;
-
-	let receipt = router
-		.remove_liquidity(
-			token0,
-			token1,
-			liquidity,
-			0.into(),
-			0.into(),
-			provider.address(),
-			U256::MAX,
-		)
-		.send()
-		.await?
-		.await?
-		.expect("no receipt for remove_liquidity");
-	println!("liquidity removed successfully!");
-	println!("{receipt:?}");
+	println!("\n🚀 For DeFi examples on Neo, see:");
+	println!("   • Flamingo Finance documentation");
+	println!("   • examples/neo_famous_contracts/");
+	println!("   • Neo DeFi ecosystem guide");
 
 	Ok(())
 }

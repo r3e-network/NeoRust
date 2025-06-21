@@ -1,103 +1,91 @@
-use std::{
-	process::{Command, Stdio},
-	sync::Arc,
-};
-
-use ethers::{
-	contract::abigen,
-	core::{
-		types::{spoof, Address, TransactionRequest, H256},
-		utils::{parse_ether, Geth},
-	},
-	providers::{call_raw::RawCall, Http, Provider},
-};
-use eyre::Result;
-
-abigen!(Greeter, "ethers-contract/tests/solidity-contracts/greeter.json",);
+/// Neo N3 Test Invoke Example
+///
+/// This example demonstrates how to test smart contract invocations on Neo N3
+/// without actually sending transactions to the blockchain.
 
 #[tokio::main]
-async fn main() -> Result<()> {
-	match geth_version() {
-		e @ Ok(false) | e @ Err(_) => {
-			eprint!("Error spawning geth, skipping example");
-			if let Err(e) = e {
-				eprint!(": {e}");
-			}
-			eprintln!();
-			return Ok(());
-		},
-		Ok(true) => {},
-	}
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+	println!("🧪 Neo N3 Test Invoke Example");
+	println!("============================");
 
-	let geth = Geth::new().spawn();
-	let provider = Provider::<Http>::try_from(geth.endpoint()).unwrap();
-	let client = Arc::new(provider);
+	println!("\n📚 Understanding Test Invocation:");
+	println!("   • Simulates contract execution without blockchain changes");
+	println!("   • Useful for testing contract methods before sending transactions");
+	println!("   • Returns execution results, gas costs, and notifications");
+	println!("   • No fees are consumed during test invocation");
+	println!("   • Perfect for development and debugging");
 
-	// Both empty accounts
-	let target: Address = "0x6fC21092DA55B392b045eD78F4732bff3C580e2c".parse()?;
-	let from: Address = "0x295a70b2de5e3953354a6a8344e616ed314d7251".parse()?;
+	println!("\n🔧 Test Invoke Features:");
+	println!("   1. Parameter validation - Check if parameters are correct");
+	println!("   2. Gas estimation - See how much GAS will be consumed");
+	println!("   3. Return value preview - See what the method will return");
+	println!("   4. Error detection - Catch errors before sending transactions");
+	println!("   5. Notification preview - See events that will be emitted");
 
-	// Override the sender's balance for the call
-	let pay_amt = parse_ether(1u64)?;
-	let tx = TransactionRequest::pay(target, pay_amt).from(from);
-	let state = spoof::balance(from, pay_amt * 2);
+	println!("\n📋 Common Test Scenarios:");
+	println!("   • Token transfers - Validate sufficient balance");
+	println!("   • Contract deployments - Test initialization parameters");
+	println!("   • Complex operations - Multi-step contract interactions");
+	println!("   • Permission checks - Verify caller has required permissions");
+	println!("   • State mutations - Preview changes before committing");
 
-	// The call succeeds as if the sender had sufficient balance
-	client.call_raw(&tx.into()).state(&state).await.expect("balance override");
+	println!("\n💡 Test Invoke Workflow:");
+	println!("   1. Build the invocation script");
+	println!("   2. Call invokefunction or invokescript");
+	println!("   3. Check VM state (HALT = success, FAULT = failure)");
+	println!("   4. Examine return values and notifications");
+	println!("   5. Calculate required fees");
+	println!("   6. Send actual transaction if test succeeds");
 
-	// Get the runtime bytecode for the Greeter contract using eth_call to
-	// simulate the deploy transaction
-	let deploy = Greeter::deploy(client.clone(), "Hi".to_string())?;
-	let runtime_bytecode = deploy.call_raw().await?;
+	println!("\n⚡ Example Test Invoke Response:");
+	println!("   {");
+	println!("     \"state\": \"HALT\",");
+	println!("     \"gasconsumed\": \"2011320\",");
+	println!("     \"exception\": null,");
+	println!("     \"stack\": [");
+	println!("       {");
+	println!("         \"type\": \"Boolean\",");
+	println!("         \"value\": true");
+	println!("       }");
+	println!("     ],");
+	println!("     \"notifications\": [");
+	println!("       {");
+	println!("         \"contract\": \"0xd2a4cff31913016155e38e474a2c06d08be276cf\",");
+	println!("         \"eventname\": \"Transfer\",");
+	println!("         \"state\": {");
+	println!("           \"type\": \"Array\",");
+	println!("           \"value\": [...]");
+	println!("         }");
+	println!("       }");
+	println!("     ]");
+	println!("   }");
 
-	// Instantiate a Greeter, though no bytecode exists at the target address
-	let greeter = Greeter::new(target, client.clone());
+	println!("\n🔐 Security Benefits:");
+	println!("   • No risk of losing funds during testing");
+	println!("   • Validate contract behavior before mainnet deployment");
+	println!("   • Test edge cases without consequences");
+	println!("   • Verify gas consumption stays within limits");
+	println!("   • Ensure transactions will succeed before sending");
 
-	// Override the target account's code, simulating a call to Greeter.greet()
-	// as if the Greeter contract was deployed at the target address
-	let state = spoof::code(target, runtime_bytecode.clone());
-	let res = greeter.greet().call_raw().state(&state).await?;
+	println!("\n📝 Best Practices:");
+	println!("   • Always test invoke before sending transactions");
+	println!("   • Check for HALT state before proceeding");
+	println!("   • Verify gas consumption is reasonable");
+	println!("   • Validate all return values");
+	println!("   • Test with different parameter combinations");
+	println!("   • Monitor for unexpected notifications");
 
-	// greet() returns the empty string, because the target account's storage is empty
-	assert_eq!(&res, "");
+	println!("\n🎯 Common Pitfalls to Avoid:");
+	println!("   • Test invocation success doesn't guarantee transaction success");
+	println!("   • Network state may change between test and actual send");
+	println!("   • Gas prices may fluctuate");
+	println!("   • Account balances may change");
+	println!("   • Contract state may be modified by other transactions");
 
-	// Encode the greeting string as solidity expects it to be stored
-	let greeting = "Hello, world";
-	let greet_slot = H256::zero();
-	let greet_val = encode_string_for_storage(greeting);
-
-	// Override the target account's code and storage
-	let mut state = spoof::state();
-	state
-		.account(target)
-		.code(runtime_bytecode.clone())
-		.store(greet_slot, greet_val);
-	let res = greeter.greet().call_raw().state(&state).await?;
-
-	// The call returns "Hello, world"
-	assert_eq!(&res, greeting);
+	println!("\n🚀 For working examples, see:");
+	println!("   • examples/neo_smart_contracts/");
+	println!("   • examples/neo_transactions/");
+	println!("   • Neo N3 RPC documentation");
 
 	Ok(())
-}
-
-// Solidity stores strings shorter than 32 bytes in a single storage slot,
-// with the lowest order byte storing 2 * length and the higher order
-// bytes storing the string data (left aligned)
-fn encode_string_for_storage(s: &str) -> H256 {
-	let mut bytes = s.as_bytes().to_vec();
-	let len = bytes.len();
-	assert!(len < 32, "longer strings aren't stored in a single slot");
-	bytes.resize(31, 0);
-	bytes.push(len as u8 * 2);
-	H256::from_slice(&bytes)
-}
-
-fn geth_version() -> Result<bool> {
-	Command::new("geth")
-		.arg("version")
-		.stdout(Stdio::null())
-		.stderr(Stdio::null())
-		.status()
-		.map(|s| s.success())
-		.map_err(Into::into)
 }

@@ -35,10 +35,10 @@ jobs:
         uses: Swatinem/rust-cache@v2
       
       - name: Run tests
-        run: NEORUST_SKIP_NETWORK_TESTS=1 cargo test --workspace --exclude neo-gui --all-features --verbose
+        run: NEORUST_SKIP_NETWORK_TESTS=1 cargo test --workspace --all-features --verbose
       
       - name: Run doc tests
-        run: NEORUST_SKIP_NETWORK_TESTS=1 cargo test --workspace --exclude neo-gui --doc --all-features
+        run: NEORUST_SKIP_NETWORK_TESTS=1 cargo test --workspace --doc --all-features
 
   lint:
     name: Lint
@@ -58,7 +58,7 @@ jobs:
         run: cargo fmt --all -- --check
       
       - name: Run clippy
-        run: cargo clippy --workspace --exclude neo-gui --all-features -- -D warnings
+        run: cargo clippy --workspace --all-features -- -D warnings
       
       - name: Check for TODO/FIXME
         run: |
@@ -92,11 +92,11 @@ jobs:
         uses: Swatinem/rust-cache@v2
       
       - name: Build documentation
-        run: cargo doc --workspace --exclude neo-gui --no-deps --all-features
+        run: cargo doc --workspace --no-deps --all-features
       
       - name: Check documentation coverage
         run: |
-          cargo doc --workspace --exclude neo-gui --no-deps --all-features 2>&1 | grep -i "warning" && exit 1 || exit 0
+          cargo doc --workspace --no-deps --all-features 2>&1 | grep -i "warning" && exit 1 || exit 0
 
   coverage:
     name: Code Coverage
@@ -111,7 +111,7 @@ jobs:
         run: cargo install cargo-tarpaulin
       
       - name: Run coverage
-        run: NEORUST_SKIP_NETWORK_TESTS=1 cargo tarpaulin --workspace --exclude neo-gui --out Xml --all-features
+        run: NEORUST_SKIP_NETWORK_TESTS=1 cargo tarpaulin --workspace --out Xml --all-features
       
       - name: Upload coverage
         uses: codecov/codecov-action@v3
@@ -159,7 +159,7 @@ jobs:
         uses: Swatinem/rust-cache@v2
       
       - name: Check MSRV
-        run: cargo check --workspace --exclude neo-gui --all-features
+        run: cargo check --workspace --all-features
 
   gui:
     name: GUI Tests

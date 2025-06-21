@@ -46,17 +46,17 @@ jobs:
       run: cargo fmt --all -- --check
       
     - name: Run Clippy
-      run: cargo clippy --workspace --exclude neo-gui --all-targets --all-features -- -D warnings
+      run: cargo clippy --workspace --all-targets --all-features -- -D warnings
       
     - name: Run Rust tests
-      run: NEORUST_SKIP_NETWORK_TESTS=1 cargo test --verbose --all-features --workspace --exclude neo-gui
+      run: NEORUST_SKIP_NETWORK_TESTS=1 cargo test --verbose --all-features --workspace
       
     - name: Run Rust benchmarks
-      run: cargo bench --workspace --exclude neo-gui --verbose
+      run: cargo bench --workspace --verbose
       if: matrix.rust-version == 'stable'
       
     - name: Check documentation
-      run: cargo doc --workspace --exclude neo-gui --no-deps --document-private-items
+      run: cargo doc --workspace --no-deps --document-private-items
       
   tauri-build:
     name: Tauri Build

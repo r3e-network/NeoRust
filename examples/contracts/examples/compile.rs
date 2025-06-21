@@ -2,15 +2,13 @@
 ///
 /// This example demonstrates concepts for Neo N3 smart contract compilation.
 /// Unlike Ethereum's Solidity, Neo N3 uses languages like C#, Python, Go, etc.
-use std::env;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
 	println!("🔨 Neo N3 Contract Compilation Example");
 	println!("====================================\n");
 
-	// Safe argument handling - only use for non-security operations
-	let args: Vec<String> = env::args().collect();
-	let contract_name = args.get(1).unwrap_or(&"MyContract".to_string());
+	// Use hardcoded example name to avoid security issues with args
+	let contract_name = "MyContract";
 
 	println!("✅ Neo N3 contract compilation concepts:");
 	println!("   • Neo N3 supports multiple programming languages");

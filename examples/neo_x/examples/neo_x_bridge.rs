@@ -1,7 +1,5 @@
 use neo3::{
 	neo_clients::{APITrait, HttpProvider, RpcClient},
-	neo_types::{ContractParameter, ScriptHash},
-	prelude::*,
 };
 use std::str::FromStr;
 
@@ -134,9 +132,9 @@ async fn check_bridge_status(
 	}
 
 	// Invoke bridge status method
-	match client.invoke_function(&config.neo_bridge_contract, "isPaused", &[]).await {
+	match client.invoke_function(&config.neo_bridge_contract, "isPaused".to_string(), vec![], None).await {
 		Ok(result) =>
-			if let Some(stack) = result.stack {
+			if let stack = result.stack {
 				if let Some(item) = stack.first() {
 					let is_paused = item.value.as_ref().and_then(|v| v.as_bool()).unwrap_or(false);
 					println!(
@@ -171,13 +169,14 @@ async fn query_supported_tokens(
 	match client
 		.invoke_function(
 			&config.neo_bridge_contract,
-			"isTokenSupported",
-			&[neo3::neo_types::ContractParameter::h160(&neo_token)],
+			"isTokenSupported".to_string(),
+			vec![neo3::neo_types::ContractParameter::h160(&neo_token)],
+			None,
 		)
 		.await
 	{
 		Ok(result) =>
-			if let Some(stack) = result.stack {
+			if let stack = result.stack {
 				if let Some(item) = stack.first() {
 					let supported = item.value.as_ref().and_then(|v| v.as_bool()).unwrap_or(false);
 					if supported {
@@ -201,7 +200,7 @@ async fn query_supported_tokens(
 
 /// Demonstrate deposit process
 async fn demonstrate_deposit_process(
-	client: &neo3::providers::RpcClient<neo3::providers::HttpProvider>,
+	_client: &neo3::providers::RpcClient<neo3::providers::HttpProvider>,
 	config: &BridgeConfig,
 ) -> Result<(), Box<dyn std::error::Error>> {
 	println!("   📝 Deposit flow (Neo N3 → Neo X):");
@@ -284,7 +283,7 @@ async fn demonstrate_withdrawal_process(
 
 	// Step 3: Initiate withdrawal
 	println!("\n   3️⃣ Initiate withdrawal on Neo X");
-	let withdraw_amount = 5_000000000000000000u128; // 5 GAS (18 decimals on EVM)
+	let _withdraw_amount = 5_000000000000000000u128; // 5 GAS (18 decimals on EVM)
 	let neo_recipient = "NPvKVTGZapmFWABLsyvfreuqn73jCjJtN1";
 
 	println!("      📋 Call bridge contract withdraw()");
@@ -314,7 +313,7 @@ async fn demonstrate_withdrawal_process(
 /// Monitor bridge transactions
 async fn monitor_bridge_transactions(
 	client: &neo3::providers::RpcClient<neo3::providers::HttpProvider>,
-	config: &BridgeConfig,
+	_config: &BridgeConfig,
 ) -> Result<(), Box<dyn std::error::Error>> {
 	println!("   📊 Recent bridge activity:");
 

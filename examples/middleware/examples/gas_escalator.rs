@@ -202,7 +202,7 @@ enum TransactionComplexity {
 }
 
 async fn test_gas_strategy(
-	client: &RpcClient<HttpProvider>,
+	_client: &RpcClient<HttpProvider>,
 	strategy: &dyn GasStrategy,
 	strategy_name: &str,
 ) -> eyre::Result<()> {
@@ -227,7 +227,7 @@ async fn test_gas_strategy(
 }
 
 async fn test_adaptive_strategy(
-	client: &RpcClient<HttpProvider>,
+	_client: &RpcClient<HttpProvider>,
 	strategy: &AdaptiveGasStrategy,
 ) -> eyre::Result<()> {
 	println!("     Strategy: Adaptive (Network-aware)");
@@ -252,7 +252,7 @@ async fn test_adaptive_strategy(
 	Ok(())
 }
 
-async fn simulate_network_conditions(client: &RpcClient<HttpProvider>) -> eyre::Result<()> {
+async fn simulate_network_conditions(_client: &RpcClient<HttpProvider>) -> eyre::Result<()> {
 	println!("   🌐 Simulating different network conditions...");
 
 	let scenarios = vec![

@@ -1,4 +1,8 @@
-use neo3::prelude::*;
+use neo3::{
+	neo_clients::{APITrait, HttpProvider, RpcClient},
+	neo_types::{ContractParameter, ScriptHash},
+	prelude::*,
+};
 use std::str::FromStr;
 
 /// Example demonstrating Neo X Bridge contract interactions.
@@ -91,9 +95,9 @@ async fn connect_to_neo_mainnet(
 	];
 
 	for endpoint in endpoints {
-		match neo3::providers::HttpProvider::new(endpoint) {
+		match HttpProvider::new(endpoint) {
 			Ok(provider) => {
-				let client = neo3::providers::RpcClient::new(provider);
+				let client = RpcClient::new(provider);
 				match client.get_block_count().await {
 					Ok(count) => {
 						println!("   ✅ Connected to Neo N3: {}", endpoint);

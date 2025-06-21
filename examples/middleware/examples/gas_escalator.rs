@@ -1,4 +1,7 @@
-use neo3::prelude::*;
+use neo3::{
+	neo_clients::{HttpProvider, RpcClient},
+	neo_types::ScriptHash,
+};
 use std::time::{Duration, Instant};
 use tokio::time::sleep;
 

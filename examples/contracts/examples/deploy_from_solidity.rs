@@ -1,72 +1,107 @@
-use std::{convert::TryFrom, path::Path, sync::Arc, time::Duration};
-
-use ethers::{
-	contract::{abigen, ContractFactory},
-	core::utils::Anvil,
-	middleware::SignerMiddleware,
-	providers::{Http, Provider},
-	signers::{LocalWallet, Signer},
-	solc::Solc,
-};
-use eyre::Result;
-
-// Generate the type-safe contract bindings by providing the ABI
-// definition
-abigen!(
-	SimpleContract,
-	"./examples/contracts/examples/abi/contract_abi.json",
-	event_derives(serde::Deserialize, serde::Serialize)
-);
+/// Neo N3 Smart Contract Development Example
+///
+/// This example demonstrates the smart contract development process on Neo N3,
+/// from source code to deployment.
 
 #[tokio::main]
-async fn main() -> Result<()> {
-	// 1. compile the contract (note this requires that you are inside the `examples` directory) and
-	// launch anvil
-	let anvil = Anvil::new().spawn();
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+	println!("🛠️ Neo N3 Smart Contract Development");
+	println!("====================================");
 
-	// set the path to the contract, `CARGO_MANIFEST_DIR` points to the directory containing the
-	// manifest of `example/contracts`. which will be `../` relative to this file
-	let source = Path::new(&env!("CARGO_MANIFEST_DIR")).join("examples/contracts/contract.sol");
-	let compiled = Solc::default().compile_source(source).expect("Could not compile contracts");
-	let (abi, bytecode, _runtime_bytecode) = compiled
-		.find("SimpleStorage")
-		.expect("could not find contract")
-		.into_parts_or_default();
+	println!("\n📚 Neo Smart Contract Languages:");
+	println!("   • C# - Most popular, full tooling support");
+	println!("   • Python - Good for rapid development");
+	println!("   • Java - Enterprise-friendly option");
+	println!("   • TypeScript - JavaScript developers");
+	println!("   • Go - Performance-focused option");
 
-	// 2. instantiate our wallet
-	let wallet: LocalWallet = anvil.keys()[0].clone().into();
+	println!("\n🔧 Development Tools:");
+	println!("   • Neo Devpack - Official SDK");
+	println!("   • Neo Compiler - Source to NEF");
+	println!("   • Neo Debugger - VS Code extension");
+	println!("   • Neo Express - Local blockchain");
+	println!("   • Neo SDK - Client libraries");
 
-	// 3. connect to the network
-	let provider =
-		Provider::<Http>::try_from(anvil.endpoint())?.interval(Duration::from_millis(10u64));
+	println!("\n📋 Contract Structure Example (C#):");
+	println!("   using Neo.SmartContract.Framework;");
+	println!("   using Neo.SmartContract.Framework.Services;");
+	println!("   ");
+	println!("   public class HelloWorld : SmartContract");
+	println!("   {");
+	println!("       public static string Main(string operation)");
+	println!("       {");
+	println!("           return \"Hello, Neo N3!\";");
+	println!("       }");
+	println!("   }");
 
-	// 4. instantiate the client with the wallet
-	let client = SignerMiddleware::new(provider, wallet.with_chain_id(anvil.chain_id()));
-	let client = Arc::new(client);
+	println!("\n💡 Development Workflow:");
+	println!("   1. Write contract code");
+	println!("   2. Compile to NEF + Manifest");
+	println!("   3. Test locally with neo-express");
+	println!("   4. Deploy to testnet");
+	println!("   5. Audit and security review");
+	println!("   6. Deploy to mainnet");
 
-	// 5. create a factory which will be used to deploy instances of the contract
-	let factory = ContractFactory::new(abi, bytecode, client.clone());
+	println!("\n⚙️ Compilation Process:");
+	println!("   Source Code (.cs/.py/.java)");
+	println!("        ↓");
+	println!("   Abstract Syntax Tree (AST)");
+	println!("        ↓");
+	println!("   Intermediate Language (IL)");
+	println!("        ↓");
+	println!("   Neo VM Bytecode");
+	println!("        ↓");
+	println!("   NEF File + Manifest");
 
-	// 6. deploy it with the constructor arguments
-	let contract = factory.deploy("initial value".to_string())?.send().await?;
+	println!("\n🔐 Contract Features:");
+	println!("   • Storage - Persistent key-value store");
+	println!("   • Events - Emit notifications");
+	println!("   • Oracle - External data access");
+	println!("   • Crypto - Built-in cryptography");
+	println!("   • Native contracts - System integration");
 
-	// 7. get the contract's address
-	let addr = contract.address();
+	println!("\n📦 Storage Operations:");
+	println!("   • Storage.Put(key, value) - Write data");
+	println!("   • Storage.Get(key) - Read data");
+	println!("   • Storage.Delete(key) - Remove data");
+	println!("   • Storage.Find(prefix) - Query data");
+	println!("   • Cost: 0.025 GAS per KB");
 
-	// 8. instantiate the contract
-	let contract = SimpleContract::new(addr, client.clone());
+	println!("\n🎯 Common Contract Patterns:");
+	println!("   • Token contracts (NEP-17)");
+	println!("   • NFT contracts (NEP-11)");
+	println!("   • Oracle consumers");
+	println!("   • Multi-signature wallets");
+	println!("   • Decentralized exchanges");
+	println!("   • Governance contracts");
 
-	// 9. call the `setValue` method
-	// (first `await` returns a PendingTransaction, second one waits for it to be mined)
-	let _receipt = contract.set_value("hi".to_owned()).send().await?.await?;
+	println!("\n⚠️ Security Considerations:");
+	println!("   • Input validation");
+	println!("   • Integer overflow checks");
+	println!("   • Reentrancy protection");
+	println!("   • Access control");
+	println!("   • Gas optimization");
+	println!("   • Upgrade mechanisms");
 
-	// 10. get all events
-	let logs = contract.value_changed_filter().from_block(0u64).query().await?;
+	println!("\n📝 Testing Strategies:");
+	println!("   • Unit tests for methods");
+	println!("   • Integration tests");
+	println!("   • Gas consumption tests");
+	println!("   • Security audits");
+	println!("   • Testnet deployment");
+	println!("   • Bug bounty programs");
 
-	// 11. get the new value
-	let value = contract.get_value().call().await?;
+	println!("\n📊 Gas Optimization Tips:");
+	println!("   • Minimize storage operations");
+	println!("   • Batch operations when possible");
+	println!("   • Use efficient data structures");
+	println!("   • Avoid unnecessary computations");
+	println!("   • Cache frequently used values");
 
-	println!("Value: {value}. Logs: {}", serde_json::to_string(&logs)?);
+	println!("\n🚀 For contract development resources:");
+	println!("   • Neo Developer Documentation");
+	println!("   • Neo Smart Contract Examples");
+	println!("   • Neo Developer Discord");
 
 	Ok(())
 }

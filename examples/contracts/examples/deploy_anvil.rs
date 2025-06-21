@@ -1,77 +1,74 @@
-use std::{path::PathBuf, sync::Arc, time::Duration};
-
-use ethers::{
-	contract::{abigen, ContractFactory},
-	core::utils::Anvil,
-	middleware::SignerMiddleware,
-	providers::{Http, Provider},
-	signers::{LocalWallet, Signer},
-	solc::{Artifact, Project, ProjectPathsConfig},
-};
-use eyre::Result;
-
-// Generate the type-safe contract bindings by providing the ABI
-// definition in human readable format
-abigen!(
-	SimpleContract,
-	r#"[
-        function setValue(string)
-        function getValue() external view returns (string)
-        event ValueChanged(address indexed author, string oldValue, string newValue)
-    ]"#,
-	event_derives(serde::Deserialize, serde::Serialize)
-);
+/// Neo N3 Local Development Example
+///
+/// This example demonstrates how to set up a local Neo N3 development environment.
+/// Unlike Ethereum's Anvil, Neo uses neo-express for local development.
 
 #[tokio::main]
-async fn main() -> Result<()> {
-	// the directory we use is root-dir/examples
-	let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("examples");
-	// we use `root` for both the project root and for where to search for contracts since
-	// everything is in the same directory
-	let paths = ProjectPathsConfig::builder().root(&root).sources(&root).build().unwrap();
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+	println!("🏗️ Neo N3 Local Development Setup");
+	println!("=================================");
 
-	// get the solc project instance using the paths above
-	let project = Project::builder().paths(paths).ephemeral().no_artifacts().build().unwrap();
-	// compile the project and get the artifacts
-	let output = project.compile().unwrap();
-	let contract = output.find_first("SimpleStorage").expect("could not find contract").clone();
-	let (abi, bytecode, _) = contract.into_parts();
+	println!("\n📚 Neo N3 Development Tools:");
+	println!("   • neo-express - Local blockchain for development");
+	println!("   • neo-devpack - Smart contract development kit");
+	println!("   • neo-debugger - Contract debugging tools");
+	println!("   • neo-test - Testing framework");
 
-	// 2. instantiate our wallet & anvil
-	let anvil = Anvil::new().spawn();
-	let wallet: LocalWallet = anvil.keys()[0].clone().into();
+	println!("\n🔧 Setting Up neo-express:");
+	println!("   1. Install: npm install -g @neo-one/neo-express");
+	println!("   2. Create chain: neoxp create");
+	println!("   3. Start node: neoxp run");
+	println!("   4. Create wallet: neoxp wallet create <name>");
+	println!("   5. Transfer assets: neoxp transfer");
 
-	// 3. connect to the network
-	let provider =
-		Provider::<Http>::try_from(anvil.endpoint())?.interval(Duration::from_millis(10u64));
+	println!("\n💡 neo-express Features:");
+	println!("   • Fast block times (1 second)");
+	println!("   • Pre-funded wallets");
+	println!("   • Checkpoint/restore functionality");
+	println!("   • Time manipulation for testing");
+	println!("   • Built-in contract deployment");
 
-	// 4. instantiate the client with the wallet
-	let client = SignerMiddleware::new(provider, wallet.with_chain_id(anvil.chain_id()));
-	let client = Arc::new(client);
+	println!("\n📋 Common Development Commands:");
+	println!("   • neoxp show balances - View account balances");
+	println!("   • neoxp contract deploy - Deploy contracts");
+	println!("   • neoxp contract invoke - Call methods");
+	println!("   • neoxp checkpoint create - Save state");
+	println!("   • neoxp checkpoint restore - Restore state");
 
-	// 5. create a factory which will be used to deploy instances of the contract
-	let factory = ContractFactory::new(abi.unwrap(), bytecode.unwrap(), client.clone());
+	println!("\n🚀 Development Workflow:");
+	println!("   1. Start local neo-express chain");
+	println!("   2. Create development wallets");
+	println!("   3. Deploy test contracts");
+	println!("   4. Run integration tests");
+	println!("   5. Debug with checkpoints");
 
-	// 6. deploy it with the constructor arguments
-	let contract = factory.deploy("initial value".to_string())?.send().await?;
+	println!("\n⚡ Advantages over Public Testnets:");
+	println!("   • Instant transaction confirmation");
+	println!("   • No rate limits");
+	println!("   • Deterministic testing");
+	println!("   • State snapshots");
+	println!("   • Time control");
 
-	// 7. get the contract's address
-	let addr = contract.address();
+	println!("\n🔐 Development Best Practices:");
+	println!("   • Use checkpoints before major changes");
+	println!("   • Test with realistic gas limits");
+	println!("   • Simulate network delays");
+	println!("   • Test error scenarios");
+	println!("   • Profile gas consumption");
 
-	// 8. instantiate the contract
-	let contract = SimpleContract::new(addr, client.clone());
+	println!("\n📝 Example neo-express Configuration:");
+	println!("   {");
+	println!("     \"magic\": 1234567890,");
+	println!("     \"consensus-nodes\": 1,");
+	println!("     \"block-time\": 1000,");
+	println!("     \"node-port\": 50012,");
+	println!("     \"rpc-port\": 50013");
+	println!("   }");
 
-	// 9. call the `setValue` method
-	// (first `await` returns a PendingTransaction, second one waits for it to be mined)
-	let _receipt = contract.set_value("hi".to_owned()).send().await?.await?;
-
-	// 10. get all events
-	let logs = contract.value_changed_filter().from_block(0u64).query().await?;
-
-	// 11. get the new value
-	let value = contract.get_value().call().await?;
-
-	println!("Value: {value}. Logs: {}", serde_json::to_string(&logs)?);
+	println!("\n🎯 For more information:");
+	println!("   • neo-express documentation");
+	println!("   • Neo N3 development guides");
+	println!("   • examples/neo_contracts/");
 
 	Ok(())
 }

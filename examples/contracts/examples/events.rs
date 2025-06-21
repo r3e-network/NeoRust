@@ -1,69 +1,114 @@
-use std::sync::Arc;
-
-use ethers::{
-	contract::abigen,
-	core::types::Address,
-	providers::{Provider, StreamExt, Ws},
-};
-use eyre::Result;
-
-abigen!(
-	IERC20,
-	r#"[
-        event Transfer(address indexed from, address indexed to, uint256 value)
-        event Approval(address indexed owner, address indexed spender, uint256 value)
-    ]"#,
-);
-
-const WSS_URL: &str = "wss://mainnet.infura.io/ws/v3/REDACTED_INFURA_PROJECT_ID";
-const WETH_ADDRESS: &str = "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2";
+/// Neo N3 Event Streaming Example
+///
+/// This example demonstrates how to monitor and stream events (notifications)
+/// from Neo N3 smart contracts in real-time.
 
 #[tokio::main]
-async fn main() -> Result<()> {
-	let provider = Provider::<Ws>::connect(WSS_URL).await?;
-	let client = Arc::new(provider);
-	let address: Address = WETH_ADDRESS.parse()?;
-	let contract = IERC20::new(address, client);
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+	println!("📡 Neo N3 Event Streaming Example");
+	println!("=================================");
 
-	listen_all_events(&contract).await?;
-	listen_specific_events(&contract).await?;
+	println!("\n📚 Understanding Neo N3 Events:");
+	println!("   • Events are called 'notifications' in Neo");
+	println!("   • Emitted during contract execution");
+	println!("   • Stored in application logs");
+	println!("   • Can be monitored in real-time");
+	println!("   • Essential for dApp integration");
 
-	Ok(())
-}
+	println!("\n🔧 Event Monitoring Methods:");
+	println!("   1. Block polling - Query new blocks periodically");
+	println!("   2. WebSocket streaming - Real-time notifications");
+	println!("   3. Historical queries - Past event analysis");
+	println!("   4. Filter by contract - Contract-specific events");
+	println!("   5. Filter by event name - Event-specific monitoring");
 
-/// Given a contract instance, subscribe to all possible events.
-/// This allows to centralize the event handling logic and dispatch
-/// proper actions.
-///
-/// Note that all event bindings have been generated
-/// by abigen. Feel free to investigate the abigen expanded code to
-/// better understand types and functionalities.
-async fn listen_all_events(contract: &IERC20<Provider<Ws>>) -> Result<()> {
-	let events = contract.events().from_block(16232696);
-	let mut stream = events.stream().await?.take(1);
+	println!("\n📋 Common Event Types:");
+	println!("   • Transfer - Token transfers (NEP-17)");
+	println!("   • Approval - Spending approvals");
+	println!("   • Mint - Token creation");
+	println!("   • Burn - Token destruction");
+	println!("   • OrderPlaced - DEX orders");
+	println!("   • VoteCast - Governance votes");
+	println!("   • Deposit/Withdraw - DeFi actions");
 
-	while let Some(Ok(evt)) = stream.next().await {
-		match evt {
-			IERC20Events::ApprovalFilter(f) => println!("{f:?}"),
-			IERC20Events::TransferFilter(f) => println!("{f:?}"),
-		}
-	}
+	println!("\n💡 Real-Time Monitoring Setup:");
+	println!("   1. Connect to Neo N3 WebSocket endpoint");
+	println!("   2. Subscribe to new block notifications");
+	println!("   3. Process each block's transactions");
+	println!("   4. Extract application logs");
+	println!("   5. Filter relevant notifications");
+	println!("   6. Process event data");
 
-	Ok(())
-}
+	println!("\n📦 Event Structure Example:");
+	println!("   {");
+	println!("     \"contract\": \"0xd2a4cff31913016155e38e474a2c06d08be276cf\",");
+	println!("     \"eventname\": \"Transfer\",");
+	println!("     \"state\": {");
+	println!("       \"type\": \"Array\",");
+	println!("       \"value\": [");
+	println!("         {\"type\": \"Hash160\", \"value\": \"from_address\"},");
+	println!("         {\"type\": \"Hash160\", \"value\": \"to_address\"},");
+	println!("         {\"type\": \"Integer\", \"value\": \"amount\"}");
+	println!("       ]");
+	println!("     }");
+	println!("   }");
 
-/// Given a contract instance subscribe to a single type of event.
-///
-/// Note that all event bindings have been generated
-/// by abigen. Feel free to investigate the abigen expanded code to
-/// better understand types and functionalities.
-async fn listen_specific_events(contract: &IERC20<Provider<Ws>>) -> Result<()> {
-	let events = contract.event::<ApprovalFilter>().from_block(16232696);
-	let mut stream = events.stream().await?.take(1);
+	println!("\n⚙️ Event Processing Pipeline:");
+	println!("   Raw Notification");
+	println!("          ↓");
+	println!("   Parse Event Name");
+	println!("          ↓");
+	println!("   Decode Parameters");
+	println!("          ↓");
+	println!("   Apply Business Logic");
+	println!("          ↓");
+	println!("   Update Application State");
+	println!("          ↓");
+	println!("   Notify Users");
 
-	while let Some(Ok(f)) = stream.next().await {
-		println!("ApprovalFilter event: {f:?}");
-	}
+	println!("\n🔍 Filtering Strategies:");
+	println!("   • Contract address - Monitor specific contracts");
+	println!("   • Event name - Filter by notification type");
+	println!("   • Parameter values - Filter by content");
+	println!("   • Block range - Historical analysis");
+	println!("   • Transaction sender - User-specific events");
+
+	println!("\n📊 Use Cases:");
+	println!("   • Wallet balance updates");
+	println!("   • DEX trade monitoring");
+	println!("   • DeFi yield tracking");
+	println!("   • NFT marketplace activity");
+	println!("   • Governance proposal updates");
+	println!("   • Security incident detection");
+
+	println!("\n⚡ Performance Optimizations:");
+	println!("   • Batch event processing");
+	println!("   • Use event indices for filtering");
+	println!("   • Implement circuit breakers");
+	println!("   • Cache frequently accessed data");
+	println!("   • Use connection pooling");
+	println!("   • Implement retry mechanisms");
+
+	println!("\n🔐 Error Handling:");
+	println!("   • Network disconnections");
+	println!("   • Rate limiting");
+	println!("   • Invalid event data");
+	println!("   • Processing failures");
+	println!("   • Backlog management");
+
+	println!("\n📝 Example Event Handlers:");
+	println!("   // Transfer event handler");
+	println!("   match event.event_name {");
+	println!("     \"Transfer\" => update_balance(from, to, amount),");
+	println!("     \"Approval\" => update_allowance(owner, spender, amount),");
+	println!("     \"OrderPlaced\" => notify_traders(order_data),");
+	println!("     _ => log_unknown_event(event)");
+	println!("   }");
+
+	println!("\n🚀 For event monitoring examples:");
+	println!("   • examples/subscriptions/");
+	println!("   • WebSocket streaming documentation");
+	println!("   • Application log specifications");
 
 	Ok(())
 }

@@ -37,25 +37,6 @@ impl CliTest {
 		self.run(args)
 	}
 
-	/// Run a CLI command with input
-	pub fn run_with_input(&self, args: &[&str], input: &str) -> Output {
-		let mut child = Command::new("cargo")
-			.arg("run")
-			.arg("--")
-			.args(args)
-			.current_dir(&self.binary_path)
-			.stdin(std::process::Stdio::piped())
-			.stdout(std::process::Stdio::piped())
-			.stderr(std::process::Stdio::piped())
-			.spawn()
-			.expect("Failed to spawn CLI command");
-
-		if let Some(mut stdin) = child.stdin.take() {
-			stdin.write_all(input.as_bytes()).expect("Failed to write to stdin");
-		}
-
-		child.wait_with_output().expect("Failed to wait for command")
-	}
 
 	/// Create a temporary file with the given content
 	pub fn create_temp_file(&self, content: &str) -> PathBuf {

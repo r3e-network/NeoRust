@@ -71,8 +71,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 	println!("   ⬅️  Previous: 0x{}", latest_block.prev_block_hash);
 	println!("   🌳 Merkle root: 0x{}", latest_block.merkle_root_hash);
 
-	if let Some(witness) = &latest_block.witness {
-		println!("   ✍️  Witness: {} bytes", witness.invocation.len());
+	if let Some(witnesses) = &latest_block.witnesses {
+		println!("   ✍️  Witnesses: {} signatures", witnesses.len());
 	}
 
 	// Transaction details
@@ -107,10 +107,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 	if !peers.connected.is_empty() {
 		println!("\n   🔗 Sample connected peers:");
 		for (idx, peer) in peers.connected.iter().take(5).enumerate() {
-			println!("      {}. {}", idx + 1, peer.address);
-			if let Some(last_seen) = peer.last_seen {
-				println!("         Last seen: {} (timestamp)", last_seen);
-			}
+			println!("      {}. {}:{}", idx + 1, peer.address, peer.port);
 		}
 	}
 
@@ -118,10 +115,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 	println!("\n🏊 6. Checking memory pool...");
 	match client.get_raw_mempool().await {
 		Ok(mempool) => {
-			println!("   📊 Mempool size: {} transactions", mempool.len());
-			if !mempool.is_empty() {
+			let total_tx = mempool.verified.len() + mempool.unverified.len();
+			println!("   📊 Mempool size: {} transactions", total_tx);
+			if !mempool.verified.is_empty() || !mempool.unverified.is_empty() {
 				println!("   📋 Sample pending transactions:");
-				for (idx, tx_hash) in mempool.iter().take(3).enumerate() {
+				for (idx, tx_hash) in mempool.verified.iter().chain(mempool.unverified.iter()).take(3).enumerate() {
 					println!("      {}. 0x{}", idx + 1, tx_hash);
 				}
 			}

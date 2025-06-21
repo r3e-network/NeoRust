@@ -55,7 +55,7 @@ async fn main() -> eyre::Result<()> {
 	// Simple NEO transfer
 	let neo_transfer = TransactionRequest {
 		recipient: ScriptHash::from_address("NbTiM6h8r99kpRtb428XcsUk1TzKed2gTc")?,
-		asset: ScriptHash::neo(),
+		asset: ScriptHash::from_str("ef4073a0f2b305a38ec4050e4d3d28bc40ea63f5")?,
 		amount: 1,
 		gas_limit: 1_000_000,
 		transaction_type: TransactionType::Transfer,

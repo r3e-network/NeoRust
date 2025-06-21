@@ -98,9 +98,10 @@ mod tests {
 		// Encrypt the accounts to avoid the "Account private key is available but not encrypted" error
 		wallet.encrypt_accounts("test_password");
 
-		// Create a temporary backup file
-		let temp_dir = std::env::temp_dir();
-		let backup_path = temp_dir.join("wallet_backup_test.json");
+		// Create a secure temporary backup file
+		let temp_file = tempfile::NamedTempFile::new()
+			.expect("Should be able to create temporary file in test");
+		let backup_path = temp_file.path().with_extension("json");
 
 		// Backup the wallet
 		WalletBackup::backup(&wallet, backup_path.clone())

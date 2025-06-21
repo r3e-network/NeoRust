@@ -199,14 +199,29 @@ document.addEventListener('DOMContentLoaded', function() {
               data.results.forEach(result => {
                 const resultElem = document.createElement('div');
                 resultElem.className = 'search-result';
-                resultElem.innerHTML = `
-                  <div class="search-result-section">${result.section}</div>
-                  <div class="search-result-title">${result.title}</div>
-                  <div class="search-result-preview">${result.preview}</div>
-                `;
+                
+                // Create elements securely to prevent XSS
+                const sectionDiv = document.createElement('div');
+                sectionDiv.className = 'search-result-section';
+                sectionDiv.textContent = result.section || '';
+                
+                const titleDiv = document.createElement('div');
+                titleDiv.className = 'search-result-title';
+                titleDiv.textContent = result.title || '';
+                
+                const previewDiv = document.createElement('div');
+                previewDiv.className = 'search-result-preview';
+                previewDiv.textContent = result.preview || '';
+                
+                resultElem.appendChild(sectionDiv);
+                resultElem.appendChild(titleDiv);
+                resultElem.appendChild(previewDiv);
                 
                 resultElem.addEventListener('click', function() {
-                  window.location.href = result.url;
+                  // Validate URL before navigation to prevent XSS
+                  if (result.url && (result.url.startsWith('/') || result.url.startsWith('#'))) {
+                    window.location.href = result.url;
+                  }
                 });
                 
                 searchResults.appendChild(resultElem);

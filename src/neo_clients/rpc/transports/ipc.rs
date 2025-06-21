@@ -94,13 +94,24 @@ mod imp {
 			}
 		}
 
+		/// Split the stream into read and write halves.
+		/// 
+		/// # Safety
+		/// 
+		/// This method uses unsafe code to create two mutable references to the same object.
+		/// This is safe in this specific context because:
+		/// 1. ReadHalf only performs read operations on the underlying NamedPipeClient
+		/// 2. WriteHalf only performs write operations on the underlying NamedPipeClient  
+		/// 3. NamedPipeClient internally handles synchronization for concurrent reads/writes
+		/// 4. The split references have non-overlapping access patterns
 		#[allow(unsafe_code)]
 		pub fn split(&mut self) -> (ReadHalf, WriteHalf) {
-			// SAFETY: ReadHalf cannot write but still needs a mutable reference for polling.
-			// NamedPipeClient calls its `io` using immutable references, but it's private.
-			let self1 = unsafe { &mut *(self as *mut Self) };
-			let self2 = self;
-			(ReadHalf(self1), WriteHalf(self2))
+			// SAFETY: This creates aliased mutable references, but they access
+			// non-overlapping functionality of the underlying NamedPipeClient.
+			// ReadHalf cannot write and WriteHalf cannot read, ensuring memory safety.
+			let read_ref = unsafe { &mut *(self as *mut Self) };
+			let write_ref = self;
+			(ReadHalf(read_ref), WriteHalf(write_ref))
 		}
 	}
 

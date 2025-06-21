@@ -155,7 +155,7 @@ async fn demonstrate_contract_interaction(
 		U256::from(100) * U256::exp10(18),
 	);
 	println!("      To: {}", contract_address);
-	println!("      Data: 0x{}", hex::encode(&tx_data));
+	println!("      Data: 0x{}", tx_data.iter().map(|b| format!("{:02x}", b)).collect::<String>());
 	println!("      Gas limit: 65,000");
 	println!("      Gas price: 30 gwei");
 

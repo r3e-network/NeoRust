@@ -68,12 +68,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 	let latest_block = client.get_block_by_index(block_count - 1, true).await?;
 
 	println!("   🔢 Block #{}", latest_block.index);
-	println!(
-		"   📅 Timestamp: {}",
-		chrono::DateTime::from_timestamp(latest_block.time as i64, 0)
-			.map(|dt| dt.format("%Y-%m-%d %H:%M:%S UTC").to_string())
-			.unwrap_or_else(|| "Unknown".to_string())
-	);
+	println!("   📅 Timestamp: {} (Unix timestamp)", latest_block.time);
 	println!("   📏 Size: {} bytes", latest_block.size);
 	println!("   🔐 Hash: 0x{}", latest_block.hash);
 	println!("   ⬅️  Previous: 0x{}", latest_block.prev_block_hash);
@@ -111,10 +106,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 		for (idx, peer) in peers.connected.iter().take(5).enumerate() {
 			println!("      {}. {}", idx + 1, peer.address);
 			if let Some(last_seen) = peer.last_seen {
-				println!(
-					"         Last seen: {} seconds ago",
-					(chrono::Utc::now().timestamp() - last_seen as i64).abs()
-				);
+				println!("         Last seen: {} (timestamp)", last_seen);
 			}
 		}
 	}
@@ -242,7 +234,7 @@ async fn connect_with_failover(
 	for (idx, endpoint) in endpoints.iter().enumerate() {
 		print!("   Trying {}: {} ... ", idx + 1, endpoint);
 
-		match neo3::providers::HttpProvider::new(endpoint) {
+		match neo3::providers::HttpProvider::new(*endpoint) {
 			Ok(provider) => {
 				let client = neo3::providers::RpcClient::new(provider);
 

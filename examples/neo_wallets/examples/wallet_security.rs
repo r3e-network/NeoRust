@@ -1,8 +1,9 @@
 use neo3::{
+	neo_crypto::KeyPair,
 	neo_protocol::{Account, AccountTrait},
-	neo_wallets::Wallet,
-	prelude::*,
+	neo_types::ScriptHash,
 };
+use std::collections::HashMap;
 
 /// This example demonstrates comprehensive wallet security features in Neo N3.
 /// It covers encryption, password management, and secure key handling.
@@ -11,153 +12,134 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 	println!("🔐 Neo N3 Wallet Security Example");
 	println!("=================================");
 
-	// 1. Create a wallet with multiple accounts
-	println!("\n1. Creating wallet with multiple accounts...");
-	let mut wallet = Wallet::new();
-	wallet.set_name("SecureWallet".to_string());
+	// 1. Create multiple accounts for demonstration
+	println!("\n1. Creating multiple accounts...");
+	let mut accounts = Vec::new();
 
-	// Add multiple accounts
 	for i in 1..=3 {
 		let account = Account::create()?;
 		println!("   Created account {}: {}", i, account.get_address());
-		wallet.add_account(account);
+		accounts.push(account);
 	}
 
-	println!("   ✅ Wallet created with {} accounts", wallet.accounts().len());
+	println!("   ✅ Created {} accounts", accounts.len());
 
-	// 2. Demonstrate password-based encryption
-	println!("\n2. Encrypting wallet with password...");
-	let password = "SuperSecurePassword123!@#";
+	// 2. Demonstrate secure key management
+	println!("\n2. Secure key management patterns...");
 
-	// Verify accounts have key pairs before encryption
-	println!("   Before encryption:");
-	for (i, account) in wallet.accounts().iter().enumerate() {
-		let has_key_pair = account.key_pair().is_some();
-		println!("     Account {}: Key pair present = {}", i + 1, has_key_pair);
-	}
-
-	// Encrypt all accounts
-	wallet.encrypt_accounts(password);
-	println!("   ✅ All accounts encrypted successfully");
-
-	// Verify accounts no longer have unencrypted key pairs
-	println!("   After encryption:");
-	for (i, account) in wallet.accounts().iter().enumerate() {
-		let has_key_pair = account.key_pair().is_some();
-		let has_encrypted_key = account.encrypted_private_key().is_some();
-		println!(
-			"     Account {}: Key pair present = {}, Encrypted key present = {}",
-			i + 1,
-			has_key_pair,
-			has_encrypted_key
-		);
-	}
-
-	// 3. Password verification
-	println!("\n3. Testing password verification...");
-
-	// Test correct password
-	let is_correct = wallet.verify_password(password);
-	println!(
-		"   Correct password verification: {}",
-		if is_correct { "✅ PASS" } else { "❌ FAIL" }
-	);
-
-	// Test incorrect password
-	let is_incorrect = wallet.verify_password("WrongPassword");
-	println!(
-		"   Incorrect password verification: {}",
-		if !is_incorrect { "✅ PASS" } else { "❌ FAIL" }
-	);
-
-	// 4. Demonstrate password change
-	println!("\n4. Changing wallet password...");
-	let new_password = "NewSecurePassword456$%^";
-
-	match wallet.change_password(password, new_password) {
-		Ok(_) => {
-			println!("   ✅ Password changed successfully");
-
-			// Verify old password no longer works
-			let old_works = wallet.verify_password(password);
-			println!(
-				"   Old password still works: {}",
-				if !old_works { "✅ NO" } else { "❌ YES" }
-			);
-
-			// Verify new password works
-			let new_works = wallet.verify_password(new_password);
-			println!("   New password works: {}", if new_works { "✅ YES" } else { "❌ NO" });
-		},
-		Err(e) => println!("   ❌ Password change failed: {}", e),
-	}
-
-	// 5. Demonstrate account decryption for signing
-	println!("\n5. Demonstrating secure account access...");
-
-	if let Some(first_account) = wallet.accounts().first() {
-		let account_address = first_account.get_address();
-		println!("   Accessing account: {}", account_address);
-
-		// This would be used for signing transactions
-		match wallet.get_signing_account(&account_address, new_password) {
-			Ok(signing_account) => {
-				println!("   ✅ Account successfully unlocked for signing");
-				println!("   Account has key pair: {}", signing_account.key_pair().is_some());
-			},
-			Err(e) => println!("   ❌ Failed to unlock account: {}", e),
+	// Export WIF for backup (should be done securely)
+	if let Some(first_account) = accounts.first() {
+		if let Some(key_pair) = first_account.key_pair() {
+			let wif = key_pair.export_as_wif();
+			println!("   🔑 WIF backup (store securely): {}", &wif[..10] + "...");
 		}
 	}
 
-	// 6. Security best practices summary
-	println!("\n6. 🛡️ Security Best Practices:");
-	println!("   • Use strong, unique passwords (12+ characters)");
-	println!("   • Include uppercase, lowercase, numbers, and symbols");
-	println!("   • Never store passwords in plain text");
-	println!("   • Regularly change wallet passwords");
-	println!("   • Keep encrypted wallet backups in multiple secure locations");
-	println!("   • Never share private keys or encrypted key files");
-	println!("   • Use hardware wallets for large amounts");
-	println!("   • Verify wallet integrity after recovery");
-	println!("   • Use multi-signature for critical operations");
-	println!("   • Keep software updated");
+	// 3. Demonstrate account verification
+	println!("\n3. Account verification...");
 
-	// 7. Demonstrate password strength validation
-	println!("\n7. Password strength examples:");
-	let test_passwords = vec![
-		("weak", "Weak password"),
-		("StrongPassword123!", "Strong password"),
-		("VeryLongAndComplexPassword2024!@#$", "Very strong password"),
-	];
+	for (i, account) in accounts.iter().enumerate() {
+		let address = account.get_address();
+		let script_hash = account.get_script_hash();
 
-	for (password, description) in test_passwords {
-		let strength = evaluate_password_strength(password);
-		println!("   {} ({}): {}", description, password.len(), strength);
+		println!("   Account {}: {}", i + 1, address);
+		println!("      Script Hash: {:x}", script_hash);
+
+		// Verify the account has a key pair
+		match account.key_pair() {
+			Some(_) => println!("      ✅ Has private key"),
+			None => println!("      ⚠️  Watch-only account (no private key)"),
+		}
 	}
 
-	println!("\n✅ Wallet security demonstration completed successfully!");
-	println!("   Remember: Security is paramount in blockchain applications!");
+	// 4. Security best practices
+	println!("\n4. Security best practices:");
+	println!("   🔐 Password protection:");
+	println!("      • Use strong, unique passwords");
+	println!("      • Consider using password managers");
+	println!("      • Enable 2FA where possible");
+
+	println!("\n   🔑 Private key management:");
+	println!("      • Never share private keys or WIF");
+	println!("      • Store backups in secure locations");
+	println!("      • Use hardware wallets for large amounts");
+
+	println!("\n   🛡️  Transaction security:");
+	println!("      • Always verify transaction details");
+	println!("      • Use appropriate witness scopes");
+	println!("      • Monitor for unusual activity");
+
+	// 5. Demonstrate secure storage concepts
+	println!("\n5. Secure storage concepts...");
+
+	// Create a simple secure storage simulation
+	let mut secure_storage = SecureWalletStorage::new();
+
+	for account in &accounts {
+		let account_info = AccountInfo {
+			address: account.get_address(),
+			script_hash: account.get_script_hash(),
+			has_private_key: account.key_pair().is_some(),
+		};
+		secure_storage.add_account(account_info);
+	}
+
+	println!("   📦 Secure storage initialized");
+	println!("   📊 Stored {} account records", secure_storage.account_count());
+
+	// 6. Demonstrate multi-signature concepts
+	println!("\n6. Multi-signature security...");
+	println!("   🏛️  Multi-sig benefits:");
+	println!("      • Requires multiple signatures for transactions");
+	println!("      • Reduces single point of failure");
+	println!("      • Enables governance and approval workflows");
+
+	// Create a conceptual multi-sig setup
+	if accounts.len() >= 2 {
+		let threshold = 2;
+		let participant_count = accounts.len();
+
+		println!("   ⚙️  Multi-sig setup (conceptual):");
+		println!("      • Threshold: {} of {}", threshold, participant_count);
+		println!("      • Participants: {} accounts", participant_count);
+
+		for (i, account) in accounts.iter().enumerate() {
+			println!("      • Participant {}: {}", i + 1, &account.get_address()[..10] + "...");
+		}
+	}
+
+	println!("\n✅ Neo N3 wallet security example completed!");
+	println!("💡 Key security principles:");
+	println!("   • Use strong encryption for stored keys");
+	println!("   • Implement proper access controls");
+	println!("   • Regular security audits and updates");
+	println!("   • Follow the principle of least privilege");
 
 	Ok(())
 }
 
-/// Simple password strength evaluation
-fn evaluate_password_strength(password: &str) -> &'static str {
-	let length = password.len();
-	let has_upper = password.chars().any(|c| c.is_uppercase());
-	let has_lower = password.chars().any(|c| c.is_lowercase());
-	let has_digit = password.chars().any(|c| c.is_numeric());
-	let has_special = password.chars().any(|c| !c.is_alphanumeric());
+/// Simple secure wallet storage simulation
+struct SecureWalletStorage {
+	accounts: Vec<AccountInfo>,
+}
 
-	let criteria_met =
-		[has_upper, has_lower, has_digit, has_special].iter().filter(|&&x| x).count();
-
-	match (length, criteria_met) {
-		(0..=7, _) => "Very Weak",
-		(8..=11, 0..=2) => "Weak",
-		(8..=11, 3..=4) => "Medium",
-		(12..=15, 3..=4) => "Strong",
-		(16.., 4) => "Very Strong",
-		_ => "Medium",
+impl SecureWalletStorage {
+	fn new() -> Self {
+		Self { accounts: Vec::new() }
 	}
+
+	fn add_account(&mut self, account: AccountInfo) {
+		self.accounts.push(account);
+	}
+
+	fn account_count(&self) -> usize {
+		self.accounts.len()
+	}
+}
+
+/// Account information for secure storage
+struct AccountInfo {
+	address: String,
+	script_hash: ScriptHash,
+	has_private_key: bool,
 }

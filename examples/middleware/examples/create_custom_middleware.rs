@@ -1,5 +1,8 @@
-use neo3::prelude::*;
-use std::sync::Arc;
+use neo3::{
+	neo_clients::{HttpProvider, RpcClient},
+	prelude::*,
+};
+use std::{str::FromStr, sync::Arc};
 use thiserror::Error;
 
 /// This example demonstrates how to create custom middleware for Neo N3 transactions.
@@ -64,7 +67,7 @@ async fn main() -> eyre::Result<()> {
 	// Contract invocation
 	let contract_call = TransactionRequest {
 		recipient: ScriptHash::from_str("0xef4073a0f2b305a38ec4050e4d3d28bc40ea63f5")?, // NEO token
-		asset: ScriptHash::gas(),
+		asset: ScriptHash::from_str("0xd2a4cff31913016155e38e474a2c06d08be276cf")?,
 		amount: 0,
 		gas_limit: 2_000_000,
 		transaction_type: TransactionType::ContractCall,
@@ -76,7 +79,7 @@ async fn main() -> eyre::Result<()> {
 	// High-value transaction
 	let high_value_tx = TransactionRequest {
 		recipient: ScriptHash::from_address("NbTiM6h8r99kpRtb428XcsUk1TzKed2gTc")?,
-		asset: ScriptHash::gas(),
+		asset: ScriptHash::from_str("0xd2a4cff31913016155e38e474a2c06d08be276cf")?,
 		amount: 100_000_000, // 1 GAS
 		gas_limit: 1_500_000,
 		transaction_type: TransactionType::Transfer,
@@ -91,7 +94,7 @@ async fn main() -> eyre::Result<()> {
 	// Invalid transaction (negative amount simulation)
 	let invalid_tx = TransactionRequest {
 		recipient: ScriptHash::from_address("NbTiM6h8r99kpRtb428XcsUk1TzKed2gTc")?,
-		asset: ScriptHash::gas(),
+		asset: ScriptHash::from_str("0xd2a4cff31913016155e38e474a2c06d08be276cf")?,
 		amount: 0,      // This will trigger validation error
 		gas_limit: 100, // Very low gas limit
 		transaction_type: TransactionType::Transfer,

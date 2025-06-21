@@ -147,7 +147,11 @@ impl<'a> BlockMonitor<'a> {
 	async fn new(client: &'a RpcClient<HttpProvider>) -> eyre::Result<Self> {
 		let current_block = client.get_block_count().await?;
 
-		Ok(Self { client, last_known_block: current_block as u64, statistics: BlockStatistics::new() })
+		Ok(Self {
+			client,
+			last_known_block: current_block as u64,
+			statistics: BlockStatistics::new(),
+		})
 	}
 
 	fn get_current_block(&self) -> u64 {
@@ -166,7 +170,9 @@ impl<'a> BlockMonitor<'a> {
 				// Create a proper block hash for the get_block call
 				let block_hash = neo3::prelude::H256::default(); // Placeholder hash
 				if let Ok(block_data) = self.client.get_block(block_hash, true).await {
-					if let Some(block_info) = self.parse_block_data_from_neo_block(&block_data, block_index as u64) {
+					if let Some(block_info) =
+						self.parse_block_data_from_neo_block(&block_data, block_index as u64)
+					{
 						new_blocks.push(block_info);
 						self.update_statistics_from_neo_block(&block_data);
 					}
@@ -179,7 +185,11 @@ impl<'a> BlockMonitor<'a> {
 		Ok(new_blocks)
 	}
 
-	fn parse_block_data_from_neo_block(&self, block_data: &neo3::neo_protocol::NeoBlock, index: u64) -> Option<BlockInfo> {
+	fn parse_block_data_from_neo_block(
+		&self,
+		block_data: &neo3::neo_protocol::NeoBlock,
+		index: u64,
+	) -> Option<BlockInfo> {
 		let hash = format!("{:?}", block_data.hash);
 		let timestamp = block_data.time as u64;
 		let merkle_root = format!("{:?}", block_data.merkle_root_hash);
@@ -224,4 +234,3 @@ fn print_block_info(block: &BlockInfo) {
 		println!("     Merkle Root: {}...", &block.merkle_root[..20]);
 	}
 }
-

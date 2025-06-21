@@ -1,5 +1,11 @@
-use neo3::prelude::*;
-use std::time::{Duration, Instant};
+use neo3::{
+	neo_clients::{APITrait, HttpProvider, RpcClient},
+	prelude::*,
+};
+use std::{
+	str::FromStr,
+	time::{Duration, Instant},
+};
 
 /// This example demonstrates comprehensive Neo N3 node connectivity and blockchain querying.
 /// It includes connection handling, failover, performance monitoring, and various RPC operations.

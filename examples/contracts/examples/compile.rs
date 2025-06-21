@@ -2,7 +2,6 @@
 ///
 /// This example demonstrates concepts for Neo N3 smart contract compilation.
 /// Unlike Ethereum's Solidity, Neo N3 uses languages like C#, Python, Go, etc.
-
 fn main() -> Result<(), Box<dyn std::error::Error>> {
 	println!("🔨 Neo N3 Contract Compilation Example");
 	println!("====================================\n");

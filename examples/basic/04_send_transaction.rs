@@ -111,9 +111,9 @@ async fn check_balance(client: &RpcClient<HttpProvider>, address: &str) {
 }
 
 async fn get_balance_with_timeout(
-	client: &RpcClient<HttpProvider>,
-	address: &str,
-	token: &str,
+	_client: &RpcClient<HttpProvider>,
+	_address: &str,
+	_token: &str,
 ) -> Result<u64, Box<dyn std::error::Error>> {
 	// Note: This is simplified for demo - real implementation would use get_nep17_balances
 	// and parse the response for specific token hashes

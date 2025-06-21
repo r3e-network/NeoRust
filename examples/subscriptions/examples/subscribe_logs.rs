@@ -236,11 +236,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 	println!("   // WebSocket client setup");
 	println!("   let (ws_stream, _) = connect_async(ws_url).await?;");
 	println!("   let (mut write, mut read) = ws_stream.split();");
-	println!("");
+	println!();
 	println!("   // Send subscription");
 	println!("   let sub_req = json!({{\"method\": \"subscribe\", ...}});");
 	println!("   write.send(Message::Text(sub_req.to_string())).await?;");
-	println!("");
+	println!();
 	println!("   // Process events");
 	println!("   while let Some(message) = read.next().await {{");
 	println!("       match message {{");

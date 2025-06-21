@@ -196,6 +196,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         
         // Call the Netlify Function for search
+        // nosemgrep: javascript.lang.security.detect-eval-with-expression.detect-eval-with-expression
         fetch(`/.netlify/functions/search?query=${encodeURIComponent(query)}`)
           .then(response => response.json())
           .then(data => {

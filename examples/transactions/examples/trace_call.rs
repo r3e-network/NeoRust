@@ -55,19 +55,19 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 	println!("   • Assert failures");
 
 	println!("\n📝 Debug Information Example:");
-	println!("   {");
+	println!("   {{");
 	println!("     \"state\": \"HALT\",");
 	println!("     \"gasconsumed\": \"1234567\",");
 	println!("     \"exception\": null,");
-	println!("     \"stack\": [{\"type\": \"Integer\", \"value\": \"100\"}],");
+	println!("     \"stack\": [{{\"type\": \"Integer\", \"value\": \"100\"}}],");
 	println!("     \"notifications\": [");
-	println!("       {");
+	println!("       {{");
 	println!("         \"contract\": \"0xd2a4cff31913016155e38e474a2c06d08be276cf\",");
 	println!("         \"eventname\": \"Transfer\",");
-	println!("         \"state\": {...}");
-	println!("       }");
+	println!("         \"state\": {{...}}");
+	println!("       }}");
 	println!("     ]");
-	println!("   }");
+	println!("   }}");
 
 	println!("\n🚀 For practical debugging examples, see:");
 	println!("   • Neo N3 RPC documentation");

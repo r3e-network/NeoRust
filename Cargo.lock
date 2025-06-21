@@ -722,6 +722,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "contract_interaction_example"
+version = "0.1.0"
+dependencies = [
+ "neo3",
+ "tokio",
+]
+
+[[package]]
 name = "convert_case"
 version = "0.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1353,7 +1361,9 @@ name = "examples-middleware"
 version = "0.0.0"
 dependencies = [
  "async-trait",
+ "chrono",
  "eyre",
+ "hex",
  "neo3",
  "serde",
  "serde_json",
@@ -2419,6 +2429,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "message_signing_example"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "hex",
+ "neo3",
+ "rand",
+ "tokio",
+]
+
+[[package]]
 name = "mime"
 version = "0.3.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2711,7 +2732,9 @@ name = "neo_nodes_examples"
 version = "0.1.0"
 dependencies = [
  "eyre",
+ "futures",
  "neo3",
+ "serde_json",
  "tokio",
 ]
 

@@ -3,7 +3,6 @@
 //! This example demonstrates comprehensive smart contract interaction on Neo N3,
 //! including contract invocation, state queries, event monitoring, and transaction building.
 
-use hex;
 use neo3::{neo_clients::APITrait, neo_protocol::AccountTrait, prelude::*};
 use std::str::FromStr;
 

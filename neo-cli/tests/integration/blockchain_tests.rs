@@ -5,7 +5,7 @@ fn test_blockchain_info() {
 	let cli = CliTest::new();
 
 	// Get blockchain info
-	let output = cli.run(&["blockchain", "info"]);
+	let output = cli.run(&["network", "status"]);
 
 	assert_success(&output);
 	// Any Neo node will return information containing these values
@@ -17,8 +17,8 @@ fn test_blockchain_info() {
 fn test_blockchain_height() {
 	let cli = CliTest::new();
 
-	// Get blockchain height
-	let output = cli.run(&["blockchain", "height"]);
+	// Get blockchain height  
+	let output = cli.run(&["network", "block"]);
 
 	assert_success(&output);
 	// Should return a numeric height
@@ -30,7 +30,7 @@ fn test_blockchain_get_block_by_index() {
 	let cli = CliTest::new();
 
 	// Try to get block 0 (genesis block)
-	let output = cli.run(&["blockchain", "block", "--index", "0"]);
+	let output = cli.run(&["network", "block", "--index", "0"]);
 
 	assert_success(&output);
 	// Genesis block details
@@ -43,7 +43,7 @@ fn test_blockchain_get_block_by_hash() {
 	let cli = CliTest::new();
 
 	// First get genesis block hash
-	let info_output = cli.run(&["blockchain", "block", "--index", "0"]);
+	let info_output = cli.run(&["network", "block", "--index", "0"]);
 	assert_success(&info_output);
 
 	// Extract block hash from output
@@ -58,7 +58,7 @@ fn test_blockchain_get_block_by_hash() {
 	let hash = parts.get(1).expect("Should have hash part").trim();
 
 	// Get block by hash
-	let output = cli.run(&["blockchain", "block", "--hash", hash]);
+	let output = cli.run(&["network", "block", "--hash", hash]);
 
 	assert_success(&output);
 	assert_output_contains(&output, "Block Hash");
@@ -69,8 +69,8 @@ fn test_blockchain_get_block_by_hash() {
 fn test_blockchain_get_asset() {
 	let cli = CliTest::new();
 
-	// Get NEO asset info (script hash may vary on testnet vs mainnet)
-	let output = cli.run(&["blockchain", "asset", "--id", "NEO"]);
+	// Get NEO asset info (use de-fi token command instead)
+	let output = cli.run(&["de-fi", "token", "--symbol", "NEO"]);
 
 	assert_success(&output);
 	assert_output_contains(&output, "Asset Information");

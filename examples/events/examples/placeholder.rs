@@ -52,18 +52,18 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 	// 5. Example event structure
 	println!("\n5. Example event structure in Neo N3:");
 	println!("   📋 Sample NEP-17 Transfer event:");
-	println!("   {");
+	println!("   {{");
 	println!("     \"contract\": \"0xd2a4cff31913016155e38e474a2c06d08be276cf\",");
 	println!("     \"eventname\": \"Transfer\",");
-	println!("     \"state\": {");
+	println!("     \"state\": {{");
 	println!("       \"type\": \"Array\",");
 	println!("       \"value\": [");
-	println!("         {\"type\": \"Hash160\", \"value\": \"from_address\"},");
-	println!("         {\"type\": \"Hash160\", \"value\": \"to_address\"},");
-	println!("         {\"type\": \"Integer\", \"value\": \"amount\"}");
+	println!("         {{\"type\": \"Hash160\", \"value\": \"from_address\"}},");
+	println!("         {{\"type\": \"Hash160\", \"value\": \"to_address\"}},");
+	println!("         {{\"type\": \"Integer\", \"value\": \"amount\"}}");
 	println!("       ]");
-	println!("     }");
-	println!("   }");
+	println!("     }}");
+	println!("   }}");
 	println!("   💡 This shows the structure of real event data!");
 
 	// 6. Next steps for implementation

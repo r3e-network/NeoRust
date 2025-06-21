@@ -25,58 +25,43 @@
         <link rel="stylesheet" href="fonts/fonts.css">
 
         <!-- Highlight.js Stylesheets -->
-        <link rel="stylesheet" href="highlight.css">
-        <link rel="stylesheet" href="tomorrow-night.css">
-        <link rel="stylesheet" href="ayu-highlight.css">
+        <link rel="stylesheet" id="highlight-css" href="highlight.css">
+        <link rel="stylesheet" id="tomorrow-night-css" href="tomorrow-night.css">
+        <link rel="stylesheet" id="ayu-highlight-css" href="ayu-highlight.css">
 
         <!-- Custom theme stylesheets -->
         <link rel="stylesheet" href="theme/custom.css">
-        <link rel="stylesheet" href="./mdbook-admonish.css">
 
         <!-- MathJax -->
         <script async src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
 
-        <!-- Custom JS scripts for mdbook-pdf PDF generation -->
-        <script type='text/javascript'>
-            let markAllContentHasLoadedForPrinting = () =>
-                window.setTimeout(
-                    () => {
-                        let p = document.createElement('div');
-                        p.setAttribute('id', 'content-has-all-loaded-for-mdbook-pdf-generation');
-                        document.body.appendChild(p);
-                    }, 100
-                );
-
-            window.addEventListener('load', () => {
-                // Expand all the <details> elements for printing.
-                r = document.getElementsByTagName('details');
-                for (let i of r)
-                    i.open = true;
-
-                try {
-                    MathJax.Hub.Register.StartupHook('End', markAllContentHasLoadedForPrinting);
-                } catch (e) {
-                    markAllContentHasLoadedForPrinting();
-                }
-            });
-        </script>
-    <div style="display: none"><a href="#index">index</a><a href="#guides-getting-started">guides-getting-started</a><a href="#guides-installation">guides-installation</a><a href="#tutorials-wallet-management">tutorials-wallet-management</a><a href="#tutorials-smart-contracts">tutorials-smart-contracts</a><a href="#tutorials-transactions">tutorials-transactions</a><a href="#tutorials-nep17-tokens">tutorials-nep17-tokens</a><a href="#tutorials-nns">tutorials-nns</a><a href="#tutorials-neo-x">tutorials-neo-x</a><a href="#tutorials-sgx">tutorials-sgx</a><a href="#reference-api-overview">reference-api-overview</a><a href="#reference-configuration">reference-configuration</a><a href="#reference-error-handling">reference-error-handling</a><a href="#examples-index">examples-index</a></div>
-
-        <!-- Provide site root to javascript -->
+        <!-- Provide site root and default themes to javascript -->
         <script>
-            var path_to_root = "";
-            var default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "navy" : "light";
+            const path_to_root = "";
+            const default_light_theme = "light";
+            const default_dark_theme = "navy";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc.js"></script>
     </head>
     <body>
+    <div id="mdbook-help-container">
+        <div id="mdbook-help-popup">
+            <h2 class="mdbook-help-title">Keyboard shortcuts</h2>
+            <div>
+                <p>Press <kbd>←</kbd> or <kbd>→</kbd> to navigate between chapters</p>
+                <p>Press <kbd>S</kbd> or <kbd>/</kbd> to search in the book</p>
+                <p>Press <kbd>?</kbd> to show this help</p>
+                <p>Press <kbd>Esc</kbd> to hide this help</p>
+            </div>
+        </div>
+    </div>
     <div id="body-container">
         <!-- Work around some values being stored in localStorage wrapped in quotes -->
         <script>
             try {
-                var theme = localStorage.getItem('mdbook-theme');
-                var sidebar = localStorage.getItem('mdbook-sidebar');
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
 
                 if (theme.startsWith('"') && theme.endsWith('"')) {
                     localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
@@ -90,7 +75,8 @@
 
         <!-- Set the theme before any content is loaded, prevents flash -->
         <script>
-            var theme;
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
             try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
             if (theme === null || theme === undefined) { theme = default_theme; }
             const html = document.documentElement;
@@ -103,8 +89,8 @@
 
         <!-- Hide / unhide sidebar before it is displayed -->
         <script>
-            var sidebar = null;
-            var sidebar_toggle = document.getElementById("sidebar-toggle-anchor");
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("sidebar-toggle-anchor");
             if (document.body.clientWidth >= 1080) {
                 try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
                 sidebar = sidebar || 'visible';
@@ -140,13 +126,14 @@
                             <i class="fa fa-paint-brush"></i>
                         </button>
                         <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="default_theme">Auto</button></li>
                             <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
                             <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
                             <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
                             <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
                             <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
                         </ul>
-                        <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                        <button id="search-toggle" class="icon-button" type="button" title="Search (`/`)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="/ s" aria-controls="searchbar">
                             <i class="fa fa-search"></i>
                         </button>
                     </div>
@@ -248,32 +235,39 @@ async fn main() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
 <li>Explore <a href="guides/../tutorials/smart-contracts.html">Smart Contract Interaction</a></li>
 <li>See <a href="guides/../examples/README.html">Examples</a> for more code samples</li>
 </ul>
+<!-- toc -->
 <div style="break-before: page; page-break-before: always;"></div><h1 id="installation-guide"><a class="header" href="#installation-guide">Installation Guide</a></h1>
-<p>This guide provides detailed instructions for installing and configuring the NeoRust SDK.</p>
-<h2 id="requirements"><a class="header" href="#requirements">Requirements</a></h2>
+<h2 id="prerequisites-1"><a class="header" href="#prerequisites-1">Prerequisites</a></h2>
 <ul>
-<li>Rust 1.70.0 or later</li>
-<li>Cargo package manager</li>
-<li>Optional: Intel SGX SDK (for SGX features)</li>
+<li>Rust and Cargo (stable or nightly)</li>
+<li>Optional: Ledger hardware device (for ledger features)</li>
+<li>Optional: AWS account (for AWS KMS features)</li>
 </ul>
-<h2 id="standard-installation"><a class="header" href="#standard-installation">Standard Installation</a></h2>
-<p>Add the NeoRust SDK to your Cargo.toml:</p>
+<h2 id="installation-1"><a class="header" href="#installation-1">Installation</a></h2>
+<p>Add NeoRust to your <code>Cargo.toml</code>:</p>
 <pre><code class="language-toml">[dependencies]
-neo3 = { git = "https://github.com/R3E-Network/NeoRust" }
+neo3 = "0.4.1"
 </code></pre>
-<h2 id="feature-flags"><a class="header" href="#feature-flags">Feature Flags</a></h2>
-<p>NeoRust supports various feature flags to enable specific functionality:</p>
-<pre><code class="language-toml">[dependencies]
-neo3 = { git = "https://github.com/R3E-Network/NeoRust", features = ["ledger", "aws"] }
-</code></pre>
-<p>Available features:</p>
+<p>Note: The crate is published as <code>neo3</code> but is imported as <code>neo</code> in code:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>use neo3::prelude::*;
+<span class="boring">}</span></code></pre></pre>
+<h2 id="features-1"><a class="header" href="#features-1">Features</a></h2>
+<p>NeoRust provides several features to customize functionality:</p>
 <ul>
-<li><code>ledger</code>: Support for Ledger hardware wallets</li>
-<li><code>aws</code>: AWS integration</li>
-<li><code>sgx</code>: Intel SGX support (requires additional setup)</li>
+<li><code>futures</code>: Enables async/futures support (recommended)</li>
+<li><code>ledger</code>: Enables hardware wallet support via Ledger devices</li>
+<li><code>aws</code>: Enables AWS KMS integration</li>
 </ul>
-<h2 id="sgx-support"><a class="header" href="#sgx-support">SGX Support</a></h2>
-<p>To use the SGX features, you need to install the Intel SGX SDK. See the <a href="guides/../tutorials/sgx.html">SGX Setup Guide</a> for detailed instructions.</p>
+<p>Example of enabling specific features:</p>
+<pre><code class="language-toml">[dependencies]
+neo3 = { version = "0.4.1", features = ["futures", "ledger"] }
+</code></pre>
+<p>You can disable default features with:</p>
+<pre><code class="language-toml">[dependencies]
+neo3 = { version = "0.4.1", default-features = false, features = ["futures"] }
+</code></pre>
 <h2 id="verifying-installation"><a class="header" href="#verifying-installation">Verifying Installation</a></h2>
 <p>To verify that the SDK is installed correctly, create a simple test program:</p>
 <pre><pre class="playground"><code class="language-rust">use neo3::prelude::*;
@@ -285,6 +279,7 @@ fn main() {
 <pre><code class="language-bash">cargo run
 </code></pre>
 <p>If the program compiles and runs without errors, the SDK is installed correctly.</p>
+<!-- toc -->
 <div style="break-before: page; page-break-before: always;"></div><h1 id="wallet-management"><a class="header" href="#wallet-management">Wallet Management</a></h1>
 <p>This tutorial covers wallet management with the NeoRust SDK, including creating, loading, and using wallets.</p>
 <h2 id="creating-a-new-wallet"><a class="header" href="#creating-a-new-wallet">Creating a New Wallet</a></h2>
@@ -294,11 +289,11 @@ fn main() {
 async fn main() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
     // Create a new wallet with a password
     let password = "my-secure-password";
-    let wallet = Wallet::new(password)?;
+    let wallet = Wallet::new("my-wallet", password)?;
     
     // Generate a new account
     let account = wallet.create_account()?;
-    println!("New account address: {}", account.address());
+    println!("New account address: {}", account.get_address());
     
     // Save the wallet to a file
     wallet.save("my-wallet.json")?;
@@ -314,11 +309,11 @@ async fn main() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
     // Load a wallet from a file
     let wallet_path = Path::new("my-wallet.json");
     let password = "my-secure-password";
-    let wallet = Wallet::load(wallet_path, password)?;
+    let wallet = Wallet::load(wallet_path, Some(password))?;
     
     // Get the default account
     let account = wallet.default_account()?;
-    println!("Default account address: {}", account.address());
+    println!("Default account address: {}", account.get_address());
     
     Ok(())
 }</code></pre></pre>
@@ -329,12 +324,12 @@ async fn main() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
 async fn main() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
     // Create a new wallet
     let password = "my-secure-password";
-    let mut wallet = Wallet::new(password)?;
+    let mut wallet = Wallet::new("my-wallet", password)?;
     
     // Import a private key
     let private_key = "your-private-key-here";
     let account = wallet.import_private_key(private_key, password)?;
-    println!("Imported account address: {}", account.address());
+    println!("Imported account address: {}", account.get_address());
     
     // Save the wallet
     wallet.save("my-wallet.json")?;
@@ -343,88 +338,85 @@ async fn main() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
 }</code></pre></pre>
 <h2 id="signing-a-message"><a class="header" href="#signing-a-message">Signing a Message</a></h2>
 <pre><pre class="playground"><code class="language-rust">use neo3::prelude::*;
-use std::path::Path;
+use neo3::neo_wallets::WalletSigner;
 
 #[tokio::main]
 async fn main() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
-    // Load a wallet
-    let wallet_path = Path::new("my-wallet.json");
-    let password = "my-secure-password";
-    let wallet = Wallet::load(wallet_path, password)?;
+    // Create a key pair
+    let key_pair = KeyPair::new_random()?;
     
-    // Get the default account
-    let account = wallet.default_account()?;
+    // Create a wallet signer
+    let wallet = WalletSigner::new_with_signer(key_pair.clone(), key_pair.get_address());
     
     // Sign a message
     let message = b"Hello, Neo!";
-    let signature = account.sign_message(message)?;
+    let signature = wallet.sign_message(message).await?;
     println!("Signature: {:?}", signature);
     
-    // Verify the signature
-    let is_valid = account.verify_signature(message, &amp;signature)?;
-    println!("Signature valid: {}", is_valid);
+    // For more information on message signing, see the dedicated documentation
+    // in the /docs/wallets/message-signing.md file
     
     Ok(())
 }</code></pre></pre>
 <h2 id="wallet-backup-and-recovery"><a class="header" href="#wallet-backup-and-recovery">Wallet Backup and Recovery</a></h2>
 <pre><pre class="playground"><code class="language-rust">use neo3::prelude::*;
+use neo3::neo_wallets::bip39_account::create_account_from_mnemonic;
 
 #[tokio::main]
 async fn main() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
-    // Create a new wallet
-    let password = "my-secure-password";
-    let wallet = Wallet::new(password)?;
+    // Create a mnemonic phrase for backup
+    let mnemonic = "liberty village rhythm couch december axis barely model flag gym tortoise must";
     
-    // Generate a new account
-    let account = wallet.create_account()?;
+    // Create an account from the mnemonic
+    let account = create_account_from_mnemonic(mnemonic)?;
+    println!("Account address: {}", account.get_address());
     
-    // Get the mnemonic phrase for backup
-    let mnemonic = wallet.export_mnemonic(password)?;
-    println!("Backup phrase: {}", mnemonic);
+    // Later, recover the account from the same mnemonic
+    let recovered_account = create_account_from_mnemonic(mnemonic)?;
+    println!("Recovered account address: {}", recovered_account.get_address());
     
-    // Later, recover the wallet from the mnemonic
-    let recovered_wallet = Wallet::from_mnemonic(&amp;mnemonic, password)?;
-    
-    // Verify the recovered wallet has the same account
-    let recovered_account = recovered_wallet.default_account()?;
-    println!("Recovered account address: {}", recovered_account.address());
-    
-    assert_eq!(account.address(), recovered_account.address());
+    assert_eq!(account.get_address(), recovered_account.get_address());
     
     Ok(())
 }</code></pre></pre>
-<h2 id="using-sgx-protected-wallets"><a class="header" href="#using-sgx-protected-wallets">Using SGX-Protected Wallets</a></h2>
-<p>If you have enabled the SGX feature, you can use SGX-protected wallets for enhanced security:</p>
+<h2 id="using-hardware-wallets"><a class="header" href="#using-hardware-wallets">Using Hardware Wallets</a></h2>
+<p>If you have enabled the <code>ledger</code> feature, you can use hardware wallets for enhanced security:</p>
 <pre><pre class="playground"><code class="language-rust">use neo3::prelude::*;
+use neo3::neo_wallets::{HDPath, LedgerWallet, WalletSigner};
 
 #[tokio::main]
 async fn main() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
-    // Initialize the SGX enclave
-    let enclave_path = "path/to/enclave.so";
-    let enclave_manager = SgxEnclaveManager::new(enclave_path)?;
+    // Define an HD derivation path
+    let hd_path = HDPath::new(44, 888, 0, 0, 0)?;
     
-    // Create a wallet with a password
-    let password = "my-secure-password";
-    let wallet = enclave_manager.create_wallet(password)?;
+    // Initialize the Ledger wallet (will prompt the user on the device)
+    let ledger = LedgerWallet::new(hd_path, None).await?;
     
-    // Get the wallet's public key
-    let public_key = wallet.get_public_key();
-    println!("Wallet public key: {:?}", public_key);
+    // Get the address from the hardware wallet
+    let address = ledger.get_address();
+    println!("Ledger wallet address: {}", address);
     
-    // Sign a transaction using the SGX-protected private key
-    let transaction_data = b"Sample transaction data";
-    let signature = wallet.sign_transaction(transaction_data)?;
+    // Create a wallet signer that uses the hardware wallet
+    let signer = WalletSigner::new_with_signer(ledger, address);
+    
+    // Sign a transaction or message using the hardware wallet
+    // (will require physical confirmation on the device)
+    let message = b"Hello, Neo!";
+    let signature = signer.sign_message(message).await?;
     
     Ok(())
 }</code></pre></pre>
+<h2 id="advanced-message-signing"><a class="header" href="#advanced-message-signing">Advanced Message Signing</a></h2>
+<p>For detailed information about message signing capabilities, including use cases and security considerations, see the message signing examples in the examples directory.</p>
 <h2 id="best-practices"><a class="header" href="#best-practices">Best Practices</a></h2>
 <ol>
 <li><strong>Secure Password Storage</strong>: Never hardcode passwords in your application.</li>
 <li><strong>Regular Backups</strong>: Always backup your wallet's mnemonic phrase or private keys.</li>
 <li><strong>Verify Addresses</strong>: Always verify addresses before sending transactions.</li>
-<li><strong>Use Hardware Wallets</strong>: For production applications, consider using hardware wallets via the Ledger feature.</li>
-<li><strong>SGX Protection</strong>: For high-security applications, use SGX-protected wallets.</li>
+<li><strong>Use Hardware Wallets</strong>: For production applications, consider using hardware wallets via the <code>ledger</code> feature.</li>
+<li><strong>Multiple Signers</strong>: Consider using multi-signature setups for high-value wallets.</li>
 </ol>
+<!-- toc -->
 <div style="break-before: page; page-break-before: always;"></div><h1 id="smart-contracts"><a class="header" href="#smart-contracts">Smart Contracts</a></h1>
 <p>This tutorial covers working with smart contracts on the Neo N3 blockchain using the NeoRust SDK.</p>
 <h2 id="understanding-neo-smart-contracts"><a class="header" href="#understanding-neo-smart-contracts">Understanding Neo Smart Contracts</a></h2>
@@ -649,6 +641,7 @@ async fn main() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
 <li><strong>Event Monitoring</strong>: Set up event monitoring for important contract events.</li>
 <li><strong>Security</strong>: Carefully review contract code and parameters before deployment or interaction.</li>
 </ol>
+<!-- toc -->
 <div style="break-before: page; page-break-before: always;"></div><h1 id="transactions"><a class="header" href="#transactions">Transactions</a></h1>
 <p>This tutorial covers creating and sending transactions on the Neo N3 blockchain using the NeoRust SDK.</p>
 <h2 id="understanding-neo-transactions"><a class="header" href="#understanding-neo-transactions">Understanding Neo Transactions</a></h2>
@@ -937,6 +930,7 @@ async fn main() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
 <li><strong>Error Handling</strong>: Implement proper error handling for transaction failures.</li>
 <li><strong>Test on TestNet</strong>: Always test your transactions on TestNet before moving to MainNet.</li>
 </ol>
+<!-- toc -->
 <div style="break-before: page; page-break-before: always;"></div><h1 id="nep-17-tokens"><a class="header" href="#nep-17-tokens">NEP-17 Tokens</a></h1>
 <p>This tutorial covers working with NEP-17 tokens on the Neo N3 blockchain using the NeoRust SDK.</p>
 <h2 id="understanding-nep-17"><a class="header" href="#understanding-nep-17">Understanding NEP-17</a></h2>
@@ -1239,6 +1233,7 @@ async fn main() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
 <li><strong>Gas Costs</strong>: Be aware of the gas costs associated with token transfers and other operations.</li>
 <li><strong>Test on TestNet</strong>: Always test your token operations on TestNet before moving to MainNet.</li>
 </ol>
+<!-- toc -->
 <div style="break-before: page; page-break-before: always;"></div><h1 id="neo-name-service-nns"><a class="header" href="#neo-name-service-nns">Neo Name Service (NNS)</a></h1>
 <p>This tutorial covers working with the Neo Name Service (NNS) on the Neo N3 blockchain using the NeoRust SDK.</p>
 <h2 id="understanding-nns"><a class="header" href="#understanding-nns">Understanding NNS</a></h2>
@@ -1552,6 +1547,7 @@ async fn main() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
 <li><strong>Handle Resolution Failures</strong>: Always handle cases where domain resolution fails gracefully.</li>
 <li><strong>Test on TestNet</strong>: Always test your NNS operations on TestNet before moving to MainNet.</li>
 </ol>
+<!-- toc -->
 <div style="break-before: page; page-break-before: always;"></div><h1 id="neo-x-integration"><a class="header" href="#neo-x-integration">Neo X Integration</a></h1>
 <p>This tutorial covers working with Neo X, an EVM-compatible chain maintained by Neo, using the NeoRust SDK.</p>
 <h2 id="understanding-neo-x"><a class="header" href="#understanding-neo-x">Understanding Neo X</a></h2>
@@ -1848,296 +1844,8 @@ async fn main() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
 <li><strong>Error Handling</strong>: Implement proper error handling for both Neo N3 and Neo X operations.</li>
 <li><strong>Monitoring</strong>: Set up monitoring for bridge events to track the status of cross-chain transfers.</li>
 </ol>
-<div style="break-before: page; page-break-before: always;"></div><h1 id="sgx-support-1"><a class="header" href="#sgx-support-1">SGX Support</a></h1>
-<p>This tutorial covers using the Intel SGX (Software Guard Extensions) features of the NeoRust SDK for secure blockchain operations.</p>
-<h2 id="understanding-intel-sgx"><a class="header" href="#understanding-intel-sgx">Understanding Intel SGX</a></h2>
-<p>Intel SGX is a set of security-related instruction codes built into modern Intel CPUs. It allows user-level code to allocate private regions of memory, called enclaves, which are protected from processes running at higher privilege levels. Key benefits include:</p>
-<ul>
-<li><strong>Hardware-Level Security</strong>: Protection of sensitive data and code from the operating system, hypervisor, BIOS, and other privileged software</li>
-<li><strong>Secure Computation</strong>: Ability to perform computations on sensitive data within the enclave</li>
-<li><strong>Remote Attestation</strong>: Verification that code is running in a genuine SGX enclave</li>
-<li><strong>Sealing</strong>: Secure storage of sensitive data for later use within an enclave</li>
-</ul>
-<h2 id="prerequisites-1"><a class="header" href="#prerequisites-1">Prerequisites</a></h2>
-<p>Before using the SGX features of NeoRust, you need:</p>
-<ol>
-<li>
-<p><strong>Intel SGX-compatible hardware</strong></p>
-<ul>
-<li>CPU with SGX support (check with <code>cpuid</code> or Intel's processor list)</li>
-<li>SGX enabled in BIOS/UEFI</li>
-</ul>
-</li>
-<li>
-<p><strong>Intel SGX Software Stack</strong></p>
-<ul>
-<li>Intel SGX Driver</li>
-<li>Intel SGX SDK v2.12</li>
-<li>Intel SGX PSW (Platform Software)</li>
-</ul>
-</li>
-<li>
-<p><strong>Rust Toolchain</strong></p>
-<ul>
-<li>Rust nightly-2022-10-22 (required by the Apache Teaclave SGX SDK)</li>
-<li>Install with: <code>rustup install nightly-2022-10-22</code></li>
-<li>Set as default for this project: <code>rustup override set nightly-2022-10-22</code></li>
-</ul>
-</li>
-</ol>
-<p>For detailed installation instructions, see the <a href="https://github.com/R3E-Network/NeoRust/blob/master/SGX_SETUP.md">SGX Setup Guide</a>.</p>
-<h2 id="enabling-sgx-support-in-neorust"><a class="header" href="#enabling-sgx-support-in-neorust">Enabling SGX Support in NeoRust</a></h2>
-<p>To enable SGX support in your project, add the <code>sgx</code> feature to your Cargo.toml:</p>
-<pre><code class="language-toml">[dependencies]
-neo3 = { git = "https://github.com/R3E-Network/NeoRust", features = ["sgx"] }
-</code></pre>
-<p>You also need to uncomment the SGX dependencies in the NeoRust Cargo.toml:</p>
-<pre><code class="language-toml"># SGX dependencies
-sgx_types = { version = "=1.1.1", optional = true }
-sgx_urts = { version = "=1.1.1", optional = true }
-sgx_tstd = { version = "=1.1.1", optional = true }
-sgx_tcrypto = { version = "=1.1.1", optional = true }
-
-[features]
-sgx = ["sgx-deps"]
-sgx-deps = [
-    "sgx_types",
-    "sgx_urts",
-    "sgx_tstd",
-    "sgx_tcrypto"
-]
-</code></pre>
-<h2 id="building-the-sgx-components"><a class="header" href="#building-the-sgx-components">Building the SGX Components</a></h2>
-<p>Use the provided Makefile for SGX to build the enclave components:</p>
-<pre><code class="language-bash">make -f Makefile.sgx
-</code></pre>
-<p>This will build both the trusted enclave components and the untrusted application components.</p>
-<h2 id="creating-an-sgx-enclave-manager"><a class="header" href="#creating-an-sgx-enclave-manager">Creating an SGX Enclave Manager</a></h2>
-<p>The first step in using SGX features is to create an enclave manager:</p>
-<pre><pre class="playground"><code class="language-rust">use neo3::prelude::*;
-
-#[tokio::main]
-async fn main() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
-    // Path to the enclave shared object
-    let enclave_path = "path/to/enclave.so";
-    
-    // Initialize the SGX enclave
-    let enclave_manager = SgxEnclaveManager::new(enclave_path)?;
-    println!("SGX enclave initialized successfully!");
-    
-    Ok(())
-}</code></pre></pre>
-<h2 id="secure-wallet-management-with-sgx"><a class="header" href="#secure-wallet-management-with-sgx">Secure Wallet Management with SGX</a></h2>
-<p>One of the primary use cases for SGX in blockchain applications is secure wallet management:</p>
-<pre><pre class="playground"><code class="language-rust">use neo3::prelude::*;
-use std::path::Path;
-
-#[tokio::main]
-async fn main() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
-    // Path to the enclave shared object
-    let enclave_path = "path/to/enclave.so";
-    
-    // Initialize the SGX enclave
-    let enclave_manager = SgxEnclaveManager::new(enclave_path)?;
-    
-    // Create a wallet with a password
-    let password = "my-secure-password";
-    let wallet = enclave_manager.create_wallet(password)?;
-    
-    // Get the wallet's public key
-    let public_key = wallet.get_public_key();
-    println!("Wallet public key: {:?}", public_key);
-    
-    // The private key never leaves the enclave
-    
-    Ok(())
-}</code></pre></pre>
-<h2 id="signing-transactions-securely"><a class="header" href="#signing-transactions-securely">Signing Transactions Securely</a></h2>
-<p>With SGX, you can sign transactions without exposing private keys:</p>
-<pre><pre class="playground"><code class="language-rust">use neo3::prelude::*;
-use std::path::Path;
-
-#[tokio::main]
-async fn main() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
-    // Path to the enclave shared object
-    let enclave_path = "path/to/enclave.so";
-    
-    // Initialize the SGX enclave
-    let enclave_manager = SgxEnclaveManager::new(enclave_path)?;
-    
-    // Create a wallet with a password
-    let password = "my-secure-password";
-    let wallet = enclave_manager.create_wallet(password)?;
-    
-    // Connect to a Neo N3 TestNet node
-    let provider = Provider::new_http("https://testnet1.neo.coz.io:443");
-    
-    // Create a transaction
-    let transaction = TransactionBuilder::new()
-        .version(0)
-        .nonce(rand::random::&lt;u32&gt;())
-        .valid_until_block(provider.get_block_count().await? + 100)
-        .script(
-            ScriptBuilder::new()
-                .contract_call(
-                    "d2a4cff31913016155e38e474a2c06d08be276cf".parse::&lt;ScriptHash&gt;()?,
-                    "transfer",
-                    &amp;[
-                        ContractParameter::hash160(wallet.get_address().script_hash()),
-                        ContractParameter::hash160("NZNos2WqTbu5oCgyfss9kUJgBXJqhuYAaj".parse::&lt;Address&gt;()?),
-                        ContractParameter::integer(1_00000000), // 1 GAS
-                        ContractParameter::any(None),
-                    ],
-                )
-                .to_array()
-        )
-        .build();
-    
-    // Sign the transaction securely within the enclave
-    let signed_tx = wallet.sign_transaction(&amp;transaction)?;
-    
-    // Send the transaction
-    let txid = provider.send_raw_transaction(&amp;signed_tx).await?;
-    println!("Transaction sent with ID: {}", txid);
-    
-    Ok(())
-}</code></pre></pre>
-<h2 id="secure-rpc-client"><a class="header" href="#secure-rpc-client">Secure RPC Client</a></h2>
-<p>The SGX module also provides a secure RPC client for blockchain interactions:</p>
-<pre><pre class="playground"><code class="language-rust">use neo3::prelude::*;
-
-#[tokio::main]
-async fn main() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
-    // Path to the enclave shared object
-    let enclave_path = "path/to/enclave.so";
-    
-    // Initialize the SGX enclave
-    let enclave_manager = SgxEnclaveManager::new(enclave_path)?;
-    
-    // Create a secure RPC client
-    let rpc_url = "https://testnet1.neo.coz.io:443";
-    let rpc_client = enclave_manager.create_rpc_client(rpc_url)?;
-    
-    // Use the secure RPC client
-    let block_count = rpc_client.get_block_count().await?;
-    println!("Current block height: {}", block_count);
-    
-    // The RPC client encrypts sensitive data and performs secure validation
-    // of responses within the enclave
-    
-    Ok(())
-}</code></pre></pre>
-<h2 id="secure-storage"><a class="header" href="#secure-storage">Secure Storage</a></h2>
-<p>The SGX module provides secure storage for sensitive data:</p>
-<pre><pre class="playground"><code class="language-rust">use neo3::prelude::*;
-
-#[tokio::main]
-async fn main() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
-    // Path to the enclave shared object
-    let enclave_path = "path/to/enclave.so";
-    
-    // Initialize the SGX enclave
-    let enclave_manager = SgxEnclaveManager::new(enclave_path)?;
-    
-    // Create a secure storage instance
-    let storage = enclave_manager.create_storage()?;
-    
-    // Store sensitive data
-    let key = "api_key";
-    let value = "my-secret-api-key";
-    storage.set(key, value)?;
-    
-    // Retrieve sensitive data
-    let retrieved_value = storage.get(key)?;
-    println!("Retrieved value: {}", retrieved_value);
-    
-    // The data is encrypted and stored securely
-    
-    Ok(())
-}</code></pre></pre>
-<h2 id="remote-attestation"><a class="header" href="#remote-attestation">Remote Attestation</a></h2>
-<p>Remote attestation allows you to verify that your code is running in a genuine SGX enclave:</p>
-<pre><pre class="playground"><code class="language-rust">use neo3::prelude::*;
-
-#[tokio::main]
-async fn main() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
-    // Path to the enclave shared object
-    let enclave_path = "path/to/enclave.so";
-    
-    // Initialize the SGX enclave
-    let enclave_manager = SgxEnclaveManager::new(enclave_path)?;
-    
-    // Generate a remote attestation quote
-    let quote = enclave_manager.generate_attestation_quote()?;
-    
-    // Send the quote to a remote verifier
-    // (implementation depends on your attestation service)
-    let attestation_service_url = "https://attestation.example.com";
-    let verification_result = verify_quote_with_service(attestation_service_url, &amp;quote).await?;
-    
-    if verification_result.is_valid {
-        println!("Remote attestation successful!");
-        // Proceed with secure operations
-    } else {
-        println!("Remote attestation failed!");
-        // Handle the failure
-    }
-    
-    Ok(())
-}
-
-async fn verify_quote_with_service(url: &amp;str, quote: &amp;[u8]) -&gt; Result&lt;VerificationResult, Box&lt;dyn std::error::Error&gt;&gt; {
-    // Implementation of quote verification with a remote attestation service
-    // This is just a placeholder
-    Ok(VerificationResult { is_valid: true })
-}
-
-struct VerificationResult {
-    is_valid: bool,
-}</code></pre></pre>
-<h2 id="simulation-mode"><a class="header" href="#simulation-mode">Simulation Mode</a></h2>
-<p>If you don't have SGX hardware, you can still develop and test using simulation mode:</p>
-<pre><code class="language-bash">export SGX_MODE=SIM
-make -f Makefile.sgx
-</code></pre>
-<p>In your code, you can check if you're running in simulation mode:</p>
-<pre><pre class="playground"><code class="language-rust">use neo3::prelude::*;
-
-#[tokio::main]
-async fn main() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
-    // Path to the enclave shared object
-    let enclave_path = "path/to/enclave.so";
-    
-    // Initialize the SGX enclave
-    let enclave_manager = SgxEnclaveManager::new(enclave_path)?;
-    
-    if enclave_manager.is_simulation_mode() {
-        println!("Running in simulation mode. Security guarantees are not provided.");
-    } else {
-        println!("Running in hardware mode with full SGX protection.");
-    }
-    
-    Ok(())
-}</code></pre></pre>
-<h2 id="best-practices-6"><a class="header" href="#best-practices-6">Best Practices</a></h2>
-<ol>
-<li><strong>Minimize Enclave Code</strong>: Keep the enclave code small to reduce the attack surface.</li>
-<li><strong>Validate Inputs</strong>: Always validate inputs before passing them to the enclave.</li>
-<li><strong>Secure Key Management</strong>: Never extract private keys from the enclave.</li>
-<li><strong>Use Remote Attestation</strong>: Verify the integrity of the enclave in production environments.</li>
-<li><strong>Regular Updates</strong>: Keep the SGX SDK and drivers updated to address security vulnerabilities.</li>
-<li><strong>Error Handling</strong>: Implement proper error handling for enclave operations.</li>
-<li><strong>Testing</strong>: Test your SGX code in both simulation and hardware modes.</li>
-</ol>
-<h2 id="security-considerations"><a class="header" href="#security-considerations">Security Considerations</a></h2>
-<p>When using SGX for blockchain applications:</p>
-<ol>
-<li><strong>Side-Channel Attacks</strong>: Be aware that SGX is not immune to all side-channel attacks.</li>
-<li><strong>Enclave Interface</strong>: The interface between the untrusted application and the enclave is a potential attack vector.</li>
-<li><strong>Data Sealing</strong>: Use data sealing to protect sensitive data at rest.</li>
-<li><strong>Memory Limitations</strong>: SGX enclaves have memory limitations; design your application accordingly.</li>
-<li><strong>Attestation</strong>: Use remote attestation in production to verify enclave integrity.</li>
-</ol>
+<!-- toc -->
+<div style="break-before: page; page-break-before: always;"></div><h1 id="sgx-support"><a class="header" href="#sgx-support">SGX Support</a></h1>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="api-overview"><a class="header" href="#api-overview">API Overview</a></h1>
 <p>This reference provides an overview of the NeoRust SDK API, including the main modules and their functionality.</p>
 <h2 id="core-modules"><a class="header" href="#core-modules">Core Modules</a></h2>
@@ -2336,7 +2044,7 @@ let signed_tx = wallet.sign_transaction(&amp;transaction)?;
 </span>use neo3::prelude::*;
 <span class="boring">}</span></code></pre></pre>
 <p>This imports all the essential types and functions you need for most operations with the NeoRust SDK.</p>
-<h2 id="feature-flags-1"><a class="header" href="#feature-flags-1">Feature Flags</a></h2>
+<h2 id="feature-flags"><a class="header" href="#feature-flags">Feature Flags</a></h2>
 <p>The NeoRust SDK supports various feature flags to enable specific functionality:</p>
 <ul>
 <li><code>ledger</code>: Support for Ledger hardware wallets</li>
@@ -2367,6 +2075,7 @@ fn example() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
 }
 <span class="boring">}</span></code></pre></pre>
 <p>For more detailed information on specific modules and types, see the corresponding reference pages.</p>
+<!-- toc -->
 <div style="break-before: page; page-break-before: always;"></div><h1 id="configuration"><a class="header" href="#configuration">Configuration</a></h1>
 <p>This reference provides information about configuring the NeoRust SDK, including environment variables, network settings, and other configuration options.</p>
 <h2 id="network-configuration"><a class="header" href="#network-configuration">Network Configuration</a></h2>
@@ -2563,7 +2272,7 @@ async fn main() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
 <tr><td><code>SGX_AESM_ADDR</code></td><td>Address of the AESM service</td><td><code>127.0.0.1:2222</code></td></tr>
 </tbody></table>
 </div>
-<h2 id="best-practices-7"><a class="header" href="#best-practices-7">Best Practices</a></h2>
+<h2 id="best-practices-6"><a class="header" href="#best-practices-6">Best Practices</a></h2>
 <ol>
 <li><strong>Environment-Specific Configuration</strong>: Use different configurations for development, testing, and production environments.</li>
 <li><strong>Secure Credential Management</strong>: Never hardcode private keys or passwords in your code.</li>
@@ -2572,6 +2281,7 @@ async fn main() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
 <li><strong>Gas Estimation</strong>: Use gas estimation functions instead of hardcoding gas values.</li>
 <li><strong>Error Handling</strong>: Implement proper error handling for configuration errors.</li>
 </ol>
+<!-- toc -->
 <div style="break-before: page; page-break-before: always;"></div><h1 id="error-handling-1"><a class="header" href="#error-handling-1">Error Handling</a></h1>
 <p>This reference provides information about error handling in the NeoRust SDK, including error types, error propagation, and best practices for handling errors.</p>
 <h2 id="error-types"><a class="header" href="#error-types">Error Types</a></h2>
@@ -2739,25 +2449,108 @@ fn load_wallet_and_get_balance(
 }
 <span class="boring">}</span></code></pre></pre>
 <p>In this example, if any of the operations fail, the error is propagated up the call stack.</p>
-<h2 id="converting-between-error-types"><a class="header" href="#converting-between-error-types">Converting Between Error Types</a></h2>
-<p>The NeoRust SDK provides <code>From</code> implementations for converting between different error types:</p>
+<h3 id="adding-context-to-errors"><a class="header" href="#adding-context-to-errors">Adding Context to Errors</a></h3>
+<p>Sometimes it's useful to add context to errors to make them more informative:</p>
 <pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
-</span>impl From&lt;std::io::Error&gt; for NeoError {
-    fn from(error: std::io::Error) -&gt; Self {
-        NeoError::IoError(error)
+</span>use neo3::prelude::*;
+use std::path::Path;
+
+fn load_wallet_and_get_balance(
+    wallet_path: &amp;Path,
+    password: &amp;str,
+    provider: &amp;Provider,
+    token_hash: ScriptHash,
+) -&gt; Result&lt;u64, NeoError&gt; {
+    // Load the wallet with context
+    let wallet = Wallet::load(wallet_path, password)
+        .map_err(|e| NeoError::IllegalState(format!("Failed to load wallet: {}", e)))?;
+    
+    // Get the default account with context
+    let account = wallet.default_account()
+        .map_err(|e| NeoError::IllegalState(format!("Failed to get default account: {}", e)))?;
+    
+    // Create a NEP-17 token instance
+    let token = Nep17Contract::new(token_hash, provider.clone());
+    
+    // Get the token balance with context
+    let balance = token.balance_of(account.address())
+        .map_err(|e| NeoError::IllegalState(format!("Failed to get token balance: {}", e)))?;
+    
+    Ok(balance)
+}
+<span class="boring">}</span></code></pre></pre>
+<h3 id="using-option-to-result-conversion"><a class="header" href="#using-option-to-result-conversion">Using Option to Result Conversion</a></h3>
+<p>The NeoRust SDK provides utility functions for converting <code>Option</code> to <code>Result</code>:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>use neo3::prelude::*;
+
+fn get_value_from_option&lt;T&gt;(option: Option&lt;T&gt;, error_message: &amp;str) -&gt; Result&lt;T, NeoError&gt; {
+    option.ok_or_else(|| NeoError::IllegalState(error_message.to_string()))
+}
+
+fn example() -&gt; Result&lt;(), NeoError&gt; {
+    let optional_value: Option&lt;u64&gt; = Some(42);
+    
+    // Convert Option to Result with a custom error message
+    let value = get_value_from_option(optional_value, "Value is None")?;
+    
+    // Or use the ok_or_else method directly
+    let value = optional_value.ok_or_else(|| NeoError::IllegalState("Value is None".to_string()))?;
+    
+    Ok(())
+}
+<span class="boring">}</span></code></pre></pre>
+<h2 id="converting-between-error-types"><a class="header" href="#converting-between-error-types">Converting Between Error Types</a></h2>
+<p>The NeoRust SDK provides comprehensive <code>From</code> implementations for converting between different error types:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// From implementations for domain-specific errors
+impl From&lt;BuilderError&gt; for NeoError {
+    fn from(err: BuilderError) -&gt; Self {
+        // Conversion logic that maps BuilderError variants to appropriate NeoError variants
+    }
+}
+
+impl From&lt;CryptoError&gt; for NeoError {
+    fn from(err: CryptoError) -&gt; Self {
+        // Conversion logic that maps CryptoError variants to appropriate NeoError variants
     }
 }
 
 impl From&lt;WalletError&gt; for NeoError {
-    fn from(error: WalletError) -&gt; Self {
-        NeoError::WalletError(error)
+    fn from(err: WalletError) -&gt; Self {
+        NeoError::WalletError(err)
     }
 }
 
-// ... and so on for other error types
+// From implementations for standard library errors
+impl From&lt;std::io::Error&gt; for NeoError {
+    fn from(err: std::io::Error) -&gt; Self {
+        NeoError::IoError(err)
+    }
+}
+
+impl From&lt;serde_json::Error&gt; for NeoError {
+    fn from(err: serde_json::Error) -&gt; Self {
+        NeoError::SerializationError(err.to_string())
+    }
+}
+
+impl From&lt;hex::FromHexError&gt; for NeoError {
+    fn from(err: hex::FromHexError) -&gt; Self {
+        NeoError::InvalidEncoding(format!("Hex error: {}", err))
+    }
+}
+
+impl From&lt;std::num::ParseIntError&gt; for NeoError {
+    fn from(err: std::num::ParseIntError) -&gt; Self {
+        NeoError::IllegalArgument(format!("Integer parsing error: {}", err))
+    }
+}
 <span class="boring">}</span></code></pre></pre>
-<p>This allows for easy conversion between error types using the <code>?</code> operator.</p>
+<p>This allows for easy conversion between error types using the <code>?</code> operator. When you use the <code>?</code> operator on a function that returns a domain-specific error type, it will be automatically converted to <code>NeoError</code> if you're in a function that returns <code>Result&lt;T, NeoError&gt;</code>.</p>
 <h2 id="handling-rpc-errors"><a class="header" href="#handling-rpc-errors">Handling RPC Errors</a></h2>
 <p>When working with RPC calls, you may need to handle specific error codes:</p>
 <pre><pre class="playground"><code class="language-rust">use neo3::prelude::*;
@@ -2919,50 +2712,6 @@ fn main() {
     
     // Now errors will be logged with more detail
 }</code></pre></pre>
-<h2 id="sgx-error-handling"><a class="header" href="#sgx-error-handling">SGX Error Handling</a></h2>
-<p>If you're using the SGX features, there are additional error types for SGX-specific operations:</p>
-<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>pub enum SgxError {
-    // Enclave errors
-    EnclaveError(sgx_types::sgx_status_t),
-    
-    // Attestation errors
-    AttestationError,
-    
-    // Sealing errors
-    SealingError,
-    
-    // Other errors
-    Other(String),
-}
-<span class="boring">}</span></code></pre></pre>
-<p>Handling SGX errors:</p>
-<pre><pre class="playground"><code class="language-rust">use neo3::prelude::*;
-
-#[tokio::main]
-async fn main() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
-    // Path to the enclave shared object
-    let enclave_path = "path/to/enclave.so";
-    
-    // Initialize the SGX enclave
-    match SgxEnclaveManager::new(enclave_path) {
-        Ok(enclave_manager) =&gt; {
-            println!("SGX enclave initialized successfully!");
-            
-            // Use the enclave manager
-        },
-        Err(NeoError::SgxError(SgxError::EnclaveError(status))) =&gt; {
-            println!("SGX enclave initialization failed with status: {:?}", status);
-        },
-        Err(e) =&gt; {
-            println!("Error: {}", e);
-            return Err(e.into());
-        }
-    }
-    
-    Ok(())
-}</code></pre></pre>
 <h2 id="neo-x-error-handling"><a class="header" href="#neo-x-error-handling">Neo X Error Handling</a></h2>
 <p>If you're using the Neo X features, there are additional error types for Neo X-specific operations:</p>
 <pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
@@ -3011,7 +2760,7 @@ async fn main() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
     
     Ok(())
 }</code></pre></pre>
-<h2 id="best-practices-8"><a class="header" href="#best-practices-8">Best Practices</a></h2>
+<h2 id="best-practices-7"><a class="header" href="#best-practices-7">Best Practices</a></h2>
 <ol>
 <li><strong>Use the <code>?</code> Operator</strong>: Use the <code>?</code> operator for concise error propagation.</li>
 <li><strong>Match on Specific Errors</strong>: Match on specific error types when you need to handle them differently.</li>
@@ -3020,77 +2769,134 @@ async fn main() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
 <li><strong>Error Context</strong>: Add context to errors to make them more informative.</li>
 <li><strong>Error Recovery</strong>: Implement recovery strategies for recoverable errors.</li>
 <li><strong>Error Testing</strong>: Write tests for error conditions to ensure they're handled correctly.</li>
+<li><strong>Avoid <code>unwrap()</code> and <code>expect()</code></strong>: In production code, avoid using <code>unwrap()</code> or <code>expect()</code> as they will panic on errors. Instead, use proper error handling with <code>Result</code> and the <code>?</code> operator.</li>
+<li><strong>Convert Domain-Specific Errors</strong>: Use <code>.into()</code> to convert domain-specific errors to <code>NeoError</code> when needed.</li>
+<li><strong>Provide Descriptive Error Messages</strong>: When creating errors, provide descriptive messages that help identify the cause of the error.</li>
 </ol>
-<div style="break-before: page; page-break-before: always;"></div><h1 id="example-code"><a class="header" href="#example-code">Example Code</a></h1>
-<p>This section contains examples demonstrating how to use the NeoRust SDK.</p>
-<h2 id="wallet-management-1"><a class="header" href="#wallet-management-1">Wallet Management</a></h2>
-<pre><pre class="playground"><code class="language-rust">use neo3::prelude::*;
-use std::path::Path;
+<!-- toc -->
+<div style="break-before: page; page-break-before: always;"></div><h1 id="copyright-information"><a class="header" href="#copyright-information">Copyright Information</a></h1>
+<h2 id="project-copyright"><a class="header" href="#project-copyright">Project Copyright</a></h2>
+<p>NeoRust is Copyright © 2020-2025 R3E Network and contributors.</p>
+<h2 id="license"><a class="header" href="#license">License</a></h2>
+<p>NeoRust is dual-licensed under:</p>
+<ul>
+<li>MIT License (<a href="https://github.com/R3E-Network/NeoRust/blob/master/LICENSE-MIT">LICENSE-MIT</a>)</li>
+<li>Apache License, Version 2.0 (<a href="https://github.com/R3E-Network/NeoRust/blob/master/LICENSE-APACHE">LICENSE-APACHE</a>)</li>
+</ul>
+<h2 id="copyright-format"><a class="header" href="#copyright-format">Copyright Format</a></h2>
+<p>When adding new files to the NeoRust project, please include the appropriate copyright header:</p>
+<h3 id="for-rust-files"><a class="header" href="#for-rust-files">For Rust files:</a></h3>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// Copyright (c) 2023-2025 R3E Network
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+<span class="boring">}</span></code></pre></pre>
+<h3 id="for-markdowndocumentation-files"><a class="header" href="#for-markdowndocumentation-files">For Markdown/Documentation files:</a></h3>
+<pre><code># Title
 
-#[tokio::main]
-async fn main() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
-    // Create a new wallet
-    let password = "my-secure-password";
-    let wallet = Wallet::new(password)?;
-    
-    // Generate a new account
-    let account = wallet.create_account()?;
-    println!("New account address: {}", account.address());
-    
-    // Save the wallet to a file
-    wallet.save("my-wallet.json")?;
-    
-    Ok(())
-}</code></pre></pre>
-<h2 id="smart-contract-interaction"><a class="header" href="#smart-contract-interaction">Smart Contract Interaction</a></h2>
-<pre><pre class="playground"><code class="language-rust">use neo3::prelude::*;
-use std::path::Path;
+Copyright © 2020-2025 R3E Network. All rights reserved.
 
-#[tokio::main]
-async fn main() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
-    // Connect to a Neo N3 TestNet node
-    let provider = Provider::new_http("https://testnet1.neo.coz.io:443");
-    
-    // Load your wallet
-    let wallet_path = Path::new("my-wallet.json");
-    let password = "my-secure-password";
-    let wallet = Wallet::load(wallet_path, password)?;
-    
-    // Get the account that will invoke the contract
-    let account = wallet.default_account()?;
-    
-    // Contract script hash (address)
-    let contract_hash = "0x1234567890abcdef1234567890abcdef12345678".parse::&lt;ScriptHash&gt;()?;
-    
-    // Create a transaction to invoke the contract
-    let transaction = TransactionBuilder::new()
-        .version(0)
-        .nonce(rand::random::&lt;u32&gt;())
-        .valid_until_block(provider.get_block_count().await? + 100)
-        .script(
-            ScriptBuilder::new()
-                .contract_call(
-                    contract_hash,
-                    "transfer",
-                    &amp;[
-                        ContractParameter::hash160(account.address().script_hash()),
-                        ContractParameter::hash160("NZNos2WqTbu5oCgyfss9kUJgBXJqhuYAaj".parse::&lt;Address&gt;()?),
-                        ContractParameter::integer(1000),
-                        ContractParameter::any(None),
-                    ],
-                )
-                .to_array()
-        )
-        .sign(account)?
-        .build();
-    
-    // Send the transaction
-    let txid = provider.send_raw_transaction(&amp;transaction).await?;
-    println!("Contract invoked with transaction ID: {}", txid);
-    
-    Ok(())
-}</code></pre></pre>
-<p>For more examples, see the <code>examples</code> directory in the NeoRust repository.</p>
+[Main content starts here...]
+</code></pre>
+<h3 id="for-shell-scripts"><a class="header" href="#for-shell-scripts">For Shell Scripts:</a></h3>
+<pre><code class="language-bash">#!/bin/bash
+# Copyright (c) 2020-2025 R3E Network
+# Licensed under MIT or Apache-2.0 license. See LICENSE files for details.
+
+[Script content starts here...]
+</code></pre>
+<h2 id="annual-updates"><a class="header" href="#annual-updates">Annual Updates</a></h2>
+<p>The copyright year range should be updated at the beginning of each new year. Update the following files:</p>
+<ol>
+<li>LICENSE-MIT (update the year range)</li>
+<li>COPYRIGHT (update the year range)</li>
+<li>README.md (update the copyright notice)</li>
+<li>docs/book.toml (update authors field)</li>
+<li>Cargo.toml (update authors field)</li>
+<li>neo-cli/Cargo.toml (update authors field)</li>
+<li>Any other specific files with copyright notices</li>
+</ol>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="cryptographic-operations"><a class="header" href="#cryptographic-operations">Cryptographic Operations</a></h1>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="neorust-examples"><a class="header" href="#neorust-examples">NeoRust Examples</a></h1>
+<p>This section contains various examples demonstrating how to use the NeoRust SDK for different Neo blockchain operations.</p>
+<h2 id="available-example-categories"><a class="header" href="#available-example-categories">Available Example Categories</a></h2>
+<h3 id="basic-operations"><a class="header" href="#basic-operations">Basic Operations</a></h3>
+<p>Examples demonstrating fundamental Neo N3 operations:</p>
+<ul>
+<li><strong>Network Connection</strong>: Basic connectivity to Neo N3 TestNet/MainNet</li>
+<li><strong>Account Management</strong>: Creating and managing Neo accounts</li>
+<li><strong>Balance Checking</strong>: Querying NEO and GAS balances</li>
+<li><strong>Transaction Creation</strong>: Building and sending basic transactions</li>
+</ul>
+<h3 id="wallet-management-1"><a class="header" href="#wallet-management-1">Wallet Management</a></h3>
+<p>Examples for wallet operations:</p>
+<ul>
+<li><strong>Wallet Creation</strong>: Creating new Neo wallets with NEP-6 format</li>
+<li><strong>Account Import/Export</strong>: Working with WIF and mnemonic phrases</li>
+<li><strong>Message Signing</strong>: Cryptographic message signing and verification</li>
+<li><strong>Multi-signature Wallets</strong>: Creating and managing multi-sig accounts</li>
+</ul>
+<h3 id="smart-contracts-1"><a class="header" href="#smart-contracts-1">Smart Contracts</a></h3>
+<p>Examples for smart contract interaction:</p>
+<ul>
+<li><strong>Contract Invocation</strong>: Calling methods on deployed contracts</li>
+<li><strong>NEP-17 Tokens</strong>: Working with fungible tokens</li>
+<li><strong>NEP-11 NFTs</strong>: Non-fungible token operations</li>
+<li><strong>Famous Contracts</strong>: Interacting with popular Neo ecosystem contracts</li>
+</ul>
+<h3 id="advanced-features"><a class="header" href="#advanced-features">Advanced Features</a></h3>
+<ul>
+<li><strong>Neo X Integration</strong>: Cross-chain operations with Neo X EVM chain</li>
+<li><strong>NeoFS Operations</strong>: Decentralized file storage operations</li>
+<li><strong>Oracle Integration</strong>: Using Neo's Oracle service</li>
+<li><strong>Cryptographic Operations</strong>: Advanced key management and signing</li>
+</ul>
+<h2 id="running-the-examples"><a class="header" href="#running-the-examples">Running the Examples</a></h2>
+<p>Each example can be run from the root of the repository using:</p>
+<pre><code class="language-bash">cargo run --example &lt;example_name&gt;
+</code></pre>
+<p>For example:</p>
+<pre><code class="language-bash">cargo run --example wallet_creation
+</code></pre>
+<p>Or navigate to the specific example directory and run:</p>
+<pre><code class="language-bash">cargo run
+</code></pre>
+<h2 id="example-code-structure"><a class="header" href="#example-code-structure">Example Code Structure</a></h2>
+<p>Most examples follow this structure:</p>
+<ol>
+<li><strong>Setup</strong>: Establishing connection to Neo nodes</li>
+<li><strong>Account preparation</strong>: Loading or creating accounts</li>
+<li><strong>Main operation</strong>: Performing the specific blockchain operation</li>
+<li><strong>Verification</strong>: Checking the results of the operation</li>
+</ol>
+<h2 id="adding-your-own-examples"><a class="header" href="#adding-your-own-examples">Adding Your Own Examples</a></h2>
+<p>If you've created a useful example and would like to contribute it, please follow these steps:</p>
+<ol>
+<li>Create a new directory under <code>/examples</code> with a descriptive name</li>
+<li>Add your Rust code and a proper <code>Cargo.toml</code> file</li>
+<li>Document your example with clear comments</li>
+<li>Create a pull request to the NeoRust repository</li>
+</ol>
+<h2 id="full-example-list"><a class="header" href="#full-example-list">Full Example List</a></h2>
+<p>Here's a list of all available examples in the repository:</p>
+<ul>
+<li><a href="https://github.com/username/NeoRust/tree/main/examples/basic_connection">basic_connection</a></li>
+<li><a href="https://github.com/username/NeoRust/tree/main/examples/wallet_management">wallet_management</a></li>
+<li><a href="https://github.com/username/NeoRust/tree/main/examples/message_signing">message_signing</a></li>
+<li><a href="https://github.com/username/NeoRust/tree/main/examples/neo_x">neo_x</a></li>
+<li><a href="https://github.com/username/NeoRust/tree/main/examples/simple_transfer">simple_transfer</a></li>
+<li><a href="https://github.com/username/NeoRust/tree/main/examples/contract_invocation">contract_invocation</a></li>
+</ul>
 
                     </main>
 
@@ -3120,8 +2926,8 @@ async fn main() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
         </script>
 
         <script src="ace.js"></script>
-        <script src="editor.js"></script>
         <script src="mode-rust.js"></script>
+        <script src="editor.js"></script>
         <script src="theme-dawn.js"></script>
         <script src="theme-tomorrow_night.js"></script>
 

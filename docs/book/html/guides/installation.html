@@ -24,32 +24,43 @@
         <link rel="stylesheet" href="../fonts/fonts.css">
 
         <!-- Highlight.js Stylesheets -->
-        <link rel="stylesheet" href="../highlight.css">
-        <link rel="stylesheet" href="../tomorrow-night.css">
-        <link rel="stylesheet" href="../ayu-highlight.css">
+        <link rel="stylesheet" id="highlight-css" href="../highlight.css">
+        <link rel="stylesheet" id="tomorrow-night-css" href="../tomorrow-night.css">
+        <link rel="stylesheet" id="ayu-highlight-css" href="../ayu-highlight.css">
 
         <!-- Custom theme stylesheets -->
         <link rel="stylesheet" href="../theme/custom.css">
-        <link rel="stylesheet" href=".././mdbook-admonish.css">
 
         <!-- MathJax -->
         <script async src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
 
-        <!-- Provide site root to javascript -->
+        <!-- Provide site root and default themes to javascript -->
         <script>
-            var path_to_root = "../";
-            var default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "navy" : "light";
+            const path_to_root = "../";
+            const default_light_theme = "light";
+            const default_dark_theme = "navy";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc.js"></script>
     </head>
     <body>
+    <div id="mdbook-help-container">
+        <div id="mdbook-help-popup">
+            <h2 class="mdbook-help-title">Keyboard shortcuts</h2>
+            <div>
+                <p>Press <kbd>←</kbd> or <kbd>→</kbd> to navigate between chapters</p>
+                <p>Press <kbd>S</kbd> or <kbd>/</kbd> to search in the book</p>
+                <p>Press <kbd>?</kbd> to show this help</p>
+                <p>Press <kbd>Esc</kbd> to hide this help</p>
+            </div>
+        </div>
+    </div>
     <div id="body-container">
         <!-- Work around some values being stored in localStorage wrapped in quotes -->
         <script>
             try {
-                var theme = localStorage.getItem('mdbook-theme');
-                var sidebar = localStorage.getItem('mdbook-sidebar');
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
 
                 if (theme.startsWith('"') && theme.endsWith('"')) {
                     localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
@@ -63,7 +74,8 @@
 
         <!-- Set the theme before any content is loaded, prevents flash -->
         <script>
-            var theme;
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
             try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
             if (theme === null || theme === undefined) { theme = default_theme; }
             const html = document.documentElement;
@@ -76,8 +88,8 @@
 
         <!-- Hide / unhide sidebar before it is displayed -->
         <script>
-            var sidebar = null;
-            var sidebar_toggle = document.getElementById("sidebar-toggle-anchor");
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("sidebar-toggle-anchor");
             if (document.body.clientWidth >= 1080) {
                 try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
                 sidebar = sidebar || 'visible';
@@ -113,13 +125,14 @@
                             <i class="fa fa-paint-brush"></i>
                         </button>
                         <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="default_theme">Auto</button></li>
                             <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
                             <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
                             <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
                             <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
                             <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
                         </ul>
-                        <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                        <button id="search-toggle" class="icon-button" type="button" title="Search (`/`)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="/ s" aria-controls="searchbar">
                             <i class="fa fa-search"></i>
                         </button>
                     </div>
@@ -163,31 +176,37 @@
                 <div id="content" class="content">
                     <main>
                         <h1 id="installation-guide"><a class="header" href="#installation-guide">Installation Guide</a></h1>
-<p>This guide provides detailed instructions for installing and configuring the NeoRust SDK.</p>
-<h2 id="requirements"><a class="header" href="#requirements">Requirements</a></h2>
+<h2 id="prerequisites"><a class="header" href="#prerequisites">Prerequisites</a></h2>
 <ul>
-<li>Rust 1.70.0 or later</li>
-<li>Cargo package manager</li>
-<li>Optional: Intel SGX SDK (for SGX features)</li>
+<li>Rust and Cargo (stable or nightly)</li>
+<li>Optional: Ledger hardware device (for ledger features)</li>
+<li>Optional: AWS account (for AWS KMS features)</li>
 </ul>
-<h2 id="standard-installation"><a class="header" href="#standard-installation">Standard Installation</a></h2>
-<p>Add the NeoRust SDK to your Cargo.toml:</p>
+<h2 id="installation"><a class="header" href="#installation">Installation</a></h2>
+<p>Add NeoRust to your <code>Cargo.toml</code>:</p>
 <pre><code class="language-toml">[dependencies]
-neo3 = { git = "https://github.com/R3E-Network/NeoRust" }
+neo3 = "0.4.1"
 </code></pre>
-<h2 id="feature-flags"><a class="header" href="#feature-flags">Feature Flags</a></h2>
-<p>NeoRust supports various feature flags to enable specific functionality:</p>
-<pre><code class="language-toml">[dependencies]
-neo3 = { git = "https://github.com/R3E-Network/NeoRust", features = ["ledger", "aws"] }
-</code></pre>
-<p>Available features:</p>
+<p>Note: The crate is published as <code>neo3</code> but is imported as <code>neo</code> in code:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>use neo3::prelude::*;
+<span class="boring">}</span></code></pre></pre>
+<h2 id="features"><a class="header" href="#features">Features</a></h2>
+<p>NeoRust provides several features to customize functionality:</p>
 <ul>
-<li><code>ledger</code>: Support for Ledger hardware wallets</li>
-<li><code>aws</code>: AWS integration</li>
-<li><code>sgx</code>: Intel SGX support (requires additional setup)</li>
+<li><code>futures</code>: Enables async/futures support (recommended)</li>
+<li><code>ledger</code>: Enables hardware wallet support via Ledger devices</li>
+<li><code>aws</code>: Enables AWS KMS integration</li>
 </ul>
-<h2 id="sgx-support"><a class="header" href="#sgx-support">SGX Support</a></h2>
-<p>To use the SGX features, you need to install the Intel SGX SDK. See the <a href="../tutorials/sgx.html">SGX Setup Guide</a> for detailed instructions.</p>
+<p>Example of enabling specific features:</p>
+<pre><code class="language-toml">[dependencies]
+neo3 = { version = "0.4.1", features = ["futures", "ledger"] }
+</code></pre>
+<p>You can disable default features with:</p>
+<pre><code class="language-toml">[dependencies]
+neo3 = { version = "0.4.1", default-features = false, features = ["futures"] }
+</code></pre>
 <h2 id="verifying-installation"><a class="header" href="#verifying-installation">Verifying Installation</a></h2>
 <p>To verify that the SDK is installed correctly, create a simple test program:</p>
 <pre><pre class="playground"><code class="language-rust">use neo3::prelude::*;
@@ -199,6 +218,7 @@ fn main() {
 <pre><code class="language-bash">cargo run
 </code></pre>
 <p>If the program compiles and runs without errors, the SDK is installed correctly.</p>
+<!-- toc -->
 
                     </main>
 
@@ -240,8 +260,8 @@ fn main() {
         </script>
 
         <script src="../ace.js"></script>
-        <script src="../editor.js"></script>
         <script src="../mode-rust.js"></script>
+        <script src="../editor.js"></script>
         <script src="../theme-dawn.js"></script>
         <script src="../theme-tomorrow_night.js"></script>
 

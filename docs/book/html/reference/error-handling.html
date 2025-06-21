@@ -24,32 +24,43 @@
         <link rel="stylesheet" href="../fonts/fonts.css">
 
         <!-- Highlight.js Stylesheets -->
-        <link rel="stylesheet" href="../highlight.css">
-        <link rel="stylesheet" href="../tomorrow-night.css">
-        <link rel="stylesheet" href="../ayu-highlight.css">
+        <link rel="stylesheet" id="highlight-css" href="../highlight.css">
+        <link rel="stylesheet" id="tomorrow-night-css" href="../tomorrow-night.css">
+        <link rel="stylesheet" id="ayu-highlight-css" href="../ayu-highlight.css">
 
         <!-- Custom theme stylesheets -->
         <link rel="stylesheet" href="../theme/custom.css">
-        <link rel="stylesheet" href=".././mdbook-admonish.css">
 
         <!-- MathJax -->
         <script async src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
 
-        <!-- Provide site root to javascript -->
+        <!-- Provide site root and default themes to javascript -->
         <script>
-            var path_to_root = "../";
-            var default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "navy" : "light";
+            const path_to_root = "../";
+            const default_light_theme = "light";
+            const default_dark_theme = "navy";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc.js"></script>
     </head>
     <body>
+    <div id="mdbook-help-container">
+        <div id="mdbook-help-popup">
+            <h2 class="mdbook-help-title">Keyboard shortcuts</h2>
+            <div>
+                <p>Press <kbd>←</kbd> or <kbd>→</kbd> to navigate between chapters</p>
+                <p>Press <kbd>S</kbd> or <kbd>/</kbd> to search in the book</p>
+                <p>Press <kbd>?</kbd> to show this help</p>
+                <p>Press <kbd>Esc</kbd> to hide this help</p>
+            </div>
+        </div>
+    </div>
     <div id="body-container">
         <!-- Work around some values being stored in localStorage wrapped in quotes -->
         <script>
             try {
-                var theme = localStorage.getItem('mdbook-theme');
-                var sidebar = localStorage.getItem('mdbook-sidebar');
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
 
                 if (theme.startsWith('"') && theme.endsWith('"')) {
                     localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
@@ -63,7 +74,8 @@
 
         <!-- Set the theme before any content is loaded, prevents flash -->
         <script>
-            var theme;
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
             try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
             if (theme === null || theme === undefined) { theme = default_theme; }
             const html = document.documentElement;
@@ -76,8 +88,8 @@
 
         <!-- Hide / unhide sidebar before it is displayed -->
         <script>
-            var sidebar = null;
-            var sidebar_toggle = document.getElementById("sidebar-toggle-anchor");
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("sidebar-toggle-anchor");
             if (document.body.clientWidth >= 1080) {
                 try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
                 sidebar = sidebar || 'visible';
@@ -113,13 +125,14 @@
                             <i class="fa fa-paint-brush"></i>
                         </button>
                         <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="default_theme">Auto</button></li>
                             <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
                             <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
                             <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
                             <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
                             <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
                         </ul>
-                        <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                        <button id="search-toggle" class="icon-button" type="button" title="Search (`/`)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="/ s" aria-controls="searchbar">
                             <i class="fa fa-search"></i>
                         </button>
                     </div>
@@ -329,25 +342,108 @@ fn load_wallet_and_get_balance(
 }
 <span class="boring">}</span></code></pre></pre>
 <p>In this example, if any of the operations fail, the error is propagated up the call stack.</p>
-<h2 id="converting-between-error-types"><a class="header" href="#converting-between-error-types">Converting Between Error Types</a></h2>
-<p>The NeoRust SDK provides <code>From</code> implementations for converting between different error types:</p>
+<h3 id="adding-context-to-errors"><a class="header" href="#adding-context-to-errors">Adding Context to Errors</a></h3>
+<p>Sometimes it's useful to add context to errors to make them more informative:</p>
 <pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
-</span>impl From&lt;std::io::Error&gt; for NeoError {
-    fn from(error: std::io::Error) -&gt; Self {
-        NeoError::IoError(error)
+</span>use neo3::prelude::*;
+use std::path::Path;
+
+fn load_wallet_and_get_balance(
+    wallet_path: &amp;Path,
+    password: &amp;str,
+    provider: &amp;Provider,
+    token_hash: ScriptHash,
+) -&gt; Result&lt;u64, NeoError&gt; {
+    // Load the wallet with context
+    let wallet = Wallet::load(wallet_path, password)
+        .map_err(|e| NeoError::IllegalState(format!("Failed to load wallet: {}", e)))?;
+    
+    // Get the default account with context
+    let account = wallet.default_account()
+        .map_err(|e| NeoError::IllegalState(format!("Failed to get default account: {}", e)))?;
+    
+    // Create a NEP-17 token instance
+    let token = Nep17Contract::new(token_hash, provider.clone());
+    
+    // Get the token balance with context
+    let balance = token.balance_of(account.address())
+        .map_err(|e| NeoError::IllegalState(format!("Failed to get token balance: {}", e)))?;
+    
+    Ok(balance)
+}
+<span class="boring">}</span></code></pre></pre>
+<h3 id="using-option-to-result-conversion"><a class="header" href="#using-option-to-result-conversion">Using Option to Result Conversion</a></h3>
+<p>The NeoRust SDK provides utility functions for converting <code>Option</code> to <code>Result</code>:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>use neo3::prelude::*;
+
+fn get_value_from_option&lt;T&gt;(option: Option&lt;T&gt;, error_message: &amp;str) -&gt; Result&lt;T, NeoError&gt; {
+    option.ok_or_else(|| NeoError::IllegalState(error_message.to_string()))
+}
+
+fn example() -&gt; Result&lt;(), NeoError&gt; {
+    let optional_value: Option&lt;u64&gt; = Some(42);
+    
+    // Convert Option to Result with a custom error message
+    let value = get_value_from_option(optional_value, "Value is None")?;
+    
+    // Or use the ok_or_else method directly
+    let value = optional_value.ok_or_else(|| NeoError::IllegalState("Value is None".to_string()))?;
+    
+    Ok(())
+}
+<span class="boring">}</span></code></pre></pre>
+<h2 id="converting-between-error-types"><a class="header" href="#converting-between-error-types">Converting Between Error Types</a></h2>
+<p>The NeoRust SDK provides comprehensive <code>From</code> implementations for converting between different error types:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// From implementations for domain-specific errors
+impl From&lt;BuilderError&gt; for NeoError {
+    fn from(err: BuilderError) -&gt; Self {
+        // Conversion logic that maps BuilderError variants to appropriate NeoError variants
+    }
+}
+
+impl From&lt;CryptoError&gt; for NeoError {
+    fn from(err: CryptoError) -&gt; Self {
+        // Conversion logic that maps CryptoError variants to appropriate NeoError variants
     }
 }
 
 impl From&lt;WalletError&gt; for NeoError {
-    fn from(error: WalletError) -&gt; Self {
-        NeoError::WalletError(error)
+    fn from(err: WalletError) -&gt; Self {
+        NeoError::WalletError(err)
     }
 }
 
-// ... and so on for other error types
+// From implementations for standard library errors
+impl From&lt;std::io::Error&gt; for NeoError {
+    fn from(err: std::io::Error) -&gt; Self {
+        NeoError::IoError(err)
+    }
+}
+
+impl From&lt;serde_json::Error&gt; for NeoError {
+    fn from(err: serde_json::Error) -&gt; Self {
+        NeoError::SerializationError(err.to_string())
+    }
+}
+
+impl From&lt;hex::FromHexError&gt; for NeoError {
+    fn from(err: hex::FromHexError) -&gt; Self {
+        NeoError::InvalidEncoding(format!("Hex error: {}", err))
+    }
+}
+
+impl From&lt;std::num::ParseIntError&gt; for NeoError {
+    fn from(err: std::num::ParseIntError) -&gt; Self {
+        NeoError::IllegalArgument(format!("Integer parsing error: {}", err))
+    }
+}
 <span class="boring">}</span></code></pre></pre>
-<p>This allows for easy conversion between error types using the <code>?</code> operator.</p>
+<p>This allows for easy conversion between error types using the <code>?</code> operator. When you use the <code>?</code> operator on a function that returns a domain-specific error type, it will be automatically converted to <code>NeoError</code> if you're in a function that returns <code>Result&lt;T, NeoError&gt;</code>.</p>
 <h2 id="handling-rpc-errors"><a class="header" href="#handling-rpc-errors">Handling RPC Errors</a></h2>
 <p>When working with RPC calls, you may need to handle specific error codes:</p>
 <pre><pre class="playground"><code class="language-rust">use neo3::prelude::*;
@@ -509,50 +605,6 @@ fn main() {
     
     // Now errors will be logged with more detail
 }</code></pre></pre>
-<h2 id="sgx-error-handling"><a class="header" href="#sgx-error-handling">SGX Error Handling</a></h2>
-<p>If you're using the SGX features, there are additional error types for SGX-specific operations:</p>
-<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>pub enum SgxError {
-    // Enclave errors
-    EnclaveError(sgx_types::sgx_status_t),
-    
-    // Attestation errors
-    AttestationError,
-    
-    // Sealing errors
-    SealingError,
-    
-    // Other errors
-    Other(String),
-}
-<span class="boring">}</span></code></pre></pre>
-<p>Handling SGX errors:</p>
-<pre><pre class="playground"><code class="language-rust">use neo3::prelude::*;
-
-#[tokio::main]
-async fn main() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
-    // Path to the enclave shared object
-    let enclave_path = "path/to/enclave.so";
-    
-    // Initialize the SGX enclave
-    match SgxEnclaveManager::new(enclave_path) {
-        Ok(enclave_manager) =&gt; {
-            println!("SGX enclave initialized successfully!");
-            
-            // Use the enclave manager
-        },
-        Err(NeoError::SgxError(SgxError::EnclaveError(status))) =&gt; {
-            println!("SGX enclave initialization failed with status: {:?}", status);
-        },
-        Err(e) =&gt; {
-            println!("Error: {}", e);
-            return Err(e.into());
-        }
-    }
-    
-    Ok(())
-}</code></pre></pre>
 <h2 id="neo-x-error-handling"><a class="header" href="#neo-x-error-handling">Neo X Error Handling</a></h2>
 <p>If you're using the Neo X features, there are additional error types for Neo X-specific operations:</p>
 <pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
@@ -610,7 +662,11 @@ async fn main() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
 <li><strong>Error Context</strong>: Add context to errors to make them more informative.</li>
 <li><strong>Error Recovery</strong>: Implement recovery strategies for recoverable errors.</li>
 <li><strong>Error Testing</strong>: Write tests for error conditions to ensure they're handled correctly.</li>
+<li><strong>Avoid <code>unwrap()</code> and <code>expect()</code></strong>: In production code, avoid using <code>unwrap()</code> or <code>expect()</code> as they will panic on errors. Instead, use proper error handling with <code>Result</code> and the <code>?</code> operator.</li>
+<li><strong>Convert Domain-Specific Errors</strong>: Use <code>.into()</code> to convert domain-specific errors to <code>NeoError</code> when needed.</li>
+<li><strong>Provide Descriptive Error Messages</strong>: When creating errors, provide descriptive messages that help identify the cause of the error.</li>
 </ol>
+<!-- toc -->
 
                     </main>
 
@@ -620,7 +676,7 @@ async fn main() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
                                 <i class="fa fa-angle-left"></i>
                             </a>
 
-                            <a rel="next prefetch" href="../examples/index.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                            <a rel="next prefetch" href="../reference/copyright.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                                 <i class="fa fa-angle-right"></i>
                             </a>
 
@@ -634,7 +690,7 @@ async fn main() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
                         <i class="fa fa-angle-left"></i>
                     </a>
 
-                    <a rel="next prefetch" href="../examples/index.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                    <a rel="next prefetch" href="../reference/copyright.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                         <i class="fa fa-angle-right"></i>
                     </a>
             </nav>
@@ -652,8 +708,8 @@ async fn main() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
         </script>
 
         <script src="../ace.js"></script>
-        <script src="../editor.js"></script>
         <script src="../mode-rust.js"></script>
+        <script src="../editor.js"></script>
         <script src="../theme-dawn.js"></script>
         <script src="../theme-tomorrow_night.js"></script>
 

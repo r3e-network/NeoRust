@@ -82,7 +82,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 		.map_err(|e| format!("Failed to get block count: {}", e))?;
 
 	// Configure transaction
-	tx_builder.set_script(Some(script));
+	tx_builder.set_script(Some(script.clone()));
 	tx_builder.valid_until_block(current_block + 5760)?; // Valid for ~1 day (5760 blocks ≈ 24 hours)
 
 	println!("   Transaction configured:");

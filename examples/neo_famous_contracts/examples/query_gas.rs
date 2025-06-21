@@ -131,15 +131,18 @@ async fn check_gas_balance(
 ) -> Result<(), Box<dyn std::error::Error>> {
 	let script_hash = account.get_script_hash();
 
-	match client.get_nep17_balance(&script_hash, gas_hash).await {
-		Ok(balance) => {
-			let gas_balance = balance as f64 / 100_000_000.0;
-			println!("   💰 GAS Balance: {} GAS", gas_balance);
-			println!("   🔍 Raw Balance: {} (in smallest unit)", balance);
+	match client.invoke_function(gas_hash, "balanceOf".to_string(), vec![neo3::neo_types::ContractParameter::h160(&script_hash)], None).await {
+		Ok(result) => {
+			if let Some(balance_item) = result.stack.first() {
+				let balance = balance_item.as_int().unwrap_or(0);
+				let gas_balance = balance as f64 / 100_000_000.0;
+				println!("   💰 GAS Balance: {} GAS", gas_balance);
+				println!("   🔍 Raw Balance: {} (in smallest unit)", balance);
 
-			if balance == 0 {
-				println!("   💭 This is a new account with no GAS");
-				println!("   💡 To get TestNet GAS, visit: https://neowish.ngd.network/");
+				if balance == 0 {
+					println!("   💭 This is a new account with no GAS");
+					println!("   💡 To get TestNet GAS, visit: https://neowish.ngd.network/");
+				}
 			}
 		},
 		Err(e) => {
@@ -157,10 +160,13 @@ async fn check_balance_by_script_hash(
 	gas_hash: &ScriptHash,
 	script_hash: &ScriptHash,
 ) -> Result<(), Box<dyn std::error::Error>> {
-	match client.get_nep17_balance(script_hash, gas_hash).await {
-		Ok(balance) => {
-			let gas_balance = balance as f64 / 100_000_000.0;
-			println!("      💰 Balance: {} GAS", gas_balance);
+	match client.invoke_function(gas_hash, "balanceOf".to_string(), vec![neo3::neo_types::ContractParameter::h160(script_hash)], None).await {
+		Ok(result) => {
+			if let Some(balance_item) = result.stack.first() {
+				let balance = balance_item.as_int().unwrap_or(0);
+				let gas_balance = balance as f64 / 100_000_000.0;
+				println!("      💰 Balance: {} GAS", gas_balance);
+			}
 		},
 		Err(_) => {
 			println!("      💰 Balance: 0 GAS (or unable to fetch)");

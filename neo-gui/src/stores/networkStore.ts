@@ -42,7 +42,7 @@ export const useNetworkStore = create<NetworkState>()(
 
         try {
           const result = await invoke('connect_to_network', {
-            request: { endpoint, network_type: networkType }
+            request: { endpoint, network_type: networkType },
           });
 
           console.log('Network connection result:', result);
@@ -55,7 +55,10 @@ export const useNetworkStore = create<NetworkState>()(
           console.error('Failed to connect to network:', error);
           set({
             connecting: false,
-            error: error instanceof Error ? error.message : 'Failed to connect to network'
+            error:
+              error instanceof Error
+                ? error.message
+                : 'Failed to connect to network',
           });
         }
       },
@@ -74,37 +77,43 @@ export const useNetworkStore = create<NetworkState>()(
               block_height: null,
               peer_count: null,
             },
-            connecting: false
+            connecting: false,
           });
         } catch (error) {
           console.error('Failed to disconnect from network:', error);
           set({
             connecting: false,
-            error: error instanceof Error ? error.message : 'Failed to disconnect from network'
+            error:
+              error instanceof Error
+                ? error.message
+                : 'Failed to disconnect from network',
           });
         }
       },
 
       getStatus: async () => {
         try {
-          const result = await invoke('get_network_status') as any;
+          const result = (await invoke('get_network_status')) as any;
 
           console.log('Network status result:', result);
 
           if (result.success && result.data) {
             set({
               status: result.data,
-              error: null
+              error: null,
             });
           } else {
             set({
-              error: result.error || 'Failed to get network status'
+              error: result.error || 'Failed to get network status',
             });
           }
         } catch (error) {
           console.error('Failed to get network status:', error);
           set({
-            error: error instanceof Error ? error.message : 'Failed to get network status'
+            error:
+              error instanceof Error
+                ? error.message
+                : 'Failed to get network status',
           });
         }
       },

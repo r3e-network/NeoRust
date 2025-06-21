@@ -1,85 +1,160 @@
-use ethers::{
-	core::types::Chain,
-	etherscan::Client,
-	middleware::gas_oracle::{
-		BlockNative, Etherscan, GasCategory, GasNow, GasOracle, Polygon, ProviderOracle,
-	},
-	providers::{Http, Provider},
-};
+/// Neo N3 GAS Fee Estimation Example
+///
+/// This example demonstrates how to estimate and monitor GAS fees on the Neo N3 blockchain.
+/// Unlike Ethereum's dynamic gas pricing, Neo N3 uses a more predictable fee model.
+use std::time::Duration;
 
-/// In Neo, the "gas" of a transaction refers to the amount of computation required to execute
-/// the transaction on the blockchain. Gas is typically measured in units of "gas," and the cost of
-/// a transaction is determined by the amount of gas it consumes.
-///
-/// A "gas oracle" is a tool or service that provides information about the current price of gas on
-/// the Neo network. Gas oracles are often used to help determine the appropriate amount of gas
-/// to include in a transaction, in order to ensure that it will be processed in a timely manner
-/// without running out of gas.
-///
-/// Ethers-rs includes a feature called "gas oracle middleware" that allows you to customize the
-/// behavior of the library when it comes to determining the gas cost of transactions.
 #[tokio::main]
-async fn main() {
-	blocknative().await;
-	etherscan().await;
-	gas_now().await;
-	polygon().await;
-	provider_oracle().await;
-	//etherchain().await; // FIXME: Etherchain URL is broken (Http 404)
-}
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+	println!("⛽ Neo N3 GAS Fee Estimation Example");
+	println!("====================================");
 
-async fn blocknative() {
-	let api_key: Option<String> = std::env::var("BLOCK_NATIVE_API_KEY").ok();
-	let oracle = BlockNative::new(api_key).category(GasCategory::Fastest);
-	match oracle.fetch().await {
-		Ok(gas_price) => println!("[Blocknative]: Gas price is {gas_price:?}"),
-		Err(e) => panic!("[Blocknative]: Cannot estimate gas: {e:?}"),
-	}
-}
+	// 1. Understanding Neo N3 Fee Structure
+	println!("\n1. Neo N3 Fee Structure:");
+	println!("   🔧 System Fee: Fixed cost based on VM instructions executed");
+	println!("   🌐 Network Fee: Variable fee paid to consensus nodes");
+	println!("   📊 Fee Calculation: More predictable than Ethereum's auction model");
 
-async fn etherscan() {
-	let client = Client::new_from_opt_env(Chain::Mainnet).unwrap();
-	let oracle = Etherscan::new(client).category(GasCategory::Fast);
-	match oracle.fetch().await {
-		Ok(gas_price) => println!("[Etherscan]: Gas price is {gas_price:?}"),
-		Err(e) => panic!("[Etherscan]: Cannot estimate gas: {e:?}"),
-	}
-}
+	// 2. Basic fee estimation patterns
+	println!("\n2. Fee Estimation Patterns:");
 
-async fn gas_now() {
-	let oracle = GasNow::new().category(GasCategory::Fast);
-	match oracle.fetch().await {
-		Ok(gas_price) => println!("[GasNow]: Gas price is {gas_price:?}"),
-		Err(e) => panic!("[GasNow]: Cannot estimate gas: {e:?}"),
-	}
-}
+	let fee_examples = vec![
+		("NEP-17 Transfer", "0.0347877 GAS", "Simple token transfer"),
+		("Contract Invocation", "0.1-1.0 GAS", "Depends on contract complexity"),
+		("Contract Deployment", "10+ GAS", "Based on contract size and features"),
+		("Multiple Operations", "Variable", "Sum of individual operation costs"),
+	];
 
-async fn polygon() {
-	let chain = Chain::Polygon;
-	if let Ok(oracle) = Polygon::new(chain) {
-		match oracle.category(GasCategory::SafeLow).fetch().await {
-			Ok(gas_price) => println!("[Polygon]: Gas price is {gas_price:?}"),
-			Err(e) => panic!("[Polygon]: Cannot estimate gas: {e:?}"),
-		}
+	for (operation, typical_fee, description) in fee_examples {
+		println!("   💸 {}: {} ({})", operation, typical_fee, description);
 	}
-}
 
-async fn provider_oracle() {
-	const RPC_URL: &str = "https://eth.llamarpc.com";
-	let provider = Provider::<Http>::try_from(RPC_URL).unwrap();
-	let oracle = ProviderOracle::new(provider);
-	match oracle.fetch().await {
-		Ok(gas_price) => println!("[Provider oracle]: Gas price is {gas_price:?}"),
-		Err(e) => panic!("[Provider oracle]: Cannot estimate gas: {e:?}"),
-	}
-}
+	// 3. Fee monitoring and estimation strategies
+	println!("\n3. Fee Monitoring Strategies:");
 
-/*
-// FIXME: Etherchain URL is broken (Http 404)
-async fn etherchain() {
-	let oracle = Etherchain::new().category(GasCategory::Standard);
-	match oracle.fetch().await {
-		Ok(gas_price) => println!("[Etherchain]: Gas price is {gas_price:?}"),
-		Err(e) => panic!("[Etherchain]: Cannot estimate gas: {e:?}"),
+	println!("   📈 Historical Analysis:");
+	println!("     • Track average fees over time");
+	println!("     • Identify peak usage periods");
+	println!("     • Monitor network congestion patterns");
+	println!("     • Analyze fee trends by transaction type");
+
+	println!("\n   🎯 Smart Fee Selection:");
+	println!("     • Use minimum required fees for basic operations");
+	println!("     • Add buffer for contract invocations");
+	println!("     • Consider priority vs cost trade-offs");
+	println!("     • Monitor failed transactions due to insufficient fees");
+
+	// 4. Implementation patterns
+	println!("\n4. Implementation Patterns:");
+
+	println!("   🏗️ Fee Estimation Service:");
+	println!("   ```rust");
+	println!("   struct GasFeeEstimator {{");
+	println!("       rpc_client: RpcClient<HttpProvider>,");
+	println!("       fee_cache: HashMap<String, FeeEstimate>,");
+	println!("   }}");
+	println!("   ");
+	println!("   impl GasFeeEstimator {{");
+	println!("       pub async fn estimate_transfer_fee() -> Result<u64, Error> {{");
+	println!("           // Calculate based on script length and current network state");
+	println!("           Ok(347877) // ~0.0347877 GAS in base units");
+	println!("       }}");
+	println!("   }}");
+	println!("   ```");
+
+	// 5. Practical fee management
+	println!("\n5. Practical Fee Management:");
+
+	let strategies = vec![
+		("Conservative", "Add 20% buffer to estimated fees", "High success rate"),
+		("Optimized", "Use minimum required fees", "Maximum efficiency"),
+		("Adaptive", "Adjust based on network conditions", "Balanced approach"),
+		("Priority", "Pay premium for faster inclusion", "Time-sensitive operations"),
+	];
+
+	for (strategy, approach, benefit) in strategies {
+		println!("   ⚡ {} Strategy: {} ({})", strategy, approach, benefit);
 	}
-}*/
+
+	// 6. Real-world monitoring
+	println!("\n6. Real-world Monitoring:");
+
+	println!("   📊 Key Metrics to Track:");
+	println!("     • Average transaction fees by type");
+	println!("     • Fee-to-value ratios for transfers");
+	println!("     • Failed transaction rates");
+	println!("     • Network utilization trends");
+	println!("     • Consensus node fee preferences");
+
+	println!("\n   🚨 Alert Thresholds:");
+	println!("     • Fees > 2x historical average");
+	println!("     • Failed transaction rate > 5%");
+	println!("     • Network utilization > 80%");
+	println!("     • Unusual fee spikes or drops");
+
+	// 7. Best practices
+	println!("\n7. Best Practices:");
+
+	println!("   ✅ Do:");
+	println!("     • Cache fee estimates for common operations");
+	println!("     • Monitor network conditions regularly");
+	println!("     • Use appropriate fees for transaction priority");
+	println!("     • Implement retry logic with adjusted fees");
+	println!("     • Track fee efficiency metrics");
+
+	println!("\n   ❌ Avoid:");
+	println!("     • Using fixed fees without monitoring");
+	println!("     • Over-paying significantly for routine operations");
+	println!("     • Ignoring failed transactions due to low fees");
+	println!("     • Not accounting for contract complexity in estimates");
+
+	// 8. Integration examples
+	println!("\n8. Integration Examples:");
+
+	println!("   🔄 Automatic Fee Adjustment:");
+	println!("   ```rust");
+	println!("   async fn send_with_adaptive_fee(tx: Transaction) -> Result<H256, Error> {{");
+	println!("       let mut fee = estimate_base_fee(&tx).await?;");
+	println!("       let mut attempts = 0;");
+	println!("       ");
+	println!("       loop {{");
+	println!("           match send_transaction_with_fee(tx.clone(), fee).await {{");
+	println!("               Ok(hash) => return Ok(hash),");
+	println!("               Err(InsufficientFee) if attempts < 3 => {{");
+	println!("                   fee = (fee as f64 * 1.5) as u64;");
+	println!("                   attempts += 1;");
+	println!("               }}");
+	println!("               Err(e) => return Err(e),");
+	println!("           }}");
+	println!("       }}");
+	println!("   }}");
+	println!("   ```");
+
+	// 9. Performance optimization
+	println!("\n9. Performance Optimization:");
+
+	println!("   🏎️ Efficiency Tips:");
+	println!("     • Batch multiple operations in single transaction");
+	println!("     • Use efficient contract patterns");
+	println!("     • Minimize storage operations");
+	println!("     • Optimize script complexity");
+	println!("     • Consider off-chain processing where appropriate");
+
+	// 10. Future considerations
+	println!("\n10. Future Considerations:");
+
+	println!("   🔮 Evolving Fee Model:");
+	println!("     • Network upgrades may adjust fee structures");
+	println!("     • New operation types may have different costs");
+	println!("     • Governance changes could affect fee policies");
+	println!("     • Monitor Neo Enhancement Proposals (NEPs)");
+
+	println!("\n🎉 Neo N3 GAS fee estimation example completed!");
+	println!("💡 Key takeaways:");
+	println!("   • Neo N3 fees are more predictable than auction-based models");
+	println!("   • Monitor network conditions for optimal fee selection");
+	println!("   • Implement adaptive strategies for robust applications");
+	println!("   • Balance cost efficiency with transaction reliability");
+
+	Ok(())
+}

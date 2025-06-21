@@ -75,9 +75,7 @@ impl RetryClient {
 					attempts += 1;
 
 					if attempts > self.policy.max_retries {
-						return Err(RpcError::NetworkError(format!(
-							"Max retries exceeded: {e}"
-						)));
+						return Err(RpcError::NetworkError(format!("Max retries exceeded: {e}")));
 					}
 
 					// Check if error is retryable
@@ -85,18 +83,18 @@ impl RetryClient {
 						return Err(RpcError::NetworkError(format!("Non-retryable error: {e}")));
 					}
 
-					println!(
-						"   ⚠️  Attempt {attempts} failed: {e}. Retrying in {delay:?}..."
-					);
+					println!("   ⚠️  Attempt {attempts} failed: {e}. Retrying in {delay:?}...");
 
 					sleep(delay).await;
 
 					// Exponential backoff
 					delay = std::cmp::min(
-						Duration::from_secs_f64(delay.as_secs_f64() * self.policy.backoff_multiplier),
+						Duration::from_secs_f64(
+							delay.as_secs_f64() * self.policy.backoff_multiplier,
+						),
 						self.policy.max_delay,
 					);
-				}
+				},
 			}
 		}
 	}
@@ -156,24 +154,33 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 	println!("\n1. Retry Policy Configuration:");
 
 	let policies = vec![
-		("Conservative", RetryPolicy {
-			max_retries: 2,
-			initial_delay: Duration::from_millis(500),
-			max_delay: Duration::from_secs(5),
-			backoff_multiplier: 1.5,
-		}),
-		("Aggressive", RetryPolicy {
-			max_retries: 5,
-			initial_delay: Duration::from_millis(100),
-			max_delay: Duration::from_secs(10),
-			backoff_multiplier: 2.0,
-		}),
-		("Gentle", RetryPolicy {
-			max_retries: 3,
-			initial_delay: Duration::from_secs(1),
-			max_delay: Duration::from_secs(30),
-			backoff_multiplier: 3.0,
-		}),
+		(
+			"Conservative",
+			RetryPolicy {
+				max_retries: 2,
+				initial_delay: Duration::from_millis(500),
+				max_delay: Duration::from_secs(5),
+				backoff_multiplier: 1.5,
+			},
+		),
+		(
+			"Aggressive",
+			RetryPolicy {
+				max_retries: 5,
+				initial_delay: Duration::from_millis(100),
+				max_delay: Duration::from_secs(10),
+				backoff_multiplier: 2.0,
+			},
+		),
+		(
+			"Gentle",
+			RetryPolicy {
+				max_retries: 3,
+				initial_delay: Duration::from_secs(1),
+				max_delay: Duration::from_secs(30),
+				backoff_multiplier: 3.0,
+			},
+		),
 	];
 
 	for (name, policy) in &policies {
@@ -200,10 +207,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 		let mock_op = MockRpcOperation::new(success_rate);
 		let retry_client = RetryClient::new(RetryPolicy::default());
 
-		match retry_client
-			.execute_with_retry(|| mock_op.call())
-			.await
-		{
+		match retry_client.execute_with_retry(|| mock_op.call()).await {
 			Ok(result) => println!("     ✅ {result}"),
 			Err(error) => println!("     ❌ Final failure: {error}"),
 		}

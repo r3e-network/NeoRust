@@ -16,11 +16,9 @@ This example demonstrates how to create and manage wallets in NeoRust.
 */
 
 use colored::*;
-use hex;
 use neo3::{
 	neo_crypto::KeyPair,
 	neo_types::{ScriptHash, ScriptHashExtension},
-	prelude::*,
 };
 
 #[tokio::main]

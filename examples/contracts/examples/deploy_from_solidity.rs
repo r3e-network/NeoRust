@@ -27,12 +27,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 	println!("   using Neo.SmartContract.Framework.Services;");
 	println!("   ");
 	println!("   public class HelloWorld : SmartContract");
-	println!("   {");
+	println!("   {{");
 	println!("       public static string Main(string operation)");
-	println!("       {");
+	println!("       {{");
 	println!("           return \"Hello, Neo N3!\";");
-	println!("       }");
-	println!("   }");
+	println!("       }}");
+	println!("   }}");
 
 	println!("\n💡 Development Workflow:");
 	println!("   1. Write contract code");

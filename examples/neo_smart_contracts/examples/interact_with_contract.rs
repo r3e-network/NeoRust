@@ -1,4 +1,8 @@
-use neo3::prelude::*;
+use neo3::{
+	neo_clients::{HttpProvider, RpcClient},
+	prelude::*,
+	Account, ScriptHash,
+};
 use std::str::FromStr;
 
 /// This example demonstrates comprehensive smart contract interaction on the Neo N3 blockchain.
@@ -10,16 +14,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 	// 1. Connect to Neo N3 TestNet
 	println!("\n📡 1. Connecting to Neo N3 TestNet...");
-	let provider = providers::HttpProvider::new("https://testnet1.neo.org:443/")
+	let provider = HttpProvider::new("https://testnet1.neo.org:443/")
 		.map_err(|e| format!("Failed to create provider: {}", e))?;
-	let client = providers::RpcClient::new(provider);
+	let client = RpcClient::new(provider);
 	println!("   ✅ Connected successfully");
 
 	// 2. Set up account for contract interaction
 	println!("\n👤 2. Setting up account for interaction...");
 
 	// Create a demo account (for production deployments, load from secure storage)
-	let account = neo_protocol::Account::create()?;
+	let account = Account::create()?;
 	println!("   Demo account address: {}", account.address_or_scripthash().address());
 	println!("   💡 For production deployments: Load account from secure WIF or hardware wallet");
 
@@ -27,16 +31,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 	println!("\n📜 3. Setting up native contract references...");
 
 	// GAS Token Contract
-	let gas_hash = neo_types::ScriptHash::from_str("d2a4cff31913016155e38e474a2c06d08be276cf")?;
+	let gas_hash = ScriptHash::from_str("0xd2a4cff31913016155e38e474a2c06d08be276cf")?;
 	println!("   ⛽ GAS Token: 0x{}", hex::encode(gas_hash.0));
 
 	// NEO Token Contract
-	let neo_hash = neo_types::ScriptHash::from_str("ef4073a0f2b305a38ec4050e4d3d28bc40ea63f5")?;
+	let neo_hash = ScriptHash::from_str("0xef4073a0f2b305a38ec4050e4d3d28bc40ea63f5")?;
 	println!("   🪙 NEO Token: 0x{}", hex::encode(neo_hash.0));
 
 	// Contract Management Contract
-	let contract_mgmt_hash =
-		neo_types::ScriptHash::from_str("fffdc93764dbaddd97c48f252a53ea4643faa3fd")?;
+	let contract_mgmt_hash = ScriptHash::from_str("0xfffdc93764dbaddd97c48f252a53ea4643faa3fd")?;
 	println!("   🏗️  Contract Management: 0x{}", hex::encode(contract_mgmt_hash.0));
 
 	// 4. Read-Only Contract Calls (invoke_function via RPC)
@@ -62,7 +65,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 	println!("\n💰 5. Querying account balances...");
 
 	let demo_address = "NbTiM6h8r99kpRtb428XcsUk1TzKed2gTc"; // Well-known TestNet address
-	let demo_script_hash = neo_types::ScriptHash::from_address(demo_address)?;
+	let demo_script_hash = ScriptHash::from_address(demo_address)?;
 
 	match query_account_balance(&client, &gas_hash, &demo_script_hash, "GAS", 8).await {
 		Ok(balance) => println!("   💎 Demo account GAS balance: {} GAS", balance),
@@ -79,7 +82,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 	// Example: GAS transfer script
 	let recipient_address = "NiNmXL8FjEUEs1nfX9uHFBNaenxDHJtmuB";
-	let recipient = neo_types::ScriptHash::from_address(recipient_address)?;
+	let recipient = ScriptHash::from_address(recipient_address)?;
 	let transfer_amount = 100_000_000u64; // 1 GAS
 
 	let mut script_builder = neo_builder::ScriptBuilder::new();
@@ -169,8 +172,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 /// Query token information (symbol, decimals, total supply)
 async fn query_token_info(
-	client: &providers::RpcClient<providers::HttpProvider>,
-	token_hash: &neo_types::ScriptHash,
+	client: &RpcClient<HttpProvider>,
+	token_hash: &ScriptHash,
 	token_name: &str,
 ) -> Result<(), Box<dyn std::error::Error>> {
 	use neo3::neo_clients::APITrait;
@@ -221,9 +224,9 @@ async fn query_token_info(
 
 /// Query account balance for a specific token
 async fn query_account_balance(
-	client: &providers::RpcClient<providers::HttpProvider>,
-	token_hash: &neo_types::ScriptHash,
-	account_hash: &neo_types::ScriptHash,
+	client: &RpcClient<HttpProvider>,
+	token_hash: &ScriptHash,
+	account_hash: &ScriptHash,
 	token_name: &str,
 	decimals: u32,
 ) -> Result<f64, Box<dyn std::error::Error>> {

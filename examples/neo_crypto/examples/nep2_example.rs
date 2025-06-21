@@ -1,6 +1,4 @@
-use neo3::neo_crypto::{KeyPair, Secp256r1PrivateKey};
-use rand::rngs::OsRng;
-use std::time::Instant;
+use neo3::neo_crypto::KeyPair;
 
 /// Production-ready comprehensive NEP-2 encryption concept demonstration
 /// showing the principles and security features of password-protected private keys

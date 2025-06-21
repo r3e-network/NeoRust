@@ -41,8 +41,8 @@ all-features = false
 # https://doc.rust-lang.org/edition-guide/rust-2021/default-cargo-resolver.html
 resolver = "2"
 members = [
+    ".",
     "neo-cli",
-    "neo-gui",
     "examples/basic",
     "examples/intermediate", 
     "examples/advanced",
@@ -67,6 +67,7 @@ members = [
     "examples/neo_wallets",
     "examples/neo_crypto"
 ]
+exclude = ["neo-gui"]
 
 [dependencies]
 tokio = { version = "1.45", features = ["full"] }
@@ -229,6 +230,3 @@ default = []
 yubi = ["dep:yubihsm"]
 mock-hsm = ["dep:yubihsm", "yubihsm/mockhsm"]
 
-[workspace]
-members = [".", "neo-cli"]
-exclude = ["neo-gui"]

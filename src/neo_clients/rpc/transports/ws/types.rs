@@ -34,8 +34,8 @@ pub enum PubSubItem {
 	Notification { params: Notification },
 }
 
-// FIXME: ideally, this could be auto-derived as an untagged enum, but due to
-// https://github.com/serde-rs/serde/issues/1183 this currently fails
+// Note: Custom deserialization is required because serde's untagged enum support
+// has limitations with borrowing (see https://github.com/serde-rs/serde/issues/1183)
 impl<'de> Deserialize<'de> for PubSubItem {
 	fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
 	where
@@ -293,9 +293,11 @@ mod aliases {
 
 #[cfg(test)]
 mod test {
+	use super::*;
+	
 	#[test]
 	fn it_desers_pubsub_items() {
 		let a = "{\"jsonrpc\":\"2.0\",\"id\":1,\"result\":\"0xcd0c3e8af590364c09d0fa6a1210faf5\"}";
-		serde_json::from_str::<PubSubItem>(a).unwrap();
+		let _ = serde_json::from_str::<PubSubItem>(a).unwrap();
 	}
 }

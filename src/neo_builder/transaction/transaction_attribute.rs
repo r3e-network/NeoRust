@@ -124,9 +124,8 @@ impl NeoSerializable for TransactionAttribute {
 				response_code: _,
 				result,
 			}) => 1 + 9 + result.len(),
-			TransactionAttribute::NotValidBefore { height: _ } => 1,
-			// TODO: check the size of the conflicts attribute
-			TransactionAttribute::Conflicts { hash: _ } => 1,
+			TransactionAttribute::NotValidBefore { height: _ } => 1 + 4, // 1 byte type + 4 bytes height
+			TransactionAttribute::Conflicts { hash: _ } => 1 + 32, // 1 byte type + 32 bytes hash
 		}
 	}
 

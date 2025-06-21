@@ -146,8 +146,10 @@ impl<'a> Decoder<'a> {
 			}
 			// bytes.get_mut()[len - 1] ^= 0x80;
 		}
-		//TODO:: need to check be or le and sign
-		Ok(BigInt::from_bytes_be(Sign::Minus, &bytes))
+		// Note: NEO uses little-endian byte order for BigIntegers
+		// The sign is determined by the 'negative' flag above
+		let sign = if negative { Sign::Minus } else { Sign::Plus };
+		Ok(BigInt::from_bytes_le(sign, &bytes))
 	}
 
 	/// Reads an encoded EC point from the byte slice.

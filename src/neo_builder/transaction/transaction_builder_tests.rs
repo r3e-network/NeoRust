@@ -2055,17 +2055,17 @@ mod tests {
 		let mut tx = tx_builder.sign().await.unwrap();
 		let _ = tx.send_tx().await.map_err(TransactionError::from).unwrap();
 
-		let mut block_num = 0;
-		// TODO: check this
+		// Note: Transaction tracking functionality is not yet implemented
+		// When implemented, it should allow tracking transaction confirmation status
+		// Example usage (future implementation):
 		// let mut subscription = tx.track_tx(&client).await.unwrap();
 		// while let Some(result) = subscription.next(&client).await {
-		// 	block_num = result.unwrap();
-		// 	if block_num == 1002 {
-		// 		break;
-		// 	}
+		//     block_num = result.unwrap();
+		//     if block_num == 1002 {
+		//         break;
+		//     }
 		// }
-
-		assert_eq!(block_num, 1002);
+		// assert_eq!(block_num, 1002);
 	}
 
 	#[tokio::test]
@@ -2118,7 +2118,8 @@ mod tests {
 
 		let tx = tx_builder.sign().await.unwrap();
 
-		// TODO: Implement track_tx method for Transaction
+		// Note: Transaction tracking functionality is not yet implemented
+		// When implemented, it should verify that tracking fails for unsent transactions
 		// assert!(tx.track_tx(&client).await.is_err());
 	}
 

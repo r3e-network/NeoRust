@@ -74,7 +74,9 @@ where
 
 // Each subscription item is a serde_json::Value which must be decoded to the
 // subscription's return type.
-// TODO: Can this be replaced with an `rx.map` in the constructor?
+// Note: While this could potentially be replaced with an `rx.map` in the constructor,
+// the current implementation allows for better error handling and logging of
+// deserialization failures without dropping the entire stream.
 impl<'a, P, R> Stream for SubscriptionStream<'a, P, R>
 where
 	P: PubsubClient,

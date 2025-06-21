@@ -94,7 +94,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 	println!("     • IP address filtering");
 
 	println!("\n💡 Common Use Cases:");
-	
+
 	println!("\n   🌐 Web3 Applications:");
 	println!("     • Decentralized websites");
 	println!("     • NFT metadata storage");
@@ -154,7 +154,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 	println!("   ```");
 
 	println!("\n⚡ Performance Optimization:");
-	
+
 	println!("\n   🚀 Upload Optimization:");
 	println!("     • Use parallel chunk uploads");
 	println!("     • Compress data before upload");
@@ -168,7 +168,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 	println!("     • Leverage CDN capabilities");
 
 	println!("\n🛡️ Security Best Practices:");
-	
+
 	println!("\n   🔐 Data Protection:");
 	println!("     • Encrypt sensitive data client-side");
 	println!("     • Use strong access control policies");

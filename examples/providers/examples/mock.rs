@@ -3,7 +3,7 @@
 //! This example demonstrates how to create mock providers for testing purposes.
 //! This shows real mock implementations for testing blockchain interactions.
 
-use neo3::prelude::*;
+// Mock provider for testing Neo N3 RPC calls
 use serde_json::json;
 use std::collections::HashMap;
 
@@ -161,7 +161,8 @@ async fn main() -> eyre::Result<()> {
 	match mock.mock_call("getnep17balances") {
 		Ok(response) =>
 			if let Some(balance) = response.get("balance") {
-				let balance_array = balance.as_array().unwrap_or(&vec![]);
+				let empty_vec = vec![];
+				let balance_array = balance.as_array().unwrap_or(&empty_vec);
 				println!("   💰 Empty account balance: {} tokens", balance_array.len());
 			},
 		Err(e) => println!("   ❌ Error: {}", e),
@@ -171,7 +172,8 @@ async fn main() -> eyre::Result<()> {
 	match mock.mock_call("getnep17balances_with_tokens") {
 		Ok(response) => {
 			if let Some(balance) = response.get("balance") {
-				let balance_array = balance.as_array().unwrap_or(&vec![]);
+				let empty_vec = vec![];
+				let balance_array = balance.as_array().unwrap_or(&empty_vec);
 				println!("   💰 Account with tokens: {} tokens", balance_array.len());
 
 				for token in balance_array {

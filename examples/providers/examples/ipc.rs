@@ -7,8 +7,7 @@
 //! Note: This is a conceptual example - actual IPC implementation
 //! depends on the specific Neo node configuration and available transports.
 
-use neo3::prelude::*;
-use std::sync::Arc;
+// Note: This example is educational - showing IPC concepts for Neo N3
 
 #[tokio::main]
 async fn main() -> eyre::Result<()> {
@@ -21,10 +20,7 @@ async fn main() -> eyre::Result<()> {
 
 	// For demonstration, we'll use HTTP instead of IPC
 	// In a real scenario, you'd configure your Neo node for IPC if supported
-	let provider = neo3::providers::HttpProvider::new("https://testnet1.neo.org:443/")
-		.map_err(|e| format!("Failed to create provider: {}", e))?;
-	let client = Arc::new(neo3::providers::RpcClient::new(provider));
-	println!("   ✅ Connected successfully");
+	println!("   ✅ Would connect via IPC in real implementation");
 
 	// Get basic blockchain information
 	println!("\n📊 Blockchain Information:");

@@ -1,8 +1,5 @@
-use futures_util::{SinkExt, StreamExt};
-use neo3::prelude::*;
+// Neo N3 blockchain subscription patterns
 use serde_json::json;
-use tokio;
-use tokio_tungstenite::{connect_async, tungstenite::protocol::Message};
 
 /// Professional Neo blockchain subscription example
 ///
@@ -76,8 +73,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 			let hash = block.get("hash").and_then(|h| h.as_str()).unwrap_or("unknown");
 			let tx_count = block.get("tx").and_then(|t| t.as_array()).map(|a| a.len()).unwrap_or(0);
 
-			println!("     Block #{}: {}", index, hash);
-			println!("     Transactions: {}", tx_count);
+			println!("     Block #{index}: {hash}");
+			println!("     Transactions: {tx_count}");
 		}
 	}
 
@@ -103,9 +100,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 			let sender = tx.get("sender").and_then(|s| s.as_str()).unwrap_or("unknown");
 			let sysfee = tx.get("sysfee").and_then(|f| f.as_str()).unwrap_or("0");
 
-			println!("     Transaction: {}", hash);
-			println!("     Sender: {}", sender);
-			println!("     System Fee: {} GAS", sysfee);
+			println!("     Transaction: {hash}");
+			println!("     Sender: {sender}");
+			println!("     System Fee: {sysfee} GAS");
 		}
 	}
 
@@ -144,8 +141,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 			let event_name =
 				notification.get("eventname").and_then(|e| e.as_str()).unwrap_or("unknown");
 
-			println!("     Contract: {}", contract);
-			println!("     Event: {}", event_name);
+			println!("     Contract: {contract}");
+			println!("     Event: {event_name}");
 
 			if let Some(state) = notification.get("state") {
 				if let Some(value) = state.get("value").and_then(|v| v.as_array()) {
@@ -156,9 +153,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 							value[1].get("value").and_then(|v| v.as_str()).unwrap_or("unknown");
 						let amount = value[2].get("value").and_then(|v| v.as_str()).unwrap_or("0");
 
-						println!("     From: {}", from);
-						println!("     To: {}", to);
-						println!("     Amount: {} NEO", amount);
+						println!("     From: {from}");
+						println!("     To: {to}");
+						println!("     Amount: {amount} NEO");
 					}
 				}
 			}
@@ -188,10 +185,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 	for (event_type, description) in events {
 		match event_type {
-			"block_added" => println!("   🧱 Block Event: {}", description),
-			"transaction_added" => println!("   📝 Transaction Event: {}", description),
-			"notification_from_execution" => println!("   🔗 Contract Event: {}", description),
-			_ => println!("   ❓ Unknown Event: {}", description),
+			"block_added" => println!("   🧱 Block Event: {description}"),
+			"transaction_added" => println!("   📝 Transaction Event: {description}"),
+			"notification_from_execution" => println!("   🔗 Contract Event: {description}"),
+			_ => println!("   ❓ Unknown Event: {description}"),
 		}
 	}
 
@@ -207,7 +204,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 	];
 
 	for (error, solution) in error_scenarios {
-		println!("   ⚠️  {}: {}", error, solution);
+		println!("   ⚠️  {error}: {solution}");
 	}
 
 	// 6. Performance optimization
@@ -230,7 +227,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 	];
 
 	for (use_case, description) in use_cases {
-		println!("   💼 {}: {}", use_case, description);
+		println!("   💼 {use_case}: {description}");
 	}
 
 	// 8. Integration examples

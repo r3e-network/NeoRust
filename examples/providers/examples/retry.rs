@@ -38,11 +38,11 @@ pub enum RpcError {
 impl std::fmt::Display for RpcError {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		match self {
-			RpcError::NetworkError(msg) => write!(f, "Network error: {}", msg),
+			RpcError::NetworkError(msg) => write!(f, "Network error: {msg}"),
 			RpcError::TimeoutError => write!(f, "Request timeout"),
 			RpcError::RateLimitError => write!(f, "Rate limit exceeded"),
-			RpcError::ServerError(code) => write!(f, "Server error: {}", code),
-			RpcError::ParseError(msg) => write!(f, "Parse error: {}", msg),
+			RpcError::ServerError(code) => write!(f, "Server error: {code}"),
+			RpcError::ParseError(msg) => write!(f, "Parse error: {msg}"),
 		}
 	}
 }
@@ -76,19 +76,17 @@ impl RetryClient {
 
 					if attempts > self.policy.max_retries {
 						return Err(RpcError::NetworkError(format!(
-							"Max retries exceeded: {}",
-							e
+							"Max retries exceeded: {e}"
 						)));
 					}
 
 					// Check if error is retryable
 					if !self.is_retryable_error(&e) {
-						return Err(RpcError::NetworkError(format!("Non-retryable error: {}", e)));
+						return Err(RpcError::NetworkError(format!("Non-retryable error: {e}")));
 					}
 
 					println!(
-						"   ⚠️  Attempt {} failed: {}. Retrying in {:?}...",
-						attempts, e, delay
+						"   ⚠️  Attempt {attempts} failed: {e}. Retrying in {delay:?}..."
 					);
 
 					sleep(delay).await;
@@ -179,7 +177,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 	];
 
 	for (name, policy) in &policies {
-		println!("   🎛️  {} Policy:", name);
+		println!("   🎛️  {name} Policy:");
 		println!("     Max retries: {}", policy.max_retries);
 		println!("     Initial delay: {:?}", policy.initial_delay);
 		println!("     Max delay: {:?}", policy.max_delay);
@@ -197,7 +195,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 	];
 
 	for (description, success_rate) in scenarios {
-		println!("\n   📊 Testing: {}", description);
+		println!("\n   📊 Testing: {description}");
 
 		let mock_op = MockRpcOperation::new(success_rate);
 		let retry_client = RetryClient::new(RetryPolicy::default());
@@ -206,8 +204,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 			.execute_with_retry(|| mock_op.call())
 			.await
 		{
-			Ok(result) => println!("     ✅ {}", result),
-			Err(error) => println!("     ❌ Final failure: {}", error),
+			Ok(result) => println!("     ✅ {result}"),
+			Err(error) => println!("     ❌ Final failure: {error}"),
 		}
 	}
 
@@ -244,7 +242,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 	];
 
 	for (strategy, description) in strategies {
-		println!("   ⚡ {}: {}", strategy, description);
+		println!("   ⚡ {strategy}: {description}");
 	}
 
 	// 5. Error classification examples
@@ -261,7 +259,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 	for (error, classification, reason) in error_examples {
 		let icon = if classification == "Retryable" { "🔄" } else { "🚫" };
-		println!("   {} {}: {} ({})", icon, error, classification, reason);
+		println!("   {icon} {error}: {classification} ({reason})");
 	}
 
 	// 6. Performance considerations
@@ -276,7 +274,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 	];
 
 	for (topic, description) in considerations {
-		println!("   📊 {}: {}", topic, description);
+		println!("   📊 {topic}: {description}");
 	}
 
 	// 7. Configuration best practices

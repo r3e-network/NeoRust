@@ -1,0 +1,424 @@
+<!DOCTYPE HTML>
+<html lang="en" class="light sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>Overview - NeoRust SDK Documentation</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="Documentation for the NeoRust SDK, a comprehensive Rust SDK for interacting with the Neo N3 blockchain">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="../favicon.svg">
+        <link rel="shortcut icon" href="../favicon.png">
+        <link rel="stylesheet" href="../css/variables.css">
+        <link rel="stylesheet" href="../css/general.css">
+        <link rel="stylesheet" href="../css/chrome.css">
+        <link rel="stylesheet" href="../css/print.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="../FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="../fonts/fonts.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="highlight-css" href="../highlight.css">
+        <link rel="stylesheet" id="tomorrow-night-css" href="../tomorrow-night.css">
+        <link rel="stylesheet" id="ayu-highlight-css" href="../ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+        <link rel="stylesheet" href="../theme/custom.css">
+        <link rel="stylesheet" href=".././mdbook-admonish.css">
+
+        <!-- MathJax -->
+        <script async src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "../";
+            const default_light_theme = "light";
+            const default_dark_theme = "navy";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="../toc.js"></script>
+    </head>
+    <body>
+    <div id="mdbook-help-container">
+        <div id="mdbook-help-popup">
+            <h2 class="mdbook-help-title">Keyboard shortcuts</h2>
+            <div>
+                <p>Press <kbd>←</kbd> or <kbd>→</kbd> to navigate between chapters</p>
+                <p>Press <kbd>S</kbd> or <kbd>/</kbd> to search in the book</p>
+                <p>Press <kbd>?</kbd> to show this help</p>
+                <p>Press <kbd>Esc</kbd> to hide this help</p>
+            </div>
+        </div>
+    </div>
+    <div id="body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+            }
+            sidebar_toggle.checked = sidebar === 'visible';
+            html.classList.remove('sidebar-visible');
+            html.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="../toc.html"></iframe>
+            </noscript>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="sidebar-toggle" class="icon-button" for="sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </label>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        <button id="search-toggle" class="icon-button" type="button" title="Search (`/`)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="/ s" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">NeoRust SDK Documentation</h1>
+
+                    <div class="right-buttons">
+                        <a href="../print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+                        <a href="https://github.com/R3E-Network/NeoRust" title="Git repository" aria-label="Git repository">
+                            <i id="git-repository-button" class="fa fa-github"></i>
+                        </a>
+                        <a href="https://github.com/R3E-Network/NeoRust/edit/master/docs/src/../contracts/README.md" title="Suggest an edit" aria-label="Suggest an edit">
+                            <i id="git-edit-button" class="fa fa-edit"></i>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h1 id="neo-n3-smart-contracts"><a class="header" href="#neo-n3-smart-contracts">Neo N3 Smart Contracts</a></h1>
+<h2 id="overview"><a class="header" href="#overview">Overview</a></h2>
+<p>Smart contracts are self-executing agreements with the terms directly written into code. The Neo Rust SDK provides comprehensive utilities for interacting with Neo N3 smart contracts, allowing developers to deploy, invoke, and manage contracts through a type-safe Rust interface.</p>
+<h2 id="key-features"><a class="header" href="#key-features">Key Features</a></h2>
+<ul>
+<li><strong>System Contract Interfaces</strong>: Ready-to-use interfaces for Neo N3 native contracts</li>
+<li><strong>Token Standards Support</strong>: APIs for NEP-17 (fungible) and NEP-11 (non-fungible) tokens</li>
+<li><strong>Contract Deployment</strong>: Utilities for deploying smart contracts to the Neo blockchain</li>
+<li><strong>Contract Invocation</strong>: Methods for executing contract functions and reading results</li>
+<li><strong>Event Handling</strong>: Support for subscribing to and processing contract events</li>
+<li><strong>Name Services</strong>: Integration with Neo Name Service for domain resolution</li>
+</ul>
+<h2 id="system-contracts"><a class="header" href="#system-contracts">System Contracts</a></h2>
+<p>The Neo N3 blockchain includes several native system contracts that manage core blockchain functionality:</p>
+<div class="table-wrapper"><table><thead><tr><th>Contract</th><th>Description</th><th>SDK Interface</th></tr></thead><tbody>
+<tr><td>NeoToken</td><td>NEO governance token</td><td><code>NeoToken</code></td></tr>
+<tr><td>GasToken</td><td>GAS utility token</td><td><code>GasToken</code></td></tr>
+<tr><td>PolicyContract</td><td>Network policy parameters</td><td><code>PolicyContract</code></td></tr>
+<tr><td>RoleManagement</td><td>Consensus roles management</td><td><code>RoleManagement</code></td></tr>
+<tr><td>ContractManagement</td><td>Contract deployment and updates</td><td><code>ContractManagement</code></td></tr>
+<tr><td>NameService</td><td>Domain registration and resolution</td><td><code>NameService</code></td></tr>
+</tbody></table>
+</div>
+<h2 id="token-standards"><a class="header" href="#token-standards">Token Standards</a></h2>
+<h3 id="nep-17-fungible-tokens"><a class="header" href="#nep-17-fungible-tokens">NEP-17 (Fungible Tokens)</a></h3>
+<p>NEP-17 is Neo's standard for fungible tokens, similar to Ethereum's ERC-20. The SDK provides the <code>FungibleTokenContract</code> to interact with NEP-17 tokens:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// Create a token instance
+let token = FungibleTokenContract::new(token_hash, client.clone());
+
+// Get token information
+let symbol = token.symbol().await?;
+let decimals = token.decimals().await?;
+let total_supply = token.total_supply().await?;
+
+// Get balance
+let balance = token.balance_of(&amp;account.get_script_hash()).await?;
+
+// Transfer tokens
+let tx_hash = token.transfer(
+    &amp;account,
+    &amp;recipient_hash,
+    amount,
+    None,  // Optional data
+).await?;
+<span class="boring">}</span></code></pre></pre>
+<h3 id="nep-11-non-fungible-tokens"><a class="header" href="#nep-11-non-fungible-tokens">NEP-11 (Non-Fungible Tokens)</a></h3>
+<p>NEP-11 is Neo's standard for non-fungible tokens, similar to Ethereum's ERC-721. The SDK provides the <code>NftContract</code> to interact with NEP-11 tokens:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// Create an NFT instance
+let nft = NftContract::new(contract_hash, client.clone());
+
+// Get token information
+let symbol = nft.symbol().await?;
+let total_supply = nft.total_supply().await?;
+
+// Get token owner
+let owner = nft.owner_of(&amp;token_id).await?;
+
+// Transfer token
+let tx_hash = nft.transfer(
+    &amp;account,
+    &amp;recipient_hash,
+    &amp;token_id,
+    None,  // Optional data
+).await?;
+<span class="boring">}</span></code></pre></pre>
+<h2 id="contract-management"><a class="header" href="#contract-management">Contract Management</a></h2>
+<p>The <code>ContractManagement</code> interface allows you to deploy and manage smart contracts:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// Create contract management instance
+let contract_mgmt = ContractManagement::new(client.clone());
+
+// Deploy a new contract
+let result = contract_mgmt.deploy(
+    &amp;nef_file,
+    &amp;manifest,
+    None,  // Optional data
+    &amp;account,
+).await?;
+
+// Get contract information
+let contract_state = contract_mgmt.get_contract(&amp;contract_hash).await?;
+
+// Update an existing contract
+let update_result = contract_mgmt.update(
+    &amp;contract_hash,
+    &amp;new_nef_file,
+    &amp;new_manifest,
+    None,  // Optional data
+    &amp;account,
+).await?;
+<span class="boring">}</span></code></pre></pre>
+<h2 id="neo-name-service"><a class="header" href="#neo-name-service">Neo Name Service</a></h2>
+<p>The <code>NameService</code> interface provides access to Neo's domain name system:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// Create name service instance
+let nns = NameService::new(client.clone());
+
+// Resolve a domain to its address
+let address = nns.resolve("example.neo").await?;
+
+// Get domain owner
+let owner = nns.get_owner("example.neo").await?;
+
+// Register a new domain (if you're the root domain owner)
+let tx_hash = nns.register("subdomain.example.neo", &amp;recipient_hash, &amp;account).await?;
+<span class="boring">}</span></code></pre></pre>
+<h2 id="raw-contract-invocation"><a class="header" href="#raw-contract-invocation">Raw Contract Invocation</a></h2>
+<p>For contracts without specific SDK interfaces, you can use raw invocation:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// Build a script to call the contract
+let script = ScriptBuilder::build_contract_call(
+    &amp;contract_hash,
+    "methodName",
+    &amp;[
+        ContractParameter::string("parameter1"),
+        ContractParameter::integer(42),
+        ContractParameter::boolean(true),
+    ],
+)?;
+
+// Create a transaction using the script
+let transaction = TransactionBuilder::new()
+    .script(script)
+    .signers(vec![Signer::calledByEntry(account.get_script_hash())])
+    .build()?;
+
+// Sign and send the transaction
+let signed_tx = transaction.sign(&amp;client, &amp;account).await?;
+let tx_hash = client.send_raw_transaction(&amp;signed_tx).await?;
+<span class="boring">}</span></code></pre></pre>
+<h2 id="test-invocation"><a class="header" href="#test-invocation">Test Invocation</a></h2>
+<p>You can test a contract call without sending a transaction:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// Test invoke a method
+let result = client.invoke_function(
+    &amp;contract_hash,
+    "methodName",
+    &amp;[
+        ContractParameter::string("parameter1"),
+        ContractParameter::integer(42),
+    ],
+    Some(&amp;[Signer::calledByEntry(account.get_script_hash())]),
+).await?;
+
+// Process the result
+if let Some(stack) = result.stack.first() {
+    match stack {
+        StackItem::Integer(value) =&gt; println!("Result: {}", value),
+        StackItem::ByteString(bytes) =&gt; println!("Result: {:?}", bytes),
+        // Handle other types...
+        _ =&gt; println!("Unknown result type"),
+    }
+}
+<span class="boring">}</span></code></pre></pre>
+<h2 id="contract-events"><a class="header" href="#contract-events">Contract Events</a></h2>
+<p>Smart contracts can emit events that applications can listen for:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// Subscribe to contract events (requires WebSocket provider)
+let mut events = client.subscribe_contract_event(&amp;contract_hash).await?;
+
+// Process events as they arrive
+while let Some(event) = events.next().await {
+    println!("Event: {} - {:?}", event.event_name, event.state);
+    
+    // Process specific events
+    if event.event_name == "Transfer" {
+        // Extract event parameters...
+    }
+}
+<span class="boring">}</span></code></pre></pre>
+<h2 id="related-documentation"><a class="header" href="#related-documentation">Related Documentation</a></h2>
+<ul>
+<li><a href="token-standards.html">Token Standards</a>: Detailed guide to NEP-17 and NEP-11 token standards</li>
+<li><a href="contract-deployment.html">Contract Deployment</a>: Step-by-step guide to deploying smart contracts</li>
+<li><a href="contract-invocation.html">Contract Invocation</a>: Guide to invoking contract methods</li>
+<li><a href="system-contracts.html">System Contracts</a>: Documentation for Neo N3 system contracts</li>
+</ul>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="../../neo-x/evm-contracts.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+
+                            <a rel="next prefetch" href="../../contracts/token-standards.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="../../neo-x/evm-contracts.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+
+                    <a rel="next prefetch" href="../../contracts/token-standards.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+            </nav>
+
+        </div>
+
+
+
+        <script>
+            window.playground_line_numbers = true;
+        </script>
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+        <script src="../ace.js"></script>
+        <script src="../mode-rust.js"></script>
+        <script src="../editor.js"></script>
+        <script src="../theme-dawn.js"></script>
+        <script src="../theme-tomorrow_night.js"></script>
+
+        <script src="../elasticlunr.min.js"></script>
+        <script src="../mark.min.js"></script>
+        <script src="../searcher.js"></script>
+
+        <script src="../clipboard.min.js"></script>
+        <script src="../highlight.js"></script>
+        <script src="../book.js"></script>
+
+        <!-- Custom JS scripts -->
+
+
+    </div>
+    </body>
+</html>

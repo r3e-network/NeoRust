@@ -1,12 +1,11 @@
 use neo3::{
 	neo_clients::{APITrait, HttpProvider, RpcClient},
 	neo_crypto::KeyPair,
-	neo_protocol::AccountTrait,
+	neo_protocol::{Account, AccountTrait},
 	neo_types::ScriptHash,
-	neo_wallets::{Account, Wallet, WalletBackup, WalletTrait},
+	neo_wallets::{Wallet, WalletBackup, WalletTrait},
 	prelude::*,
 };
-use primitive_types::H160;
 use std::{collections::HashMap, path::PathBuf, str::FromStr};
 
 /// This example demonstrates real wallet management functionality in Neo N3.

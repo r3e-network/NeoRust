@@ -3,7 +3,7 @@
 //! This example demonstrates comprehensive smart contract interaction on Neo N3,
 //! including contract invocation, state queries, event monitoring, and transaction building.
 
-use neo3::{neo_clients::APITrait, neo_protocol::AccountTrait, prelude::*};
+use neo3::{neo_clients::APITrait, prelude::*};
 use std::str::FromStr;
 
 #[tokio::main]
@@ -129,10 +129,7 @@ async fn interact_with_nep17_token(
 			if let Some(item) = stack.first() {
 				println!(
 					"      • Symbol: {}",
-					String::from_utf8(hex::decode(
-						item.value.as_ref().and_then(|v| v.as_str()).unwrap_or("474153")
-					)?)
-					.unwrap_or_else(|_| "GAS".to_string())
+					item.as_string().unwrap_or_else(|| "GAS".to_string())
 				);
 			}
 		},
@@ -146,11 +143,7 @@ async fn interact_with_nep17_token(
 			if let Some(item) = stack.first() {
 				println!(
 					"      • Decimals: {}",
-					item.value
-						.as_ref()
-						.and_then(|v| v.as_str())
-						.and_then(|s| s.parse::<u8>().ok())
-						.unwrap_or(8)
+					item.as_int().unwrap_or(8)
 				);
 			}
 		},
@@ -162,12 +155,7 @@ async fn interact_with_nep17_token(
 		Ok(result) => {
 			let stack = result.stack;
 			if let Some(item) = stack.first() {
-				let supply = item
-					.value
-					.as_ref()
-					.and_then(|v| v.as_str())
-					.and_then(|s| s.parse::<i64>().ok())
-					.unwrap_or(0);
+				let supply = item.as_int().unwrap_or(0);
 				println!("      • Total Supply: {} GAS", supply as f64 / 100_000_000.0);
 			}
 		},
@@ -190,12 +178,7 @@ async fn interact_with_nep17_token(
 		Ok(result) => {
 			let stack = result.stack;
 			if let Some(item) = stack.first() {
-				let balance = item
-					.value
-					.as_ref()
-					.and_then(|v| v.as_str())
-					.and_then(|s| s.parse::<i64>().ok())
-					.unwrap_or(0);
+				let balance = item.as_int().unwrap_or(0);
 				println!(
 					"      • Balance of {}: {} GAS",
 					example_address,
@@ -245,7 +228,7 @@ async fn demonstrate_contract_invocation(
 				"      Gas consumed: {} GAS",
 				result.gas_consumed.parse::<f64>().unwrap_or(0.0) / 100_000_000.0
 			);
-			println!("      State: {}", result.state);
+			println!("      State: {:?}", result.state);
 			if let Some(exception) = result.exception {
 				println!("      Exception: {}", exception);
 			}
@@ -314,18 +297,15 @@ async fn demonstrate_transaction_building(
 	)?;
 
 	// Build transaction
-	let mut tx_builder = neo3::neo_builder::TransactionBuilder::new();
+	let mut tx_builder = neo3::neo_builder::TransactionBuilder::with_client(client);
 	let current_height = client.get_block_count().await?;
 
-	tx_builder
-		.script_mut(Some(script_builder.to_bytes()))
-		.valid_until_block_mut(Some(current_height + 1000))
-		.add_signer(
-			neo3::neo_builder::AccountSigner::called_by_entry(
-				&neo3::neo_protocol::Account::from_address(sender),
-			)?
-			.into(),
-		);
+	tx_builder.set_script(Some(script_builder.to_bytes()));
+	tx_builder.valid_until_block(current_height + 1000)?;
+	
+	let sender_script_hash = neo3::neo_types::ScriptHash::from_address(sender)?;
+	let signer = neo3::neo_builder::AccountSigner::called_by_entry_hash160(sender_script_hash)?;
+	tx_builder.set_signers(vec![neo3::neo_builder::Signer::AccountSigner(signer)])?;
 
 	// Calculate fees
 	let base_fee = 0.001; // Network fee

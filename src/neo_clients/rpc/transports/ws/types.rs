@@ -294,7 +294,7 @@ mod aliases {
 #[cfg(test)]
 mod test {
 	use super::*;
-	
+
 	#[test]
 	fn it_desers_pubsub_items() {
 		let a = "{\"jsonrpc\":\"2.0\",\"id\":1,\"result\":\"0xcd0c3e8af590364c09d0fa6a1210faf5\"}";

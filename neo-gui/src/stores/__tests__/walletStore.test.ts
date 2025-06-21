@@ -27,14 +27,14 @@ describe('WalletStore', () => {
       transactions: {},
       pendingTransactions: [],
     });
-    
+
     mockInvoke.mockClear();
   });
 
   describe('Initial State', () => {
     it('should have correct initial state', () => {
       const { result } = renderHook(() => useWalletStore());
-      
+
       expect(result.current.wallets).toEqual([]);
       expect(result.current.currentWallet).toBeNull();
       expect(result.current.isLoading).toBe(false);
@@ -115,7 +115,10 @@ describe('WalletStore', () => {
 
       let createdWallet;
       await act(async () => {
-        createdWallet = await result.current.createWallet('New Wallet', 'password123');
+        createdWallet = await result.current.createWallet(
+          'New Wallet',
+          'password123'
+        );
       });
 
       expect(mockInvoke).toHaveBeenCalledWith('create_wallet', {
@@ -169,7 +172,10 @@ describe('WalletStore', () => {
       const { result } = renderHook(() => useWalletStore());
 
       await act(async () => {
-        const wallet = await result.current.openWallet('/path/to/wallet', 'password');
+        const wallet = await result.current.openWallet(
+          '/path/to/wallet',
+          'password'
+        );
         expect(wallet).toEqual(mockWallet);
       });
 
@@ -203,7 +209,9 @@ describe('WalletStore', () => {
         await result.current.closeWallet('wallet-to-close');
       });
 
-      expect(mockInvoke).toHaveBeenCalledWith('close_wallet', { walletId: 'wallet-to-close' });
+      expect(mockInvoke).toHaveBeenCalledWith('close_wallet', {
+        walletId: 'wallet-to-close',
+      });
       expect(result.current.currentWallet).toBeNull();
       expect(result.current.currentAccount).toBeNull();
     });
@@ -281,11 +289,16 @@ describe('WalletStore', () => {
       const { result } = renderHook(() => useWalletStore());
 
       await act(async () => {
-        const account = await result.current.createAccount('wallet-1', 'New Account');
+        const account = await result.current.createAccount(
+          'wallet-1',
+          'New Account'
+        );
         expect(account).toEqual(mockAccount);
       });
 
-      const updatedWallet = result.current.wallets.find(w => w.id === 'wallet-1');
+      const updatedWallet = result.current.wallets.find(
+        w => w.id === 'wallet-1'
+      );
       expect(updatedWallet?.accounts).toContain(mockAccount);
     });
 
@@ -341,7 +354,10 @@ describe('WalletStore', () => {
       const { result } = renderHook(() => useWalletStore());
 
       await act(async () => {
-        const privateKey = await result.current.exportAccount('NTestAddress', 'password');
+        const privateKey = await result.current.exportAccount(
+          'NTestAddress',
+          'password'
+        );
         expect(privateKey).toBe('exported-private-key');
       });
 
@@ -394,7 +410,7 @@ describe('WalletStore', () => {
 
       useWalletStore.setState({
         balances: {
-          'NTestAddress': mockBalances,
+          NTestAddress: mockBalances,
         },
       });
 
@@ -475,7 +491,9 @@ describe('WalletStore', () => {
         await result.current.refreshTransactions('NTestAddress');
       });
 
-      expect(result.current.transactions['NTestAddress']).toEqual(mockTransactions);
+      expect(result.current.transactions['NTestAddress']).toEqual(
+        mockTransactions
+      );
     });
   });
 
@@ -566,4 +584,4 @@ describe('WalletStore', () => {
       expect(result.current.currentAccount).toEqual(mockAccount);
     });
   });
-}); 
+});

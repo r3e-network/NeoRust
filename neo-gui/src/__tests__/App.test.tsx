@@ -41,21 +41,23 @@ describe('App Component', () => {
       ...mockStore,
       loading: true,
     };
-    
+
     mockUseAppStore.mockReturnValue(loadingMockStore);
-    
+
     render(<App />);
-    
+
     expect(screen.getByText('Loading Neo N3 Wallet...')).toBeInTheDocument();
     expect(screen.getByText('N3')).toBeInTheDocument();
   });
 
   it('shows main app when loading is false', () => {
     render(<App />);
-    
+
     // Should not show loading screen
-    expect(screen.queryByText('Loading Neo N3 Wallet...')).not.toBeInTheDocument();
-    
+    expect(
+      screen.queryByText('Loading Neo N3 Wallet...')
+    ).not.toBeInTheDocument();
+
     // Should show main app content (look for the App class)
     const appElement = document.querySelector('.App');
     expect(appElement).toBeInTheDocument();
@@ -63,7 +65,7 @@ describe('App Component', () => {
 
   it('adds welcome notification on initialization', async () => {
     render(<App />);
-    
+
     await waitFor(() => {
       expect(mockStore.addNotification).toHaveBeenCalledWith({
         type: 'success',
@@ -81,11 +83,11 @@ describe('App Component', () => {
         throw new Error('Test error');
       }),
     };
-    
+
     mockUseAppStore.mockReturnValue(errorMockStore);
-    
+
     render(<App />);
-    
+
     await waitFor(() => {
       expect(errorMockStore.addNotification).toHaveBeenCalledWith({
         type: 'error',
@@ -97,9 +99,9 @@ describe('App Component', () => {
 
   it('renders router with correct routes', () => {
     render(<App />);
-    
+
     // App should be wrapped in a router and have route structure
     const appElement = document.querySelector('.App');
     expect(appElement).toBeInTheDocument();
   });
-}); 
+});

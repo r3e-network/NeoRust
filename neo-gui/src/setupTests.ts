@@ -4,9 +4,12 @@ import React from 'react';
 // Mock for framer-motion
 jest.mock('framer-motion', () => ({
   motion: {
-    div: ({ children, ...props }: any) => React.createElement('div', props, children),
-    span: ({ children, ...props }: any) => React.createElement('span', props, children),
-    button: ({ children, ...props }: any) => React.createElement('button', props, children),
+    div: ({ children, ...props }: any) =>
+      React.createElement('div', props, children),
+    span: ({ children, ...props }: any) =>
+      React.createElement('span', props, children),
+    button: ({ children, ...props }: any) =>
+      React.createElement('button', props, children),
   },
   AnimatePresence: ({ children }: any) => children,
 }));
@@ -68,4 +71,4 @@ global.console = {
   ...console,
   error: jest.fn(),
   warn: jest.fn(),
-}; 
+};

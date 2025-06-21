@@ -1,5 +1,9 @@
 import React from 'react';
-import { renderWithRouter as render, screen, fireEvent } from '../../__tests__/utils/test-utils';
+import {
+  renderWithRouter as render,
+  screen,
+  fireEvent,
+} from '../../__tests__/utils/test-utils';
 import Layout from '../Layout';
 import { useAppStore } from '../../stores/appStore';
 
@@ -31,7 +35,7 @@ describe('Layout Component', () => {
 
   it('renders layout with navigation', () => {
     render(<Layout />);
-    
+
     // Check if main navigation items are present (using queryAllByText for multiple instances)
     expect(screen.getAllByText('Dashboard')).toHaveLength(2); // Navigation link + heading
     expect(screen.getByText('Wallet')).toBeInTheDocument();
@@ -43,28 +47,28 @@ describe('Layout Component', () => {
 
   it('shows network status', () => {
     render(<Layout />);
-    
+
     // Check for the Neo Wallet title instead
     expect(screen.getByText('Neo Wallet')).toBeInTheDocument();
   });
 
   it('toggles sidebar when button is clicked', () => {
     render(<Layout />);
-    
+
     // Find buttons and verify they exist
     const toggleButtons = screen.getAllByRole('button');
     expect(toggleButtons.length).toBeGreaterThan(0);
-    
+
     // Clicking buttons should not throw errors
     fireEvent.click(toggleButtons[0]);
-    
+
     // Layout should still render properly after interaction (might have multiple instances now)
     expect(screen.getAllByText('Neo Wallet').length).toBeGreaterThan(0);
   });
 
   it('shows wallet connection status', () => {
     render(<Layout />);
-    
+
     // Layout should render without errors when wallet is disconnected
     expect(screen.getByText('Neo Wallet')).toBeInTheDocument();
   });
@@ -81,11 +85,11 @@ describe('Layout Component', () => {
         isDefault: true,
       },
     };
-    
+
     mockUseAppStore.mockReturnValue(connectedMockStore);
-    
+
     render(<Layout />);
-    
+
     // Layout should render successfully with connected wallet
     expect(screen.getByText('Neo Wallet')).toBeInTheDocument();
   });
@@ -95,11 +99,11 @@ describe('Layout Component', () => {
       ...mockStore,
       sidebarCollapsed: true,
     };
-    
+
     mockUseAppStore.mockReturnValue(collapsedMockStore);
-    
+
     render(<Layout />);
-    
+
     // Layout should render successfully even with collapsed sidebar
     expect(screen.getByText('Neo Wallet')).toBeInTheDocument();
     expect(screen.getByRole('navigation')).toBeInTheDocument();
@@ -119,13 +123,13 @@ describe('Layout Component', () => {
         },
       ],
     };
-    
+
     mockUseAppStore.mockReturnValue(notificationsMockStore);
-    
+
     render(<Layout />);
-    
+
     // Should show notification indicator
     const notificationBadge = screen.getByText('1');
     expect(notificationBadge).toBeInTheDocument();
   });
-}); 
+});

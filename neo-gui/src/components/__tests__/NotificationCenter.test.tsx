@@ -66,9 +66,11 @@ describe('NotificationCenter Component', () => {
 
   it('renders empty state when no notifications', () => {
     render(<NotificationCenter />);
-    
+
     // Should not render any notifications
-    expect(screen.queryByText('Transaction Successful')).not.toBeInTheDocument();
+    expect(
+      screen.queryByText('Transaction Successful')
+    ).not.toBeInTheDocument();
   });
 
   it('renders single notification correctly', () => {
@@ -78,9 +80,11 @@ describe('NotificationCenter Component', () => {
     });
 
     render(<NotificationCenter />);
-    
+
     expect(screen.getByText('Transaction Successful')).toBeInTheDocument();
-    expect(screen.getByText('Your transaction has been confirmed')).toBeInTheDocument();
+    expect(
+      screen.getByText('Your transaction has been confirmed')
+    ).toBeInTheDocument();
   });
 
   it('renders multiple notifications', () => {
@@ -90,7 +94,7 @@ describe('NotificationCenter Component', () => {
     });
 
     render(<NotificationCenter />);
-    
+
     expect(screen.getByText('Transaction Successful')).toBeInTheDocument();
     expect(screen.getByText('Connection Error')).toBeInTheDocument();
     expect(screen.getByText('Low Balance')).toBeInTheDocument();
@@ -109,7 +113,7 @@ describe('NotificationCenter Component', () => {
     });
 
     render(<NotificationCenter />);
-    
+
     // Should show "+3 more notifications" indicator
     expect(screen.getByText('+3 more notifications')).toBeInTheDocument();
   });
@@ -121,7 +125,7 @@ describe('NotificationCenter Component', () => {
     });
 
     render(<NotificationCenter />);
-    
+
     // Check for different notification types
     expect(screen.getByText('Transaction Successful')).toBeInTheDocument(); // success
     expect(screen.getByText('Connection Error')).toBeInTheDocument(); // error
@@ -136,10 +140,12 @@ describe('NotificationCenter Component', () => {
     });
 
     render(<NotificationCenter />);
-    
-    const notification = screen.getByText('Transaction Successful').closest('div');
+
+    const notification = screen
+      .getByText('Transaction Successful')
+      .closest('div');
     fireEvent.click(notification!);
-    
+
     expect(mockStore.markNotificationRead).toHaveBeenCalledWith('1');
   });
 
@@ -150,10 +156,10 @@ describe('NotificationCenter Component', () => {
     });
 
     render(<NotificationCenter />);
-    
+
     const dismissButton = screen.getByRole('button');
     fireEvent.click(dismissButton);
-    
+
     expect(mockStore.removeNotification).toHaveBeenCalledWith('1');
   });
 
@@ -164,10 +170,10 @@ describe('NotificationCenter Component', () => {
     });
 
     render(<NotificationCenter />);
-    
+
     const dismissButton = screen.getByRole('button');
     fireEvent.click(dismissButton);
-    
+
     // Should call removeNotification but not markNotificationRead
     expect(mockStore.removeNotification).toHaveBeenCalledWith('1');
     expect(mockStore.markNotificationRead).not.toHaveBeenCalled();
@@ -186,7 +192,7 @@ describe('NotificationCenter Component', () => {
     });
 
     render(<NotificationCenter />);
-    
+
     // Should display formatted time (could be in 12-hour or 24-hour format)
     expect(screen.getByText(/12:00|8:00/)).toBeInTheDocument();
   });
@@ -198,9 +204,11 @@ describe('NotificationCenter Component', () => {
     });
 
     const { container } = render(<NotificationCenter />);
-    
+
     // Unread notifications should have special styling (ring)
-    const notification = container.querySelector('.ring-2.ring-offset-2.ring-neo-500');
+    const notification = container.querySelector(
+      '.ring-2.ring-offset-2.ring-neo-500'
+    );
     expect(notification).toBeInTheDocument();
   });
 
@@ -211,9 +219,11 @@ describe('NotificationCenter Component', () => {
     });
 
     const { container } = render(<NotificationCenter />);
-    
+
     // Read notifications should not have ring styling
-    const notification = container.querySelector('.ring-2.ring-offset-2.ring-neo-500');
+    const notification = container.querySelector(
+      '.ring-2.ring-offset-2.ring-neo-500'
+    );
     expect(notification).not.toBeInTheDocument();
   });
 
@@ -226,11 +236,11 @@ describe('NotificationCenter Component', () => {
     });
 
     render(<NotificationCenter />);
-    
+
     // Verify that the progress bar is rendered with the correct animation props
     // In a real scenario, framer-motion would handle the auto-dismiss
     expect(screen.getByText('Transaction Successful')).toBeInTheDocument();
-    
+
     // The progress bar should be present (auto-dismiss is configured)
     const progressBar = document.querySelector('.absolute.bottom-0.left-0.h-1');
     expect(progressBar).toBeInTheDocument();
@@ -238,17 +248,17 @@ describe('NotificationCenter Component', () => {
 
   it('does not auto-dismiss error notifications', () => {
     jest.useFakeTimers();
-    
+
     mockUseAppStore.mockReturnValue({
       ...mockStore,
       notifications: [mockNotifications[1]], // error notification
     });
 
     render(<NotificationCenter />);
-    
+
     // Fast-forward 10 seconds
     jest.advanceTimersByTime(10000);
-    
+
     // Error notifications should not auto-dismiss
     expect(mockStore.removeNotification).not.toHaveBeenCalled();
   });
@@ -260,16 +270,16 @@ describe('NotificationCenter Component', () => {
     });
 
     const { container } = render(<NotificationCenter />);
-    
+
     // Should have different colored icons
     const greenIcons = container.querySelectorAll('.text-green-400');
     const redIcons = container.querySelectorAll('.text-red-400');
     const yellowIcons = container.querySelectorAll('.text-yellow-400');
     const blueIcons = container.querySelectorAll('.text-blue-400');
-    
+
     expect(greenIcons.length).toBeGreaterThan(0); // success
     expect(redIcons.length).toBeGreaterThan(0); // error
     expect(yellowIcons.length).toBeGreaterThan(0); // warning
     expect(blueIcons.length).toBeGreaterThan(0); // info
   });
-}); 
+});

@@ -28,7 +28,7 @@ describe('AppStore', () => {
   describe('Initial State', () => {
     it('should have correct initial state', () => {
       const { result } = renderHook(() => useAppStore());
-      
+
       expect(result.current.wallets).toEqual([]);
       expect(result.current.currentWallet).toBeNull();
       expect(result.current.walletConnected).toBe(false);
@@ -104,7 +104,7 @@ describe('AppStore', () => {
       const newBalance = {
         neo: '200',
         gas: '2000.5',
-        tokens: { 'token1': '100' },
+        tokens: { token1: '100' },
       };
 
       // First add a wallet
@@ -179,7 +179,7 @@ describe('AppStore', () => {
       });
 
       expect(result.current.notifications).toHaveLength(1);
-      
+
       const notification = result.current.notifications[0];
       expect(notification.type).toBe('success');
       expect(notification.title).toBe('Test Notification');
@@ -232,7 +232,10 @@ describe('AppStore', () => {
       // Add multiple notifications
       act(() => {
         result.current.addNotification(mockNotificationData);
-        result.current.addNotification({ ...mockNotificationData, title: 'Second' });
+        result.current.addNotification({
+          ...mockNotificationData,
+          title: 'Second',
+        });
       });
 
       expect(result.current.notifications).toHaveLength(2);
@@ -319,4 +322,4 @@ describe('AppStore', () => {
       expect(result.current.language).toBe('zh');
     });
   });
-}); 
+});

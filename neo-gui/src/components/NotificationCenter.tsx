@@ -31,7 +31,8 @@ const iconColorMap = {
 };
 
 export default function NotificationCenter() {
-  const { notifications, removeNotification, markNotificationRead } = useAppStore();
+  const { notifications, removeNotification, markNotificationRead } =
+    useAppStore();
 
   const handleDismiss = (id: string) => {
     removeNotification(id);
@@ -42,9 +43,9 @@ export default function NotificationCenter() {
   };
 
   return (
-    <div className="fixed top-4 right-4 z-50 space-y-2 max-w-sm">
+    <div className='fixed top-4 right-4 z-50 space-y-2 max-w-sm'>
       <AnimatePresence>
-        {notifications.slice(0, 5).map((notification) => {
+        {notifications.slice(0, 5).map(notification => {
           const Icon = iconMap[notification.type];
           const colorClass = colorMap[notification.type];
           const iconColorClass = iconColorMap[notification.type];
@@ -61,26 +62,28 @@ export default function NotificationCenter() {
               }`}
               onClick={() => handleClick(notification.id)}
             >
-              <div className="flex items-start">
-                <div className="flex-shrink-0">
+              <div className='flex items-start'>
+                <div className='flex-shrink-0'>
                   <Icon className={`h-5 w-5 ${iconColorClass}`} />
                 </div>
-                <div className="ml-3 flex-1">
-                  <h3 className="text-sm font-medium">{notification.title}</h3>
-                  <p className="mt-1 text-sm opacity-90">{notification.message}</p>
-                  <p className="mt-2 text-xs opacity-70">
+                <div className='ml-3 flex-1'>
+                  <h3 className='text-sm font-medium'>{notification.title}</h3>
+                  <p className='mt-1 text-sm opacity-90'>
+                    {notification.message}
+                  </p>
+                  <p className='mt-2 text-xs opacity-70'>
                     {new Date(notification.timestamp).toLocaleTimeString()}
                   </p>
                 </div>
-                <div className="ml-4 flex-shrink-0">
+                <div className='ml-4 flex-shrink-0'>
                   <button
-                    onClick={(e) => {
+                    onClick={e => {
                       e.stopPropagation();
                       handleDismiss(notification.id);
                     }}
-                    className="inline-flex rounded-md p-1.5 hover:bg-black hover:bg-opacity-10 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-neo-500"
+                    className='inline-flex rounded-md p-1.5 hover:bg-black hover:bg-opacity-10 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-neo-500'
                   >
-                    <XMarkIcon className="h-4 w-4" />
+                    <XMarkIcon className='h-4 w-4' />
                   </button>
                 </div>
               </div>
@@ -88,7 +91,7 @@ export default function NotificationCenter() {
               {/* Progress bar for auto-dismiss */}
               {notification.type !== 'error' && (
                 <motion.div
-                  className="absolute bottom-0 left-0 h-1 bg-current opacity-30 rounded-b-lg"
+                  className='absolute bottom-0 left-0 h-1 bg-current opacity-30 rounded-b-lg'
                   initial={{ width: '100%' }}
                   animate={{ width: '0%' }}
                   transition={{ duration: 5, ease: 'linear' }}
@@ -105,13 +108,13 @@ export default function NotificationCenter() {
         <motion.div
           initial={{ opacity: 0, scale: 0.8 }}
           animate={{ opacity: 1, scale: 1 }}
-          className="text-center"
+          className='text-center'
         >
-          <div className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
+          <div className='inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-600'>
             +{notifications.length - 5} more notifications
           </div>
         </motion.div>
       )}
     </div>
   );
-} 
+}

@@ -4,30 +4,22 @@ import { BrowserRouter } from 'react-router-dom';
 
 // Custom render function that includes providers
 const AllTheProviders = ({ children }: { children: React.ReactNode }) => {
-  return (
-    <>
-      {children}
-    </>
-  );
+  return <>{children}</>;
 };
 
 // Render with router for components that need routing
 const WithRouter = ({ children }: { children: React.ReactNode }) => {
-  return (
-    <BrowserRouter>
-      {children}
-    </BrowserRouter>
-  );
+  return <BrowserRouter>{children}</BrowserRouter>;
 };
 
 const customRender = (
   ui: ReactElement,
-  options?: Omit<RenderOptions, 'wrapper'>,
+  options?: Omit<RenderOptions, 'wrapper'>
 ) => render(ui, { wrapper: AllTheProviders, ...options });
 
 const renderWithRouter = (
   ui: ReactElement,
-  options?: Omit<RenderOptions, 'wrapper'>,
+  options?: Omit<RenderOptions, 'wrapper'>
 ) => render(ui, { wrapper: WithRouter, ...options });
 
 export * from '@testing-library/react';
@@ -71,4 +63,4 @@ export const testIds = {
   navigation: 'navigation',
   notificationCenter: 'notification-center',
   loadingScreen: 'loading-screen',
-} as const; 
+} as const;

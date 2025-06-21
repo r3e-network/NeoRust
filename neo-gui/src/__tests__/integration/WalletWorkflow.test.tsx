@@ -25,28 +25,33 @@ describe('Wallet Workflow Integration Tests', () => {
       currentWallet: null,
       walletConnected: false,
       networkType: 'testnet' as const,
-      
+
       // Store actions
-      addNotification: jest.fn((notification) => {
-        mockStore.notifications = [...mockStore.notifications, {
-          id: Date.now().toString(),
-          timestamp: Date.now(),
-          read: false,
-          ...notification,
-        }];
+      addNotification: jest.fn(notification => {
+        mockStore.notifications = [
+          ...mockStore.notifications,
+          {
+            id: Date.now().toString(),
+            timestamp: Date.now(),
+            read: false,
+            ...notification,
+          },
+        ];
       }),
-      removeNotification: jest.fn((id) => {
-        mockStore.notifications = mockStore.notifications.filter((n: any) => n.id !== id);
+      removeNotification: jest.fn(id => {
+        mockStore.notifications = mockStore.notifications.filter(
+          (n: any) => n.id !== id
+        );
       }),
-      markNotificationRead: jest.fn((id) => {
-        mockStore.notifications = mockStore.notifications.map((n: any) => 
+      markNotificationRead: jest.fn(id => {
+        mockStore.notifications = mockStore.notifications.map((n: any) =>
           n.id === id ? { ...n, read: true } : n
         );
       }),
-      setSidebarCollapsed: jest.fn((collapsed) => {
+      setSidebarCollapsed: jest.fn(collapsed => {
         mockStore.sidebarCollapsed = collapsed;
       }),
-      addWallet: jest.fn((wallet) => {
+      addWallet: jest.fn(wallet => {
         mockStore.currentWallet = wallet;
         mockStore.walletConnected = true;
       }),
@@ -59,7 +64,7 @@ describe('Wallet Workflow Integration Tests', () => {
       },
     };
 
-    mockUseAppStore.mockImplementation((selector) => {
+    mockUseAppStore.mockImplementation(selector => {
       if (typeof selector === 'function') {
         return selector(mockStore);
       }
@@ -88,9 +93,9 @@ describe('Wallet Workflow Integration Tests', () => {
 
     it('should display correct content for wallet page without wallet', () => {
       render(<App />);
-      
+
       fireEvent.click(screen.getByText('Wallet'));
-      
+
       expect(screen.getByText('No wallet selected')).toBeInTheDocument();
       expect(screen.getByText('Create Wallet')).toBeInTheDocument();
       expect(screen.getByText('Import Wallet')).toBeInTheDocument();
@@ -112,7 +117,9 @@ describe('Wallet Workflow Integration Tests', () => {
 
       // Should show main app
       expect(screen.getByText('Neo Wallet')).toBeInTheDocument();
-      expect(screen.queryByText('Loading Neo N3 Wallet...')).not.toBeInTheDocument();
+      expect(
+        screen.queryByText('Loading Neo N3 Wallet...')
+      ).not.toBeInTheDocument();
     });
 
     it('should display wallet information when wallet exists', () => {
@@ -153,7 +160,9 @@ describe('Wallet Workflow Integration Tests', () => {
       // Notifications might not be visible by default, just verify the store has them
       // The store might add additional notifications, so check for at least our test notification
       expect(mockStore.notifications.length).toBeGreaterThanOrEqual(1);
-      expect(mockStore.notifications.some((n: any) => n.title === 'Success')).toBe(true);
+      expect(
+        mockStore.notifications.some((n: any) => n.title === 'Success')
+      ).toBe(true);
     });
 
     it('should have notification functions available', () => {
@@ -180,16 +189,16 @@ describe('Wallet Workflow Integration Tests', () => {
 
     it('should handle button interactions correctly', () => {
       render(<App />);
-      
+
       fireEvent.click(screen.getByText('Wallet'));
-      
+
       const createButton = screen.getByText('Create Wallet');
       const importButton = screen.getByText('Import Wallet');
-      
+
       // Test button clicks don't cause errors
       fireEvent.click(createButton);
       fireEvent.click(importButton);
-      
+
       expect(createButton).toBeInTheDocument();
       expect(importButton).toBeInTheDocument();
     });
@@ -225,4 +234,4 @@ describe('Wallet Workflow Integration Tests', () => {
       expect(screen.getByText('Test Wallet')).toBeInTheDocument();
     });
   });
-}); 
+});

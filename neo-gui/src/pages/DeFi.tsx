@@ -33,7 +33,9 @@ interface Token {
 
 export default function DeFi() {
   const { currentWallet, addNotification } = useAppStore();
-  const [activeTab, setActiveTab] = useState<'swap' | 'liquidity' | 'stake'>('swap');
+  const [activeTab, setActiveTab] = useState<'swap' | 'liquidity' | 'stake'>(
+    'swap'
+  );
   const [pools, setPools] = useState<Pool[]>([]);
   const [tokens, setTokens] = useState<Token[]>([]);
   const [loading, setLoading] = useState(false);
@@ -50,7 +52,11 @@ export default function DeFi() {
 
     // Mock calculation - in real implementation, this would call the DEX contract
     const rate = toToken.price / fromToken.price;
-    const calculatedAmount = (parseFloat(fromAmount) * rate * (1 - slippage / 100)).toFixed(8);
+    const calculatedAmount = (
+      parseFloat(fromAmount) *
+      rate *
+      (1 - slippage / 100)
+    ).toFixed(8);
     setToAmount(calculatedAmount);
   }, [fromToken, toToken, fromAmount, slippage]);
 
@@ -73,7 +79,7 @@ export default function DeFi() {
         symbol: 'NEO',
         name: 'Neo Token',
         decimals: 0,
-        price: 25.50,
+        price: 25.5,
         balance: '45.5',
       },
       {
@@ -89,7 +95,7 @@ export default function DeFi() {
         symbol: 'FLUND',
         name: 'Flamingo USD',
         decimals: 8,
-        price: 1.00,
+        price: 1.0,
         balance: '1000.00',
       },
     ]);
@@ -162,7 +168,11 @@ export default function DeFi() {
     }
   };
 
-  const handleAddLiquidity = async (poolId: string, amountA: string, amountB: string) => {
+  const handleAddLiquidity = async (
+    poolId: string,
+    amountA: string,
+    amountB: string
+  ) => {
     if (!currentWallet) return;
 
     setLoading(true);
@@ -198,11 +208,13 @@ export default function DeFi() {
 
   if (!currentWallet) {
     return (
-      <div className="flex items-center justify-center h-96">
-        <div className="text-center">
-          <CurrencyDollarIcon className="mx-auto h-12 w-12 text-gray-400" />
-          <h3 className="mt-2 text-sm font-medium text-gray-900">Connect Wallet</h3>
-          <p className="mt-1 text-sm text-gray-500">
+      <div className='flex items-center justify-center h-96'>
+        <div className='text-center'>
+          <CurrencyDollarIcon className='mx-auto h-12 w-12 text-gray-400' />
+          <h3 className='mt-2 text-sm font-medium text-gray-900'>
+            Connect Wallet
+          </h3>
+          <p className='mt-1 text-sm text-gray-500'>
             Connect your wallet to access DeFi features.
           </p>
         </div>
@@ -211,27 +223,27 @@ export default function DeFi() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className='space-y-6'>
       {/* Header */}
-      <div className="md:flex md:items-center md:justify-between">
-        <div className="flex-1 min-w-0">
-          <h2 className="text-2xl font-bold leading-7 text-gray-900 sm:text-3xl sm:truncate">
+      <div className='md:flex md:items-center md:justify-between'>
+        <div className='flex-1 min-w-0'>
+          <h2 className='text-2xl font-bold leading-7 text-gray-900 sm:text-3xl sm:truncate'>
             DeFi Hub
           </h2>
-          <p className="mt-1 text-sm text-gray-500">
+          <p className='mt-1 text-sm text-gray-500'>
             Swap tokens, provide liquidity, and earn rewards on Neo blockchain.
           </p>
         </div>
       </div>
 
       {/* Tab Navigation */}
-      <div className="border-b border-gray-200">
-        <nav className="-mb-px flex space-x-8">
+      <div className='border-b border-gray-200'>
+        <nav className='-mb-px flex space-x-8'>
           {[
             { id: 'swap', name: 'Swap', icon: ArrowsRightLeftIcon },
             { id: 'liquidity', name: 'Liquidity', icon: PlusIcon },
             { id: 'stake', name: 'Stake', icon: TrophyIcon },
-          ].map((tab) => (
+          ].map(tab => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id as any)}
@@ -241,7 +253,7 @@ export default function DeFi() {
                   : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
               } whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm flex items-center`}
             >
-              <tab.icon className="h-5 w-5 mr-2" />
+              <tab.icon className='h-5 w-5 mr-2' />
               {tab.name}
             </button>
           ))}
@@ -250,49 +262,57 @@ export default function DeFi() {
 
       {/* Swap Tab */}
       {activeTab === 'swap' && (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2">
+        <div className='grid grid-cols-1 lg:grid-cols-3 gap-6'>
+          <div className='lg:col-span-2'>
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              className="bg-white shadow rounded-lg p-6"
+              className='bg-white shadow rounded-lg p-6'
             >
-              <h3 className="text-lg font-medium text-gray-900 mb-6">Swap Tokens</h3>
-              
-              <div className="space-y-4">
+              <h3 className='text-lg font-medium text-gray-900 mb-6'>
+                Swap Tokens
+              </h3>
+
+              <div className='space-y-4'>
                 {/* From Token */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">From</label>
-                  <div className="flex space-x-3">
+                  <label className='block text-sm font-medium text-gray-700 mb-2'>
+                    From
+                  </label>
+                  <div className='flex space-x-3'>
                     <select
                       value={fromToken?.hash || ''}
-                      onChange={(e) => setFromToken(tokens.find(t => t.hash === e.target.value) || null)}
-                      className="flex-1 border-gray-300 rounded-md shadow-sm focus:ring-green-500 focus:border-green-500"
+                      onChange={e =>
+                        setFromToken(
+                          tokens.find(t => t.hash === e.target.value) || null
+                        )
+                      }
+                      className='flex-1 border-gray-300 rounded-md shadow-sm focus:ring-green-500 focus:border-green-500'
                     >
-                      <option value="">Select token</option>
-                      {tokens.map((token) => (
+                      <option value=''>Select token</option>
+                      {tokens.map(token => (
                         <option key={token.hash} value={token.hash}>
                           {token.symbol} - {token.name}
                         </option>
                       ))}
                     </select>
                     <input
-                      type="number"
+                      type='number'
                       value={fromAmount}
-                      onChange={(e) => setFromAmount(e.target.value)}
-                      placeholder="0.0"
-                      className="w-32 border-gray-300 rounded-md shadow-sm focus:ring-green-500 focus:border-green-500"
+                      onChange={e => setFromAmount(e.target.value)}
+                      placeholder='0.0'
+                      className='w-32 border-gray-300 rounded-md shadow-sm focus:ring-green-500 focus:border-green-500'
                     />
                   </div>
                   {fromToken && (
-                    <p className="mt-1 text-sm text-gray-500">
+                    <p className='mt-1 text-sm text-gray-500'>
                       Balance: {fromToken.balance} {fromToken.symbol}
                     </p>
                   )}
                 </div>
 
                 {/* Swap Direction */}
-                <div className="flex justify-center">
+                <div className='flex justify-center'>
                   <button
                     onClick={() => {
                       const temp = fromToken;
@@ -301,38 +321,44 @@ export default function DeFi() {
                       setFromAmount(toAmount);
                       setToAmount(fromAmount);
                     }}
-                    className="p-2 border border-gray-300 rounded-full hover:bg-gray-50"
+                    className='p-2 border border-gray-300 rounded-full hover:bg-gray-50'
                   >
-                    <ArrowsRightLeftIcon className="h-5 w-5 text-gray-400" />
+                    <ArrowsRightLeftIcon className='h-5 w-5 text-gray-400' />
                   </button>
                 </div>
 
                 {/* To Token */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">To</label>
-                  <div className="flex space-x-3">
+                  <label className='block text-sm font-medium text-gray-700 mb-2'>
+                    To
+                  </label>
+                  <div className='flex space-x-3'>
                     <select
                       value={toToken?.hash || ''}
-                      onChange={(e) => setToToken(tokens.find(t => t.hash === e.target.value) || null)}
-                      className="flex-1 border-gray-300 rounded-md shadow-sm focus:ring-green-500 focus:border-green-500"
+                      onChange={e =>
+                        setToToken(
+                          tokens.find(t => t.hash === e.target.value) || null
+                        )
+                      }
+                      className='flex-1 border-gray-300 rounded-md shadow-sm focus:ring-green-500 focus:border-green-500'
                     >
-                      <option value="">Select token</option>
-                      {tokens.map((token) => (
+                      <option value=''>Select token</option>
+                      {tokens.map(token => (
                         <option key={token.hash} value={token.hash}>
                           {token.symbol} - {token.name}
                         </option>
                       ))}
                     </select>
                     <input
-                      type="number"
+                      type='number'
                       value={toAmount}
                       readOnly
-                      placeholder="0.0"
-                      className="w-32 border-gray-300 rounded-md shadow-sm bg-gray-50"
+                      placeholder='0.0'
+                      className='w-32 border-gray-300 rounded-md shadow-sm bg-gray-50'
                     />
                   </div>
                   {toToken && (
-                    <p className="mt-1 text-sm text-gray-500">
+                    <p className='mt-1 text-sm text-gray-500'>
                       Balance: {toToken.balance} {toToken.symbol}
                     </p>
                   )}
@@ -340,17 +366,17 @@ export default function DeFi() {
 
                 {/* Slippage */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className='block text-sm font-medium text-gray-700 mb-2'>
                     Slippage Tolerance: {slippage}%
                   </label>
                   <input
-                    type="range"
-                    min="0.1"
-                    max="5"
-                    step="0.1"
+                    type='range'
+                    min='0.1'
+                    max='5'
+                    step='0.1'
                     value={slippage}
-                    onChange={(e) => setSlippage(parseFloat(e.target.value))}
-                    className="w-full"
+                    onChange={e => setSlippage(parseFloat(e.target.value))}
+                    className='w-full'
                   />
                 </div>
 
@@ -358,7 +384,7 @@ export default function DeFi() {
                 <button
                   onClick={handleSwap}
                   disabled={!fromToken || !toToken || !fromAmount || loading}
-                  className="w-full bg-green-600 text-white py-3 px-4 rounded-md hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className='w-full bg-green-600 text-white py-3 px-4 rounded-md hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed'
                 >
                   {loading ? 'Swapping...' : 'Swap Tokens'}
                 </button>
@@ -372,31 +398,40 @@ export default function DeFi() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.1 }}
-              className="bg-white shadow rounded-lg p-6"
+              className='bg-white shadow rounded-lg p-6'
             >
-              <h4 className="text-lg font-medium text-gray-900 mb-4">Swap Details</h4>
-              
+              <h4 className='text-lg font-medium text-gray-900 mb-4'>
+                Swap Details
+              </h4>
+
               {fromToken && toToken && fromAmount && toAmount && (
-                <div className="space-y-3">
-                  <div className="flex justify-between">
-                    <span className="text-sm text-gray-500">Exchange Rate</span>
-                    <span className="text-sm font-medium">
-                      1 {fromToken.symbol} = {(toToken.price / fromToken.price).toFixed(6)} {toToken.symbol}
+                <div className='space-y-3'>
+                  <div className='flex justify-between'>
+                    <span className='text-sm text-gray-500'>Exchange Rate</span>
+                    <span className='text-sm font-medium'>
+                      1 {fromToken.symbol} ={' '}
+                      {(toToken.price / fromToken.price).toFixed(6)}{' '}
+                      {toToken.symbol}
                     </span>
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-sm text-gray-500">Price Impact</span>
-                    <span className="text-sm font-medium text-green-600">{'<0.01%'}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-sm text-gray-500">Minimum Received</span>
-                    <span className="text-sm font-medium">
-                      {(parseFloat(toAmount) * (1 - slippage / 100)).toFixed(6)} {toToken.symbol}
+                  <div className='flex justify-between'>
+                    <span className='text-sm text-gray-500'>Price Impact</span>
+                    <span className='text-sm font-medium text-green-600'>
+                      {'<0.01%'}
                     </span>
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-sm text-gray-500">Network Fee</span>
-                    <span className="text-sm font-medium">~0.001 GAS</span>
+                  <div className='flex justify-between'>
+                    <span className='text-sm text-gray-500'>
+                      Minimum Received
+                    </span>
+                    <span className='text-sm font-medium'>
+                      {(parseFloat(toAmount) * (1 - slippage / 100)).toFixed(6)}{' '}
+                      {toToken.symbol}
+                    </span>
+                  </div>
+                  <div className='flex justify-between'>
+                    <span className='text-sm text-gray-500'>Network Fee</span>
+                    <span className='text-sm font-medium'>~0.001 GAS</span>
                   </div>
                 </div>
               )}
@@ -410,51 +445,58 @@ export default function DeFi() {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-white shadow rounded-lg"
+          className='bg-white shadow rounded-lg'
         >
-          <div className="px-6 py-4 border-b border-gray-200">
-            <h3 className="text-lg font-medium text-gray-900">Liquidity Pools</h3>
+          <div className='px-6 py-4 border-b border-gray-200'>
+            <h3 className='text-lg font-medium text-gray-900'>
+              Liquidity Pools
+            </h3>
           </div>
-          
-          <div className="divide-y divide-gray-200">
-            {pools.map((pool) => (
-              <div key={pool.id} className="px-6 py-4">
-                <div className="flex items-center justify-between">
+
+          <div className='divide-y divide-gray-200'>
+            {pools.map(pool => (
+              <div key={pool.id} className='px-6 py-4'>
+                <div className='flex items-center justify-between'>
                   <div>
-                    <h4 className="text-lg font-medium text-gray-900">
+                    <h4 className='text-lg font-medium text-gray-900'>
                       {pool.tokenA}/{pool.tokenB}
                     </h4>
-                    <div className="mt-1 text-sm text-gray-500">
-                      TVL: ${parseFloat(pool.totalLiquidity).toLocaleString()} • APR: {pool.apr}%
+                    <div className='mt-1 text-sm text-gray-500'>
+                      TVL: ${parseFloat(pool.totalLiquidity).toLocaleString()} •
+                      APR: {pool.apr}%
                     </div>
                   </div>
-                  <div className="flex space-x-2">
+                  <div className='flex space-x-2'>
                     <button
                       onClick={() => handleAddLiquidity(pool.id, '10', '50')}
-                      className="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-green-600 hover:bg-green-700"
+                      className='inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-green-600 hover:bg-green-700'
                     >
-                      <PlusIcon className="h-4 w-4 mr-1" />
+                      <PlusIcon className='h-4 w-4 mr-1' />
                       Add
                     </button>
-                    <button className="inline-flex items-center px-3 py-2 border border-gray-300 text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
-                      <MinusIcon className="h-4 w-4 mr-1" />
+                    <button className='inline-flex items-center px-3 py-2 border border-gray-300 text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50'>
+                      <MinusIcon className='h-4 w-4 mr-1' />
                       Remove
                     </button>
                   </div>
                 </div>
-                
-                <div className="mt-4 grid grid-cols-3 gap-4 text-sm">
+
+                <div className='mt-4 grid grid-cols-3 gap-4 text-sm'>
                   <div>
-                    <span className="text-gray-500">24h Volume</span>
-                    <div className="font-medium">${parseFloat(pool.volume24h).toLocaleString()}</div>
+                    <span className='text-gray-500'>24h Volume</span>
+                    <div className='font-medium'>
+                      ${parseFloat(pool.volume24h).toLocaleString()}
+                    </div>
                   </div>
                   <div>
-                    <span className="text-gray-500">24h Fees</span>
-                    <div className="font-medium">${parseFloat(pool.fees24h).toLocaleString()}</div>
+                    <span className='text-gray-500'>24h Fees</span>
+                    <div className='font-medium'>
+                      ${parseFloat(pool.fees24h).toLocaleString()}
+                    </div>
                   </div>
                   <div>
-                    <span className="text-gray-500">Your Share</span>
-                    <div className="font-medium">0%</div>
+                    <span className='text-gray-500'>Your Share</span>
+                    <div className='font-medium'>0%</div>
                   </div>
                 </div>
               </div>
@@ -468,14 +510,18 @@ export default function DeFi() {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-white shadow rounded-lg p-6"
+          className='bg-white shadow rounded-lg p-6'
         >
-          <h3 className="text-lg font-medium text-gray-900 mb-6">Staking Pools</h3>
-          
-          <div className="text-center py-12">
-            <TrophyIcon className="mx-auto h-12 w-12 text-gray-400" />
-            <h3 className="mt-2 text-sm font-medium text-gray-900">Coming Soon</h3>
-            <p className="mt-1 text-sm text-gray-500">
+          <h3 className='text-lg font-medium text-gray-900 mb-6'>
+            Staking Pools
+          </h3>
+
+          <div className='text-center py-12'>
+            <TrophyIcon className='mx-auto h-12 w-12 text-gray-400' />
+            <h3 className='mt-2 text-sm font-medium text-gray-900'>
+              Coming Soon
+            </h3>
+            <p className='mt-1 text-sm text-gray-500'>
               Staking features will be available in the next update.
             </p>
           </div>

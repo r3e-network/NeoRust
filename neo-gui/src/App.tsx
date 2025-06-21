@@ -55,13 +55,13 @@ const App: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-center">
-          <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-neo-400 to-neo-600 rounded-2xl flex items-center justify-center">
-            <span className="text-white font-bold text-xl">N3</span>
+      <div className='min-h-screen flex items-center justify-center bg-gray-50'>
+        <div className='text-center'>
+          <div className='w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-neo-400 to-neo-600 rounded-2xl flex items-center justify-center'>
+            <span className='text-white font-bold text-xl'>N3</span>
           </div>
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-neo-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading Neo N3 Wallet...</p>
+          <div className='animate-spin rounded-full h-8 w-8 border-b-2 border-neo-600 mx-auto mb-4'></div>
+          <p className='text-gray-600'>Loading Neo N3 Wallet...</p>
         </div>
       </div>
     );
@@ -69,15 +69,15 @@ const App: React.FC = () => {
 
   return (
     <Router>
-      <div className="App min-h-screen bg-gray-50">
+      <div className='App min-h-screen bg-gray-50'>
         <Routes>
-          <Route path="/" element={<Layout />}>
+          <Route path='/' element={<Layout />}>
             <Route index element={<Dashboard />} />
-            <Route path="wallet" element={<Wallet />} />
-            <Route path="nft" element={<NFT />} />
-            <Route path="tools" element={<Tools />} />
-            <Route path="analytics" element={<Analytics />} />
-            <Route path="settings" element={<Settings />} />
+            <Route path='wallet' element={<Wallet />} />
+            <Route path='nft' element={<NFT />} />
+            <Route path='tools' element={<Tools />} />
+            <Route path='analytics' element={<Analytics />} />
+            <Route path='settings' element={<Settings />} />
           </Route>
         </Routes>
       </div>
@@ -85,4 +85,4 @@ const App: React.FC = () => {
   );
 };
 
-export default App; 
+export default App;

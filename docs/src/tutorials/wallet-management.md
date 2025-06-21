@@ -153,7 +153,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 ## Advanced Message Signing
 
-For detailed information about message signing capabilities, including use cases and security considerations, please refer to the [Message Signing documentation](../../wallets/message-signing.md).
+For detailed information about message signing capabilities, including use cases and security considerations, see the message signing examples in the examples directory.
 
 ## Best Practices
 

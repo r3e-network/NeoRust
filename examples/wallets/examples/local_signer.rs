@@ -1,4 +1,9 @@
-use neo3::prelude::*;
+use neo3::{
+	neo_builder::{AccountSigner, ScriptBuilder, TransactionBuilder},
+	neo_clients::{APITrait, HttpProvider, RpcClient},
+	neo_protocol::{Account, AccountTrait},
+	prelude::*,
+};
 use std::error::Error;
 
 /// This example demonstrates how to use a local signer to sign messages in Neo N3.

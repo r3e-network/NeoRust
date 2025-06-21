@@ -2,38 +2,34 @@
 
 This section contains various examples demonstrating how to use the NeoRust SDK for different Neo blockchain operations.
 
-## Basic Examples
+## Available Example Categories
 
-- [Connecting to a Neo Node](basic-connection.md): How to establish connections to Neo N3 nodes
-- [Account Creation](account-creation.md): Creating and managing Neo accounts
+### Basic Operations
+Examples demonstrating fundamental Neo N3 operations:
+- **Network Connection**: Basic connectivity to Neo N3 TestNet/MainNet
+- **Account Management**: Creating and managing Neo accounts
+- **Balance Checking**: Querying NEO and GAS balances
+- **Transaction Creation**: Building and sending basic transactions
 
-## Wallet Management
+### Wallet Management
+Examples for wallet operations:
+- **Wallet Creation**: Creating new Neo wallets with NEP-6 format
+- **Account Import/Export**: Working with WIF and mnemonic phrases
+- **Message Signing**: Cryptographic message signing and verification
+- **Multi-signature Wallets**: Creating and managing multi-sig accounts
 
-- [Wallet Creation](wallet-creation.md): Creating and managing Neo wallets
-- [Message Signing](message-signing.md): Signing messages with Neo wallets
+### Smart Contracts
+Examples for smart contract interaction:
+- **Contract Invocation**: Calling methods on deployed contracts
+- **NEP-17 Tokens**: Working with fungible tokens
+- **NEP-11 NFTs**: Non-fungible token operations
+- **Famous Contracts**: Interacting with popular Neo ecosystem contracts
 
-## Transactions
-
-- [Simple Transfer](simple-transfer.md): Transferring NEO and GAS between accounts
-- [Multi-signature Transactions](multi-signature.md): Creating and signing multi-signature transactions
-
-## Smart Contracts
-
-- [Contract Invocation](contract-invocation.md): Calling smart contract methods
-- [Contract Deployment](contract-deployment.md): Deploying new smart contracts
-- [NEP-17 Tokens](nep17-tokens.md): Working with NEP-17 token standard
-
-## Neo X Integration
-
-- [Neo X Connection](neo-x-connection.md): Connecting to Neo X EVM-compatible chain
-- [Bridge Operations](bridge-operations.md): Transferring assets between Neo N3 and Neo X
-- [EVM Contracts](evm-contracts.md): Working with EVM contracts on Neo X
-
-## Advanced
-
-- [Oracle Usage](oracle-usage.md): Interacting with Neo Oracle service
-- [Custom Signatures](custom-signatures.md): Implementing custom signature schemes
-- [RPC Extensions](rpc-extensions.md): Using extended RPC capabilities
+### Advanced Features
+- **Neo X Integration**: Cross-chain operations with Neo X EVM chain
+- **NeoFS Operations**: Decentralized file storage operations
+- **Oracle Integration**: Using Neo's Oracle service
+- **Cryptographic Operations**: Advanced key management and signing
 
 ## Running the Examples
 

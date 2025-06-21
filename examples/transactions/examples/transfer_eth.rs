@@ -1,12 +1,16 @@
-use neo3::prelude::*;
-
 /// Neo N3 GAS Transfer Example
 ///
-/// This example demonstrates how to perform a basic GAS (utility token) transfer
-/// on the Neo N3 blockchain. It shows the complete process from creating a transaction
-/// to monitoring the results.
+/// This example demonstrates how to understand and prepare GAS (utility token) transfers
+/// on the Neo N3 blockchain. It shows the concepts and structure without external dependencies.
+use neo3::{
+	neo_clients::{HttpProvider, RpcClient},
+	neo_types::ScriptHash,
+	prelude::*,
+};
+use std::str::FromStr;
+
 #[tokio::main]
-async fn main() -> eyre::Result<()> {
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
 	println!("⛽ Neo N3 GAS Transfer Example");
 	println!("=============================");
 
@@ -19,153 +23,163 @@ async fn main() -> eyre::Result<()> {
 	// 2. Set up transfer parameters
 	println!("\n2. Setting up transfer parameters...");
 
-	// Demo addresses (in practice, you'd use real addresses from your wallet)
-	let from_address = ScriptHash::from_address("NbTiM6h8r99kpRtb428XcsUk1TzKed2gTc")?;
-	let to_address = ScriptHash::from_address("NZNos2WqTbu5oCgyfss9kUJgBXJqhuYAaj")?;
+	// Example addresses (educational purposes)
+	let from_address = "NbTiM6h8r99kpRtb428XcsUk1TzKed2gTc"; // Genesis address
+	let to_address = "NfNkevdh2MZ7uutXM6W8s5uD7XhP4AkrFs"; // Another test address
 	let transfer_amount = 50_000_000u64; // 0.5 GAS (8 decimals)
 
-	println!("   📤 From: {}", from_address.to_address());
-	println!("   📥 To: {}", to_address.to_address());
+	println!("   📤 From: {}", from_address);
+	println!("   📥 To: {}", to_address);
 	println!("   💰 Amount: {} GAS", transfer_amount as f64 / 100_000_000.0);
 
-	// 3. Check balances before transfer
-	println!("\n3. Checking balances before transfer...");
+	// 3. Understanding GAS token
+	println!("\n3. Understanding GAS Token:");
 
-	let gas_token = ScriptHash::gas();
+	let gas_token = ScriptHash::from_str("0xd2a4cff31913016155e38e474a2c06d08be276cf")?;
+	println!("   🪙 GAS Token Hash: 0xd2a4cff31913016155e38e474a2c06d08be276cf");
+	println!("   📊 Decimals: 8");
+	println!("   🎯 Purpose: Network utility token for fees and operations");
 
-	let from_balance_before =
-		client.get_nep17_balance(&from_address, &gas_token).await.unwrap_or(0);
-	let to_balance_before = client.get_nep17_balance(&to_address, &gas_token).await.unwrap_or(0);
+	// 4. Transfer requirements
+	println!("\n4. Transfer Requirements:");
+	println!("   🔑 Private Key: Required for signing transactions");
+	println!("   💸 Sufficient Balance: Must have enough GAS for transfer + fees");
+	println!("   🌐 Network Fees: ~0.001 GAS for basic transfers");
+	println!("   ⏰ Valid Until Block: Transaction expiration height");
 
-	println!("   📊 From balance: {} GAS", from_balance_before as f64 / 100_000_000.0);
-	println!("   📊 To balance: {} GAS", to_balance_before as f64 / 100_000_000.0);
+	// 5. Transaction structure concepts
+	println!("\n5. Transaction Structure Concepts:");
 
-	// 4. Demonstrate transaction construction (conceptual)
-	println!("\n4. Transaction construction process:");
-	println!("   🔧 In a real application, you would:");
+	println!("   📋 NEP-17 Transfer Method:");
+	println!("   ```");
+	println!("   Method: transfer");
+	println!("   Parameters:");
+	println!("     - from: Script hash of sender");
+	println!("     - to: Script hash of recipient");
+	println!("     - amount: Transfer amount in base units");
+	println!("     - data: Optional additional data");
+	println!("   ```");
 
-	// Transaction building steps
-	let tx_steps = vec![
-		"Create transaction builder with GAS token contract",
-		"Add transfer operation (from, to, amount)",
-		"Set appropriate gas limit and network fee",
-		"Sign transaction with sender's private key",
-		"Broadcast transaction to the network",
-		"Monitor transaction status and confirmations",
-	];
+	// 6. Fee calculation
+	println!("\n6. Fee Calculation:");
 
-	for (i, step) in tx_steps.iter().enumerate() {
-		println!("   {}. {}", i + 1, step);
-	}
+	println!("   💰 System Fee:");
+	println!("     • Fixed cost based on VM operations");
+	println!("     • NEP-17 transfer: ~0.0347877 GAS");
+	println!("     • Covers script execution costs");
 
-	// 5. Show what the transaction would look like
-	println!("\n5. Transaction structure (conceptual):");
-
-	let conceptual_tx = serde_json::json!({
-		"version": 0,
-		"nonce": 1234567890,
-		"sysfee": "997780", // System fee in GAS fractions
-		"netfee": "1230610", // Network fee in GAS fractions
-		"validuntilblock": client.get_block_count().await? + 86400, // Valid for ~24 hours
-		"signers": [
-			{
-				"account": format!("0x{}", hex::encode(from_address.0)),
-				"scopes": "CalledByEntry"
-			}
-		],
-		"attributes": [],
-		"script": format!("0x0c14{} 0c14{} 0c08{} 41627d5b52",
-			hex::encode(to_address.0),
-			hex::encode(from_address.0),
-			hex::encode(transfer_amount.to_le_bytes())
-		),
-		"witnesses": [
-			{
-				"invocation": "0x40...", // Signature would go here
-				"verification": "0x0c40..." // Verification script
-			}
-		]
-	});
-
-	println!("   📋 Transaction JSON structure:");
-	println!("{}", serde_json::to_string_pretty(&conceptual_tx)?);
-
-	// 6. Estimate transaction costs
-	println!("\n6. Transaction cost estimation:");
-
-	let estimated_system_fee = 997_780u64; // Typical GAS transfer system fee
-	let estimated_network_fee = 1_230_610u64; // Typical network fee
-	let total_cost = estimated_system_fee + estimated_network_fee;
-
-	println!("   ⚙️  System fee: {} GAS", estimated_system_fee as f64 / 100_000_000.0);
-	println!("   🌐 Network fee: {} GAS", estimated_network_fee as f64 / 100_000_000.0);
-	println!("   💸 Total cost: {} GAS", total_cost as f64 / 100_000_000.0);
-	println!(
-		"   💰 Total with transfer: {} GAS",
-		(total_cost + transfer_amount) as f64 / 100_000_000.0
-	);
+	println!("\n   🌐 Network Fee:");
+	println!("     • Variable fee for transaction inclusion");
+	println!("     • Minimum: ~0.00001 GAS per byte");
+	println!("     • Covers consensus node rewards");
 
 	// 7. Security considerations
-	println!("\n7. 🔐 Security considerations for transfers:");
-	println!("   ✅ Verify recipient address format and validity");
-	println!("   ✅ Check sender has sufficient balance + fees");
-	println!("   ✅ Use appropriate transaction expiration");
-	println!("   ✅ Implement proper error handling");
-	println!("   ✅ Wait for sufficient confirmations");
-	println!("   ✅ Store transaction hash for tracking");
+	println!("\n7. Security Considerations:");
 
-	// 8. Integration with wallets
-	println!("\n8. 💼 Wallet integration:");
-	println!("   • Use neo3::wallets for key management");
-	println!("   • Implement transaction signing with private keys");
-	println!("   • Support hardware wallets (Ledger, etc.)");
-	println!("   • Provide transaction history and monitoring");
+	println!("   🔒 Private Key Safety:");
+	println!("     • Never hardcode private keys in source code");
+	println!("     • Use environment variables or secure key stores");
+	println!("     • Consider hardware wallets for large amounts");
 
-	// 9. Best practices
-	println!("\n9. 💡 Transfer best practices:");
-	println!("   ✅ Always validate addresses before sending");
-	println!("   ✅ Use appropriate gas limits to avoid failures");
-	println!("   ✅ Implement retry logic for network issues");
-	println!("   ✅ Provide clear user feedback during process");
-	println!("   ✅ Log transactions for audit and debugging");
-	println!("   ✅ Handle edge cases (insufficient funds, etc.)");
+	println!("\n   ✅ Transaction Validation:");
+	println!("     • Verify recipient address format");
+	println!("     • Check sufficient balance before transfer");
+	println!("     • Validate transfer amounts (positive, within limits)");
+	println!("     • Use appropriate gas limits");
 
-	// 10. Sample transaction monitoring
-	println!("\n10. Transaction monitoring example:");
+	// 8. Best practices
+	println!("\n8. Best Practices:");
 
-	// Get a recent transaction to show monitoring
-	let current_block = client.get_block_count().await?;
-	if let Ok(recent_block) = client.get_block(serde_json::json!(current_block - 1)).await {
-		if let Some(transactions) = recent_block.get("tx").and_then(|tx| tx.as_array()) {
-			if let Some(first_tx) = transactions.first() {
-				if let Some(tx_hash) = first_tx.get("hash").and_then(|h| h.as_str()) {
-					println!("    📋 Sample transaction monitoring:");
-					println!("    Hash: {}", tx_hash);
-					println!("    Block: {}", current_block - 1);
-					println!("    Status: Confirmed");
+	println!("   🎯 Production Implementation:");
+	println!("     • Use proper error handling and retries");
+	println!("     • Implement transaction monitoring");
+	println!("     • Cache RPC connections efficiently");
+	println!("     • Log transactions for audit trails");
 
-					// Check if this transaction has application logs (events)
-					if let Ok(app_log) = client.get_application_log(tx_hash.to_string()).await {
-						if let Some(executions) =
-							app_log.get("executions").and_then(|e| e.as_array())
-						{
-							for execution in executions {
-								if let Some(vm_state) =
-									execution.get("vmstate").and_then(|s| s.as_str())
-								{
-									println!("    VM State: {}", vm_state);
-								}
-							}
-						}
-					}
-				}
-			}
-		}
-	}
+	println!("\n   📊 Monitoring:");
+	println!("     • Track transaction confirmations");
+	println!("     • Monitor for failed transactions");
+	println!("     • Set up balance change alerts");
+	println!("     • Implement fee estimation strategies");
 
-	println!("\n🎉 GAS transfer example completed!");
-	println!("💡 This demonstrates the complete transfer process for Neo N3.");
-	println!("🔗 For actual transfers, integrate with neo3::wallets and transaction building.");
+	// 9. Code structure example
+	println!("\n9. Implementation Structure:");
+
+	println!("   🏗️ Transfer Function Structure:");
+	println!("   ```rust");
+	println!("   async fn transfer_gas(");
+	println!("       client: &RpcClient<HttpProvider>,");
+	println!("       from_key: &str,");
+	println!("       to_address: &str,");
+	println!("       amount: u64");
+	println!("   ) -> Result<H256, TransferError> {{");
+	println!("       // 1. Validate inputs");
+	println!("       // 2. Check balances");
+	println!("       // 3. Build transaction");
+	println!("       // 4. Sign transaction");
+	println!("       // 5. Broadcast transaction");
+	println!("       // 6. Return transaction hash");
+	println!("   }}");
+	println!("   ```");
+
+	// 10. Integration patterns
+	println!("\n10. Integration Patterns:");
+
+	println!("   🔄 Async Processing:");
+	println!("     • Use proper async/await patterns");
+	println!("     • Implement connection pooling");
+	println!("     • Handle network timeouts gracefully");
+
+	println!("\n   📝 Transaction Tracking:");
+	println!("     • Store transaction hashes for monitoring");
+	println!("     • Implement confirmation watching");
+	println!("     • Handle transaction replacement scenarios");
+
+	// 11. Common pitfalls
+	println!("\n11. Common Pitfalls to Avoid:");
+
+	println!("   ❌ Common Mistakes:");
+	println!("     • Forgetting to account for decimal places");
+	println!("     • Using insufficient gas limits");
+	println!("     • Not validating address formats");
+	println!("     • Ignoring transaction failures");
+	println!("     • Hardcoding fee amounts");
+
+	println!("\n   ✅ Solutions:");
+	println!("     • Use proper decimal handling libraries");
+	println!("     • Implement dynamic fee estimation");
+	println!("     • Validate all inputs before processing");
+	println!("     • Implement comprehensive error handling");
+	println!("     • Monitor network conditions for optimal fees");
+
+	// 12. Testing strategies
+	println!("\n12. Testing Strategies:");
+
+	println!("   🧪 Test Environment Setup:");
+	println!("     • Use TestNet for development and testing");
+	println!("     • Create test accounts with TestNet GAS");
+	println!("     • Test various transfer amounts and scenarios");
+	println!("     • Validate error handling with invalid inputs");
+
+	println!("\n   📊 Performance Testing:");
+	println!("     • Test under various network conditions");
+	println!("     • Measure transaction confirmation times");
+	println!("     • Validate concurrent transfer handling");
+	println!("     • Test fee estimation accuracy");
+
+	println!("\n🎉 Neo N3 GAS transfer example completed!");
+	println!("💡 Key takeaways:");
+	println!("   • Always use TestNet for development and testing");
+	println!("   • Implement proper security measures for private keys");
+	println!("   • Handle decimal precision carefully (GAS has 8 decimals)");
+	println!("   • Monitor transactions and implement retry logic");
+	println!("   • Consider user experience with fee estimation and confirmation times");
+
+	println!("\n📚 Next Steps:");
+	println!("   • Implement actual transaction building with neo3 builders");
+	println!("   • Add proper wallet integration for key management");
+	println!("   • Set up transaction monitoring and confirmation tracking");
+	println!("   • Integrate with frontend applications for user interaction");
 
 	Ok(())
 }

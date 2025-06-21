@@ -49,7 +49,7 @@ jobs:
         run: cargo fmt --all -- --check
         
       - name: Run clippy
-        run: cargo clippy --all-targets --all-features -- -D warnings
+        run: cargo clippy --workspace --exclude neo-gui --all-targets --all-features -- -D warnings
         
       - name: Build (no default features)
         run: cargo build --verbose --no-default-features
@@ -58,4 +58,4 @@ jobs:
         run: cargo build --verbose --all-features
         
       - name: Run core library tests
-        run: cargo test --lib --all-features --quiet
+        run: cargo test --workspace --exclude neo-gui --lib --all-features --quiet

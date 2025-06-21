@@ -228,3 +228,7 @@ default = []
 # YubiHSM features - only for development/testing
 yubi = ["dep:yubihsm"]
 mock-hsm = ["dep:yubihsm", "yubihsm/mockhsm"]
+
+[workspace]
+members = [".", "neo-cli"]
+exclude = ["neo-gui"]

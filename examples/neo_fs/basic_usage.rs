@@ -1,241 +1,205 @@
-/// NeoFS Basic Usage Example
+/// Neo N3 NeoFS Basic Usage Example
 ///
-/// This example demonstrates comprehensive NeoFS operations including container
-/// management, object storage, access control, and session handling.
-use neo3::neo_fs::{
-	AccessPermission, BasicACL, Container, ContainerId, NeoFSClient, Object, ObjectHeader, OwnerId,
-	PlacementPolicy, Session,
-};
-use std::time::{SystemTime, UNIX_EPOCH};
+/// This example demonstrates the fundamental concepts of NeoFS,
+/// the distributed storage solution for the Neo ecosystem.
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-	println!("🗂️  NeoFS Basic Usage Example");
-	println!("==============================\n");
+	println!("📦 Neo N3 NeoFS Basic Usage Example");
+	println!("===================================");
 
-	// 1. Create and configure NeoFS client
-	println!("📡 1. Configuring NeoFS Client...");
-	let config = neo3::neo_fs::NeoFSConfig {
-		endpoint: "grpc.testnet.fs.neo.org:8082".to_string(),
-		timeout: std::time::Duration::from_secs(60),
-		secure: true,
-	};
+	println!("\n📚 Understanding NeoFS:");
+	println!("   • Distributed cloud storage system");
+	println!("   • Built specifically for Neo ecosystem");
+	println!("   • Decentralized and censorship-resistant");
+	println!("   • Integrated with Neo N3 blockchain");
 
-	let client = NeoFSClient::with_config(config);
-	println!("   ✅ Client configured for TestNet");
-	println!("   📍 Endpoint: grpc.testnet.fs.neo.org:8082");
-	println!("   ⏱️  Timeout: 60 seconds");
+	println!("\n🏗️ NeoFS Architecture:");
+	println!("   🔗 Core Components:");
+	println!("     • Storage Nodes - Store actual data");
+	println!("     • Inner Ring - Consensus and governance");
+	println!("     • NeoFS Contract - On-chain integration");
+	println!("     • Storage Groups - Data replication");
 
-	// 2. Create owner identity
-	println!("\n🔐 2. Creating Owner Identity...");
-	// In production, this would come from a Neo wallet
-	let owner_id = OwnerId::from_wallet_address("NPvKVTGZapmFWABLsyvfreuqn73jCjJtN1")?;
-	println!("   👤 Owner: {}", owner_id);
+	println!("\n   📊 Data Organization:");
+	println!("     • Containers - Top-level storage units");
+	println!("     • Objects - Individual files or data");
+	println!("     • Object IDs - Unique identifiers");
+	println!("     • Attributes - Metadata key-value pairs");
 
-	// Create session for operations
-	let session = Session::new(owner_id.clone())
-		.with_expiration(SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs() + 3600)
-		.with_context(b"NeoFS Example Session".to_vec());
-	println!("   🎫 Session created (expires in 1 hour)");
+	println!("\n🔑 Key Features:");
+	println!("   ⚡ Performance:");
+	println!("     • High throughput data operations");
+	println!("     • Efficient content addressing");
+	println!("     • Optimized for large files");
+	println!("     • Built-in CDN capabilities");
 
-	// 3. Container creation example
-	println!("\n📦 3. Container Management...");
+	println!("\n   🛡️ Security:");
+	println!("     • End-to-end encryption");
+	println!("     • Access control policies");
+	println!("     • Cryptographic data integrity");
+	println!("     • Byzantine fault tolerance");
 
-	// Define placement policy
-	let placement = PlacementPolicy::new()
-		.with_replicas(2)
-		.with_selector("Country", vec!["USA", "EU"])
-		.with_filter("StorageType", "SSD");
+	println!("\n   💰 Economics:");
+	println!("     • Pay-per-use model");
+	println!("     • GAS token payments");
+	println!("     • Storage and traffic fees");
+	println!("     • Reputation-based rewards");
 
-	// Create container with attributes
-	let container = Container::new(ContainerId::generate()?, owner_id.clone())
-		.with_placement_policy(placement)
-		.with_basic_acl(BasicACL::PublicReadWrite)
-		.with_attribute("Name", "Example Storage Container")
-		.with_attribute("Purpose", "NeoRust SDK Examples")
-		.with_attribute("Environment", "TestNet");
+	println!("\n📋 Container Management:");
+	println!("   🏗️ Container Creation:");
+	println!("     • Define access policies");
+	println!("     • Set placement rules");
+	println!("     • Configure replication");
+	println!("     • Specify basic ACL");
 
-	println!("   📋 Container prepared:");
-	println!("      • ID: {}", container.id);
-	println!("      • ACL: PublicReadWrite");
-	println!("      • Replicas: 2");
-	println!("      • Attributes: {} defined", container.attributes.len());
+	println!("\n   📝 Container Properties:");
+	println!("     • Owner ID - Container creator");
+	println!("     • Basic ACL - Access permissions");
+	println!("     • Placement Policy - Storage rules");
+	println!("     • Network Map - Node selection");
 
-	// Show container operations
-	match client.create_container(&container, &session).await {
-		Ok(cid) => println!("   ✅ Container created: {}", cid),
-		Err(e) => println!("   ⚠️  Container creation pending: {}", e),
-	}
+	println!("\n🗃️ Object Operations:");
+	println!("\n   📤 Object Upload:");
+	println!("     1. Create object with attributes");
+	println!("     2. Split large files into chunks");
+	println!("     3. Generate cryptographic hashes");
+	println!("     4. Store with replication");
+	println!("     5. Return object ID for retrieval");
 
-	// 4. Object storage example
-	println!("\n📄 4. Object Storage Operations...");
+	println!("\n   📥 Object Download:");
+	println!("     1. Request by object ID");
+	println!("     2. Verify access permissions");
+	println!("     3. Retrieve from storage nodes");
+	println!("     4. Validate data integrity");
+	println!("     5. Reconstruct original file");
 
-	// Create object with metadata
-	let object_data =
-		b"Hello from NeoFS! This is sample data stored in the decentralized storage network.";
-	let object = Object::new(container.id.clone(), owner_id.clone())
-		.with_payload(object_data.to_vec())
-		.with_attribute("ContentType", "text/plain")
-		.with_attribute("FileName", "hello.txt")
-		.with_attribute(
-			"Timestamp",
-			&SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs().to_string(),
-		)
-		.with_attribute("Compression", "none")
-		.with_attribute("Encryption", "none");
+	println!("\n   🔍 Object Search:");
+	println!("     • Search by attributes");
+	println!("     • Filter by object properties");
+	println!("     • Range queries on metadata");
+	println!("     • Complex search expressions");
 
-	println!("   📝 Object prepared:");
-	println!("      • Size: {} bytes", object.size());
-	println!("      • Container: {}", object.container_id);
-	println!("      • Attributes:");
-	for (key, value) in &object.attributes.attributes {
-		println!("        - {}: {}", key, value);
-	}
+	println!("\n🔐 Access Control:");
+	println!("\n   📋 Basic ACL Types:");
+	println!("     • Private - Owner only access");
+	println!("     • Public Read - Anyone can read");
+	println!("     • Public Write - Anyone can write");
+	println!("     • Custom - Complex permissions");
 
-	// Calculate object ID (hash of header + payload)
-	let object_id = object.calculate_id()?;
-	println!("      • Object ID: {}", object_id);
+	println!("\n   🎯 Extended ACL:");
+	println!("     • Role-based access control");
+	println!("     • Conditional permissions");
+	println!("     • Time-based restrictions");
+	println!("     • IP address filtering");
 
-	// Upload object
-	match client.put_object(&object, &session).await {
-		Ok(oid) => println!("   ✅ Object uploaded: {}", oid),
-		Err(e) => println!("   ⚠️  Upload pending: {}", e),
-	}
+	println!("\n💡 Common Use Cases:");
+	
+	println!("\n   🌐 Web3 Applications:");
+	println!("     • Decentralized websites");
+	println!("     • NFT metadata storage");
+	println!("     • DApp asset hosting");
+	println!("     • User-generated content");
 
-	// 5. Object retrieval example
-	println!("\n🔍 5. Object Retrieval...");
+	println!("\n   📊 Data Archival:");
+	println!("     • Long-term data preservation");
+	println!("     • Backup and disaster recovery");
+	println!("     • Compliance data storage");
+	println!("     • Historical record keeping");
 
-	// Get object header
-	match client.head_object(&container.id, &object_id, &session).await {
-		Ok(header) => {
-			println!("   📋 Object header retrieved:");
-			println!("      • Version: {:?}", header.version);
-			println!("      • Size: {} bytes", header.payload_size);
-			println!("      • Created: {:?}", header.creation_epoch);
-		},
-		Err(e) => println!("   ⚠️  Header retrieval pending: {}", e),
-	}
+	println!("\n   🎮 Gaming Platforms:");
+	println!("     • Game asset distribution");
+	println!("     • Player save data");
+	println!("     • Downloadable content");
+	println!("     • Streaming media files");
 
-	// Get full object
-	match client.get_object(&container.id, &object_id, &session).await {
-		Ok(retrieved) => {
-			println!("   ✅ Object retrieved successfully");
-			if let Ok(content) = String::from_utf8(retrieved.payload.clone()) {
-				println!("   📄 Content preview: {}...", &content[..40.min(content.len())]);
-			}
-		},
-		Err(e) => println!("   ⚠️  Object retrieval pending: {}", e),
-	}
+	println!("\n   📱 Mobile Applications:");
+	println!("     • Photo and video backup");
+	println!("     • Document synchronization");
+	println!("     • Offline-first storage");
+	println!("     • Cross-device sharing");
 
-	// 6. Access control demonstration
-	println!("\n🔐 6. Access Control Management...");
+	println!("\n🔧 Integration Patterns:");
 
-	// Create ACL for container
-	let acl_rules = vec![
-		(AccessPermission::GetObject, vec![owner_id.clone()]),
-		(AccessPermission::PutObject, vec![owner_id.clone()]),
-		(AccessPermission::DeleteObject, vec![owner_id.clone()]),
-		(AccessPermission::GetContainer, vec![OwnerId::anyone()]),
-	];
+	println!("\n   📱 Client Applications:");
+	println!("   ```rust");
+	println!("   // Initialize NeoFS client");
+	println!("   let client = NeoFSClient::new(endpoint);");
+	println!("   ");
+	println!("   // Create container");
+	println!("   let container = client.create_container(");
+	println!("       owner_id,");
+	println!("       basic_acl,");
+	println!("       placement_policy");
+	println!("   ).await?;");
+	println!("   ");
+	println!("   // Upload object");
+	println!("   let object_id = client.put_object(");
+	println!("       container_id,");
+	println!("       file_data,");
+	println!("       attributes");
+	println!("   ).await?;");
+	println!("   ```");
 
-	println!("   🛡️  Access rules defined:");
-	for (permission, allowed) in &acl_rules {
-		println!("      • {:?}: {} principals", permission, allowed.len());
-	}
+	println!("\n   🌐 Web Integration:");
+	println!("   ```javascript");
+	println!("   // Browser integration");
+	println!("   const neofs = new NeoFSGateway('https://gateway.neofs.io');");
+	println!("   ");
+	println!("   // Upload file through gateway");
+	println!("   const uploadResult = await neofs.upload(file, {{");
+	println!("       container: 'your-container-id',");
+	println!("       attributes: {{ 'Content-Type': 'image/png' }}");
+	println!("   }});");
+	println!("   ```");
 
-	// 7. Search operations
-	println!("\n🔎 7. Object Search...");
+	println!("\n⚡ Performance Optimization:");
+	
+	println!("\n   🚀 Upload Optimization:");
+	println!("     • Use parallel chunk uploads");
+	println!("     • Compress data before upload");
+	println!("     • Choose optimal chunk sizes");
+	println!("     • Batch small file operations");
 
-	// Search by attributes
-	let search_filters = vec![("ContentType", "text/plain"), ("Compression", "none")];
+	println!("\n   📡 Download Optimization:");
+	println!("     • Cache frequently accessed objects");
+	println!("     • Use range requests for large files");
+	println!("     • Implement progressive loading");
+	println!("     • Leverage CDN capabilities");
 
-	match client.search_objects(&container.id, search_filters, &session).await {
-		Ok(results) => {
-			println!("   ✅ Search completed:");
-			println!("   📊 Found {} objects matching criteria", results.len());
-		},
-		Err(e) => println!("   ⚠️  Search pending: {}", e),
-	}
+	println!("\n🛡️ Security Best Practices:");
+	
+	println!("\n   🔐 Data Protection:");
+	println!("     • Encrypt sensitive data client-side");
+	println!("     • Use strong access control policies");
+	println!("     • Regularly audit permissions");
+	println!("     • Monitor access patterns");
 
-	// 8. Container listing
-	println!("\n📋 8. Container Listing...");
+	println!("\n   🔑 Key Management:");
+	println!("     • Secure private key storage");
+	println!("     • Implement key rotation");
+	println!("     • Use hardware security modules");
+	println!("     • Backup recovery phrases");
 
-	match client.list_containers(&owner_id, &session).await {
-		Ok(containers) => {
-			println!("   ✅ Containers for owner:");
-			for (idx, cid) in containers.iter().enumerate() {
-				println!("      {}. {}", idx + 1, cid);
-			}
-		},
-		Err(e) => println!("   ⚠️  Listing pending: {}", e),
-	}
+	println!("\n⚠️ Common Pitfalls:");
+	println!("   • Not setting appropriate placement policies");
+	println!("   • Ignoring access control implications");
+	println!("   • Uploading unencrypted sensitive data");
+	println!("   • Not handling network failures gracefully");
+	println!("   • Forgetting to pay storage fees");
 
-	// 9. Cleanup operations
-	println!("\n🧹 9. Cleanup Operations...");
+	println!("\n🚀 For NeoFS implementation examples:");
+	println!("   • NeoFS documentation and tutorials");
+	println!("   • Neo ecosystem development guides");
+	println!("   • Distributed storage best practices");
 
-	// Delete object
-	match client.delete_object(&container.id, &object_id, &session).await {
-		Ok(_) => println!("   ✅ Object deleted"),
-		Err(e) => println!("   ⚠️  Deletion pending: {}", e),
-	}
-
-	// Delete container (only when empty)
-	match client.delete_container(&container.id, &session).await {
-		Ok(_) => println!("   ✅ Container deleted"),
-		Err(e) => println!("   ⚠️  Container deletion pending: {}", e),
-	}
-
-	// 10. Advanced features
-	println!("\n🚀 10. Advanced Features Available:");
-	println!("   • 📤 Multipart uploads for large files");
-	println!("   • 🔄 Object versioning support");
-	println!("   • 🏷️  Extended attributes (xattrs)");
-	println!("   • 🔗 Object linking and references");
-	println!("   • 📊 Storage metrics and statistics");
-	println!("   • 🌐 Geographic placement policies");
-	println!("   • 🔐 Homomorphic hashing for integrity");
-
-	println!("\n✅ NeoFS basic usage example completed!");
-	println!("💡 Note: Full gRPC implementation enables all operations shown above");
+	println!("\n🎉 NeoFS concepts covered!");
+	println!("💡 Key takeaways for distributed storage:");
+	println!("   • NeoFS provides decentralized cloud storage");
+	println!("   • Integrated with Neo blockchain economics");
+	println!("   • Supports complex access control policies");
+	println!("   • Optimized for web3 application needs");
+	println!("   • Enables censorship-resistant data storage");
 
 	Ok(())
-}
-
-// Helper trait implementations
-trait NeoFSHelpers {
-	fn generate() -> Result<ContainerId, Box<dyn std::error::Error>>;
-	fn from_wallet_address(address: &str) -> Result<OwnerId, Box<dyn std::error::Error>>;
-	fn anyone() -> OwnerId;
-	fn calculate_id(&self) -> Result<neo3::neo_fs::ObjectId, Box<dyn std::error::Error>>;
-}
-
-impl NeoFSHelpers for ContainerId {
-	fn generate() -> Result<ContainerId, Box<dyn std::error::Error>> {
-		// Generate random container ID
-		use rand::Rng;
-		let mut rng = rand::thread_rng();
-		let id: [u8; 32] = rng.gen();
-		Ok(ContainerId::from(hex::encode(id)))
-	}
-}
-
-impl NeoFSHelpers for OwnerId {
-	fn from_wallet_address(address: &str) -> Result<OwnerId, Box<dyn std::error::Error>> {
-		// Convert Neo address to owner ID
-		Ok(OwnerId::from(address.to_string()))
-	}
-
-	fn anyone() -> OwnerId {
-		OwnerId::from("*".to_string())
-	}
-}
-
-impl NeoFSHelpers for Object {
-	fn calculate_id(&self) -> Result<neo3::neo_fs::ObjectId, Box<dyn std::error::Error>> {
-		// Calculate object ID from header hash
-		use neo3::neo_crypto::sha256;
-		let header_data = format!("{}{}{}", self.container_id, self.owner_id, self.size());
-		let hash = sha256(header_data.as_bytes());
-		Ok(neo3::neo_fs::ObjectId::from(hex::encode(&hash[..16])))
-	}
 }

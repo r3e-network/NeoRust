@@ -57,13 +57,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 	println!("   • Profile gas consumption");
 
 	println!("\n📝 Example neo-express Configuration:");
-	println!("   {");
+	println!("   {{");
 	println!("     \"magic\": 1234567890,");
 	println!("     \"consensus-nodes\": 1,");
 	println!("     \"block-time\": 1000,");
 	println!("     \"node-port\": 50012,");
 	println!("     \"rpc-port\": 50013");
-	println!("   }");
+	println!("   }}");
 
 	println!("\n🎯 For more information:");
 	println!("   • neo-express documentation");

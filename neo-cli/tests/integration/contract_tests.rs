@@ -59,7 +59,7 @@ mod tests {
 
 		let params_file = cli.create_temp_file(params_json);
 
-		let _contract_hash = "0xef4073a0f2b305a38ec4050e4d3d28bc40ea63f5"; // Example GAS token hash
+		let contract_hash = "0xef4073a0f2b305a38ec4050e4d3d28bc40ea63f5"; // Example GAS token hash
 		let method = "transfer";
 
 		let output = cli.run_command(&[

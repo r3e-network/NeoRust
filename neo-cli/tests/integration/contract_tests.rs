@@ -8,7 +8,7 @@ mod tests {
 
 		// For testing, we'll use a known contract hash
 		// This should be replaced with a valid hash in a real environment
-		let contract_hash = "0xef4073a0f2b305a38ec4050e4d3d28bc40ea63f5"; // Example GAS token hash
+		let _contract_hash = "0xef4073a0f2b305a38ec4050e4d3d28bc40ea63f5"; // Example GAS token hash
 
 		let output = cli.run_command(&["contract", "list-native-contracts"]);
 
@@ -24,7 +24,7 @@ mod tests {
 		let cli = CliTest::new();
 
 		// For testing purposes
-		let contract_hash = "0xef4073a0f2b305a38ec4050e4d3d28bc40ea63f5"; // Example GAS token hash
+		let _contract_hash = "0xef4073a0f2b305a38ec4050e4d3d28bc40ea63f5"; // Example GAS token hash
 
 		let output = cli.run_command(&["contract", "list-native-contracts"]);
 
@@ -39,7 +39,7 @@ mod tests {
 		let cli = CliTest::new();
 
 		// For testing purposes
-		let contract_hash = "0xef4073a0f2b305a38ec4050e4d3d28bc40ea63f5"; // Example GAS token hash
+		let _contract_hash = "0xef4073a0f2b305a38ec4050e4d3d28bc40ea63f5"; // Example GAS token hash
 
 		let output = cli.run_command(&["contract", "list-native-contracts"]);
 
@@ -59,7 +59,7 @@ mod tests {
 
 		let params_file = cli.create_temp_file(params_json);
 
-		let contract_hash = "0xef4073a0f2b305a38ec4050e4d3d28bc40ea63f5"; // Example GAS token hash
+		let _contract_hash = "0xef4073a0f2b305a38ec4050e4d3d28bc40ea63f5"; // Example GAS token hash
 		let method = "transfer";
 
 		let output = cli.run_command(&[
@@ -84,7 +84,7 @@ mod tests {
 	fn test_contract_storage() {
 		let cli = CliTest::new();
 
-		let contract_hash = "0xef4073a0f2b305a38ec4050e4d3d28bc40ea63f5"; // Example GAS token hash
+		let _contract_hash = "0xef4073a0f2b305a38ec4050e4d3d28bc40ea63f5"; // Example GAS token hash
 
 		let output = cli.run_command(&["contract", "list-native-contracts"]);
 

@@ -111,8 +111,8 @@ pub struct Params<'a> {
 	pub result: &'a RawValue,
 }
 
-// FIXME: ideally, this could be auto-derived as an untagged enum, but due to
-// https://github.com/serde-rs/serde/issues/1183 this currently fails
+// Note: Custom deserialization is required because serde's untagged enum support
+// has limitations with borrowing (see https://github.com/serde-rs/serde/issues/1183)
 impl<'de: 'a, 'a> Deserialize<'de> for Response<'a> {
 	fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
 	where

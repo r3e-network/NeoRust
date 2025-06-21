@@ -76,7 +76,7 @@ async fn query_token_info(
 	println!("   📊 {} Token Information:", token_name);
 
 	// Get token symbol
-	match client.invoke_function(token_hash, "symbol", None, None, None).await {
+	match client.invoke_function(token_hash, "symbol".to_string(), vec![], None).await {
 		Ok(result) =>
 			if let Some(stack_item) = result.stack.first() {
 				if let Some(symbol) = stack_item.as_string() {
@@ -87,7 +87,7 @@ async fn query_token_info(
 	}
 
 	// Get token decimals
-	match client.invoke_function(token_hash, "decimals", None, None, None).await {
+	match client.invoke_function(token_hash, "decimals".to_string(), vec![], None).await {
 		Ok(result) =>
 			if let Some(stack_item) = result.stack.first() {
 				if let Some(decimals) = stack_item.as_int() {
@@ -98,7 +98,10 @@ async fn query_token_info(
 	}
 
 	// Get total supply
-	match client.invoke_function(token_hash, "totalSupply", None, None, None).await {
+	match client
+		.invoke_function(token_hash, "totalSupply".to_string(), vec![], None)
+		.await
+	{
 		Ok(result) => {
 			if let Some(stack_item) = result.stack.first() {
 				if let Some(supply) = stack_item.as_int() {

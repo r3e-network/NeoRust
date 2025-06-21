@@ -28,7 +28,7 @@ impl MockProvider {
 		self.responses
 			.get(method)
 			.cloned()
-			.ok_or_else(|| format!("No mock response for method: {}", method))
+			.ok_or_else(|| format!("No mock response for method: {method}"))
 	}
 
 	fn call_count(&self) -> u32 {

@@ -24,11 +24,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 	println!("\n🪙 2. Setting up native token contracts...");
 
 	// GAS Token Contract (Neo's utility token)
-	let gas_hash = ScriptHash::from_str("d2a4cff31913016155e38e474a2c06d08be276cf")?;
+	let gas_hash = ScriptHash::from_str("0xd2a4cff31913016155e38e474a2c06d08be276cf")?;
 	println!("   ⛽ GAS Token: 0x{}", hex::encode(gas_hash.0));
 
 	// NEO Token Contract (Neo's governance token)
-	let neo_hash = ScriptHash::from_str("ef4073a0f2b305a38ec4050e4d3d28bc40ea63f5")?;
+	let neo_hash = ScriptHash::from_str("0xef4073a0f2b305a38ec4050e4d3d28bc40ea63f5")?;
 	println!("   🔷 NEO Token: 0x{}", hex::encode(neo_hash.0));
 
 	// 3. Token Information Retrieval
@@ -231,6 +231,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 /// Token information structure
 #[derive(Debug)]
+#[allow(dead_code)]
 struct TokenInfo {
 	symbol: String,
 	decimals: u32,

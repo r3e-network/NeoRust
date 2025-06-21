@@ -95,8 +95,7 @@ impl CustomNeoProvider for LoadBalancingProvider {
 
 	fn is_healthy(&self) -> bool {
 		// Provider is healthy if at least one endpoint is healthy
-		self.endpoint_health.values().any(|&healthy| healthy)
-			|| self.endpoint_health.is_empty()
+		self.endpoint_health.values().any(|&healthy| healthy) || self.endpoint_health.is_empty()
 	}
 }
 
@@ -139,13 +138,12 @@ impl CachingProvider {
 
 	fn is_cacheable_method(&self, method: &str) -> bool {
 		// Only cache read-only operations
-		matches!(method,
+		matches!(
+			method,
 			"getversion"
-			| "getblockcount"
-			| "getpeers"
-			| "getconnectioncount"
-			| "getblock"
-			| "getblockheader"
+				| "getblockcount"
+				| "getpeers" | "getconnectioncount"
+				| "getblock" | "getblockheader"
 		)
 	}
 }
@@ -239,10 +237,7 @@ struct ProviderFactory;
 impl ProviderFactory {
 	fn create_load_balancer(endpoints: Vec<String>) -> LoadBalancingProvider {
 		let mut provider = LoadBalancingProvider::new("LoadBalancer".to_string());
-		provider.configure(ProviderConfig {
-			endpoints,
-			..ProviderConfig::default()
-		});
+		provider.configure(ProviderConfig { endpoints, ..ProviderConfig::default() });
 		provider
 	}
 
@@ -330,7 +325,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 	// Simulate request tracking
 	println!("   🔄 Simulating requests:");
-	let requests = vec![
+	let requests = [
 		(Duration::from_millis(150), true),
 		(Duration::from_millis(200), true),
 		(Duration::from_millis(5000), false), // Timeout
@@ -379,27 +374,36 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 	println!("\n5. Configuration Examples:");
 
 	let configs = vec![
-		("Development", ProviderConfig {
-			timeout_ms: 1000,
-			max_retries: 1,
-			enable_caching: false,
-			endpoints: vec!["http://localhost:20332".to_string()],
-		}),
-		("Production", ProviderConfig {
-			timeout_ms: 5000,
-			max_retries: 3,
-			enable_caching: true,
-			endpoints: vec![
-				"https://mainnet1.neo.coz.io:443".to_string(),
-				"https://mainnet2.neo.coz.io:443".to_string(),
-			],
-		}),
-		("Testing", ProviderConfig {
-			timeout_ms: 10000,
-			max_retries: 0,
-			enable_caching: false,
-			endpoints: vec!["https://testnet.neo.org:443".to_string()],
-		}),
+		(
+			"Development",
+			ProviderConfig {
+				timeout_ms: 1000,
+				max_retries: 1,
+				enable_caching: false,
+				endpoints: vec!["http://localhost:20332".to_string()],
+			},
+		),
+		(
+			"Production",
+			ProviderConfig {
+				timeout_ms: 5000,
+				max_retries: 3,
+				enable_caching: true,
+				endpoints: vec![
+					"https://mainnet1.neo.coz.io:443".to_string(),
+					"https://mainnet2.neo.coz.io:443".to_string(),
+				],
+			},
+		),
+		(
+			"Testing",
+			ProviderConfig {
+				timeout_ms: 10000,
+				max_retries: 0,
+				enable_caching: false,
+				endpoints: vec!["https://testnet.neo.org:443".to_string()],
+			},
+		),
 	];
 
 	for (env, config) in configs {

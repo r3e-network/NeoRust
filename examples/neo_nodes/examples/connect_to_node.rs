@@ -1,6 +1,4 @@
-use neo3::{
-	neo_clients::APITrait,
-};
+use neo3::neo_clients::APITrait;
 use std::{
 	str::FromStr,
 	time::{Duration, Instant},
@@ -85,8 +83,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 			for (idx, tx) in transactions.iter().take(3).enumerate() {
 				println!("      {}. Hash: 0x{}", idx + 1, tx.hash);
 				println!("         Size: {} bytes", tx.size);
-				println!("         Network fee: {} GAS", tx.net_fee.parse::<f64>().unwrap_or(0.0) / 100_000_000.0);
-				println!("         System fee: {} GAS", tx.sys_fee.parse::<f64>().unwrap_or(0.0) / 100_000_000.0);
+				println!(
+					"         Network fee: {} GAS",
+					tx.net_fee.parse::<f64>().unwrap_or(0.0) / 100_000_000.0
+				);
+				println!(
+					"         System fee: {} GAS",
+					tx.sys_fee.parse::<f64>().unwrap_or(0.0) / 100_000_000.0
+				);
 			}
 		}
 	}
@@ -145,7 +149,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 					name,
 					state
 						.manifest
-						.extra.as_ref()
+						.extra
+						.as_ref()
 						.and_then(|e| e.get("version"))
 						.and_then(|v| v.as_str())
 						.unwrap_or("unknown")

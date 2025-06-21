@@ -1,6 +1,4 @@
-use neo3::{
-	neo_clients::{APITrait, HttpProvider, RpcClient},
-};
+use neo3::neo_clients::{APITrait, HttpProvider, RpcClient};
 use std::str::FromStr;
 
 /// Example demonstrating Neo X Bridge contract interactions.
@@ -132,7 +130,10 @@ async fn check_bridge_status(
 	}
 
 	// Invoke bridge status method
-	match client.invoke_function(&config.neo_bridge_contract, "isPaused".to_string(), vec![], None).await {
+	match client
+		.invoke_function(&config.neo_bridge_contract, "isPaused".to_string(), vec![], None)
+		.await
+	{
 		Ok(result) =>
 			if let stack = result.stack {
 				if let Some(item) = stack.first() {

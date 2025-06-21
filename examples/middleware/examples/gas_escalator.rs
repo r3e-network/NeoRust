@@ -1,6 +1,4 @@
-use neo3::{
-	neo_clients::{HttpProvider, RpcClient},
-};
+use neo3::neo_clients::{HttpProvider, RpcClient};
 use std::time::Duration;
 use tokio::time::sleep;
 

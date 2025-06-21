@@ -120,7 +120,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 	script_builder.push(&nef_bytes); // NEF file bytes
 
 	// Call deploy method
-	script_builder.contract_call(mgmt_hash, "deploy", &[], Some(neo3::neo_builder::CallFlags::All))?;
+	script_builder.contract_call(
+		mgmt_hash,
+		"deploy",
+		&[],
+		Some(neo3::neo_builder::CallFlags::All),
+	)?;
 
 	let deployment_script = script_builder.to_bytes();
 	println!("   ✅ Deployment script created ({} bytes)", deployment_script.len());

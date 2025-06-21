@@ -1,10 +1,9 @@
 use std::path::PathBuf;
 
-use neo3 as neo;
 use neo3::{
-	neo_protocol::account::Account,
+	neo_config::NeoNetwork,
+	neo_protocol::{Account, AccountTrait},
 	neo_wallets::{Wallet, WalletBackup, WalletTrait},
-	prelude::{NeoNetwork, ScryptParamsDef},
 };
 
 /// This example demonstrates how to manage wallets in the Neo N3 blockchain.
@@ -21,7 +20,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 	println!("Wallet version: {}", wallet.version());
 	println!(
 		"Default account address: {}",
-		wallet.default_account().address_or_scripthash().address()
+		wallet.default_account().address_or_scripthash.address()
 	);
 
 	// Set wallet properties
@@ -31,7 +30,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 	// Configure for TestNet
 	let wallet = wallet.with_network(NeoNetwork::TestNet.to_magic());
-	println!("Wallet configured for network: {}", wallet.network());
+	println!("Wallet configured for network: TestNet");
 
 	// Create and add a new account
 	println!("\nCreating and adding a new account...");
@@ -48,7 +47,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 	wallet.set_default_account(new_account.get_script_hash());
 	println!(
 		"Default account is now: {}",
-		wallet.default_account().address_or_scripthash().address()
+		wallet.default_account().address_or_scripthash.address()
 	);
 
 	// Encrypt accounts in the wallet

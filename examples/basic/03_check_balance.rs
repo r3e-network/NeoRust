@@ -18,7 +18,6 @@ use colored::*;
 use neo3::{
 	neo_clients::{APITrait, HttpProvider, RpcClient},
 	neo_types::{ScriptHash, ScriptHashExtension},
-	prelude::*,
 };
 use std::time::Duration;
 

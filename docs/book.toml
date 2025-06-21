@@ -10,7 +10,7 @@ default-theme = "light"
 preferred-dark-theme = "navy"
 git-repository-url = "https://github.com/R3E-Network/NeoRust"
 edit-url-template = "https://github.com/R3E-Network/NeoRust/edit/master/docs/{path}"
-additional-css = ["theme/custom.css", "./mdbook-admonish.css"]
+additional-css = ["theme/custom.css"]
 mathjax-support = true
 copy-fonts = true
 no-section-label = false
@@ -35,18 +35,23 @@ heading-split-level = 3
 enable = true
 level = 0
 
-[preprocessor.mermaid]
-command = "mdbook-mermaid"
+# Preprocessors disabled for CI compatibility
+# [preprocessor.mermaid]
+# command = "mdbook-mermaid"
+# optional = true
 
-[preprocessor.toc]
-command = "mdbook-toc"
-renderer = ["html"]
+# [preprocessor.toc]
+# command = "mdbook-toc"
+# renderer = ["html"]
+# optional = true
 
-[preprocessor.admonish]
-command = "mdbook-admonish"
-assets_version = "3.0.3" # do not edit: managed by `mdbook-admonish install`
+# [preprocessor.admonish]
+# command = "mdbook-admonish"
+# assets_version = "3.0.3" # do not edit: managed by `mdbook-admonish install`
+# optional = true
 
 [output.linkcheck]
+optional = true
 follow-web-links = false
 traverse-parent-directories = false
 exclude = [ "github\\.com", "https://github.com/R3E-Network/NeoRust/blob/master/SGX_SETUP.md" ]

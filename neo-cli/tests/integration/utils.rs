@@ -37,7 +37,6 @@ impl CliTest {
 		self.run(args)
 	}
 
-
 	/// Create a temporary file with the given content
 	pub fn create_temp_file(&self, content: &str) -> PathBuf {
 		let mut file = NamedTempFile::new_in(&self.temp_dir).unwrap();

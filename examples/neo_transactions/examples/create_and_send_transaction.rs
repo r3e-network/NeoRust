@@ -4,7 +4,6 @@ use neo3::{
 	neo_crypto::KeyPair,
 	neo_protocol::{Account, AccountTrait},
 	neo_types::{ContractParameter, ScriptHash},
-	neo_wallets::WalletTrait,
 	prelude::*,
 };
 use std::str::FromStr;
@@ -44,11 +43,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 	// GAS token contract
 	let gas_hash = ScriptHash::from_str("d2a4cff31913016155e38e474a2c06d08be276cf")?;
-	println!("   GAS token hash: 0x{}", hex::encode(gas_hash.0));
+	println!("   GAS token hash: {}", gas_hash);
 
 	// NEO token contract
 	let neo_hash = ScriptHash::from_str("ef4073a0f2b305a38ec4050e4d3d28bc40ea63f5")?;
-	println!("   NEO token hash: 0x{}", hex::encode(neo_hash.0));
+	println!("   NEO token hash: {}", neo_hash);
 
 	// 4. Create a GAS Transfer Transaction
 	println!("\n4. Creating GAS transfer transaction...");
@@ -65,7 +64,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 			ContractParameter::h160(&sender.get_script_hash()),
 			ContractParameter::h160(&recipient),
 			ContractParameter::integer(gas_amount as i64),
-			ContractParameter::any(None),
+			ContractParameter::any(),
 		],
 		None,
 	)?;
@@ -83,7 +82,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 		.map_err(|e| format!("Failed to get block count: {}", e))?;
 
 	// Configure transaction
-	tx_builder.script(Some(script)).valid_until_block(current_block + 5760)?; // Valid for ~1 day (5760 blocks ≈ 24 hours)
+	tx_builder.set_script(Some(script));
+	tx_builder.valid_until_block(current_block + 5760)?; // Valid for ~1 day (5760 blocks ≈ 24 hours)
 
 	println!("   Transaction configured:");
 	println!("     Valid until block: {}", current_block + 5760);
@@ -104,7 +104,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 			ContractParameter::h160(&sender.get_script_hash()),
 			ContractParameter::h160(&recipient),
 			ContractParameter::integer(neo_amount as i64),
-			ContractParameter::any(None),
+			ContractParameter::any(),
 		],
 		None,
 	)?;
@@ -125,7 +125,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 			ContractParameter::h160(&sender.get_script_hash()),
 			ContractParameter::h160(&recipient),
 			ContractParameter::integer(1),
-			ContractParameter::any(None),
+			ContractParameter::any(),
 		],
 		None,
 	)?;
@@ -138,7 +138,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 			ContractParameter::h160(&sender.get_script_hash()),
 			ContractParameter::h160(&recipient),
 			ContractParameter::integer(50_000_000), // 0.5 GAS
-			ContractParameter::any(None),
+			ContractParameter::any(),
 		],
 		None,
 	)?;
@@ -165,9 +165,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 	// Create a simple transaction for demonstration
 	let mut demo_tx_builder = TransactionBuilder::new();
-	demo_tx_builder
-		.script(Some(script.clone()))
-		.valid_until_block(current_block + 100)?;
+	demo_tx_builder.set_script(Some(script.clone()));
+	demo_tx_builder.valid_until_block(current_block + 100)?;
 
 	println!("   💡 Transaction signing requires:");
 	println!("     • Adding signers with appropriate witness scopes");

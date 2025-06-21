@@ -2,7 +2,6 @@
 ///
 /// This example demonstrates how to query DeFi pair contracts on Neo N3,
 /// similar to how Uniswap V2 pairs work but adapted for the Neo N3 ecosystem.
-use std::time::Duration;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {

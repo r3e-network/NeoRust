@@ -16,10 +16,7 @@ This example demonstrates how to connect to Neo N3 networks and perform basic qu
 */
 
 use colored::*;
-use neo3::{
-	neo_clients::{APITrait, HttpProvider, RpcClient},
-	prelude::*,
-};
+use neo3::neo_clients::{APITrait, HttpProvider, RpcClient};
 use std::time::Duration;
 
 #[tokio::main]
@@ -56,7 +53,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 async fn test_connection(network: &str, endpoint: &str) {
-	print!("  {} {}: ", network, endpoint);
+	print!("  {network} {endpoint}: ");
 
 	match HttpProvider::new(endpoint) {
 		Ok(provider) => {
@@ -90,7 +87,7 @@ async fn get_detailed_info(client: &RpcClient<HttpProvider>, network: &str) {
 
 	// Get version information
 	if let Ok(version) = client.get_version().await {
-		println!("  🔢 Node Version: {}", format!("{:?}", version).cyan());
+		println!("  🔢 Node Version: {}", format!("{version:?}").cyan());
 	}
 
 	// Get current block count
@@ -121,7 +118,7 @@ fn format_timestamp(timestamp: u64) -> String {
 	use std::time::{Duration, UNIX_EPOCH};
 
 	let datetime = UNIX_EPOCH + Duration::from_millis(timestamp);
-	format!("{:?}", datetime).cyan().to_string()
+	format!("{datetime:?}").cyan().to_string()
 }
 
 #[cfg(test)]

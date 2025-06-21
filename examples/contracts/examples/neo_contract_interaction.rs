@@ -141,10 +141,7 @@ async fn interact_with_nep17_token(
 		Ok(result) => {
 			let stack = result.stack;
 			if let Some(item) = stack.first() {
-				println!(
-					"      • Decimals: {}",
-					item.as_int().unwrap_or(8)
-				);
+				println!("      • Decimals: {}", item.as_int().unwrap_or(8));
 			}
 		},
 		Err(e) => println!("      • Decimals query failed: {}", e),
@@ -302,7 +299,7 @@ async fn demonstrate_transaction_building(
 
 	tx_builder.set_script(Some(script_builder.to_bytes()));
 	tx_builder.valid_until_block(current_height + 1000)?;
-	
+
 	let sender_script_hash = neo3::neo_types::ScriptHash::from_address(sender)?;
 	let signer = neo3::neo_builder::AccountSigner::called_by_entry_hash160(sender_script_hash)?;
 	tx_builder.set_signers(vec![neo3::neo_builder::Signer::AccountSigner(signer)])?;

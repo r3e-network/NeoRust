@@ -1,72 +1,99 @@
-use ethers::contract::abigen;
-
-abigen!(
-	SimpleContract,
-	"./examples/contracts/examples/abi/contract_abi.json",
-	event_derives(serde::Deserialize, serde::Serialize)
-);
-
-/// This requires a running moonbeam dev instance on `localhost:9933`
-/// See `https://docs.moonbeam.network/builders/get-started/moonbeam-dev/` for reference
+/// Neo N3 Cross-Chain Development Example
 ///
-/// This has been tested against:
-///
-/// ```bash
-///  docker run --rm --name moonbeam_development -p 9944:9944 -p 9933:9933 purestake/moonbeam:v0.14.2 --dev --ws-external --rpc-external
-/// ```
+/// This example demonstrates cross-chain development concepts
+/// and how Neo N3 integrates with other blockchain ecosystems.
+
 #[tokio::main]
-async fn main() -> eyre::Result<()> {
-	use ethers::prelude::*;
-	use std::{convert::TryFrom, path::Path, sync::Arc, time::Duration};
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+	println!("🌍 Neo N3 Cross-Chain Development");
+	println!("===================================");
 
-	const MOONBEAM_DEV_ENDPOINT: &str = "http://localhost:9933";
+	println!("\n📚 Neo Cross-Chain Ecosystem:");
+	println!("   • Neo N3 mainnet - Primary blockchain");
+	println!("   • Neo X - EVM-compatible sidechain");
+	println!("   • Cross-chain bridges");
+	println!("   • Multi-chain dApps");
+	println!("   • Interoperability protocols");
 
-	// set the path to the contract, `CARGO_MANIFEST_DIR` points to the directory containing the
-	// manifest of `ethers`. which will be `../` relative to this file
-	let source = Path::new(&env!("CARGO_MANIFEST_DIR")).join("examples/contract.sol");
-	let compiled = Solc::default().compile_source(source).expect("Could not compile contracts");
-	let (abi, bytecode, _runtime_bytecode) = compiled
-		.find("SimpleStorage")
-		.expect("could not find contract")
-		.into_parts_or_default();
+	println!("\n🔧 Neo X Features:");
+	println!("   • EVM compatibility - Run Ethereum dApps");
+	println!("   • Faster finality - ~2 second blocks");
+	println!("   • Lower fees - Reduced gas costs");
+	println!("   • Native bridge - Connect to Neo N3");
+	println!("   • MSGas token - Native currency");
 
-	// 1. get a moonbeam dev key
-	let key = ethers::core::utils::moonbeam::dev_keys()[0].clone();
+	println!("\n🌉 Bridge Architecture:");
+	println!("   Neo N3 ↔️ Bridge Contract ↔️ Neo X");
+	println!("   ");
+	println!("   Lock tokens on source chain");
+	println!("          ↓");
+	println!("   Generate proof of lock");
+	println!("          ↓");
+	println!("   Submit proof to target chain");
+	println!("          ↓");
+	println!("   Mint/unlock tokens on target");
 
-	// 2. instantiate our wallet with chain id
-	let wallet: LocalWallet = LocalWallet::from(key).with_chain_id(Chain::MoonbeamDev);
+	println!("\n💰 Supported Assets:");
+	println!("   • NEO - Governance token");
+	println!("   • GAS - Utility token");
+	println!("   • NEP-17 tokens - Fungible tokens");
+	println!("   • NEP-11 tokens - Non-fungible tokens");
+	println!("   • Custom bridge tokens");
 
-	// 3. connect to the network
-	let provider =
-		Provider::<Http>::try_from(MOONBEAM_DEV_ENDPOINT)?.interval(Duration::from_millis(10u64));
+	println!("\n💡 Development Strategies:");
+	println!("   1. Neo-native dApps - Pure Neo N3 development");
+	println!("   2. Neo X dApps - Ethereum-compatible development");
+	println!("   3. Hybrid dApps - Utilize both chains");
+	println!("   4. Cross-chain protocols - Bridge functionality");
 
-	// 4. instantiate the client with the wallet
-	let client = SignerMiddleware::new(provider, wallet);
-	let client = Arc::new(client);
+	println!("\n⚙️ Cross-Chain Use Cases:");
+	println!("   • DeFi protocols with dual-chain liquidity");
+	println!("   • NFT collections on multiple chains");
+	println!("   • Governance systems across ecosystems");
+	println!("   • Payment systems with multiple assets");
+	println!("   • Gaming platforms with cross-chain assets");
 
-	// 5. create a factory which will be used to deploy instances of the contract
-	let factory = ContractFactory::new(abi, bytecode, client.clone());
+	println!("\n🔐 Security Considerations:");
+	println!("   • Bridge contract audits");
+	println!("   • Multi-signature governance");
+	println!("   • Time delays for large transfers");
+	println!("   • Rate limiting mechanisms");
+	println!("   • Emergency pause functionality");
 
-	// 6. deploy it with the constructor arguments, note the `legacy` call
-	let contract = factory.deploy("initial value".to_string())?.legacy().send().await?;
+	println!("\n📦 Bridge Transaction Flow:");
+	println!("   1. User initiates bridge transaction");
+	println!("   2. Assets locked on source chain");
+	println!("   3. Bridge validators sign proof");
+	println!("   4. Proof submitted to target chain");
+	println!("   5. Assets minted/unlocked on target");
+	println!("   6. User receives assets on target chain");
 
-	// 7. get the contract's address
-	let addr = contract.address();
+	println!("\n📝 Best Practices:");
+	println!("   • Test thoroughly on testnets");
+	println!("   • Implement proper error handling");
+	println!("   • Monitor bridge contract states");
+	println!("   • Plan for network congestion");
+	println!("   • Consider gas price differences");
+	println!("   • Implement user notifications");
 
-	// 8. instantiate the contract
-	let contract = SimpleContract::new(addr, client.clone());
+	println!("\n🎯 Integration Patterns:");
+	println!("   • Asset-specific bridges");
+	println!("   • Generic message passing");
+	println!("   • Atomic swaps");
+	println!("   • Liquidity pools");
+	println!("   • Cross-chain governance");
 
-	// 9. call the `setValue` method
-	// (first `await` returns a PendingTransaction, second one waits for it to be mined)
-	let _receipt = contract.set_value("hi".to_owned()).legacy().send().await?.await?;
+	println!("\n⚠️ Common Pitfalls:");
+	println!("   • Assuming instant finality");
+	println!("   • Ignoring reorg risks");
+	println!("   • Hardcoding gas prices");
+	println!("   • Not handling bridge failures");
+	println!("   • Insufficient testing");
 
-	// 10. get all events
-	let logs = contract.value_changed_filter().from_block(0u64).query().await?;
-
-	// 11. get the new value
-	let value = contract.get_value().call().await?;
-
-	println!("Value: {value}. Logs: {}", serde_json::to_string(&logs)?);
+	println!("\n🚀 For cross-chain development:");
+	println!("   • examples/neo_x/");
+	println!("   • Neo X documentation");
+	println!("   • Bridge SDK documentation");
 
 	Ok(())
 }

@@ -1,55 +1,90 @@
-use std::sync::Arc;
-
-use ethers::{
-	contract::abigen,
-	core::types::Address,
-	providers::{Provider, StreamExt, Ws},
-};
-use eyre::Result;
-
-// Generate the type-safe contract bindings by providing the ABI
-// definition in human readable format
-abigen!(
-	ERC20,
-	r#"[
-        event  Transfer(address indexed src, address indexed dst, uint wad)
-    ]"#,
-);
+/// Neo N3 Contract Events and Notifications Example
+///
+/// This example demonstrates how to work with events (notifications) in Neo N3 smart contracts.
+/// Neo uses notifications to emit events that can be monitored by external applications.
 
 #[tokio::main]
-async fn main() -> Result<()> {
-	let client =
-		Provider::<Ws>::connect("wss://mainnet.infura.io/ws/v3/c60b0bb42f8a4c6481ecd229eddaca27")
-			.await?;
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+	println!("📢 Neo N3 Contract Events & Notifications");
+	println!("========================================");
 
-	let client = Arc::new(client);
+	println!("\n📚 Understanding Neo N3 Notifications:");
+	println!("   • Events in Neo are called 'notifications'");
+	println!("   • Emitted using Runtime.Notify in contracts");
+	println!("   • Stored in application logs");
+	println!("   • Can be queried via RPC");
+	println!("   • Used for dApp integration");
 
-	// WETH Token
-	let address = "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2".parse::<Address>()?;
-	let weth = ERC20::new(address, Arc::clone(&client));
+	println!("\n🔧 Common Notification Patterns:");
+	println!("   • Transfer events (NEP-17 standard)");
+	println!("   • State change notifications");
+	println!("   • Custom application events");
+	println!("   • Error/warning notifications");
+	println!("   • Multi-signature approvals");
 
-	// Subscribe Transfer events
-	let events = weth.events().from_block(16232698);
-	let mut stream = events.stream().await?.with_meta().take(1);
-	while let Some(Ok((event, meta))) = stream.next().await {
-		println!("src: {:?}, dst: {:?}, wad: {:?}", event.src, event.dst, event.wad);
+	println!("\n📋 NEP-17 Transfer Event Structure:");
+	println!("   {");
+	println!("     \"contract\": \"0xd2a4cff31913016155e38e474a2c06d08be276cf\",");
+	println!("     \"eventname\": \"Transfer\",");
+	println!("     \"state\": {");
+	println!("       \"type\": \"Array\",");
+	println!("       \"value\": [");
+	println!("         {\"type\": \"Hash160\", \"value\": \"from_address\"},");
+	println!("         {\"type\": \"Hash160\", \"value\": \"to_address\"},");
+	println!("         {\"type\": \"Integer\", \"value\": \"amount\"}");
+	println!("       ]");
+	println!("     }");
+	println!("   }");
 
-		println!(
-			r#"address: {:?}, 
-               block_number: {:?}, 
-               block_hash: {:?}, 
-               transaction_hash: {:?}, 
-               transaction_index: {:?}, 
-               log_index: {:?}
-            "#,
-			meta.address,
-			meta.block_number,
-			meta.block_hash,
-			meta.transaction_hash,
-			meta.transaction_index,
-			meta.log_index
-		);
-	}
+	println!("\n💡 Monitoring Events:");
+	println!("   1. Get block information");
+	println!("   2. Fetch transaction IDs");
+	println!("   3. Get application logs");
+	println!("   4. Parse notifications");
+	println!("   5. Process event data");
+
+	println!("\n🛠️ Event Processing Best Practices:");
+	println!("   • Filter by contract address");
+	println!("   • Check event name");
+	println!("   • Validate event parameters");
+	println!("   • Handle missing/malformed data");
+	println!("   • Track processed events");
+	println!("   • Implement idempotency");
+
+	println!("\n⚡ Common Contract Events:");
+	println!("   • Transfer - Token transfers");
+	println!("   • Approval - Spending approvals");
+	println!("   • Mint - Token creation");
+	println!("   • Burn - Token destruction");
+	println!("   • Deploy - Contract deployment");
+	println!("   • Upgrade - Contract updates");
+
+	println!("\n📝 Custom Event Example:");
+	println!("   // In smart contract:");
+	println!("   Runtime.Notify(\"OrderPlaced\", new object[] {");
+	println!("     orderId,");
+	println!("     buyer,");
+	println!("     amount,");
+	println!("     timestamp");
+	println!("   });");
+
+	println!("\n🔍 Querying Events via RPC:");
+	println!("   • getapplicationlog - Get all events for a transaction");
+	println!("   • getblock - Include transaction hashes");
+	println!("   • Poll blocks for new events");
+	println!("   • Filter and process notifications");
+
+	println!("\n🎯 Event-Driven Architecture:");
+	println!("   • Real-time transaction monitoring");
+	println!("   • User balance updates");
+	println!("   • Price feed tracking");
+	println!("   • Governance notifications");
+	println!("   • Security alerts");
+
+	println!("\n🚀 For practical examples, see:");
+	println!("   • examples/neo_smart_contracts/");
+	println!("   • Neo N3 notification standards");
+	println!("   • Application log documentation");
 
 	Ok(())
 }

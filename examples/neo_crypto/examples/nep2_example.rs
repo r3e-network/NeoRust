@@ -77,16 +77,16 @@ fn analyze_password_security() {
 		("🔐🚀Neo₿lockchain🌟💎", "Unicode Strong", 85),
 	];
 
-	for (password, category, estimated_strength) in test_passwords {
+	for (password, category, _estimated_strength) in test_passwords {
 		let calculated_strength = calculate_password_strength(password);
 		let security_level = get_security_level(calculated_strength);
 		let crack_time = estimate_crack_time(calculated_strength);
 
-		println!("\n   Password: \"{}\"", password);
-		println!("      📊 Category: {}", category);
-		println!("      🛡️  Strength Score: {}/100", calculated_strength);
-		println!("      📈 Security Level: {}", security_level);
-		println!("      ⏱️  Est. Crack Time: {}", crack_time);
+		println!("\n   Password: \"{password}\"");
+		println!("      📊 Category: {category}");
+		println!("      🛡️  Strength Score: {calculated_strength}/100");
+		println!("      📈 Security Level: {security_level}");
+		println!("      ⏱️  Est. Crack Time: {crack_time}");
 		println!("      📏 Length: {} characters", password.len());
 	}
 }
@@ -100,12 +100,12 @@ fn demonstrate_performance_considerations() {
 	let decryption_time = simulate_decryption_time();
 
 	println!("      🔒 Encryption Performance:");
-	println!("         • Typical Time: ~{} ms", encryption_time);
+	println!("         • Typical Time: ~{encryption_time} ms");
 	println!("         • Memory Usage: ~16 MB during operation");
 	println!("         • CPU Intensity: High (intentional security feature)");
 
 	println!("\n      🔓 Decryption Performance:");
-	println!("         • Typical Time: ~{} ms", decryption_time);
+	println!("         • Typical Time: ~{decryption_time} ms");
 	println!("         • Memory Usage: ~16 MB during operation");
 	println!("         • Same complexity as encryption");
 

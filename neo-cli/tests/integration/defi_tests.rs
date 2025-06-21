@@ -8,7 +8,7 @@ mod tests {
 		let cli = CliTest::new();
 
 		// Test listing Flamingo liquidity pools
-		let output = cli.run_command(&["defi", "pools", "--platform", "flamingo"]);
+		let output = cli.run_command(&["de-fi", "pools", "--platform", "flamingo"]);
 
 		// We're just checking if the command is recognized, not full execution
 		assert!(output.status.code().unwrap_or(0) != 127, "Command not found");
@@ -20,7 +20,7 @@ mod tests {
 
 		// Test getting swap information between NEO and GAS
 		let output = cli.run_command(&[
-			"defi",
+			"de-fi",
 			"swap-info",
 			"--token-from",
 			"NEO",
@@ -51,7 +51,7 @@ mod tests {
 
 		// Attempt to swap NEO to GAS
 		let output = cli.run_command(&[
-			"defi",
+			"de-fi",
 			"swap",
 			"--token-from",
 			"NEO",
@@ -84,7 +84,7 @@ mod tests {
 
 		// Attempt to add liquidity
 		let output = cli.run_command(&[
-			"defi",
+			"de-fi",
 			"add-liquidity",
 			"--token-a",
 			"NEO",
@@ -117,7 +117,7 @@ mod tests {
 
 		// Attempt to remove liquidity
 		let output = cli.run_command(&[
-			"defi",
+			"de-fi",
 			"remove-liquidity",
 			"--token-a",
 			"NEO",
@@ -137,7 +137,7 @@ mod tests {
 		let cli = CliTest::new();
 
 		// Test mainnet list
-		let output = cli.run_command(&["defi", "list", "--network", "mainnet"]);
+		let output = cli.run_command(&["de-fi", "list", "--network", "mainnet"]);
 
 		assert_success(&output);
 		assert_output_contains(&output, "Famous contracts on mainnet:");
@@ -145,7 +145,7 @@ mod tests {
 		assert_output_contains(&output, "GAS Token");
 
 		// Test testnet list
-		let output = cli.run_command(&["defi", "list", "--network", "testnet"]);
+		let output = cli.run_command(&["de-fi", "list", "--network", "testnet"]);
 
 		assert_success(&output);
 		assert_output_contains(&output, "Famous contracts on testnet:");
@@ -157,7 +157,7 @@ mod tests {
 		let cli = CliTest::new();
 
 		// Test show by name
-		let output = cli.run_command(&["defi", "show", "NEO Token"]);
+		let output = cli.run_command(&["de-fi", "show", "NEO Token"]);
 
 		assert_success(&output);
 		assert_output_contains(&output, "Contract Name: NEO Token");
@@ -165,7 +165,7 @@ mod tests {
 		assert_output_contains(&output, "Network: Mainnet");
 
 		// Test show with case insensitivity
-		let output = cli.run_command(&["defi", "show", "neo token"]);
+		let output = cli.run_command(&["de-fi", "show", "neo token"]);
 
 		assert_success(&output);
 		assert_output_contains(&output, "Contract Name: NEO Token");
@@ -177,7 +177,7 @@ mod tests {
 		let cli = CliTest::new();
 
 		// First get NEO token script hash
-		let list_output = cli.run_command(&["defi", "list", "--network", "mainnet"]);
+		let list_output = cli.run_command(&["de-fi", "list", "--network", "mainnet"]);
 		let stdout = String::from_utf8_lossy(&list_output.stdout);
 
 		// Find NEO Token in the output
@@ -195,7 +195,7 @@ mod tests {
 			.expect("Could not extract NEO script hash");
 
 		// Test show by script hash
-		let output = cli.run_command(&["defi", "show", script_hash]);
+		let output = cli.run_command(&["de-fi", "show", script_hash]);
 
 		assert_success(&output);
 		assert_output_contains(&output, "Contract Name: NEO Token");
@@ -231,7 +231,7 @@ mod tests {
 
 		// Test invoke NEO token symbol method (view only)
 		let output = cli.run_command(&[
-			"defi",
+			"de-fi",
 			"invoke",
 			"NEO Token",
 			"symbol",
@@ -274,7 +274,7 @@ mod tests {
 
 		// Test checking balance with address flag
 		let output = cli.run_command(&[
-			"defi",
+			"de-fi",
 			"balance",
 			"NEO Token",
 			"--address",
@@ -295,7 +295,7 @@ mod tests {
 		let cli = CliTest::new();
 
 		// Test with a non-existent contract
-		let output = cli.run_command(&["defi", "show", "NonExistentContract"]);
+		let output = cli.run_command(&["de-fi", "show", "NonExistentContract"]);
 
 		assert!(!output.status.success());
 		assert_output_contains(&output, "Contract not found: NonExistentContract");

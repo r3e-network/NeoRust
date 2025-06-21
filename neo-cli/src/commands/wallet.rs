@@ -30,8 +30,10 @@ impl Wallet {
 		Self { extra: None, accounts: Vec::new(), path: None, password: None }
 	}
 
-	pub fn save_to_file(&self, _path: PathBuf) -> Result<(), String> {
-		// Professional wallet serialization with encrypted secure storage
+	pub fn save_to_file(&self, path: PathBuf) -> Result<(), String> {
+		// Basic wallet serialization for testing
+		let json = serde_json::to_string_pretty(self).map_err(|e| e.to_string())?;
+		std::fs::write(&path, json).map_err(|e| e.to_string())?;
 		print_success("💾 Wallet saved successfully");
 		Ok(())
 	}
@@ -144,6 +146,10 @@ pub enum WalletCommands {
 		/// Wallet name
 		#[arg(short, long, help = "Name for the wallet")]
 		name: Option<String>,
+
+		/// Password for the wallet (if not provided, will prompt)
+		#[arg(long, help = "Password for the wallet")]
+		password: Option<String>,
 	},
 
 	/// Open an existing wallet
@@ -152,6 +158,10 @@ pub enum WalletCommands {
 		/// Path to the wallet file
 		#[arg(short, long, help = "Path to the wallet file")]
 		path: PathBuf,
+
+		/// Password for the wallet (if not provided, will prompt)
+		#[arg(long, help = "Password for the wallet")]
+		password: Option<String>,
 	},
 
 	/// Close the current wallet
@@ -278,8 +288,8 @@ pub enum WalletCommands {
 /// Handle wallet command with comprehensive functionality
 pub async fn handle_wallet_command(args: WalletArgs, state: &mut CliState) -> Result<(), CliError> {
 	match args.command {
-		WalletCommands::Create { path, name } => handle_create_wallet(path, name, state).await,
-		WalletCommands::Open { path } => handle_open_wallet(path, state).await,
+		WalletCommands::Create { path, name, password } => handle_create_wallet(path, name, password, state).await,
+		WalletCommands::Open { path, password } => handle_open_wallet(path, password, state).await,
 		WalletCommands::Close => handle_close_wallet(state).await,
 		WalletCommands::List => handle_list_addresses(state).await,
 		WalletCommands::Info => handle_wallet_info(state).await,
@@ -304,6 +314,7 @@ pub async fn handle_wallet_command(args: WalletArgs, state: &mut CliState) -> Re
 async fn handle_create_wallet(
 	path: Option<PathBuf>,
 	name: Option<String>,
+	password: Option<String>,
 	state: &mut CliState,
 ) -> Result<(), CliError> {
 	print_section_header("Creating New Wallet");
@@ -329,14 +340,18 @@ async fn handle_create_wallet(
 		}
 	}
 
-	let password =
-		prompt_password("Enter password for the new wallet").map_err(|e| CliError::Io(e))?;
-
-	let confirm_password = prompt_password("Confirm password").map_err(|e| CliError::Io(e))?;
-
-	if password != confirm_password {
-		return Err(CliError::Wallet("Passwords do not match".to_string()));
-	}
+	let password = match password {
+		Some(pwd) => pwd,
+		None => {
+			let pwd = prompt_password("Enter password for the new wallet").map_err(|e| CliError::Io(e))?;
+			let confirm_password = prompt_password("Confirm password").map_err(|e| CliError::Io(e))?;
+			
+			if pwd != confirm_password {
+				return Err(CliError::Wallet("Passwords do not match".to_string()));
+			}
+			pwd
+		}
+	};
 
 	let wallet = with_loading("Creating wallet...", async {
 		let mut wallet = Wallet::new();
@@ -371,14 +386,17 @@ async fn handle_create_wallet(
 }
 
 /// Open an existing wallet
-async fn handle_open_wallet(path: PathBuf, state: &mut CliState) -> Result<(), CliError> {
+async fn handle_open_wallet(path: PathBuf, password: Option<String>, state: &mut CliState) -> Result<(), CliError> {
 	print_section_header("Opening Wallet");
 
 	if !path.exists() {
 		return Err(CliError::Wallet(format!("Wallet file not found: {}", path.display())));
 	}
 
-	let password = prompt_password("Enter wallet password").map_err(|e| CliError::Io(e))?;
+	let password = match password {
+		Some(pwd) => pwd,
+		None => prompt_password("Enter wallet password").map_err(|e| CliError::Io(e))?,
+	};
 
 	let wallet = with_loading("Opening wallet...", async { Wallet::open_wallet(&path, &password) })
 		.await

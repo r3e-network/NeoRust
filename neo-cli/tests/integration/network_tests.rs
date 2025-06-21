@@ -81,7 +81,7 @@ fn test_network_set_default() {
 	]);
 
 	// Connect to the node instead (no set-default command)
-	let output = cli.run(&["network", "connect", "--name", "default-node"]);
+	let output = cli.run(&["network", "connect", "--network", "default-node"]);
 
 	assert_success(&output);
 	assert_output_contains(&output, "default-node");

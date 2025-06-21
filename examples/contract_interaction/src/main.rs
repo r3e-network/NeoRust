@@ -4,7 +4,6 @@ use neo3::prelude::*;
 use neo3::neo_contract::{NeoToken, GasToken, FungibleTokenContract};
 use std::str::FromStr;
 use std::error::Error;
-use hex;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
@@ -23,11 +22,11 @@ async fn main() -> Result<(), Box<dyn Error>> {
     
     // NEO token contract hash
     let neo_hash = ScriptHash::from_str("ef4073a0f2b305a38ec4050e4d3d28bc40ea63f5")?;
-    println!("   📝 NEO Token: 0x{}", hex::encode(neo_hash.0));
+    println!("   📝 NEO Token: 0x{}", neo_hash);
     
     // GAS token contract hash
     let gas_hash = ScriptHash::from_str("d2a4cff31913016155e38e474a2c06d08be276cf")?;
-    println!("   ⛽ GAS Token: 0x{}", hex::encode(gas_hash.0));
+    println!("   ⛽ GAS Token: 0x{}", gas_hash);
     
     // Test account for demonstrations
     let test_address = "NbTiM6h8r99kpRtb428XcsUk1TzKed2gTc";
@@ -167,7 +166,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
         Ok(contract_state) => {
             println!("     ✅ NEO Contract State:");
             println!("       ID: {}", contract_state.id);
-            println!("       Hash: 0x{}", hex::encode(contract_state.hash.0));
+            println!("       Hash: 0x{}", contract_state.hash);
             println!("       Update Counter: {}", contract_state.update_counter);
             
             // Show manifest methods
@@ -218,7 +217,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     
     let transfer_script = script_builder.to_bytes();
     println!("     ✅ Transfer script built ({} bytes)", transfer_script.len());
-    println!("     Script: 0x{}", hex::encode(&transfer_script));
+    println!("     Script: 0x{}", transfer_script.iter().map(|b| format!("{:02x}", b)).collect::<String>());
 
     // Test the transfer script (without actually sending)
     println!("\n   🧪 Testing transfer script...");

@@ -1,0 +1,690 @@
+<!DOCTYPE HTML>
+<html lang="en" class="light sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>Contract Invocation - NeoRust SDK Documentation</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="Documentation for the NeoRust SDK, a comprehensive Rust SDK for interacting with the Neo N3 blockchain">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="../favicon.svg">
+        <link rel="shortcut icon" href="../favicon.png">
+        <link rel="stylesheet" href="../css/variables.css">
+        <link rel="stylesheet" href="../css/general.css">
+        <link rel="stylesheet" href="../css/chrome.css">
+        <link rel="stylesheet" href="../css/print.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="../FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="../fonts/fonts.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="highlight-css" href="../highlight.css">
+        <link rel="stylesheet" id="tomorrow-night-css" href="../tomorrow-night.css">
+        <link rel="stylesheet" id="ayu-highlight-css" href="../ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+        <link rel="stylesheet" href="../theme/custom.css">
+        <link rel="stylesheet" href=".././mdbook-admonish.css">
+
+        <!-- MathJax -->
+        <script async src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "../";
+            const default_light_theme = "light";
+            const default_dark_theme = "navy";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="../toc.js"></script>
+    </head>
+    <body>
+    <div id="mdbook-help-container">
+        <div id="mdbook-help-popup">
+            <h2 class="mdbook-help-title">Keyboard shortcuts</h2>
+            <div>
+                <p>Press <kbd>←</kbd> or <kbd>→</kbd> to navigate between chapters</p>
+                <p>Press <kbd>S</kbd> or <kbd>/</kbd> to search in the book</p>
+                <p>Press <kbd>?</kbd> to show this help</p>
+                <p>Press <kbd>Esc</kbd> to hide this help</p>
+            </div>
+        </div>
+    </div>
+    <div id="body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+            }
+            sidebar_toggle.checked = sidebar === 'visible';
+            html.classList.remove('sidebar-visible');
+            html.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="../toc.html"></iframe>
+            </noscript>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="sidebar-toggle" class="icon-button" for="sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </label>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        <button id="search-toggle" class="icon-button" type="button" title="Search (`/`)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="/ s" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">NeoRust SDK Documentation</h1>
+
+                    <div class="right-buttons">
+                        <a href="../print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+                        <a href="https://github.com/R3E-Network/NeoRust" title="Git repository" aria-label="Git repository">
+                            <i id="git-repository-button" class="fa fa-github"></i>
+                        </a>
+                        <a href="https://github.com/R3E-Network/NeoRust/edit/master/docs/src/../contracts/contract-invocation.md" title="Suggest an edit" aria-label="Suggest an edit">
+                            <i id="git-edit-button" class="fa fa-edit"></i>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h1 id="smart-contract-invocation"><a class="header" href="#smart-contract-invocation">Smart Contract Invocation</a></h1>
+<h2 id="overview"><a class="header" href="#overview">Overview</a></h2>
+<p>Invoking smart contracts is a fundamental operation when interacting with the Neo N3 blockchain. The NeoRust SDK provides multiple approaches to call contract methods, both for state-changing operations (which require transactions) and read-only queries.</p>
+<h2 id="invocation-methods"><a class="header" href="#invocation-methods">Invocation Methods</a></h2>
+<h3 id="1-using-contract-specific-interfaces"><a class="header" href="#1-using-contract-specific-interfaces">1. Using Contract-Specific Interfaces</a></h3>
+<p>For common contracts like NEP-17 tokens or system contracts, the SDK provides dedicated interfaces:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>use neo3::prelude::*;
+use neo3::neo_contract::{FungibleTokenContract, GasToken, NeoToken};
+use std::str::FromStr;
+
+async fn token_interaction() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
+    // Connect to Neo N3
+    let provider = HttpProvider::new("https://mainnet1.neo.org:443")?;
+    let client = RpcClient::new(provider);
+    
+    // Using the GasToken interface (system contract)
+    let gas_token = GasToken::new(&amp;client);
+    let symbol = gas_token.symbol().await?;
+    let decimals = gas_token.decimals().await?;
+    println!("GAS Token: {} with {} decimals", symbol, decimals);
+    
+    // Using the generic NEP-17 interface for any fungible token
+    let flamingo_hash = ScriptHash::from_str("fb7f9d5188a8accb42fa8cacb4f5450cd5e0ac13")?;
+    let flamingo = FungibleTokenContract::new(flamingo_hash, client.clone());
+    
+    let flm_symbol = flamingo.symbol().await?;
+    let flm_decimals = flamingo.decimals().await?;
+    println!("Flamingo Token: {} with {} decimals", flm_symbol, flm_decimals);
+    
+    Ok(())
+}
+<span class="boring">}</span></code></pre></pre>
+<h3 id="2-direct-script-invocation"><a class="header" href="#2-direct-script-invocation">2. Direct Script Invocation</a></h3>
+<p>For contracts without specific interfaces, you can build and invoke scripts directly:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>use neo3::prelude::*;
+use neo3::neo_builder::ScriptBuilder;
+use std::str::FromStr;
+
+async fn direct_invocation() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
+    // Connect to Neo N3
+    let provider = HttpProvider::new("https://mainnet1.neo.org:443")?;
+    let client = RpcClient::new(provider);
+    
+    // Contract script hash
+    let contract_hash = ScriptHash::from_str("d2a4cff31913016155e38e474a2c06d08be276cf")?;
+    
+    // Build a script to call a method
+    let script = ScriptBuilder::build_contract_call(
+        &amp;contract_hash,
+        "balanceOf",
+        &amp;[
+            ContractParameter::hash160(
+                ScriptHash::from_str("5c9c3a340f4c28262e7042b908b5f7e7a4bcd7e7")?
+            ),
+        ],
+    )?;
+    
+    // Invoke the script
+    let result = client.invoke_script(&amp;script, None).await?;
+    
+    // Process the result
+    if let Some(stack_item) = result.stack.first() {
+        if let Some(value) = stack_item.as_integer() {
+            println!("Balance: {}", value);
+        }
+    }
+    
+    Ok(())
+}
+<span class="boring">}</span></code></pre></pre>
+<h3 id="3-rpc-method-invocation"><a class="header" href="#3-rpc-method-invocation">3. RPC Method Invocation</a></h3>
+<p>You can also use the RPC client's convenience methods:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>use neo3::prelude::*;
+use std::str::FromStr;
+
+async fn rpc_invocation() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
+    // Connect to Neo N3
+    let provider = HttpProvider::new("https://mainnet1.neo.org:443")?;
+    let client = RpcClient::new(provider);
+    
+    // Contract script hash
+    let contract_hash = ScriptHash::from_str("d2a4cff31913016155e38e474a2c06d08be276cf")?;
+    
+    // Call a contract method
+    let result = client.invoke_function(
+        &amp;contract_hash,
+        "symbol",
+        &amp;[],
+        None,
+    ).await?;
+    
+    // Process the result
+    if let Some(stack_item) = result.stack.first() {
+        if let Some(value) = stack_item.as_string() {
+            println!("Token symbol: {}", value);
+        }
+    }
+    
+    Ok(())
+}
+<span class="boring">}</span></code></pre></pre>
+<h2 id="read-only-vs-state-changing-invocations"><a class="header" href="#read-only-vs-state-changing-invocations">Read-Only vs. State-Changing Invocations</a></h2>
+<h3 id="read-only-invocations"><a class="header" href="#read-only-invocations">Read-Only Invocations</a></h3>
+<p>Read-only invocations don't modify blockchain state and don't require transaction fees:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>use neo3::prelude::*;
+use neo3::neo_contract::NeoToken;
+
+async fn read_only_example() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
+    // Connect to Neo N3
+    let provider = HttpProvider::new("https://mainnet1.neo.org:443")?;
+    let client = RpcClient::new(provider);
+    
+    // Create NeoToken instance
+    let neo_token = NeoToken::new(&amp;client);
+    
+    // Call read-only methods
+    let total_supply = neo_token.total_supply().await?;
+    let committee = neo_token.get_committee().await?;
+    
+    println!("NEO Total Supply: {}", total_supply);
+    println!("Committee Members: {}", committee.len());
+    
+    Ok(())
+}
+<span class="boring">}</span></code></pre></pre>
+<h3 id="state-changing-invocations"><a class="header" href="#state-changing-invocations">State-Changing Invocations</a></h3>
+<p>State-changing invocations modify blockchain state, require transaction fees, and must be signed:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>use neo3::prelude::*;
+use neo3::neo_contract::GasToken;
+use std::str::FromStr;
+
+async fn state_changing_example() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
+    // Connect to Neo N3
+    let provider = HttpProvider::new("https://mainnet1.neo.org:443")?;
+    let client = RpcClient::new(provider);
+    
+    // Load account with GAS
+    let account = Account::from_wif("your-private-key-wif")?;
+    
+    // Create GasToken instance
+    let gas_token = GasToken::new(&amp;client);
+    
+    // Transfer GAS (state-changing operation)
+    let recipient = ScriptHash::from_str("5c9c3a340f4c28262e7042b908b5f7e7a4bcd7e7")?;
+    let amount = 1_0000_0000; // 1 GAS (with 8 decimals)
+    
+    let tx_hash = gas_token.transfer(
+        &amp;account,
+        &amp;recipient,
+        amount,
+        None, // No data
+    ).await?;
+    
+    println!("Transfer transaction sent: {}", tx_hash);
+    
+    // Wait for transaction confirmation
+    println!("Waiting for confirmation...");
+    let tx_info = client.get_transaction(&amp;tx_hash).await?;
+    
+    // Display transaction details
+    println!("Transaction confirmed:");
+    println!("Block Index: {}", tx_info.block_index);
+    println!("System Fee: {}", tx_info.system_fee);
+    println!("Network Fee: {}", tx_info.network_fee);
+    
+    Ok(())
+}
+<span class="boring">}</span></code></pre></pre>
+<h2 id="advanced-invocation-features"><a class="header" href="#advanced-invocation-features">Advanced Invocation Features</a></h2>
+<h3 id="1-multi-invocation-transactions"><a class="header" href="#1-multi-invocation-transactions">1. Multi-Invocation Transactions</a></h3>
+<p>You can combine multiple contract calls in a single transaction:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>use neo3::prelude::*;
+use neo3::neo_builder::{ScriptBuilder, TransactionBuilder};
+use std::str::FromStr;
+
+async fn multi_invocation() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
+    // Connect to Neo N3
+    let provider = HttpProvider::new("https://mainnet1.neo.org:443")?;
+    let client = RpcClient::new(provider);
+    
+    // Load account with GAS
+    let account = Account::from_wif("your-private-key-wif")?;
+    
+    // Contract script hashes for two tokens
+    let token1_hash = ScriptHash::from_str("d2a4cff31913016155e38e474a2c06d08be276cf")?;
+    let token2_hash = ScriptHash::from_str("fb7f9d5188a8accb42fa8cacb4f5450cd5e0ac13")?;
+    
+    // Recipient
+    let recipient = ScriptHash::from_str("5c9c3a340f4c28262e7042b908b5f7e7a4bcd7e7")?;
+    
+    // Build a script with multiple calls
+    let mut script_builder = ScriptBuilder::new();
+    
+    // Add first token transfer
+    script_builder.contract_call(
+        &amp;token1_hash,
+        "transfer",
+        &amp;[
+            ContractParameter::hash160(&amp;account.get_script_hash()),
+            ContractParameter::hash160(&amp;recipient),
+            ContractParameter::integer(1_0000_0000), // 1 Token1
+            ContractParameter::any(None),
+        ],
+    )?;
+    
+    // Add second token transfer
+    script_builder.contract_call(
+        &amp;token2_hash,
+        "transfer",
+        &amp;[
+            ContractParameter::hash160(&amp;account.get_script_hash()),
+            ContractParameter::hash160(&amp;recipient),
+            ContractParameter::integer(10_0000_0000), // 10 Token2
+            ContractParameter::any(None),
+        ],
+    )?;
+    
+    // Build transaction
+    let script = script_builder.to_bytes();
+    let block_count = client.get_block_count().await?;
+    
+    let transaction = TransactionBuilder::new()
+        .version(0)
+        .nonce(rand::random::&lt;u32&gt;())
+        .valid_until_block(block_count + 100)
+        .script(script)
+        .signers(vec![Signer::called_by_entry(account.get_script_hash())])
+        .build();
+    
+    // Sign transaction
+    let signed_tx = transaction.sign(&amp;client, &amp;account).await?;
+    
+    // Send transaction
+    let tx_hash = client.send_raw_transaction(&amp;signed_tx).await?;
+    println!("Multi-invocation transaction sent: {}", tx_hash);
+    
+    Ok(())
+}
+<span class="boring">}</span></code></pre></pre>
+<h3 id="2-verifying-witness-scopes"><a class="header" href="#2-verifying-witness-scopes">2. Verifying Witness Scopes</a></h3>
+<p>Different witness scopes control how a signature can be used:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// Called By Entry scope - signature applies only for contract called directly
+let signer = Signer::called_by_entry(account.get_script_hash());
+
+// Global scope - signature applies for all contract calls
+let signer = Signer::global(account.get_script_hash());
+
+// Custom Groups scope - signature applies for specified contract groups
+let signer = Signer::with_groups(
+    account.get_script_hash(),
+    vec!["group_public_key_1", "group_public_key_2"],
+);
+
+// Custom Contracts scope - signature applies for specified contracts
+let signer = Signer::with_contracts(
+    account.get_script_hash(),
+    vec![contract_hash1, contract_hash2],
+);
+<span class="boring">}</span></code></pre></pre>
+<h3 id="3-test-invocation"><a class="header" href="#3-test-invocation">3. Test Invocation</a></h3>
+<p>Test invocation lets you see what would happen if a contract were called, without sending a transaction:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>use neo3::prelude::*;
+use neo3::neo_builder::ScriptBuilder;
+use std::str::FromStr;
+
+async fn test_invocation() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
+    // Connect to Neo N3
+    let provider = HttpProvider::new("https://mainnet1.neo.org:443")?;
+    let client = RpcClient::new(provider);
+    
+    // Contract script hash
+    let token_hash = ScriptHash::from_str("d2a4cff31913016155e38e474a2c06d08be276cf")?;
+    
+    // Account and recipient
+    let account_hash = ScriptHash::from_str("0x1234567890123456789012345678901234567890")?;
+    let recipient = ScriptHash::from_str("0x9876543210987654321098765432109876543210")?;
+    
+    // Build a script
+    let script = ScriptBuilder::build_contract_call(
+        &amp;token_hash,
+        "transfer",
+        &amp;[
+            ContractParameter::hash160(&amp;account_hash),
+            ContractParameter::hash160(&amp;recipient),
+            ContractParameter::integer(1_0000_0000), // 1 Token
+            ContractParameter::any(None),
+        ],
+    )?;
+    
+    // Test invoke the script
+    let result = client.invoke_script(
+        &amp;script,
+        Some(&amp;[Signer::called_by_entry(account_hash)]),
+    ).await?;
+    
+    // Check result state
+    println!("Test Invocation Result:");
+    println!("State: {}", result.state);
+    println!("Gas Consumed: {}", result.gas_consumed);
+    
+    // Check for exceptions
+    if result.exception.is_some() {
+        println!("Exception: {}", result.exception.unwrap());
+    }
+    
+    // Process result stack
+    if let Some(stack_item) = result.stack.first() {
+        if let Some(success) = stack_item.as_boolean() {
+            println!("Would succeed: {}", success);
+        }
+    }
+    
+    Ok(())
+}
+<span class="boring">}</span></code></pre></pre>
+<h3 id="4-event-subscription"><a class="header" href="#4-event-subscription">4. Event Subscription</a></h3>
+<p>You can subscribe to contract events (requires a WebSocket connection):</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>use neo3::prelude::*;
+use std::str::FromStr;
+
+async fn event_subscription() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
+    // Connect to Neo N3 with WebSocket
+    let provider = WebSocketProvider::new("wss://testnet1.neo.org:4443").await?;
+    let client = RpcClient::new(provider);
+    
+    // Contract to monitor
+    let contract_hash = ScriptHash::from_str("d2a4cff31913016155e38e474a2c06d08be276cf")?;
+    
+    // Subscribe to contract events
+    let mut events = client.subscribe_contract_event(&amp;contract_hash).await?;
+    
+    println!("Listening for events from contract {}...", contract_hash);
+    
+    // Process events as they arrive
+    while let Some(event) = events.next().await {
+        println!("Event received: {} at block {}", event.event_name, event.block_index);
+        
+        // Process specific event types
+        if event.event_name == "Transfer" {
+            let from = event.state.get(0)
+                .and_then(|item| item.as_hash160())
+                .map(|h| h.to_string())
+                .unwrap_or_default();
+                
+            let to = event.state.get(1)
+                .and_then(|item| item.as_hash160())
+                .map(|h| h.to_string())
+                .unwrap_or_default();
+                
+            let amount = event.state.get(2)
+                .and_then(|item| item.as_integer())
+                .unwrap_or_default();
+                
+            println!("Transfer: {} tokens from {} to {}", amount, from, to);
+        }
+    }
+    
+    Ok(())
+}
+<span class="boring">}</span></code></pre></pre>
+<h2 id="handling-contract-results"><a class="header" href="#handling-contract-results">Handling Contract Results</a></h2>
+<p>Contract invocations can return different types of values:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>use neo3::prelude::*;
+use std::str::FromStr;
+
+async fn process_results() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
+    // Connect to Neo N3
+    let provider = HttpProvider::new("https://mainnet1.neo.org:443")?;
+    let client = RpcClient::new(provider);
+    
+    // Contract script hash
+    let contract_hash = ScriptHash::from_str("d2a4cff31913016155e38e474a2c06d08be276cf")?;
+    
+    // Invoke different methods
+    let symbol_result = client.invoke_function(&amp;contract_hash, "symbol", &amp;[], None).await?;
+    let decimals_result = client.invoke_function(&amp;contract_hash, "decimals", &amp;[], None).await?;
+    let total_supply_result = client.invoke_function(&amp;contract_hash, "totalSupply", &amp;[], None).await?;
+    
+    // Process string result
+    let symbol = symbol_result.stack.first()
+        .and_then(|item| item.as_string())
+        .unwrap_or_default();
+    println!("Symbol: {}", symbol);
+    
+    // Process integer result
+    let decimals = decimals_result.stack.first()
+        .and_then(|item| item.as_integer())
+        .unwrap_or_default();
+    println!("Decimals: {}", decimals);
+    
+    // Process large integer result
+    let total_supply = total_supply_result.stack.first()
+        .and_then(|item| item.as_integer())
+        .unwrap_or_default();
+    println!("Total Supply: {}", total_supply);
+    
+    // Demonstrate processing other types of results
+    let complex_result = client.invoke_function(
+        &amp;contract_hash,
+        "complexMethod",
+        &amp;[],
+        None,
+    ).await?;
+    
+    if let Some(stack_item) = complex_result.stack.first() {
+        match stack_item {
+            StackItem::Boolean(value) =&gt; println!("Boolean: {}", value),
+            StackItem::Integer(value) =&gt; println!("Integer: {}", value),
+            StackItem::ByteString(bytes) =&gt; println!("ByteString: {:?}", bytes),
+            StackItem::Array(items) =&gt; println!("Array with {} items", items.len()),
+            StackItem::Map(map) =&gt; println!("Map with {} entries", map.len()),
+            StackItem::Pointer(value) =&gt; println!("Pointer: {}", value),
+            StackItem::InteropInterface =&gt; println!("InteropInterface"),
+            StackItem::Any =&gt; println!("Any"),
+            // Handle other types...
+        }
+    }
+    
+    Ok(())
+}
+<span class="boring">}</span></code></pre></pre>
+<h2 id="best-practices"><a class="header" href="#best-practices">Best Practices</a></h2>
+<ol>
+<li><strong>Test Invocation First</strong>: Before sending transactions, use test invocation to verify success</li>
+<li><strong>Gas Estimation</strong>: Use <code>gas_consumed</code> from test invocation to estimate fees</li>
+<li><strong>Error Handling</strong>: Always check for exceptions in invocation results</li>
+<li><strong>Witness Scopes</strong>: Use the most restrictive witness scope needed for your operation</li>
+<li><strong>Batching</strong>: Combine multiple operations in one transaction when possible</li>
+<li><strong>Idempotency</strong>: Design contract invocations to be idempotent when possible</li>
+<li><strong>Timeouts</strong>: Set appropriate timeouts for confirmation waiters</li>
+<li><strong>Verification</strong>: Verify transaction success by checking application logs</li>
+</ol>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="../../contracts/contract-deployment.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+
+                            <a rel="next prefetch" href="../reference/api-overview.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="../../contracts/contract-deployment.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+
+                    <a rel="next prefetch" href="../reference/api-overview.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+            </nav>
+
+        </div>
+
+
+
+        <script>
+            window.playground_line_numbers = true;
+        </script>
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+        <script src="../ace.js"></script>
+        <script src="../mode-rust.js"></script>
+        <script src="../editor.js"></script>
+        <script src="../theme-dawn.js"></script>
+        <script src="../theme-tomorrow_night.js"></script>
+
+        <script src="../elasticlunr.min.js"></script>
+        <script src="../mark.min.js"></script>
+        <script src="../searcher.js"></script>
+
+        <script src="../clipboard.min.js"></script>
+        <script src="../highlight.js"></script>
+        <script src="../book.js"></script>
+
+        <!-- Custom JS scripts -->
+
+
+    </div>
+    </body>
+</html>

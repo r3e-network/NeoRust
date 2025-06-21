@@ -1,7 +1,6 @@
 use neo3::{
 	neo_clients::{APITrait, HttpProvider, RpcClient},
-	neo_types::{ContractParameter, ScriptHash, StackItem},
-	prelude::*,
+	neo_types::{ContractParameter, ScriptHash},
 };
 use std::str::FromStr;
 

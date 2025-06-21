@@ -1,5 +1,7 @@
-use neo3::prelude::*;
-use neo3::neo_clients::{HttpProvider, RpcClient};
+use neo3::{
+	neo_clients::{HttpProvider, RpcClient},
+	prelude::*,
+};
 use std::time::Duration;
 use tokio::time::{interval, timeout};
 

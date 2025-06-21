@@ -89,7 +89,7 @@ pub enum NetworkCommands {
 		/// Block height (optional, defaults to latest)
 		#[arg(long, help = "Specific block height")]
 		height: Option<u32>,
-		
+
 		/// Block index (alias for height)
 		#[arg(short = 'i', long, help = "Specific block index")]
 		index: Option<u32>,
@@ -117,7 +117,8 @@ pub async fn handle_network_command(
 			handle_add_network(name, url, network_type, chain_id, state).await,
 		NetworkCommands::Remove { name } => handle_remove_network(name, state).await,
 		NetworkCommands::Peers => handle_show_peers(state).await,
-		NetworkCommands::Block { height, index } => handle_show_block(height.or(index), state).await,
+		NetworkCommands::Block { height, index } =>
+			handle_show_block(height.or(index), state).await,
 		NetworkCommands::Ping { network } => handle_ping_network(network, state).await,
 	}
 }

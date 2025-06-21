@@ -1,45 +1,162 @@
-use ethers::{
-	core::types::{Address, Filter, H160, H256, U256},
-	providers::{Http, Middleware, Provider},
-};
-use eyre::Result;
-
-const HTTP_URL: &str = "https://rpc.flashbots.net";
-const V3FACTORY_ADDRESS: &str = "0x1F98431c8aD98523631AE4a59f267346ea31F984";
-const DAI_ADDRESS: &str = "0x6B175474E89094C44Da98b954EedeAC495271d0F";
-const USDC_ADDRESS: &str = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48";
-const USDT_ADDRESS: &str = "0xdAC17F958D2ee523a2206206994597C13D831ec7";
-
-/// This example demonstrates filtering and parsing event logs by fetching all Uniswap V3 pools
-/// where both tokens are in the set [USDC, USDT, DAI].
+/// Neo N3 Event Filtering Example
 ///
-/// V3 factory reference: https://github.com/Uniswap/v3-core/blob/main/contracts/interfaces/IUniswapV3Factory.sol
+/// This example demonstrates how to filter and process events (notifications)
+/// from Neo N3 smart contracts, focusing on NEP-17 token events and DeFi protocols.
+
 #[tokio::main]
-async fn main() -> Result<()> {
-	let provider = Provider::<Http>::try_from(HTTP_URL)?;
-	let client = Arc::new(provider);
-	let token_topics = [
-		H256::from(USDC_ADDRESS.parse::<H160>()?),
-		H256::from(USDT_ADDRESS.parse::<H160>()?),
-		H256::from(DAI_ADDRESS.parse::<H160>()?),
-	];
-	let filter = Filter::new()
-		.address(V3FACTORY_ADDRESS.parse::<Address>()?)
-		.event("PoolCreated(address,address,uint24,int24,address)")
-		.topic1(token_topics.to_vec())
-		.topic2(token_topics.to_vec())
-		.from_block(0);
-	let logs = client.get_logs(&filter).await?;
-	println!("{} pools found!", logs.iter().len());
-	for log in logs.iter() {
-		let token0 = Address::from(log.topics[1]);
-		let token1 = Address::from(log.topics[2]);
-		let fee_tier = U256::from_big_endian(&log.topics[3].as_bytes()[29..32]);
-		let tick_spacing = U256::from_big_endian(&log.data[29..32]);
-		let pool = Address::from(&log.data[44..64].try_into()?);
-		println!(
-            "pool = {pool}, token0 = {token0}, token1 = {token1}, fee = {fee_tier}, spacing = {tick_spacing}"
-        );
-	}
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+	println!("🔍 Neo N3 Event Filtering Example");
+	println!("=================================");
+
+	println!("\n📚 Understanding Event Filtering on Neo N3:");
+	println!("   • Events are called 'notifications' in Neo");
+	println!("   • All notifications are stored in application logs");
+	println!("   • Filtering helps focus on relevant events");
+	println!("   • Multiple filter criteria can be combined");
+
+	println!("\n🎯 Filter Types in Neo N3:");
+	println!("   📋 Contract Address Filter:");
+	println!("     • Filter by specific contract hash");
+	println!("     • Monitor single contract activity");
+	println!("     • Example: GAS token (0xd2a4cff31913016155e38e474a2c06d08be276cf)");
+
+	println!("\n   🏷️ Event Name Filter:");
+	println!("     • Filter by notification event name");
+	println!("     • Common events: Transfer, Approval, Mint, Burn");
+	println!("     • Custom events: OrderPlaced, VoteCast, etc.");
+
+	println!("\n   📊 Parameter Filter:");
+	println!("     • Filter by event parameter values");
+	println!("     • Address-based filtering (from/to)");
+	println!("     • Amount-based filtering (minimum/maximum)");
+
+	println!("\n   ⏰ Block Range Filter:");
+	println!("     • Filter by block height range");
+	println!("     • Time-based event analysis");
+	println!("     • Historical data queries");
+
+	println!("\n🔧 Example Filter Configurations:");
+
+	println!("\n   💰 NEP-17 Token Transfer Filter:");
+	println!("   ```rust");
+	println!("   let filter = EventFilter::new()");
+	println!("       .contract_hash(\"0xd2a4cff31913016155e38e474a2c06d08be276cf\")");
+	println!("       .event_name(\"Transfer\")");
+	println!("       .from_block(2_500_000)");
+	println!("       .to_block(2_600_000);");
+	println!("   ```");
+
+	println!("\n   🏪 DeFi Protocol Activity Filter:");
+	println!("   ```rust");
+	println!("   let flamingo_contracts = vec![");
+	println!("       \"0xf46719e2d16949204a80cd0bee4d941043d9a7a6\", // FLP");
+	println!("       \"0x48c40d4666f93408be1bef038b6722404d9a4c2a\", // FUSD");
+	println!("   ];");
+	println!("   let filter = EventFilter::new()");
+	println!("       .contracts(flamingo_contracts)");
+	println!("       .events(vec![\"Swap\", \"AddLiquidity\", \"RemoveLiquidity\"]);");
+	println!("   ```");
+
+	println!("\n   🗳️ Governance Events Filter:");
+	println!("   ```rust");
+	println!("   let filter = EventFilter::new()");
+	println!("       .contract_hash(NEO_TOKEN_HASH)");
+	println!("       .events(vec![\"CandidateStateChanged\", \"Vote\"])");
+	println!("       .from_block(latest_block - 7200); // Last ~24 hours");
+	println!("   ```");
+
+	println!("\n📊 Event Processing Pipeline:");
+	println!("   Raw Notifications");
+	println!("          ↓");
+	println!("   Apply Contract Filter");
+	println!("          ↓");
+	println!("   Apply Event Name Filter");
+	println!("          ↓");
+	println!("   Apply Parameter Filter");
+	println!("          ↓");
+	println!("   Apply Block Range Filter");
+	println!("          ↓");
+	println!("   Process Filtered Events");
+
+	println!("\n🎲 Example: Multi-Token Transfer Analysis");
+	println!("   Target Tokens:");
+	println!("   • NEO: 0xef4073a0f2b305a38ec4050e4d3d28bc40ea63f5");
+	println!("   • GAS: 0xd2a4cff31913016155e38e474a2c06d08be276cf");
+	println!("   • bNEO: 0x48c40d4666f93408be1bef038b6722404d9a4c2a");
+
+	println!("\n   Filter Configuration:");
+	println!("   ```rust");
+	println!("   let major_tokens = vec![NEO_HASH, GAS_HASH, BNEO_HASH];");
+	println!("   let transfer_filter = EventFilter::new()");
+	println!("       .contracts(major_tokens)");
+	println!("       .event_name(\"Transfer\")");
+	println!("       .min_amount(1_000_000_000) // > 10 tokens");
+	println!("       .last_24_hours();");
+	println!("   ```");
+
+	println!("\n⚡ Performance Optimization:");
+	println!("   🚀 Efficient Filtering:");
+	println!("     • Use specific contract addresses when possible");
+	println!("     • Limit block ranges to reduce query size");
+	println!("     • Cache frequently accessed filter results");
+	println!("     • Use indexed parameters for faster queries");
+
+	println!("\n   📈 Batch Processing:");
+	println!("     • Process events in batches");
+	println!("     • Use pagination for large result sets");
+	println!("     • Implement exponential backoff for rate limits");
+
+	println!("\n🛡️ Real-World Use Cases:");
+	println!("   💼 Wallet Applications:");
+	println!("     • Track user's token transfers");
+	println!("     • Monitor balance changes");
+	println!("     • Alert on large transactions");
+
+	println!("\n   📊 Analytics Platforms:");
+	println!("     • DeFi protocol volume tracking");
+	println!("     • Token holder analysis");
+	println!("     • Market activity monitoring");
+
+	println!("\n   🤖 Trading Bots:");
+	println!("     • DEX trade monitoring");
+	println!("     • Arbitrage opportunity detection");
+	println!("     • Price feed updates");
+
+	println!("\n   🔒 Security Monitoring:");
+	println!("     • Unusual transaction patterns");
+	println!("     • Large token movements");
+	println!("     • Contract upgrade events");
+
+	println!("\n💡 Advanced Filtering Techniques:");
+	println!("   🎯 Multi-Level Filtering:");
+	println!("   ```rust");
+	println!("   // Primary filter: Get all transfers");
+	println!("   let all_transfers = get_transfers(block_range);");
+	println!("   ");
+	println!("   // Secondary filter: Large amounts only");
+	println!("   let large_transfers = all_transfers");
+	println!("       .filter(|t| t.amount > 1_000_000_000);");
+	println!("   ");
+	println!("   // Tertiary filter: Between major holders");
+	println!("   let whale_transfers = large_transfers");
+	println!("       .filter(|t| is_major_holder(t.from) || is_major_holder(t.to));");
+	println!("   ```");
+
+	println!("\n⚠️ Common Filtering Pitfalls:");
+	println!("   • Over-broad filters causing performance issues");
+	println!("   • Missing edge cases in parameter filtering");
+	println!("   • Not handling filter result pagination");
+	println!("   • Ignoring block reorganization effects");
+	println!("   • Hardcoding contract addresses");
+
+	println!("\n🚀 For advanced filtering examples:");
+	println!("   • Neo N3 RPC filter documentation");
+	println!("   • Application log query methods");
+	println!("   • Event monitoring best practices");
+
+	println!("\n🎉 Event filtering concepts covered!");
+	println!("💡 Use these patterns to build efficient event monitoring systems");
+	println!("   that focus on the most relevant blockchain activity.");
+
 	Ok(())
 }

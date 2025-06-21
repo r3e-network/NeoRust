@@ -46,6 +46,8 @@ members = [
     "examples/basic",
     "examples/intermediate", 
     "examples/advanced",
+    "examples/contract_interaction",
+    "examples/message_signing",
     "examples/neo_contracts",
     "examples/subscriptions",
     "examples/neo_transactions",

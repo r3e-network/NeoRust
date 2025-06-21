@@ -109,7 +109,10 @@ mod imp {
 			// SAFETY: This creates aliased mutable references, but they access
 			// non-overlapping functionality of the underlying NamedPipeClient.
 			// ReadHalf cannot write and WriteHalf cannot read, ensuring memory safety.
-			#[allow(clippy::cast_ptr_alignment)]
+			// SAFETY: This unsafe block creates two non-overlapping references to different
+			// parts of the same object. This is safe because ReadHalf and WriteHalf access
+			// completely separate functionality of the underlying NamedPipeClient.
+			#[allow(clippy::cast_ptr_alignment, clippy::transmute_ptr_to_ptr)]
 			let read_ref = unsafe { &mut *(self as *mut Self) };
 			let write_ref = self;
 			(ReadHalf(read_ref), WriteHalf(write_ref))

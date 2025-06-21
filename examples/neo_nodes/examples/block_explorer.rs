@@ -28,7 +28,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 	println!("Block version: {}", latest_block.version);
 	println!("Previous block: {}", latest_block.prev_block_hash);
 	println!("Merkle root: {}", latest_block.merkle_root_hash);
-	println!("Transaction count: {}", latest_block.transactions.as_ref().map_or(0, |txs| txs.len()));
+	println!(
+		"Transaction count: {}",
+		latest_block.transactions.as_ref().map_or(0, |txs| txs.len())
+	);
 
 	// Display transaction information
 	println!("\n4. Examining transactions in this block...");

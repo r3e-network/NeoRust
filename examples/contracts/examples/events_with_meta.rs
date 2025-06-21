@@ -61,12 +61,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 	println!("\n📝 Custom Event Example:");
 	println!("   // In smart contract:");
-	println!("   Runtime.Notify(\"OrderPlaced\", new object[] {");
+	println!("   Runtime.Notify(\"OrderPlaced\", new object[] {{");
 	println!("     orderId,");
 	println!("     buyer,");
 	println!("     amount,");
 	println!("     timestamp");
-	println!("   });");
+	println!("   }});");
 
 	println!("\n🔍 Querying Events via RPC:");
 	println!("   • getapplicationlog - Get all events for a transaction");

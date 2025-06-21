@@ -98,12 +98,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 	println!("\n📝 Example Event Handlers:");
 	println!("   // Transfer event handler");
-	println!("   match event.event_name {");
+	println!("   match event.event_name {{");
 	println!("     \"Transfer\" => update_balance(from, to, amount),");
 	println!("     \"Approval\" => update_allowance(owner, spender, amount),");
 	println!("     \"OrderPlaced\" => notify_traders(order_data),");
 	println!("     _ => log_unknown_event(event)");
-	println!("   }");
+	println!("   }}");
 
 	println!("\n🚀 For event monitoring examples:");
 	println!("   • examples/subscriptions/");

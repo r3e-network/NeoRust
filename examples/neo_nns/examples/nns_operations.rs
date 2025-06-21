@@ -89,7 +89,7 @@ async fn check_domain_availability(
 	let nns_contract_hash = ScriptHash::from_str("50ac1c37690cc2cfc594472833cf57505d5f46de")?;
 
 	// Create parameter for domain name
-	let domain_param = ContractParameter::string(domain);
+	let domain_param = ContractParameter::string(domain.to_string());
 	let parameters = vec![domain_param];
 
 	// Call the 'isAvailable' method on the NNS contract

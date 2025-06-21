@@ -1,5 +1,4 @@
-use primitive_types::{H160, H256, U256};
-use std::str::FromStr;
+use primitive_types::U256;
 
 /// Example demonstrating Neo X EVM compatibility layer with real interactions.
 /// Neo X provides full EVM compatibility while maintaining connection to Neo N3.
@@ -106,7 +105,7 @@ async fn demonstrate_web3_rpc(config: &NeoXConfig) -> Result<(), Box<dyn std::er
 
 /// Demonstrate smart contract interaction
 async fn demonstrate_contract_interaction(
-	config: &NeoXConfig,
+	_config: &NeoXConfig,
 ) -> Result<(), Box<dyn std::error::Error>> {
 	println!("   📝 Example: ERC20 Token Contract");
 
@@ -163,7 +162,7 @@ async fn demonstrate_contract_interaction(
 
 /// Demonstrate DeFi integration
 async fn demonstrate_defi_integration(
-	config: &NeoXConfig,
+	_config: &NeoXConfig,
 ) -> Result<(), Box<dyn std::error::Error>> {
 	println!("   💎 Popular DeFi protocols on Neo X:");
 
@@ -207,7 +206,7 @@ async fn demonstrate_defi_integration(
 
 /// Demonstrate gas optimization
 async fn demonstrate_gas_optimization(
-	config: &NeoXConfig,
+	_config: &NeoXConfig,
 ) -> Result<(), Box<dyn std::error::Error>> {
 	println!("   ⛽ Gas optimization strategies:");
 

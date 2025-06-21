@@ -1,7 +1,7 @@
 //! The Http transport is used to send JSON-RPC requests over HTTP to an Neo node.
 //! This is the most basic connection to a node.
 
-use neo3::{neo_clients::APITrait, prelude::*};
+use neo3::neo_clients::APITrait;
 use std::sync::Arc;
 
 const RPC_URL: &str = "https://testnet1.neo.org:443/";

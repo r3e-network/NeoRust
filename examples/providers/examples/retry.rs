@@ -1,378 +1,322 @@
-//! The RetryClient is a type that wraps around a JsonRpcClient and automatically retries failed
-//! requests using an exponential backoff and filtering based on a RetryPolicy. It presents as a
-//! JsonRpcClient, but with additional functionality for retrying requests.
-//!
-//! The RetryPolicy can be customized for specific applications and endpoints, mainly to handle
-//! rate-limiting errors. In addition to the RetryPolicy, errors caused by connectivity issues such
-//! as timed out connections or responses in the 5xx range can also be retried separately.
-
-use neo3::prelude::*;
-use std::time::{Duration, Instant};
+/// Neo N3 Retry Strategy Example
+///
+/// This example demonstrates how to implement retry patterns for
+/// Neo N3 blockchain RPC calls to handle network issues gracefully.
+use std::time::Duration;
 use tokio::time::sleep;
 
-/// A retry policy that determines whether an error should be retried
-#[derive(Debug, Clone)]
+/// Retry policy configuration
+#[derive(Clone, Debug)]
 pub struct RetryPolicy {
 	pub max_retries: u32,
-	pub initial_backoff: Duration,
-	pub max_backoff: Duration,
+	pub initial_delay: Duration,
+	pub max_delay: Duration,
 	pub backoff_multiplier: f64,
-	pub timeout_retries: bool,
-	pub rate_limit_retries: bool,
 }
 
 impl Default for RetryPolicy {
 	fn default() -> Self {
 		Self {
 			max_retries: 3,
-			initial_backoff: Duration::from_millis(500),
-			max_backoff: Duration::from_secs(30),
+			initial_delay: Duration::from_millis(100),
+			max_delay: Duration::from_secs(30),
 			backoff_multiplier: 2.0,
-			timeout_retries: true,
-			rate_limit_retries: true,
 		}
 	}
 }
 
-/// Retry client wrapper for Neo N3 RPC operations
+/// Error types that can occur during RPC calls
+#[derive(Debug)]
+pub enum RpcError {
+	NetworkError(String),
+	TimeoutError,
+	RateLimitError,
+	ServerError(u16),
+	ParseError(String),
+}
+
+impl std::fmt::Display for RpcError {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		match self {
+			RpcError::NetworkError(msg) => write!(f, "Network error: {}", msg),
+			RpcError::TimeoutError => write!(f, "Request timeout"),
+			RpcError::RateLimitError => write!(f, "Rate limit exceeded"),
+			RpcError::ServerError(code) => write!(f, "Server error: {}", code),
+			RpcError::ParseError(msg) => write!(f, "Parse error: {}", msg),
+		}
+	}
+}
+
+impl std::error::Error for RpcError {}
+
+/// Retry client wrapper for Neo N3 RPC calls
 pub struct RetryClient {
-	client: RpcClient<HttpProvider>,
 	policy: RetryPolicy,
 }
 
 impl RetryClient {
-	pub fn new(client: RpcClient<HttpProvider>, policy: RetryPolicy) -> Self {
-		Self { client, policy }
+	pub fn new(policy: RetryPolicy) -> Self {
+		Self { policy }
 	}
 
-	/// Classify error to determine if it should be retried
-	fn should_retry(&self, error: &str, attempt: u32) -> bool {
-		if attempt >= self.policy.max_retries {
-			return false;
-		}
-
-		// Check for retryable errors
-		let error_lower = error.to_lowercase();
-
-		// Network/connection errors
-		if error_lower.contains("timeout")
-			|| error_lower.contains("connection")
-			|| error_lower.contains("network")
-			|| error_lower.contains("dns")
-		{
-			return self.policy.timeout_retries;
-		}
-
-		// Rate limiting errors
-		if error_lower.contains("rate limit")
-			|| error_lower.contains("too many requests")
-			|| error_lower.contains("429")
-		{
-			return self.policy.rate_limit_retries;
-		}
-
-		// Server errors (5xx)
-		if error_lower.contains("internal server error")
-			|| error_lower.contains("service unavailable")
-			|| error_lower.contains("502")
-			|| error_lower.contains("503")
-			|| error_lower.contains("504")
-		{
-			return true;
-		}
-
-		false
-	}
-
-	/// Calculate backoff duration with exponential growth
-	fn calculate_backoff(&self, attempt: u32) -> Duration {
-		let backoff_ms = self.policy.initial_backoff.as_millis() as f64
-			* self.policy.backoff_multiplier.powi(attempt as i32);
-
-		let backoff_duration = Duration::from_millis(backoff_ms as u64);
-
-		// Cap at max backoff
-		if backoff_duration > self.policy.max_backoff {
-			self.policy.max_backoff
-		} else {
-			backoff_duration
-		}
-	}
-
-	/// Retry wrapper for RPC operations
-	pub async fn retry_operation<T, F, Fut>(
-		&self,
-		operation: F,
-	) -> Result<T, Box<dyn std::error::Error>>
+	/// Execute an operation with retry logic
+	pub async fn execute_with_retry<F, T, E>(&self, operation: F) -> Result<T, RpcError>
 	where
-		F: Fn() -> Fut,
-		Fut: std::future::Future<Output = Result<T, Box<dyn std::error::Error>>>,
+		F: Fn() -> Result<T, E> + Send + Sync,
+		E: std::error::Error + Send + Sync + 'static,
 	{
-		let mut attempt = 0;
-		let start_time = Instant::now();
+		let mut attempts = 0;
+		let mut delay = self.policy.initial_delay;
 
 		loop {
-			match operation().await {
-				Ok(result) => {
-					if attempt > 0 {
-						println!("   ✅ Operation succeeded after {} retries", attempt);
-					}
-					return Ok(result);
-				},
-				Err(error) => {
-					attempt += 1;
-					let error_str = error.to_string();
+			match operation() {
+				Ok(result) => return Ok(result),
+				Err(e) => {
+					attempts += 1;
 
-					if !self.should_retry(&error_str, attempt) {
-						println!(
-							"   ❌ Operation failed after {} attempts: {}",
-							attempt, error_str
-						);
-						return Err(error);
+					if attempts > self.policy.max_retries {
+						return Err(RpcError::NetworkError(format!(
+							"Max retries exceeded: {}",
+							e
+						)));
 					}
 
-					let backoff = self.calculate_backoff(attempt - 1);
+					// Check if error is retryable
+					if !self.is_retryable_error(&e) {
+						return Err(RpcError::NetworkError(format!("Non-retryable error: {}", e)));
+					}
+
 					println!(
-						"   🔄 Attempt {} failed: {}. Retrying in {:?}...",
-						attempt, error_str, backoff
+						"   ⚠️  Attempt {} failed: {}. Retrying in {:?}...",
+						attempts, e, delay
 					);
 
-					sleep(backoff).await;
-				},
+					sleep(delay).await;
+
+					// Exponential backoff
+					delay = std::cmp::min(
+						Duration::from_secs_f64(delay.as_secs_f64() * self.policy.backoff_multiplier),
+						self.policy.max_delay,
+					);
+				}
 			}
 		}
 	}
 
-	/// Get block count with retry logic
-	pub async fn get_block_count_with_retry(&self) -> Result<u64, Box<dyn std::error::Error>> {
-		self.retry_operation(|| async {
-			self.client
-				.get_block_count()
-				.await
-				.map_err(|e| Box::new(e) as Box<dyn std::error::Error>)
-		})
-		.await
+	/// Determine if an error is retryable
+	fn is_retryable_error<E: std::error::Error>(&self, error: &E) -> bool {
+		let error_str = error.to_string().to_lowercase();
+
+		// Common retryable error patterns
+		error_str.contains("timeout")
+			|| error_str.contains("connection")
+			|| error_str.contains("network")
+			|| error_str.contains("temporary")
+			|| error_str.contains("rate limit")
+			|| error_str.contains("502")
+			|| error_str.contains("503")
+			|| error_str.contains("504")
+	}
+}
+
+/// Mock RPC operations for demonstration
+struct MockRpcOperation {
+	success_rate: f64,
+	call_count: std::sync::Mutex<u32>,
+}
+
+impl MockRpcOperation {
+	fn new(success_rate: f64) -> Self {
+		Self { success_rate, call_count: std::sync::Mutex::new(0) }
 	}
 
-	/// Get balance with retry logic
-	pub async fn get_balance_with_retry(
-		&self,
-		address: &ScriptHash,
-		token: &ScriptHash,
-	) -> Result<u64, Box<dyn std::error::Error>> {
-		self.retry_operation(|| async {
-			self.client
-				.get_nep17_balance(address, token)
-				.await
-				.map_err(|e| Box::new(e) as Box<dyn std::error::Error>)
-		})
-		.await
+	fn call(&self) -> Result<String, RpcError> {
+		let mut count = self.call_count.lock().unwrap();
+		*count += 1;
+
+		// Simulate random failures based on success rate
+		let random_value = (*count as f64 * 0.3) % 1.0; // Deterministic "random"
+
+		if random_value < self.success_rate {
+			Ok(format!("Success after {} attempts", *count))
+		} else if random_value < self.success_rate + 0.3 {
+			Err(RpcError::NetworkError("Connection refused".to_string()))
+		} else if random_value < self.success_rate + 0.5 {
+			Err(RpcError::TimeoutError)
+		} else {
+			Err(RpcError::RateLimitError)
+		}
 	}
 }
 
 #[tokio::main]
-async fn main() -> eyre::Result<()> {
-	println!("🔄 Neo N3 Retry Client Example");
-	println!("==============================");
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+	println!("🔄 Neo N3 Retry Strategy Example");
+	println!("================================");
 
-	// 1. Create base RPC client
-	println!("\n1. Setting up base RPC client...");
+	// 1. Basic retry configuration
+	println!("\n1. Retry Policy Configuration:");
 
-	let provider = match HttpProvider::new("https://testnet1.neo.coz.io:443/") {
-		Ok(p) => p,
-		Err(e) => {
-			println!("   ❌ Failed to create provider: {}", e);
-			// Continue with demonstration using mock errors
-			return demonstrate_retry_logic().await;
-		},
-	};
-
-	let base_client = RpcClient::new(provider);
-	println!("   ✅ Base client created");
-
-	// 2. Configure retry policy
-	println!("\n2. Configuring retry policy...");
-
-	let retry_policy = RetryPolicy {
-		max_retries: 5,
-		initial_backoff: Duration::from_millis(1000),
-		max_backoff: Duration::from_secs(10),
-		backoff_multiplier: 2.0,
-		timeout_retries: true,
-		rate_limit_retries: true,
-	};
-
-	println!("   📋 Retry Policy Configuration:");
-	println!("     Max Retries: {}", retry_policy.max_retries);
-	println!("     Initial Backoff: {:?}", retry_policy.initial_backoff);
-	println!("     Max Backoff: {:?}", retry_policy.max_backoff);
-	println!("     Backoff Multiplier: {}", retry_policy.backoff_multiplier);
-	println!("     Timeout Retries: {}", retry_policy.timeout_retries);
-	println!("     Rate Limit Retries: {}", retry_policy.rate_limit_retries);
-
-	// 3. Create retry client
-	println!("\n3. Creating retry client...");
-	let retry_client = RetryClient::new(base_client, retry_policy);
-	println!("   ✅ Retry client created with policy");
-
-	// 4. Test successful operation
-	println!("\n4. Testing successful operation...");
-	match retry_client.get_block_count_with_retry().await {
-		Ok(block_count) => {
-			println!("   ✅ Block count: {}", block_count);
-		},
-		Err(e) => {
-			println!("   ❌ Error getting block count: {}", e);
-		},
-	}
-
-	// 5. Test balance query with retry
-	println!("\n5. Testing balance query with retry...");
-	let test_address = match ScriptHash::from_address("NbTiM6h8r99kpRtb428XcsUk1TzKed2gTc") {
-		Ok(addr) => addr,
-		Err(e) => {
-			println!("   ❌ Invalid address: {}", e);
-			return demonstrate_retry_logic().await;
-		},
-	};
-
-	let gas_token = ScriptHash::gas();
-
-	match retry_client.get_balance_with_retry(&test_address, &gas_token).await {
-		Ok(balance) => {
-			let gas_amount = balance as f64 / 100_000_000.0;
-			println!("   ✅ GAS Balance: {:.8} GAS", gas_amount);
-		},
-		Err(e) => {
-			println!("   ❌ Error getting balance: {}", e);
-		},
-	}
-
-	// 6. Demonstrate error classification and retry logic
-	demonstrate_retry_logic().await?;
-
-	println!("\n🎉 Retry client example completed!");
-	println!("💡 This example demonstrates real retry capabilities:");
-	println!("   • Exponential backoff with configurable parameters");
-	println!("   • Error classification for different retry strategies");
-	println!("   • Network failure and timeout handling");
-	println!("   • Rate limiting and server error recovery");
-	println!("   • Production-ready retry patterns");
-
-	Ok(())
-}
-
-async fn demonstrate_retry_logic() -> eyre::Result<()> {
-	println!("\n6. Demonstrating retry error classification...");
-
-	let retry_policy = RetryPolicy::default();
-	let errors_and_expected = vec![
-		("Connection timeout", true),
-		("Network unreachable", true),
-		("DNS resolution failed", true),
-		("Rate limit exceeded", true),
-		("Too many requests (429)", true),
-		("Internal server error (500)", true),
-		("Service unavailable (503)", true),
-		("Bad gateway (502)", true),
-		("Gateway timeout (504)", true),
-		("Invalid parameters", false),
-		("Unauthorized (401)", false),
-		("Forbidden (403)", false),
-		("Not found (404)", false),
-		("Method not allowed (405)", false),
-	];
-
-	for (error_msg, should_retry) in errors_and_expected {
-		let retry_client =
-			RetryClient { client: create_mock_client(), policy: retry_policy.clone() };
-
-		let will_retry = retry_client.should_retry(error_msg, 1);
-		let status = if will_retry == should_retry { "✅" } else { "❌" };
-
-		println!(
-			"   {} '{}': {} (expected: {})",
-			status,
-			error_msg,
-			if will_retry { "Will retry" } else { "Won't retry" },
-			if should_retry { "retry" } else { "no retry" }
-		);
-	}
-
-	// 7. Demonstrate backoff calculation
-	println!("\n7. Demonstrating exponential backoff...");
-
-	let retry_client = RetryClient {
-		client: create_mock_client(),
-		policy: RetryPolicy {
-			initial_backoff: Duration::from_millis(500),
+	let policies = vec![
+		("Conservative", RetryPolicy {
+			max_retries: 2,
+			initial_delay: Duration::from_millis(500),
+			max_delay: Duration::from_secs(5),
+			backoff_multiplier: 1.5,
+		}),
+		("Aggressive", RetryPolicy {
+			max_retries: 5,
+			initial_delay: Duration::from_millis(100),
+			max_delay: Duration::from_secs(10),
 			backoff_multiplier: 2.0,
-			max_backoff: Duration::from_secs(8),
-			..Default::default()
-		},
-	};
-
-	for attempt in 0..6 {
-		let backoff = retry_client.calculate_backoff(attempt);
-		println!("   Attempt {}: Backoff = {:?}", attempt + 1, backoff);
-	}
-
-	// 8. Simulate retry with mock failures
-	println!("\n8. Simulating retry scenario...");
-
-	let mut failure_count = 0;
-	let max_failures = 2;
-
-	let result = retry_client
-		.retry_operation(|| async {
-			failure_count += 1;
-			if failure_count <= max_failures {
-				Err(Box::new(std::io::Error::new(
-					std::io::ErrorKind::TimedOut,
-					"Connection timeout",
-				)) as Box<dyn std::error::Error>)
-			} else {
-				Ok("Operation succeeded!")
-			}
-		})
-		.await;
-
-	match result {
-		Ok(success_msg) => {
-			println!("   ✅ {}", success_msg);
-		},
-		Err(e) => {
-			println!("   ❌ Final failure: {}", e);
-		},
-	}
-
-	// 9. Performance metrics simulation
-	println!("\n9. Performance metrics demonstration...");
-
-	let operations = vec![
-		("Fast operation", Duration::from_millis(100), true),
-		("Slow operation", Duration::from_millis(500), true),
-		("Timeout operation", Duration::from_millis(5000), false),
-		("Rate limited operation", Duration::from_millis(200), false),
+		}),
+		("Gentle", RetryPolicy {
+			max_retries: 3,
+			initial_delay: Duration::from_secs(1),
+			max_delay: Duration::from_secs(30),
+			backoff_multiplier: 3.0,
+		}),
 	];
 
-	for (name, duration, success) in operations {
-		let start = std::time::Instant::now();
+	for (name, policy) in &policies {
+		println!("   🎛️  {} Policy:", name);
+		println!("     Max retries: {}", policy.max_retries);
+		println!("     Initial delay: {:?}", policy.initial_delay);
+		println!("     Max delay: {:?}", policy.max_delay);
+		println!("     Backoff multiplier: {:.1}x", policy.backoff_multiplier);
+	}
 
-		if success {
-			tokio::time::sleep(duration).await;
-			let elapsed = start.elapsed();
-			println!("   ✅ {}: completed in {:?}", name, elapsed);
-		} else {
-			println!("   ⚠️  {}: would require retry logic", name);
+	// 2. Demonstrate retry scenarios
+	println!("\n2. Retry Scenarios:");
+
+	let scenarios = vec![
+		("High success rate (80%)", 0.8),
+		("Medium success rate (50%)", 0.5),
+		("Low success rate (20%)", 0.2),
+		("Always fails (0%)", 0.0),
+	];
+
+	for (description, success_rate) in scenarios {
+		println!("\n   📊 Testing: {}", description);
+
+		let mock_op = MockRpcOperation::new(success_rate);
+		let retry_client = RetryClient::new(RetryPolicy::default());
+
+		match retry_client
+			.execute_with_retry(|| mock_op.call())
+			.await
+		{
+			Ok(result) => println!("     ✅ {}", result),
+			Err(error) => println!("     ❌ Final failure: {}", error),
 		}
 	}
 
-	Ok(())
-}
+	// 3. Real-world integration patterns
+	println!("\n3. Integration Patterns:");
 
-fn create_mock_client() -> RpcClient<HttpProvider> {
-	// Create a mock client for demonstration purposes
-	let provider = HttpProvider::new("http://localhost:1234").unwrap();
-	RpcClient::new(provider)
+	println!("   🔗 HTTP Client Integration:");
+	println!("   ```rust");
+	println!("   let retry_client = RetryClient::new(RetryPolicy::default());");
+	println!("   let result = retry_client.execute_with_retry(|| {{");
+	println!("       http_client.post(rpc_url)");
+	println!("           .json(&rpc_request)");
+	println!("           .send()");
+	println!("           .await");
+	println!("   }}).await?;");
+	println!("   ```");
+
+	println!("\n   🌐 Neo N3 RPC Integration:");
+	println!("   ```rust");
+	println!("   let result = retry_client.execute_with_retry(|| {{");
+	println!("       client.get_block_count().await");
+	println!("   }}).await?;");
+	println!("   ```");
+
+	// 4. Advanced retry strategies
+	println!("\n4. Advanced Retry Strategies:");
+
+	let strategies = vec![
+		("Circuit Breaker", "Stop retrying after consecutive failures"),
+		("Jittered Backoff", "Add randomness to prevent thundering herd"),
+		("Per-Endpoint Policies", "Different retry logic per RPC method"),
+		("Adaptive Timeouts", "Adjust timeouts based on response times"),
+		("Health Check Integration", "Skip retries when service is known to be down"),
+	];
+
+	for (strategy, description) in strategies {
+		println!("   ⚡ {}: {}", strategy, description);
+	}
+
+	// 5. Error classification examples
+	println!("\n5. Error Classification:");
+
+	let error_examples = vec![
+		("Network timeout", "Retryable", "Temporary network issue"),
+		("Invalid JSON", "Non-retryable", "Request format error"),
+		("Rate limit (429)", "Retryable", "Server temporarily overloaded"),
+		("Authentication (401)", "Non-retryable", "Invalid credentials"),
+		("Server error (500)", "Retryable", "Internal server error"),
+		("Not found (404)", "Non-retryable", "Resource doesn't exist"),
+	];
+
+	for (error, classification, reason) in error_examples {
+		let icon = if classification == "Retryable" { "🔄" } else { "🚫" };
+		println!("   {} {}: {} ({})", icon, error, classification, reason);
+	}
+
+	// 6. Performance considerations
+	println!("\n6. Performance Considerations:");
+
+	let considerations = vec![
+		("Retry Budget", "Limit total retry time across all requests"),
+		("Concurrency Limits", "Control parallel requests during retries"),
+		("Metrics Collection", "Track retry success rates and latencies"),
+		("Failure Prediction", "Use ML to predict when retries will succeed"),
+		("Resource Management", "Monitor memory and connection usage"),
+	];
+
+	for (topic, description) in considerations {
+		println!("   📊 {}: {}", topic, description);
+	}
+
+	// 7. Configuration best practices
+	println!("\n7. Configuration Best Practices:");
+
+	println!("   ⚙️  Environment-specific settings:");
+	println!("     • Development: Fast retries for quick feedback");
+	println!("     • Production: Conservative retries to avoid amplification");
+	println!("     • Testing: Predictable retries for consistent tests");
+	println!("     • Monitoring: Detailed logging and metrics collection");
+
+	println!("\n   🎯 Method-specific policies:");
+	println!("     • Read operations: More aggressive retries");
+	println!("     • Write operations: Conservative retries");
+	println!("     • Query operations: Balanced approach");
+	println!("     • Subscription operations: Immediate retry with backoff");
+
+	// 8. Monitoring and observability
+	println!("\n8. Monitoring Integration:");
+
+	println!("   📈 Key Metrics:");
+	println!("     • Retry rate by operation type");
+	println!("     • Success rate after retries");
+	println!("     • Average retry latency");
+	println!("     • Circuit breaker state changes");
+	println!("     • Error distribution patterns");
+
+	println!("\n   🚨 Alerting Thresholds:");
+	println!("     • Retry rate > 10% sustained");
+	println!("     • Success rate < 95% after retries");
+	println!("     • Circuit breaker open for > 1 minute");
+	println!("     • Retry latency > 95th percentile");
+
+	println!("\n🎉 Neo N3 retry strategy example completed!");
+	println!("💡 Key takeaways for production systems:");
+	println!("   • Design retry policies based on operation criticality");
+	println!("   • Implement proper error classification");
+	println!("   • Monitor retry patterns and adjust policies");
+	println!("   • Use circuit breakers to prevent cascade failures");
+	println!("   • Test retry behavior under various failure conditions");
+
+	Ok(())
 }

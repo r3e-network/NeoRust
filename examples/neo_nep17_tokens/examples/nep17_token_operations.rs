@@ -245,7 +245,8 @@ async fn get_token_info(
 	token_name: &str,
 ) -> Result<TokenInfo, Box<dyn std::error::Error>> {
 	// Query symbol
-	let symbol_result = client.invoke_function(token_hash, "symbol".to_string(), vec![], None).await?;
+	let symbol_result =
+		client.invoke_function(token_hash, "symbol".to_string(), vec![], None).await?;
 	let symbol = symbol_result
 		.stack
 		.first()
@@ -253,11 +254,14 @@ async fn get_token_info(
 		.unwrap_or_else(|| token_name.to_string());
 
 	// Query decimals
-	let decimals_result = client.invoke_function(token_hash, "decimals".to_string(), vec![], None).await?;
+	let decimals_result =
+		client.invoke_function(token_hash, "decimals".to_string(), vec![], None).await?;
 	let decimals = decimals_result.stack.first().and_then(|s| s.as_int()).unwrap_or(0) as u32;
 
 	// Query total supply
-	let supply_result = client.invoke_function(token_hash, "totalSupply".to_string(), vec![], None).await?;
+	let supply_result = client
+		.invoke_function(token_hash, "totalSupply".to_string(), vec![], None)
+		.await?;
 	let total_supply = supply_result.stack.first().and_then(|s| s.as_int()).unwrap_or(0) as u64;
 	let total_supply_formatted = total_supply as f64 / 10f64.powi(decimals as i32);
 
@@ -275,7 +279,9 @@ async fn get_token_balance(
 	match client.get_nep17_balances(*account_hash).await {
 		Ok(balances) => {
 			// Find the specific token balance
-			if let Some(balance_info) = balances.balances.iter().find(|b| b.asset_hash == *token_hash) {
+			if let Some(balance_info) =
+				balances.balances.iter().find(|b| b.asset_hash == *token_hash)
+			{
 				let balance_value = balance_info.amount.parse::<u64>().unwrap_or(0);
 				let formatted_balance = balance_value as f64 / 10f64.powi(decimals as i32);
 				Ok(formatted_balance)

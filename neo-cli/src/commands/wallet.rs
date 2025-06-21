@@ -288,7 +288,8 @@ pub enum WalletCommands {
 /// Handle wallet command with comprehensive functionality
 pub async fn handle_wallet_command(args: WalletArgs, state: &mut CliState) -> Result<(), CliError> {
 	match args.command {
-		WalletCommands::Create { path, name, password } => handle_create_wallet(path, name, password, state).await,
+		WalletCommands::Create { path, name, password } =>
+			handle_create_wallet(path, name, password, state).await,
 		WalletCommands::Open { path, password } => handle_open_wallet(path, password, state).await,
 		WalletCommands::Close => handle_close_wallet(state).await,
 		WalletCommands::List => handle_list_addresses(state).await,
@@ -343,14 +344,16 @@ async fn handle_create_wallet(
 	let password = match password {
 		Some(pwd) => pwd,
 		None => {
-			let pwd = prompt_password("Enter password for the new wallet").map_err(|e| CliError::Io(e))?;
-			let confirm_password = prompt_password("Confirm password").map_err(|e| CliError::Io(e))?;
-			
+			let pwd = prompt_password("Enter password for the new wallet")
+				.map_err(|e| CliError::Io(e))?;
+			let confirm_password =
+				prompt_password("Confirm password").map_err(|e| CliError::Io(e))?;
+
 			if pwd != confirm_password {
 				return Err(CliError::Wallet("Passwords do not match".to_string()));
 			}
 			pwd
-		}
+		},
 	};
 
 	let wallet = with_loading("Creating wallet...", async {
@@ -386,7 +389,11 @@ async fn handle_create_wallet(
 }
 
 /// Open an existing wallet
-async fn handle_open_wallet(path: PathBuf, password: Option<String>, state: &mut CliState) -> Result<(), CliError> {
+async fn handle_open_wallet(
+	path: PathBuf,
+	password: Option<String>,
+	state: &mut CliState,
+) -> Result<(), CliError> {
 	print_section_header("Opening Wallet");
 
 	if !path.exists() {

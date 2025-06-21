@@ -17,7 +17,7 @@ fn test_blockchain_info() {
 fn test_blockchain_height() {
 	let cli = CliTest::new();
 
-	// Get blockchain height  
+	// Get blockchain height
 	let output = cli.run(&["network", "block"]);
 
 	assert_success(&output);

@@ -8,12 +8,8 @@ fn test_wallet_create() {
 
 	// Create wallet
 	let wallet_path = cli.temp_dir.path().join("test-wallet.json").to_string_lossy().to_string();
-	let output = cli.run(&[
-		"wallet", 
-		"create", 
-		"--path", &wallet_path,
-		"--password", TEST_WALLET_PASSWORD
-	]);
+	let output =
+		cli.run(&["wallet", "create", "--path", &wallet_path, "--password", TEST_WALLET_PASSWORD]);
 
 	assert_success(&output);
 	assert_output_contains(&output, "Creating");
@@ -28,21 +24,13 @@ fn test_wallet_open_and_close() {
 
 	// Create wallet first
 	let wallet_path = cli.temp_dir.path().join("test-wallet.json").to_string_lossy().to_string();
-	let create_output = cli.run(&[
-		"wallet", 
-		"create", 
-		"--path", &wallet_path,
-		"--password", TEST_WALLET_PASSWORD
-	]);
+	let create_output =
+		cli.run(&["wallet", "create", "--path", &wallet_path, "--password", TEST_WALLET_PASSWORD]);
 	assert_success(&create_output);
 
 	// Test open wallet
-	let open_output = cli.run(&[
-		"wallet", 
-		"open", 
-		"--path", &wallet_path,
-		"--password", TEST_WALLET_PASSWORD
-	]);
+	let open_output =
+		cli.run(&["wallet", "open", "--path", &wallet_path, "--password", TEST_WALLET_PASSWORD]);
 	assert_success(&open_output);
 	assert_output_contains(&open_output, "Wallet opened successfully");
 
@@ -59,18 +47,8 @@ fn test_wallet_create_address() {
 
 	// Create and open wallet
 	let wallet_path = cli.temp_dir.path().join("test-wallet.json").to_string_lossy().to_string();
-	cli.run(&[
-		"wallet", 
-		"create", 
-		"--path", &wallet_path,
-		"--password", TEST_WALLET_PASSWORD
-	]);
-	cli.run(&[
-		"wallet", 
-		"open", 
-		"--path", &wallet_path,
-		"--password", TEST_WALLET_PASSWORD
-	]);
+	cli.run(&["wallet", "create", "--path", &wallet_path, "--password", TEST_WALLET_PASSWORD]);
+	cli.run(&["wallet", "open", "--path", &wallet_path, "--password", TEST_WALLET_PASSWORD]);
 
 	// Create a new address
 	let output = cli.run(&["wallet", "create-address", "--count", "1"]);
@@ -85,18 +63,8 @@ fn test_wallet_list_address() {
 
 	// Create and open wallet
 	let wallet_path = cli.temp_dir.path().join("test-wallet.json").to_string_lossy().to_string();
-	cli.run(&[
-		"wallet", 
-		"create", 
-		"--path", &wallet_path,
-		"--password", TEST_WALLET_PASSWORD
-	]);
-	cli.run(&[
-		"wallet", 
-		"open", 
-		"--path", &wallet_path,
-		"--password", TEST_WALLET_PASSWORD
-	]);
+	cli.run(&["wallet", "create", "--path", &wallet_path, "--password", TEST_WALLET_PASSWORD]);
+	cli.run(&["wallet", "open", "--path", &wallet_path, "--password", TEST_WALLET_PASSWORD]);
 
 	// List addresses
 	let output = cli.run(&["wallet", "list"]);
@@ -113,18 +81,8 @@ fn test_wallet_balance() {
 
 	// Create and open wallet
 	let wallet_path = cli.temp_dir.path().join("test-wallet.json").to_string_lossy().to_string();
-	cli.run(&[
-		"wallet", 
-		"create", 
-		"--path", &wallet_path,
-		"--password", TEST_WALLET_PASSWORD
-	]);
-	cli.run(&[
-		"wallet", 
-		"open", 
-		"--path", &wallet_path,
-		"--password", TEST_WALLET_PASSWORD
-	]);
+	cli.run(&["wallet", "create", "--path", &wallet_path, "--password", TEST_WALLET_PASSWORD]);
+	cli.run(&["wallet", "open", "--path", &wallet_path, "--password", TEST_WALLET_PASSWORD]);
 
 	// Create an address
 	cli.run(&["wallet", "create-address", "--count", "1"]);

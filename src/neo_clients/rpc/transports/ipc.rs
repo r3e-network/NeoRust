@@ -95,9 +95,9 @@ mod imp {
 		}
 
 		/// Split the stream into read and write halves.
-		/// 
+		///
 		/// # Safety
-		/// 
+		///
 		/// This method uses unsafe code to create two mutable references to the same object.
 		/// This is safe in this specific context because:
 		/// 1. ReadHalf only performs read operations on the underlying NamedPipeClient

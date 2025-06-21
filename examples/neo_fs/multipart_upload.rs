@@ -2,7 +2,6 @@
 ///
 /// This example demonstrates the concepts and patterns for multipart uploads in NeoFS.
 /// NeoFS supports efficient upload of large files by splitting them into smaller parts.
-use std::time::{Duration, SystemTime};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {

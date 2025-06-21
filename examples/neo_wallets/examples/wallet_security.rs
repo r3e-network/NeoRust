@@ -1,9 +1,7 @@
 use neo3::{
-	neo_crypto::KeyPair,
 	neo_protocol::{Account, AccountTrait},
 	neo_types::ScriptHash,
 };
-use std::collections::HashMap;
 
 /// This example demonstrates comprehensive wallet security features in Neo N3.
 /// It covers encryption, password management, and secure key handling.

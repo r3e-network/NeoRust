@@ -1,8 +1,7 @@
 use neo3::{
 	neo_clients::{HttpProvider, RpcClient},
-	neo_types::ScriptHash,
 };
-use std::time::{Duration, Instant};
+use std::time::Duration;
 use tokio::time::sleep;
 
 /// In Neo N3, gas consumption is more predictable than Ethereum, but network congestion

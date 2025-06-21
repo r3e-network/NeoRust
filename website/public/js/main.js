@@ -189,6 +189,12 @@ document.addEventListener('DOMContentLoaded', function() {
       
       // Debounce the search to avoid too many requests
       searchTimeout = setTimeout(() => {
+        // Validate query to prevent XSS
+        if (query.length > 100 || !/^[a-zA-Z0-9\s\-_\.]+$/.test(query)) {
+          searchResults.innerHTML = '<div class="search-error">Invalid search query</div>';
+          return;
+        }
+        
         // Call the Netlify Function for search
         fetch(`/.netlify/functions/search?query=${encodeURIComponent(query)}`)
           .then(response => response.json())

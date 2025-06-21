@@ -3,8 +3,6 @@
 //! This example demonstrates how to interact with Neo N3 smart contracts
 //! using structured parameters and method calls.
 
-use neo3::prelude::*;
-
 /// Example showing Neo N3 contract interaction with structured data
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {

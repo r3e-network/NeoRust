@@ -203,7 +203,7 @@ pub trait SmartContractTrait<'a>: Send + Sync {
 			&self.script_hash(),
 			function,
 			&params,
-			255, //TODO
+			_max_items as u32, // Use the max_items parameter provided to the function
 			Some(CallFlags::All),
 		)
 		.unwrap();

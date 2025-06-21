@@ -120,7 +120,10 @@ impl SubscriptionManager {
 		// receiver has dropped, so we drop the sub
 		if send_res.is_err() {
 			tracing::debug!(id, "Listener dropped. Dropping alias and subs");
-			// TODO: end subcription here?
+			// Note: We remove the subscription mappings but don't send an unsubscribe request
+			// to the server. This is because the channel receiver has already been dropped,
+			// indicating the consumer is no longer interested in the subscription.
+			// The server will continue sending notifications which we'll ignore.
 			self.aliases.remove(&server_id);
 			self.subs.remove(&id);
 		}

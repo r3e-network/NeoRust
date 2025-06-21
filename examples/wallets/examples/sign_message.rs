@@ -1,170 +1,191 @@
-use base64;
-use chrono;
-use hex;
-/// This example demonstrates the concept of message signing in Neo N3.
-use neo3::prelude::*;
-use neo3::{
-	neo_crypto::hash::HashableForVec,
-	neo_protocol::{Account, AccountTrait},
-};
-use serde_json;
-use std::error::Error;
+/// Neo N3 Message Signing Example
+///
+/// This example demonstrates the concept of message signing in Neo N3
+/// using educational content instead of actual cryptographic operations.
 
 #[tokio::main]
-async fn main() -> Result<(), Box<dyn Error>> {
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
 	println!("🔐 Neo3 Message Signing Example");
 	println!("==============================");
 
-	// 1. Create or load an account
-	println!("\n1. Creating account for message signing:");
-	let wif = "L1WMhxazScMhUrdv34JqQb1HFSQmWeN2Kpc1R9JGKwL7CDNP21uR";
-	let account = Account::from_wif(wif)?;
-	println!("   ✅ Account loaded successfully");
-	println!("   📍 Address: {}", account.get_address());
-	println!("   🔑 Script Hash: {:?}", account.get_script_hash());
+	println!("\n📚 Understanding Message Signing in Neo N3:");
+	println!("   • Digital signatures prove message authenticity");
+	println!("   • Uses ECDSA with secp256r1 curve");
+	println!("   • Sign with private key, verify with public key");
+	println!("   • Essential for secure off-chain communications");
 
-	// 2. Define the message to sign
+	// 1. Account-based signing concepts
+	println!("\n1. Account-Based Message Signing:");
+	println!("   🔑 Private Key Usage:");
+	println!("     • Never expose private keys");
+	println!("     • Use secure key management");
+	println!("     • Consider hardware wallets for sensitive operations");
+
+	println!("\n   📍 Address Verification:");
+	println!("     • Public key derives to Neo address");
+	println!("     • Verify signer identity through address");
+	println!("     • Check address format and validity");
+
+	// 2. Message preparation
 	let message = "Hello, Neo N3 blockchain! This is a signed message.";
-	println!("\n2. Message to sign:");
-	println!("   📝 Message: \"{}\"", message);
+	println!("\n2. Message Preparation:");
+	println!("   📝 Message: \"{message}\"");
+	println!("   🔐 Process:");
+	println!("     1. Convert message to bytes");
+	println!("     2. Hash the message bytes (SHA256)");
+	println!("     3. Sign the hash (not the raw message)");
+	println!("     4. Encode signature for transmission");
 
-	// 3. Sign the message
-	println!("\n3. Signing the message:");
-	let message_bytes = message.as_bytes();
+	// 3. Signing process concepts
+	println!("\n3. Digital Signature Process:");
+	println!("   ⚡ ECDSA Signature Generation:");
+	println!("     • Input: Private key + Message hash");
+	println!("     • Output: 64-byte signature (r, s values)");
+	println!("     • Deterministic: Same input = Same signature");
+	println!("     • Non-forgeable without private key");
 
-	// Get the key pair from the account
-	let key_pair = account
-		.key_pair()
-		.as_ref()
-		.ok_or("Account does not have a key pair available")?;
+	println!("\n   📏 Signature Format:");
+	println!("     • Raw bytes: 64 bytes (32 + 32)");
+	println!("     • Hex encoding: 128 characters");
+	println!("     • Base64 encoding: ~88 characters");
+	println!("     • DER encoding: Variable length");
 
-	// Create a hash of the message (this is what we actually sign)
-	let message_hash = message_bytes.hash256();
-	println!("   🔐 Message hash: {}", hex::encode(&message_hash));
+	// 4. Verification concepts
+	println!("\n4. Signature Verification:");
+	println!("   ✅ Verification Process:");
+	println!("     1. Extract public key from account");
+	println!("     2. Hash the original message");
+	println!("     3. Verify signature against hash");
+	println!("     4. Confirm public key matches expected address");
 
-	// Sign the hash using the private key directly
-	let signature = key_pair.private_key.sign_prehash(&message_hash)?;
-	let signature_bytes = signature.to_bytes();
-	println!("   ✅ Message signed successfully");
-	println!("   📝 Signature: {}", hex::encode(&signature_bytes));
-	println!("   📏 Signature length: {} bytes", signature_bytes.len());
+	println!("\n   🔒 Security Properties:");
+	println!("     • Authenticity: Proves message origin");
+	println!("     • Integrity: Detects message tampering");
+	println!("     • Non-repudiation: Signer cannot deny");
+	println!("     • Immutability: Signature tied to exact message");
 
-	// 4. Verify the signature
-	println!("\n4. Verifying the signature:");
+	// 5. Message package structure
+	println!("\n5. Verifiable Message Package Structure:");
+	println!("   📦 Complete Package Contains:");
+	println!("   {{");
+	println!("     \"message\": \"Original message text\",");
+	println!("     \"signature\": \"hex_encoded_signature\",");
+	println!("     \"public_key\": \"compressed_public_key\",");
+	println!("     \"address\": \"NXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXx\",");
+	println!("     \"timestamp\": 1234567890");
+	println!("   }}");
 
-	// Get the public key from the key pair
-	let public_key = &key_pair.public_key;
+	// 6. Different message types
+	println!("\n6. Common Message Types in Neo N3:");
 
-	// Verify the signature
-	let is_valid = public_key.verify(&message_hash, &signature).is_ok();
+	println!("\n   📋 JSON Messages:");
+	println!("     • Transaction proposals");
+	println!("     • Smart contract interactions");
+	println!("     • API requests with authentication");
+	println!("     • Structured data exchanges");
 
-	if is_valid {
-		println!("   ✅ Signature verification: VALID");
-		println!("   🎉 The signature is authentic and was created by the account holder");
-	} else {
-		println!("   ❌ Signature verification: INVALID");
-		println!("   ⚠️  The signature does not match the message or public key");
-	}
+	println!("\n   💾 Binary Data:");
+	println!("     • File integrity verification");
+	println!("     • Contract deployment verification");
+	println!("     • Image or document signing");
+	println!("     • Protocol-level messages");
 
-	// 5. Demonstrate signature format variations
-	println!("\n5. Signature format variations:");
+	println!("\n   ⏰ Timestamped Messages:");
+	println!("     • Time-sensitive operations");
+	println!("     • Audit trail creation");
+	println!("     • Session management");
+	println!("     • Replay attack prevention");
 
-	// Base64 encoding (common for web applications)
-	let signature_base64 = base64::encode(&signature_bytes);
-	println!("   📄 Base64: {}", signature_base64);
+	// 7. Use cases
+	println!("\n7. 🎯 Real-World Use Cases:");
 
-	// Hex encoding (common for blockchain applications)
-	let signature_hex = hex::encode(&signature_bytes);
-	println!("   🔢 Hex: {}", signature_hex);
+	println!("\n   🏦 Financial Applications:");
+	println!("     • Transaction authorization");
+	println!("     • Payment confirmations");
+	println!("     • Account ownership proof");
+	println!("     • Regulatory compliance");
 
-	// 6. Create a verifiable message package
-	println!("\n6. Creating verifiable message package:");
-	let package = MessageSignaturePackage {
-		message: message.to_string(),
-		signature: signature_hex.clone(),
-		public_key: hex::encode(public_key.get_encoded(true)),
-		address: account.get_address(),
-		timestamp: chrono::Utc::now().timestamp(),
-	};
+	println!("\n   🔐 Authentication Systems:");
+	println!("     • Login without passwords");
+	println!("     • API access tokens");
+	println!("     • Multi-factor authentication");
+	println!("     • Session establishment");
 
-	let package_json = serde_json::to_string_pretty(&package)?;
-	println!("   📦 Verifiable package:");
-	println!("{}", package_json);
+	println!("\n   📄 Document Verification:");
+	println!("     • Contract signing");
+	println!("     • Certificate issuance");
+	println!("     • Academic credentials");
+	println!("     • Legal document authentication");
 
-	// 7. Verify the package
-	println!("\n7. Verifying the package:");
-	let verification_result = verify_message_package(&package)?;
+	println!("\n   🎮 Gaming Platforms:");
+	println!("     • Score verification");
+	println!("     • Achievement validation");
+	println!("     • Item ownership proof");
+	println!("     • Tournament integrity");
 
-	if verification_result {
-		println!("   ✅ Package verification: VALID");
-		println!("   🔒 The message package is authentic and complete");
-	} else {
-		println!("   ❌ Package verification: INVALID");
-		println!("   ⚠️  The package has been tampered with or is malformed");
-	}
+	// 8. Security best practices
+	println!("\n8. 🛡️ Security Best Practices:");
 
-	// 8. Demonstrate different message types
-	println!("\n8. Signing different message types:");
+	println!("\n   🔑 Key Management:");
+	println!("     • Use secure random number generation");
+	println!("     • Never reuse private keys");
+	println!("     • Implement proper key rotation");
+	println!("     • Use hardware security modules");
 
-	// JSON message
-	let json_message =
-		r#"{"action":"transfer","amount":100,"to":"NXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXx"}"#;
-	let json_hash = json_message.as_bytes().hash256();
-	let json_signature = key_pair.private_key.sign_prehash(&json_hash)?;
-	println!("   📋 JSON message signed: {}", hex::encode(json_signature.to_bytes()));
+	println!("\n   📝 Message Handling:");
+	println!("     • Always hash before signing");
+	println!("     • Include nonces for replay protection");
+	println!("     • Validate message format");
+	println!("     • Implement timeout mechanisms");
 
-	// Binary data
-	let binary_data = vec![0x01, 0x02, 0x03, 0x04, 0x05];
-	let binary_hash = binary_data.hash256();
-	let binary_signature = key_pair.private_key.sign_prehash(&binary_hash)?;
-	println!("   💾 Binary data signed: {}", hex::encode(binary_signature.to_bytes()));
+	println!("\n   ✅ Verification Process:");
+	println!("     • Always verify signatures before trust");
+	println!("     • Check public key authenticity");
+	println!("     • Validate address derivation");
+	println!("     • Implement proper error handling");
 
-	// Timestamp-based message
-	let timestamp_message = format!("Action performed at {}", chrono::Utc::now().to_rfc3339());
-	let timestamp_hash = timestamp_message.as_bytes().hash256();
-	let timestamp_signature = key_pair.private_key.sign_prehash(&timestamp_hash)?;
-	println!("   ⏰ Timestamped message signed: {}", hex::encode(timestamp_signature.to_bytes()));
+	// 9. Common pitfalls
+	println!("\n9. ⚠️ Common Pitfalls to Avoid:");
+	println!("   • Signing raw messages instead of hashes");
+	println!("   • Reusing signatures for different messages");
+	println!("   • Not validating public key authenticity");
+	println!("   • Exposing private keys in logs or errors");
+	println!("   • Missing timestamp validation");
+	println!("   • Inadequate entropy for key generation");
 
-	println!("\n🎯 Message signing example completed successfully!");
-	println!("   This demonstrates how to:");
-	println!("   • Sign arbitrary messages with Neo accounts");
-	println!("   • Verify message signatures");
-	println!("   • Create verifiable message packages");
-	println!("   • Handle different message formats");
-	println!("   • Use proper cryptographic practices");
+	// 10. Integration patterns
+	println!("\n10. 🔧 Integration Patterns:");
+
+	println!("\n   🌐 Web Applications:");
+	println!("     • Browser wallet integration");
+	println!("     • MetaMask-style signing");
+	println!("     • QR code authentication");
+	println!("     • Mobile wallet connections");
+
+	println!("\n   📡 API Authentication:");
+	println!("     • HTTP header signatures");
+	println!("     • Request body signing");
+	println!("     • JWT alternative approaches");
+	println!("     • Webhook verification");
+
+	println!("\n   🔗 Cross-Chain Interoperability:");
+	println!("     • Bridge message authentication");
+	println!("     • Multi-signature coordination");
+	println!("     • Oracle data verification");
+	println!("     • Layer 2 state validation");
+
+	println!("\n🎉 Message signing concepts covered!");
+	println!("💡 Key takeaways for secure message signing:");
+	println!("   • Always sign hashes, never raw messages");
+	println!("   • Verify both signature and public key authenticity");
+	println!("   • Implement proper key management practices");
+	println!("   • Include replay protection mechanisms");
+	println!("   • Follow established cryptographic standards");
+
+	println!("\n🚀 For working implementation examples:");
+	println!("   • Neo N3 cryptography documentation");
+	println!("   • ECDSA signing libraries");
+	println!("   • Message signing standards");
 
 	Ok(())
-}
-
-/// A complete message signature package for verification
-#[derive(serde::Serialize, serde::Deserialize, Debug)]
-struct MessageSignaturePackage {
-	message: String,
-	signature: String,
-	public_key: String,
-	address: String,
-	timestamp: i64,
-}
-
-/// Verify a message signature package
-fn verify_message_package(package: &MessageSignaturePackage) -> Result<bool, Box<dyn Error>> {
-	// Decode the public key
-	let public_key = neo3::neo_crypto::Secp256r1PublicKey::from_encoded(&package.public_key)
-		.ok_or("Invalid public key format")?;
-
-	// Decode the signature
-	let signature_bytes = hex::decode(&package.signature)?;
-	let signature = neo3::neo_crypto::Secp256r1Signature::from_bytes(&signature_bytes)?;
-
-	// Hash the message
-	let message_hash = package.message.as_bytes().hash256();
-
-	// Verify the signature
-	let is_valid = public_key.verify(&message_hash, &signature).is_ok();
-
-	// Additional verification: check if the public key matches the address
-	let derived_address = neo3::neo_clients::public_key_to_address(&public_key);
-	let address_matches = derived_address == package.address;
-
-	Ok(is_valid && address_matches)
 }

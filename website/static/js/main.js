@@ -194,7 +194,10 @@ document.addEventListener('DOMContentLoaded', function() {
           .then(response => response.json())
           .then(data => {
             if (data.results && data.results.length > 0) {
-              searchResults.innerHTML = '';
+              // Clear search results safely
+              while (searchResults.firstChild) {
+                searchResults.removeChild(searchResults.firstChild);
+              }
               
               data.results.forEach(result => {
                 const resultElem = document.createElement('div');

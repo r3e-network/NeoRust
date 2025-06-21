@@ -236,10 +236,7 @@ fn create_sample_nef_file() -> Result<SampleNef, Box<dyn std::error::Error>> {
 	let script = create_sample_contract_bytecode();
 	let checksum = script.iter().fold(0u32, |acc, &byte| acc.wrapping_add(byte as u32));
 
-	Ok(SampleNef {
-		script,
-		checksum,
-	})
+	Ok(SampleNef { script, checksum })
 }
 
 /// Sample NEF structure for demonstration
@@ -249,8 +246,7 @@ struct SampleNef {
 }
 
 /// Create a sample contract manifest (conceptual)
-fn create_sample_manifest() -> Result<SampleManifest, Box<dyn std::error::Error>>
-{
+fn create_sample_manifest() -> Result<SampleManifest, Box<dyn std::error::Error>> {
 	Ok(SampleManifest {
 		name: "SampleContract".to_string(),
 		supported_standards: vec!["NEP-17".to_string()],
@@ -264,10 +260,7 @@ struct SampleManifest {
 }
 
 /// Calculate deployment cost based on NEF and manifest size
-fn calculate_deployment_cost(
-	nef: &SampleNef,
-	manifest: &SampleManifest,
-) -> f64 {
+fn calculate_deployment_cost(nef: &SampleNef, manifest: &SampleManifest) -> f64 {
 	let base_deployment_fee = 10.0; // Base fee in GAS
 	let nef_size = nef.script.len();
 	let manifest_size = manifest.name.len() + 100; // Approximate manifest size

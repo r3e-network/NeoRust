@@ -1,4 +1,3 @@
-use neo3::prelude::*;
 use primitive_types::{H160, H256, U256};
 use std::str::FromStr;
 

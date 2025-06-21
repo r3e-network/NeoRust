@@ -2,7 +2,6 @@
 ///
 /// This example demonstrates how to estimate and monitor GAS fees on the Neo N3 blockchain.
 /// Unlike Ethereum's dynamic gas pricing, Neo N3 uses a more predictable fee model.
-use std::time::Duration;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {

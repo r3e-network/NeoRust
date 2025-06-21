@@ -2,7 +2,7 @@ use neo3::{
 	neo_clients::{HttpProvider, RpcClient},
 	prelude::*,
 };
-use std::{str::FromStr, sync::Arc};
+use std::str::FromStr;
 use thiserror::Error;
 
 /// This example demonstrates how to create custom middleware for Neo N3 transactions.

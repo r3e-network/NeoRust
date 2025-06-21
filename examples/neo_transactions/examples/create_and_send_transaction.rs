@@ -73,7 +73,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 	println!("   ✅ Transaction script built ({} bytes)", script.len());
 
 	// Create transaction builder
-	let mut tx_builder = TransactionBuilder::new();
+	let mut tx_builder = TransactionBuilder::with_client(&client);
 
 	// Get current block count for validity
 	let current_block = client
@@ -164,7 +164,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 	println!("\n8. Transaction signing demonstration...");
 
 	// Create a simple transaction for demonstration
-	let mut demo_tx_builder = TransactionBuilder::new();
+	let mut demo_tx_builder = TransactionBuilder::with_client(&client);
 	demo_tx_builder.set_script(Some(script.clone()));
 	demo_tx_builder.valid_until_block(current_block + 100)?;
 

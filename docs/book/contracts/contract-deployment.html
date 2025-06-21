@@ -1,0 +1,517 @@
+<!DOCTYPE HTML>
+<html lang="en" class="light sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>Contract Deployment - NeoRust SDK Documentation</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="Documentation for the NeoRust SDK, a comprehensive Rust SDK for interacting with the Neo N3 blockchain">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="../favicon.svg">
+        <link rel="shortcut icon" href="../favicon.png">
+        <link rel="stylesheet" href="../css/variables.css">
+        <link rel="stylesheet" href="../css/general.css">
+        <link rel="stylesheet" href="../css/chrome.css">
+        <link rel="stylesheet" href="../css/print.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="../FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="../fonts/fonts.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="highlight-css" href="../highlight.css">
+        <link rel="stylesheet" id="tomorrow-night-css" href="../tomorrow-night.css">
+        <link rel="stylesheet" id="ayu-highlight-css" href="../ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+        <link rel="stylesheet" href="../theme/custom.css">
+        <link rel="stylesheet" href=".././mdbook-admonish.css">
+
+        <!-- MathJax -->
+        <script async src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "../";
+            const default_light_theme = "light";
+            const default_dark_theme = "navy";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="../toc.js"></script>
+    </head>
+    <body>
+    <div id="mdbook-help-container">
+        <div id="mdbook-help-popup">
+            <h2 class="mdbook-help-title">Keyboard shortcuts</h2>
+            <div>
+                <p>Press <kbd>←</kbd> or <kbd>→</kbd> to navigate between chapters</p>
+                <p>Press <kbd>S</kbd> or <kbd>/</kbd> to search in the book</p>
+                <p>Press <kbd>?</kbd> to show this help</p>
+                <p>Press <kbd>Esc</kbd> to hide this help</p>
+            </div>
+        </div>
+    </div>
+    <div id="body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+            }
+            sidebar_toggle.checked = sidebar === 'visible';
+            html.classList.remove('sidebar-visible');
+            html.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="../toc.html"></iframe>
+            </noscript>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="sidebar-toggle" class="icon-button" for="sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </label>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        <button id="search-toggle" class="icon-button" type="button" title="Search (`/`)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="/ s" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">NeoRust SDK Documentation</h1>
+
+                    <div class="right-buttons">
+                        <a href="../print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+                        <a href="https://github.com/R3E-Network/NeoRust" title="Git repository" aria-label="Git repository">
+                            <i id="git-repository-button" class="fa fa-github"></i>
+                        </a>
+                        <a href="https://github.com/R3E-Network/NeoRust/edit/master/docs/src/../contracts/contract-deployment.md" title="Suggest an edit" aria-label="Suggest an edit">
+                            <i id="git-edit-button" class="fa fa-edit"></i>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h1 id="smart-contract-deployment"><a class="header" href="#smart-contract-deployment">Smart Contract Deployment</a></h1>
+<h2 id="overview"><a class="header" href="#overview">Overview</a></h2>
+<p>Deploying a smart contract to the Neo N3 blockchain involves preparing the contract files, creating a deployment transaction, and submitting it to the network. The NeoRust SDK provides utilities to make this process straightforward.</p>
+<h2 id="prerequisites"><a class="header" href="#prerequisites">Prerequisites</a></h2>
+<p>Before deploying a contract, you need:</p>
+<ol>
+<li>
+<p><strong>Contract Files</strong>:</p>
+<ul>
+<li>The <strong>NEF</strong> (Neo Executable Format) file containing the compiled contract bytecode</li>
+<li>The <strong>Manifest</strong> JSON file describing the contract's interface and permissions</li>
+</ul>
+</li>
+<li>
+<p><strong>Account with GAS</strong>:</p>
+<ul>
+<li>A Neo N3 account with sufficient GAS to pay for deployment fees</li>
+</ul>
+</li>
+<li>
+<p><strong>Neo N3 Node Connection</strong>:</p>
+<ul>
+<li>A connection to a Neo N3 RPC node (TestNet recommended for initial testing)</li>
+</ul>
+</li>
+</ol>
+<h2 id="contract-deployment-process"><a class="header" href="#contract-deployment-process">Contract Deployment Process</a></h2>
+<h3 id="1-load-contract-files"><a class="header" href="#1-load-contract-files">1. Load Contract Files</a></h3>
+<p>First, load your contract files:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>use neo3::prelude::*;
+use neo3::neo_types::{ContractManifest, NefFile};
+use std::fs;
+
+// Read NEF and manifest files
+let nef_bytes = fs::read("path/to/contract.nef")?;
+let manifest_json = fs::read_to_string("path/to/contract.manifest.json")?;
+
+// Parse contract files
+let nef = NefFile::from_bytes(&amp;nef_bytes)?;
+let manifest = ContractManifest::from_json(&amp;manifest_json)?;
+<span class="boring">}</span></code></pre></pre>
+<h3 id="2-set-up-connection-and-account"><a class="header" href="#2-set-up-connection-and-account">2. Set Up Connection and Account</a></h3>
+<p>Next, set up your connection to Neo N3 and prepare your account:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// Connect to Neo N3 TestNet
+let provider = HttpProvider::new("https://testnet1.neo.org:443")?;
+let client = RpcClient::new(provider);
+
+// Load your account with GAS
+let account = Account::from_wif("your-private-key-wif")?;
+
+// Check GAS balance before deployment
+let gas_token = GasToken::new(&amp;client);
+let gas_balance = gas_token.balance_of(&amp;account.get_script_hash()).await?;
+println!("GAS Balance: {}", gas_balance);
+<span class="boring">}</span></code></pre></pre>
+<h3 id="3-deploy-the-contract"><a class="header" href="#3-deploy-the-contract">3. Deploy the Contract</a></h3>
+<p>Use the ContractManagement system contract to deploy your contract:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>use neo3::neo_contract::ContractManagement;
+
+// Create contract management instance
+let contract_mgmt = ContractManagement::new(&amp;client);
+
+// Deploy the contract
+println!("Deploying contract...");
+let result = contract_mgmt.deploy(
+    &amp;nef,
+    &amp;manifest,
+    None, // Optional deployment data
+    &amp;account,
+).await?;
+
+// Display deployment results
+let contract_hash = result.script_hash;
+println!("Contract deployed successfully!");
+println!("Contract hash: {}", contract_hash);
+<span class="boring">}</span></code></pre></pre>
+<h3 id="4-verify-deployment"><a class="header" href="#4-verify-deployment">4. Verify Deployment</a></h3>
+<p>After deployment, verify that your contract is available on the blockchain:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// Get contract details
+let contract_state = contract_mgmt.get_contract(&amp;contract_hash).await?;
+
+// Display contract information
+println!("Contract ID: {}", contract_state.id);
+println!("Contract Update Counter: {}", contract_state.update_counter);
+println!("Contract Author: {}", contract_state.manifest.author);
+<span class="boring">}</span></code></pre></pre>
+<h2 id="complete-deployment-example"><a class="header" href="#complete-deployment-example">Complete Deployment Example</a></h2>
+<p>Here's a complete example of contract deployment:</p>
+<pre><pre class="playground"><code class="language-rust">use neo3::prelude::*;
+use neo3::neo_contract::ContractManagement;
+use neo3::neo_types::{ContractManifest, NefFile};
+use std::fs;
+
+#[tokio::main]
+async fn main() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
+    println!("Neo N3 Contract Deployment Example");
+    println!("=================================");
+    
+    // Step 1: Set up connection to Neo N3 TestNet
+    println!("\nConnecting to Neo N3 TestNet...");
+    let provider = HttpProvider::new("https://testnet1.neo.org:443")?;
+    let client = RpcClient::new(provider);
+    let block_count = client.get_block_count().await?;
+    println!("Connected to Neo N3 TestNet at block height: {}", block_count);
+    
+    // Step 2: Load account with GAS
+    println!("\nLoading account...");
+    let account = Account::from_wif("your-private-key-wif")?;
+    println!("Account loaded: {}", account.get_address());
+    
+    // Check GAS balance
+    let gas_token = GasToken::new(&amp;client);
+    let gas_balance = gas_token.balance_of(&amp;account.get_script_hash()).await?;
+    println!("GAS Balance: {}", gas_balance);
+    
+    if gas_balance &lt; 10_00000000 { // 10 GAS
+        println!("Warning: Low GAS balance. You may need more GAS to deploy a contract.");
+    }
+    
+    // Step 3: Load contract files
+    println!("\nLoading contract files...");
+    let nef_bytes = fs::read("path/to/contract.nef")?;
+    let manifest_json = fs::read_to_string("path/to/contract.manifest.json")?;
+    
+    // Parse contract files
+    let nef = NefFile::from_bytes(&amp;nef_bytes)?;
+    let manifest = ContractManifest::from_json(&amp;manifest_json)?;
+    println!("Contract files loaded successfully");
+    println!("Contract name: {}", manifest.name);
+    println!("Contract features: {:?}", manifest.features);
+    
+    // Step 4: Deploy the contract
+    println!("\nDeploying contract...");
+    
+    // Estimate deployment costs
+    let contract_mgmt = ContractManagement::new(&amp;client);
+    let deployment_fee = contract_mgmt.estimate_deployment_fee(&amp;nef, &amp;manifest).await?;
+    println!("Estimated deployment fee: {} GAS", deployment_fee as f64 / 100000000.0);
+    
+    // Confirm deployment
+    println!("\nProceed with deployment? This will cost approximately {} GAS [y/N]", 
+             deployment_fee as f64 / 100000000.0);
+    
+    // In a real application, you would get user confirmation here
+    // For this example, we assume "yes"
+    
+    // Deploy the contract
+    let result = contract_mgmt.deploy(
+        &amp;nef,
+        &amp;manifest,
+        None, // No deployment data
+        &amp;account,
+    ).await?;
+    
+    // Display deployment results
+    let contract_hash = result.script_hash;
+    println!("\nContract deployed successfully!");
+    println!("Contract hash: {}", contract_hash);
+    println!("Transaction ID: {}", result.tx_id);
+    
+    // Step 5: Verify deployment
+    println!("\nVerifying contract deployment...");
+    let contract_state = contract_mgmt.get_contract(&amp;contract_hash).await?;
+    
+    println!("Contract verified on blockchain:");
+    println!("Contract ID: {}", contract_state.id);
+    println!("Contract Update Counter: {}", contract_state.update_counter);
+    println!("Contract Author: {}", contract_state.manifest.author);
+    
+    println!("\nDeployment completed successfully!");
+    Ok(())
+}</code></pre></pre>
+<h2 id="updating-an-existing-contract"><a class="header" href="#updating-an-existing-contract">Updating an Existing Contract</a></h2>
+<p>Neo N3 allows you to update existing contracts while preserving their state:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// Update an existing contract
+let update_result = contract_mgmt.update(
+    &amp;contract_hash,
+    &amp;new_nef,
+    &amp;new_manifest,
+    None, // No data
+    &amp;account,
+).await?;
+
+println!("Contract updated successfully!");
+println!("Transaction ID: {}", update_result.tx_id);
+<span class="boring">}</span></code></pre></pre>
+<h2 id="destroying-a-contract"><a class="header" href="#destroying-a-contract">Destroying a Contract</a></h2>
+<p>You can also permanently destroy a contract:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// Destroy an existing contract
+let destroy_result = contract_mgmt.destroy(
+    &amp;contract_hash,
+    &amp;account,
+).await?;
+
+println!("Contract destroyed successfully!");
+println!("Transaction ID: {}", destroy_result);
+<span class="boring">}</span></code></pre></pre>
+<h2 id="contract-manifest-structure"><a class="header" href="#contract-manifest-structure">Contract Manifest Structure</a></h2>
+<p>The contract manifest is a crucial part of contract deployment. It defines:</p>
+<ul>
+<li>The contract's name and supported features</li>
+<li>ABI (methods, events, and parameters)</li>
+<li>Permissions (what the contract can access)</li>
+<li>Safe methods (which methods can be called without verification)</li>
+<li>Other metadata (author, description, etc.)</li>
+</ul>
+<p>A simple example manifest:</p>
+<pre><code class="language-json">{
+  "name": "ExampleContract",
+  "groups": [],
+  "features": {},
+  "abi": {
+    "methods": [
+      {
+        "name": "transfer",
+        "parameters": [
+          { "name": "from", "type": "Hash160" },
+          { "name": "to", "type": "Hash160" },
+          { "name": "amount", "type": "Integer" }
+        ],
+        "returntype": "Boolean",
+        "offset": 0,
+        "safe": false
+      },
+      {
+        "name": "balanceOf",
+        "parameters": [
+          { "name": "account", "type": "Hash160" }
+        ],
+        "returntype": "Integer",
+        "offset": 0,
+        "safe": true
+      }
+    ],
+    "events": [
+      {
+        "name": "Transfer",
+        "parameters": [
+          { "name": "from", "type": "Hash160" },
+          { "name": "to", "type": "Hash160" },
+          { "name": "amount", "type": "Integer" }
+        ]
+      }
+    ]
+  },
+  "permissions": [
+    { "contract": "*", "methods": "*" }
+  ],
+  "trusts": [],
+  "safemethods": ["balanceOf"],
+  "extra": {
+    "author": "Neo Developer",
+    "email": "dev@neo.org",
+    "description": "Example NEP-17 Token Contract"
+  }
+}
+</code></pre>
+<h2 id="deployment-best-practices"><a class="header" href="#deployment-best-practices">Deployment Best Practices</a></h2>
+<ol>
+<li><strong>Test on TestNet first</strong>: Always deploy to TestNet before MainNet</li>
+<li><strong>Verify contract hash</strong>: Double-check contract hash after deployment</li>
+<li><strong>Estimate fees</strong>: Use <code>estimate_deployment_fee</code> to know costs in advance</li>
+<li><strong>Secure private keys</strong>: Never expose the private key in code</li>
+<li><strong>Contract security</strong>: Audit your contract before deployment</li>
+<li><strong>Permissions</strong>: Use the minimum required permissions in the manifest</li>
+<li><strong>Documentation</strong>: Document your contract's methods and expected behaviors</li>
+</ol>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="../../contracts/system-contracts.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+
+                            <a rel="next prefetch" href="../../contracts/contract-invocation.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="../../contracts/system-contracts.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+
+                    <a rel="next prefetch" href="../../contracts/contract-invocation.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+            </nav>
+
+        </div>
+
+
+
+        <script>
+            window.playground_line_numbers = true;
+        </script>
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+        <script src="../ace.js"></script>
+        <script src="../mode-rust.js"></script>
+        <script src="../editor.js"></script>
+        <script src="../theme-dawn.js"></script>
+        <script src="../theme-tomorrow_night.js"></script>
+
+        <script src="../elasticlunr.min.js"></script>
+        <script src="../mark.min.js"></script>
+        <script src="../searcher.js"></script>
+
+        <script src="../clipboard.min.js"></script>
+        <script src="../highlight.js"></script>
+        <script src="../book.js"></script>
+
+        <!-- Custom JS scripts -->
+
+
+    </div>
+    </body>
+</html>

@@ -198,7 +198,9 @@ fn main() {
 	println!("   Debug: {:?}", number);
 	println!("   Hex (lowercase): {:x}", number);
 	println!("   Hex (uppercase): {:X}", number);
-	println!("   Binary: {:b}", number);
+	// Note: U256 doesn't implement Binary trait directly
+	// Convert to string representation for binary display
+	println!("   Binary representation would require custom formatting");
 
 	println!("\n🎉 Neo N3 big numbers example completed!");
 	println!("💡 Key takeaways:");

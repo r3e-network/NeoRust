@@ -85,7 +85,7 @@ async fn query_gas_info(
 	gas_hash: &ScriptHash,
 ) -> Result<(), Box<dyn std::error::Error>> {
 	// Get token symbol
-	match client.invoke_function(gas_hash, "symbol", None, None, None).await {
+	match client.invoke_function(gas_hash, "symbol".to_string(), vec![], None).await {
 		Ok(result) =>
 			if let Some(stack_item) = result.stack.first() {
 				if let Some(symbol) = stack_item.as_string() {
@@ -96,7 +96,7 @@ async fn query_gas_info(
 	}
 
 	// Get token decimals
-	match client.invoke_function(gas_hash, "decimals", None, None, None).await {
+	match client.invoke_function(gas_hash, "decimals".to_string(), vec![], None).await {
 		Ok(result) =>
 			if let Some(stack_item) = result.stack.first() {
 				if let Some(decimals) = stack_item.as_int() {
@@ -107,7 +107,7 @@ async fn query_gas_info(
 	}
 
 	// Get total supply
-	match client.invoke_function(gas_hash, "totalSupply", None, None, None).await {
+	match client.invoke_function(gas_hash, "totalSupply".to_string(), vec![], None).await {
 		Ok(result) => {
 			if let Some(stack_item) = result.stack.first() {
 				if let Some(supply) = stack_item.as_int() {

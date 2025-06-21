@@ -1,0 +1,21 @@
+# Cargo audit configuration
+
+[advisories]
+# The gtk-rs GTK3 bindings are marked as unmaintained but are still used by Tauri
+# These are not security vulnerabilities, just maintenance status warnings
+# Tauri is working on GTK4 support but GTK3 is still needed for compatibility
+ignore = [
+    "RUSTSEC-2024-0411", # gdkwayland-sys - gtk-rs GTK3 bindings unmaintained
+    "RUSTSEC-2024-0412", # gdk - gtk-rs GTK3 bindings unmaintained
+    "RUSTSEC-2024-0413", # atk - gtk-rs GTK3 bindings unmaintained
+    "RUSTSEC-2024-0414", # gdkx11-sys - gtk-rs GTK3 bindings unmaintained
+    "RUSTSEC-2024-0415", # gtk - gtk-rs GTK3 bindings unmaintained
+    "RUSTSEC-2024-0416", # atk-sys - gtk-rs GTK3 bindings unmaintained
+    "RUSTSEC-2024-0417", # gdkx11 - gtk-rs GTK3 bindings unmaintained
+    "RUSTSEC-2024-0418", # gdk-sys - gtk-rs GTK3 bindings unmaintained
+    "RUSTSEC-2024-0419", # gtk3-macros - gtk-rs GTK3 bindings unmaintained
+    "RUSTSEC-2024-0420", # gtk-sys - gtk-rs GTK3 bindings unmaintained
+    "RUSTSEC-2024-0429", # glib - Known issue, waiting for Tauri update
+    "RUSTSEC-2024-0370", # proc-macro-error - Used by gtk3-macros
+    "RUSTSEC-2024-0384", # instant - Used by fastrand in test dependencies
+]

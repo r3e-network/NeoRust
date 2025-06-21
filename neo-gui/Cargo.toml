@@ -15,11 +15,11 @@ name = "neo-gui"
 path = "src/main.rs"
 
 [build-dependencies]
-tauri-build = { version = "2.0", features = [] }
+tauri-build = { version = "2.0.4", features = [] }
 
 [dependencies]
 neo3 = { path = "..", version = "0.4.1" }
-tauri = { version = "2.0", features = [
+tauri = { version = "2.5.1", features = [
   "tray-icon",
   "image-ico",
   "image-png"

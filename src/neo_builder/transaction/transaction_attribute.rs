@@ -125,7 +125,7 @@ impl NeoSerializable for TransactionAttribute {
 				result,
 			}) => 1 + 9 + result.len(),
 			TransactionAttribute::NotValidBefore { height: _ } => 1 + 4, // 1 byte type + 4 bytes height
-			TransactionAttribute::Conflicts { hash: _ } => 1 + 32, // 1 byte type + 32 bytes hash
+			TransactionAttribute::Conflicts { hash: _ } => 1 + 32,       // 1 byte type + 32 bytes hash
 		}
 	}
 

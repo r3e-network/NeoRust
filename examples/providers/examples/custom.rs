@@ -307,11 +307,12 @@ async fn test_load_balancing(transport: &CustomNeoTransport) -> Result<(), Custo
 	println!("   ⚖️  Testing load balancing across endpoints...");
 
 	let mut handles = Vec::new();
+	let transport = Arc::new(transport);
 
 	for i in 0..6 {
-		let transport_ref = unsafe { &*(transport as *const _) }; // Safe in this context
+		let transport_clone = Arc::clone(&transport);
 		let handle = tokio::spawn(async move {
-			match transport_ref.execute_request("get_block_count").await {
+			match transport_clone.execute_request("get_block_count").await {
 				Ok(_) => println!("     ✅ Concurrent request {} completed", i + 1),
 				Err(e) => println!("     ❌ Concurrent request {} failed: {}", i + 1, e),
 			}

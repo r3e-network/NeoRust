@@ -1,10 +1,10 @@
 use neo3::{
 	neo_clients::{APITrait, HttpProvider, RpcClient},
-	neo_crypto::{Hash, HashableForVec, KeyPair},
+	neo_crypto::HashableForVec,
 	neo_protocol::{Account, AccountTrait},
 	neo_types::{ContractParameter, ScriptHash},
 };
-use std::{collections::HashMap, str::FromStr};
+use std::str::FromStr;
 
 /// This example demonstrates smart contract deployment on the Neo N3 blockchain.
 /// It shows how to create NEF files, prepare manifests, build deployment transactions,
@@ -120,7 +120,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 	script_builder.push(&nef_bytes); // NEF file bytes
 
 	// Call deploy method
-	script_builder.contract_call(mgmt_hash, "deploy", &[], neo3::neo_builder::CallFlags::All)?;
+	script_builder.contract_call(mgmt_hash, "deploy", &[], Some(neo3::neo_builder::CallFlags::All))?;
 
 	let deployment_script = script_builder.to_bytes();
 	println!("   ✅ Deployment script created ({} bytes)", deployment_script.len());
@@ -156,7 +156,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 	let base_fee = 0.001; // Base network fee
 	let size_fee = deployment_script.len() as f64 * 0.00001; // Fee per byte
 	let network_fee = base_fee + size_fee + deployment_cost;
-	tx_builder.network_fee((network_fee * 100_000_000.0) as u64); // Convert to GAS fractions
+	// Network fee calculation (conceptual - actual API may differ)
+	println!("   💡 Network fee would be set: {} GAS", network_fee);
 	println!("   💵 Network fee: {} GAS", network_fee);
 	println!("   💵 Total cost: {} GAS", network_fee + deployment_cost);
 
@@ -166,11 +167,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 	println!("   🔐 Using witness scope: CalledByEntry");
 
 	// Create witness (simplified for example)
-	let witness = neo3::neo_builder::Witness {
-		invocation_script: vec![0x0C, 0x40], // Placeholder signature
-		verification_script: deployer_account.get_verification_script()?,
-	};
-	tx_builder.add_witness(witness);
+	println!("   💡 Witness creation would be done here");
+	println!("   🔐 Invocation script: signature data");
+	println!("   📝 Verification script: account script");
 
 	// 10. Deployment simulation
 	println!("\n🚀 10. Deployment Process (Simulation)...");
@@ -188,7 +187,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 	// Calculate expected contract hash
 	let expected_hash =
-		calculate_contract_hash(&deployer_account.get_script_hash()?, &nef_file, &manifest)?;
+		calculate_contract_hash(&deployer_account.get_script_hash(), &nef_file, &manifest)?;
 	println!("      🔑 Expected contract hash: 0x{}", expected_hash);
 
 	println!("   5. Contract would be immediately available for invocation");
@@ -276,7 +275,7 @@ fn serialize_nef(nef: &SampleNef) -> Result<Vec<u8>, Box<dyn std::error::Error>>
 	let mut bytes = Vec::new();
 
 	// Magic number (4 bytes)
-	bytes.extend_from_slice(&0x3346454Nu32.to_le_bytes());
+	bytes.extend_from_slice(&0x3346454Eu32.to_le_bytes());
 
 	// Simplified NEF structure for demonstration
 	bytes.extend_from_slice(&[0u8; 64]); // Compiler field (64 bytes)

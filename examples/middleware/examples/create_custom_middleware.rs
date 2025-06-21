@@ -295,7 +295,7 @@ impl MiddlewareChain {
 
 /// Process transaction through middleware chain
 async fn process_transaction_with_middleware(
-	client: &RpcClient<HttpProvider>,
+	_client: &RpcClient<HttpProvider>,
 	middleware_chain: &MiddlewareChain,
 	original_tx: &TransactionRequest,
 ) -> Result<(), MiddlewareError> {

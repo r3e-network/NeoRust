@@ -1,8 +1,8 @@
 use neo3::{
 	neo_clients::{APITrait, HttpProvider, RpcClient},
-	neo_crypto::KeyPair,
 	neo_protocol::{Account, AccountTrait},
 	neo_types::ScriptHash,
+	ScriptHashExtension,
 };
 use std::str::FromStr;
 

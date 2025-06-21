@@ -18,6 +18,26 @@ A modern React-based GUI frontend for the NeoRust blockchain toolkit, built with
 - npm 10.x or higher
 - Rust (for Tauri desktop app functionality)
 
+### System Dependencies (Linux only)
+
+For building the desktop app on Linux, you'll need GTK development libraries:
+
+**Ubuntu/Debian:**
+```bash
+sudo apt-get update
+sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.0-dev libayatana-appindicator3-dev librsvg2-dev
+```
+
+**Fedora:**
+```bash
+sudo dnf install gtk3-devel webkit2gtk4.0-devel libappindicator-gtk3-devel librsvg2-devel
+```
+
+**Arch Linux:**
+```bash
+sudo pacman -S gtk3 webkit2gtk libappindicator-gtk3 librsvg
+```
+
 ## Quick Start
 
 1. **Install dependencies:**

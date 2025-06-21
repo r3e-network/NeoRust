@@ -1,40 +1,91 @@
-![act-logo](https://raw.githubusercontent.com/wiki/nektos/act/img/logo-150.png)
+# NeoRust
 
-# Overview [![push](https://github.com/nektos/act/workflows/push/badge.svg?branch=master&event=push)](https://github.com/nektos/act/actions) [![Go Report Card](https://goreportcard.com/badge/github.com/nektos/act)](https://goreportcard.com/report/github.com/nektos/act) [![awesome-runners](https://img.shields.io/badge/listed%20on-awesome--runners-blue.svg)](https://github.com/jonico/awesome-runners)
+[![Rust CI](https://github.com/R3E-Network/NeoRust/workflows/Rust%20CI/badge.svg)](https://github.com/R3E-Network/NeoRust/actions)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Crates.io](https://img.shields.io/crates/v/neo3.svg)](https://crates.io/crates/neo3)
 
-> "Think globally, `act` locally"
+A comprehensive Rust SDK for the Neo N3 blockchain platform, providing a complete toolkit for interacting with Neo N3 networks.
 
-Run your [GitHub Actions](https://developer.github.com/actions/) locally! Why would you want to do this? Two reasons:
+## Features
 
-- **Fast Feedback** - Rather than having to commit/push every time you want to test out the changes you are making to your `.github/workflows/` files (or for any changes to embedded GitHub actions), you can use `act` to run the actions locally. The [environment variables](https://help.github.com/en/actions/configuring-and-managing-workflows/using-environment-variables#default-environment-variables) and [filesystem](https://help.github.com/en/actions/reference/virtual-environments-for-github-hosted-runners#filesystems-on-github-hosted-runners) are all configured to match what GitHub provides.
-- **Local Task Runner** - I love [make](<https://en.wikipedia.org/wiki/Make_(software)>). However, I also hate repeating myself. With `act`, you can use the GitHub Actions defined in your `.github/workflows/` to replace your `Makefile`!
+- 🔐 **Cryptography** - Complete cryptographic functions including key generation, signing, and verification
+- 💼 **Wallet Management** - Create, import, and manage Neo wallets with hardware wallet support
+- 🔗 **RPC Client** - Full-featured RPC client for Neo N3 node interaction
+- 📦 **Smart Contracts** - Deploy, invoke, and interact with Neo N3 smart contracts
+- 🪙 **Token Support** - Native NEP-17 token operations and custom token support
+- 🌐 **Network Support** - Mainnet, Testnet, and custom network configurations
+- 🖥️ **CLI Tools** - Command-line interface for common blockchain operations
+- 🖼️ **GUI Application** - Desktop GUI application built with Tauri and React
 
-> **TIP:** **Now Manage and Run Act Directly From VS Code!**<br/>
-> Check out the [GitHub Local Actions](https://sanjulaganepola.github.io/github-local-actions-docs/) Visual Studio Code extension which allows you to leverage the power of `act` to run and test workflows locally without leaving your editor.
+## Quick Start
 
-# How Does It Work?
+Add NeoRust to your `Cargo.toml`:
 
-When you run `act` it reads in your GitHub Actions from `.github/workflows/` and determines the set of actions that need to be run. It uses the Docker API to either pull or build the necessary images, as defined in your workflow files and finally determines the execution path based on the dependencies that were defined. Once it has the execution path, it then uses the Docker API to run containers for each action based on the images prepared earlier. The [environment variables](https://help.github.com/en/actions/configuring-and-managing-workflows/using-environment-variables#default-environment-variables) and [filesystem](https://docs.github.com/en/actions/using-github-hosted-runners/about-github-hosted-runners#file-systems) are all configured to match what GitHub provides.
+```toml
+[dependencies]
+neo3 = "0.4.1"
+```
 
-Let's see it in action with a [sample repo](https://github.com/cplee/github-actions-demo)!
+## Basic Usage
 
-![Demo](https://raw.githubusercontent.com/wiki/nektos/act/quickstart/act-quickstart-2.gif)
+```rust
+use neo3::prelude::*;
 
-# Act User Guide
+// Create a new wallet
+let wallet = Wallet::new().unwrap();
 
-Please look at the [act user guide](https://nektosact.com) for more documentation.
+// Connect to Neo testnet
+let client = RpcClient::new("https://testnet1.neo.coz.io:443").unwrap();
 
-# Support
+// Get account balance
+let balance = client.get_balance(&wallet.address()).await?;
+println!("Balance: {} NEO", balance.neo);
+```
 
-Need help? Ask in [discussions](https://github.com/nektos/act/discussions)!
+## Components
 
-# Contributing
+### Core SDK (`neo3`)
+The main Rust SDK providing all blockchain functionality.
 
-Want to contribute to act? Awesome! Check out the [contributing guidelines](CONTRIBUTING.md) to get involved.
+### CLI Tool (`neo-cli`)
+Command-line interface for blockchain operations:
+```bash
+cargo run --bin neo-cli -- wallet create
+```
 
-## Manually building from source
+### GUI Application (`neo-gui`)
+Desktop application with modern React UI. **Note:** Requires GTK libraries on Linux.
 
-- Install Go tools 1.20+ - (<https://golang.org/doc/install>)
-- Clone this repo `git clone git@github.com:nektos/act.git`
-- Run unit tests with `make test`
-- Build and install: `make install`
+## Building
+
+### Core SDK and CLI
+```bash
+cargo build --workspace --exclude neo-gui
+```
+
+### GUI Application (requires additional dependencies)
+
+**Linux (Ubuntu/Debian):**
+```bash
+sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.0-dev libayatana-appindicator3-dev librsvg2-dev
+cd neo-gui && npm install && cargo build
+```
+
+**macOS and Windows:**
+```bash
+cd neo-gui && npm install && cargo build
+```
+
+## Documentation
+
+- [Getting Started Guide](docs/guides/getting-started.md)
+- [API Documentation](https://docs.rs/neo3)
+- [Examples](examples/)
+
+## License
+
+Licensed under MIT license ([LICENSE](LICENSE) or http://opensource.org/licenses/MIT)
+
+## Contributing
+
+Contributions are welcome! Please read our contributing guidelines and submit pull requests to our repository.

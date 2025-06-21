@@ -1,4 +1,7 @@
-use neo3::neo_clients::{APITrait, HttpProvider, RpcClient};
+use neo3::{
+	neo_clients::{APITrait, HttpProvider, RpcClient},
+	ScriptHashExtension,
+};
 use std::str::FromStr;
 
 /// Example demonstrating Neo X Bridge contract interactions.
@@ -116,10 +119,10 @@ async fn check_bridge_status(
 	config: &BridgeConfig,
 ) -> Result<(), Box<dyn std::error::Error>> {
 	// Check if bridge contract is active
-	match client.get_contract_state(&config.neo_bridge_contract).await {
+	match client.get_contract_state(config.neo_bridge_contract).await {
 		Ok(state) => {
 			println!("   ✅ Bridge contract active");
-			if let Some(manifest) = &state.manifest {
+			if let manifest = &state.manifest {
 				println!(
 					"   📝 Contract name: {}",
 					manifest.name.as_ref().unwrap_or(&"Neo X Bridge".to_string())
@@ -137,7 +140,7 @@ async fn check_bridge_status(
 		Ok(result) =>
 			if let stack = result.stack {
 				if let Some(item) = stack.first() {
-					let is_paused = item.value.as_ref().and_then(|v| v.as_bool()).unwrap_or(false);
+					let is_paused = item.as_bool().unwrap_or(false);
 					println!(
 						"   🚦 Bridge status: {}",
 						if is_paused { "PAUSED ⚠️" } else { "ACTIVE ✅" }
@@ -179,7 +182,7 @@ async fn query_supported_tokens(
 		Ok(result) =>
 			if let stack = result.stack {
 				if let Some(item) = stack.first() {
-					let supported = item.value.as_ref().and_then(|v| v.as_bool()).unwrap_or(false);
+					let supported = item.as_bool().unwrap_or(false);
 					if supported {
 						println!("   🪙 NEO Token:");
 						println!("      • Status: Supported ✅");

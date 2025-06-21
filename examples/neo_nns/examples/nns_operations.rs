@@ -94,7 +94,7 @@ async fn check_domain_availability(
 
 	// Call the 'isAvailable' method on the NNS contract
 	match client
-		.invoke_function(&nns_contract_hash, "isAvailable", Some(parameters), None, None)
+		.invoke_function(&nns_contract_hash, "isAvailable".to_string(), parameters, None)
 		.await
 	{
 		Ok(result) => {

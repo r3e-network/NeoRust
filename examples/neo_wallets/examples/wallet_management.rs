@@ -35,7 +35,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 	// Add a watch-only account (no private key)
 	let watch_only_address = "NbTiM6h8r99kpRtb428XcsUk1TzKed2gTc";
-	let watch_only_script_hash = ScriptHash::from_address(watch_only_address)?;
+	let _watch_only_script_hash = ScriptHash::from_address(watch_only_address)?;
 	println!("   👁️  Added watch-only account: {}", watch_only_address);
 
 	// 3. Account operations
@@ -86,7 +86,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 	for (index, account) in accounts.iter().take(2).enumerate() {
 		// Check first 2 accounts
-		println!("   Account {}: {}", index + 1, &account.get_address()[..10] + "...");
+		println!("   Account {}: {}...", index + 1, &account.get_address()[..10]);
 
 		match client
 			.invoke_function(

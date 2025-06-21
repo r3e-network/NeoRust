@@ -29,7 +29,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 	if let Some(first_account) = accounts.first() {
 		if let Some(key_pair) = first_account.key_pair() {
 			let wif = key_pair.export_as_wif();
-			println!("   🔑 WIF backup (store securely): {}", &wif[..10] + "...");
+			println!("   🔑 WIF backup (store securely): {}...", &wif[..10]);
 		}
 	}
 
@@ -102,7 +102,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 		println!("      • Participants: {} accounts", participant_count);
 
 		for (i, account) in accounts.iter().enumerate() {
-			println!("      • Participant {}: {}", i + 1, &account.get_address()[..10] + "...");
+			println!("      • Participant {}: {}...", i + 1, &account.get_address()[..10]);
 		}
 	}
 

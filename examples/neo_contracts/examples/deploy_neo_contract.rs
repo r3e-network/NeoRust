@@ -1,4 +1,10 @@
-use neo3::prelude::*;
+use neo3::{
+	neo_clients::{APITrait, HttpProvider, RpcClient},
+	neo_crypto::KeyPair,
+	neo_protocol::{Account, AccountTrait},
+	neo_types::{ContractParameter, ScriptHash},
+	prelude::*,
+};
 use std::{collections::HashMap, str::FromStr};
 
 /// This example demonstrates smart contract deployment on the Neo N3 blockchain.
@@ -21,9 +27,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 	let mut client = None;
 	for endpoint in endpoints {
-		match neo3::providers::HttpProvider::new(endpoint) {
+		match HttpProvider::new(endpoint) {
 			Ok(provider) => {
-				let test_client = neo3::providers::RpcClient::new(provider);
+				let test_client = RpcClient::new(provider);
 				// Test connection with a simple call
 				match test_client.get_block_count().await {
 					Ok(count) => {
@@ -45,20 +51,30 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 	println!("\n🔐 2. Loading deployer account...");
 	// In a real deployment, load from WIF or keystore
 	let deployer_wif = "KxDgvEKzgSBPPfuVfw67oPQBSjidEiqTHURKSDL1R7yGaGYAeYnr"; // Example WIF
-	let deployer_account = neo3::neo_wallets::Account::from_wif(deployer_wif)?;
+	let deployer_account = Account::from_wif(deployer_wif)?;
 	let deployer_address = deployer_account.get_address();
 	println!("   📍 Deployer address: {}", deployer_address);
 
-	// Check deployer balance
-	match client.get_nep17_balance(&deployer_address).await {
-		Ok(balances) => {
-			println!("   💰 Deployer balances:");
-			for (token, balance) in balances {
-				println!("      • {}: {}", token, balance);
-			}
-		},
+	// Check deployer GAS balance (needed for deployment fees)
+	let gas_token = ScriptHash::from_str("d2a4cff31913016155e38e474a2c06d08be276cf")?;
+	let deployer_script_hash = deployer_account.get_script_hash();
+
+	match client
+		.invoke_function(
+			&gas_token,
+			"balanceOf".to_string(),
+			vec![ContractParameter::h160(&deployer_script_hash)],
+			None,
+		)
+		.await
+	{
+		Ok(result) =>
+			if let Some(balance_item) = result.stack.first() {
+				let balance = balance_item.as_int().unwrap_or(0);
+				println!("   💰 Deployer GAS balance: {} GAS", balance as f64 / 100_000_000.0);
+			},
 		Err(e) => {
-			println!("   ⚠️  Could not fetch balance: {}", e);
+			println!("   ⚠️  Could not fetch GAS balance: {}", e);
 			println!("   💡 Make sure the account has GAS for deployment");
 		},
 	}
@@ -67,7 +83,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 	println!("\n📦 3. Creating NEF file...");
 	let nef_file = create_sample_nef_file()?;
 	println!("   ✅ NEF file created");
-	println!("   📏 Script size: {} bytes", nef_file.script.len());
+	// Note: NEF file script field is private, showing concept only
+	println!("   📏 NEF file created with embedded script");
 	println!("   🔢 Checksum: 0x{:08x}", nef_file.checksum);
 
 	// 4. Create contract manifest
@@ -113,17 +130,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 	println!("\n📝 7. Creating deployment transaction...");
 
 	// Build transaction
-	let mut tx_builder = neo3::neo_builder::TransactionBuilder::new();
-	tx_builder
-		.script(deployment_script)
-		.valid_until_block(0) // Will be set when getting network fee
-		.add_signer(neo3::neo_builder::Signer {
-			account: deployer_account.get_script_hash()?,
-			scopes: neo3::neo_builder::WitnessScope::CalledByEntry,
-			allowed_contracts: vec![],
-			allowed_groups: vec![],
-			rules: vec![],
-		});
+	let mut tx_builder = neo3::neo_builder::TransactionBuilder::with_client(&client);
+	tx_builder.set_script(Some(deployment_script));
+	// valid_until_block will be set automatically
+
+	// Add signer for the deployer account
+	let signer = neo3::neo_builder::AccountSigner::called_by_entry_hash160(
+		deployer_account.get_script_hash(),
+	)?;
+	tx_builder.set_signers(vec![neo3::neo_builder::Signer::AccountSigner(signer)])?;
 
 	// Get current block for valid_until_block
 	match client.get_block_count().await {
@@ -256,10 +271,7 @@ fn create_sample_manifest() -> Result<neo3::neo_types::ContractManifest, Box<dyn
 			}],
 			events: vec![ContractEvent {
 				name: "Deployed".to_string(),
-				parameters: vec![ContractEventParameter {
-					name: "deployer".to_string(),
-					parameter_type: ContractParameterType::Hash160,
-				}],
+				parameters: vec![ContractParameter::string("deployer".to_string())],
 			}],
 		}),
 		permissions: vec![ContractPermission {
@@ -329,7 +341,7 @@ fn calculate_contract_hash(
 	nef: &neo3::neo_types::NefFile,
 	manifest: &neo3::neo_types::ContractManifest,
 ) -> Result<neo3::neo_types::ScriptHash, Box<dyn std::error::Error>> {
-	use neo3::neo_crypto::sha256;
+	use neo3::neo_crypto::Hash;
 
 	// Contract hash = SHA256(sender + nef_checksum + manifest_name)
 	let mut data = Vec::new();
@@ -337,6 +349,6 @@ fn calculate_contract_hash(
 	data.extend_from_slice(&nef.checksum.to_le_bytes());
 	data.extend_from_slice(manifest.name.as_ref().unwrap_or(&"".to_string()).as_bytes());
 
-	let hash = sha256(&data);
+	let hash = data.hash256();
 	Ok(neo3::neo_types::ScriptHash::from_slice(&hash[..20])?)
 }

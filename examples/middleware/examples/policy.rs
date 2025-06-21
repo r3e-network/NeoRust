@@ -1,5 +1,10 @@
-use neo3::prelude::*;
-use std::collections::HashMap;
+use chrono::Timelike;
+use neo3::{
+	neo_clients::{HttpProvider, RpcClient},
+	neo_types::ScriptHash,
+	prelude::*,
+};
+use std::str::FromStr;
 
 /// Policy middleware for Neo N3 provides a way to inject custom logic into transaction processing
 /// and contract interactions. This allows you to define security rules, compliance checks,
@@ -15,7 +20,7 @@ async fn main() -> eyre::Result<()> {
 	// 1. Connect to Neo N3 TestNet
 	println!("\n1. Setting up Neo N3 connection...");
 	let provider = HttpProvider::new("https://testnet1.neo.coz.io:443/")?;
-	let client = RpcClient::new(provider);
+	let _client = RpcClient::new(provider);
 	println!("   ✅ Connected to Neo N3 TestNet");
 
 	// 2. Initialize policy manager
@@ -52,9 +57,9 @@ async fn main() -> eyre::Result<()> {
 	// Test valid transaction (without reject-all policy)
 	let valid_transaction = TransactionRequest {
 		recipient: ScriptHash::from_address("NbTiM6h8r99kpRtb428XcsUk1TzKed2gTc")?,
-		asset: ScriptHash::gas(),
+		asset: ScriptHash::from_str("d2a4cff31913016155e38e474a2c06d08be276cf")?,
 		amount: 50_000_000, // 0.5 GAS
-		contract_hash: Some(ScriptHash::gas()),
+		contract_hash: Some(ScriptHash::from_str("d2a4cff31913016155e38e474a2c06d08be276cf")?),
 	};
 
 	println!("\n   📋 Testing valid transaction (0.5 GAS transfer):");
@@ -66,9 +71,9 @@ async fn main() -> eyre::Result<()> {
 	// Test transaction exceeding spending limit
 	let high_value_transaction = TransactionRequest {
 		recipient: ScriptHash::from_address("NbTiM6h8r99kpRtb428XcsUk1TzKed2gTc")?,
-		asset: ScriptHash::gas(),
+		asset: ScriptHash::from_str("d2a4cff31913016155e38e474a2c06d08be276cf")?,
 		amount: 200_000_000, // 2 GAS (exceeds limit)
-		contract_hash: Some(ScriptHash::gas()),
+		contract_hash: Some(ScriptHash::from_str("d2a4cff31913016155e38e474a2c06d08be276cf")?),
 	};
 
 	println!("\n   📋 Testing high-value transaction (2 GAS transfer):");
@@ -80,9 +85,9 @@ async fn main() -> eyre::Result<()> {
 	// Test unauthorized contract interaction
 	let unauthorized_contract = TransactionRequest {
 		recipient: ScriptHash::from_address("NbTiM6h8r99kpRtb428XcsUk1TzKed2gTc")?,
-		asset: ScriptHash::gas(),
+		asset: ScriptHash::from_str("d2a4cff31913016155e38e474a2c06d08be276cf")?,
 		amount: 10_000_000, // 0.1 GAS
-		contract_hash: Some(ScriptHash::from_str("0x1234567890abcdef1234567890abcdef12345678")?),
+		contract_hash: Some(ScriptHash::from_str("1234567890abcdef1234567890abcdef12345678")?),
 	};
 
 	println!("\n   📋 Testing unauthorized contract interaction:");
@@ -110,9 +115,9 @@ async fn main() -> eyre::Result<()> {
 
 	let test_transaction = TransactionRequest {
 		recipient: ScriptHash::from_address("NbTiM6h8r99kpRtb428XcsUk1TzKed2gTc")?,
-		asset: ScriptHash::gas(),
+		asset: ScriptHash::from_str("d2a4cff31913016155e38e474a2c06d08be276cf")?,
 		amount: 30_000_000, // 0.3 GAS
-		contract_hash: Some(ScriptHash::gas()),
+		contract_hash: Some(ScriptHash::from_str("d2a4cff31913016155e38e474a2c06d08be276cf")?),
 	};
 
 	match priority_manager.validate_transaction(&test_transaction).await {

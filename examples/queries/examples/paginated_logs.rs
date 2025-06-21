@@ -1,40 +1,177 @@
-use ethers::{
-	core::{
-		abi::AbiDecode,
-		types::{BlockNumber, Filter, U256},
-	},
-	providers::{Middleware, Provider, StreamExt, Ws},
+use neo3::{
+	neo_clients::{APITrait, HttpProvider, RpcClient},
+	neo_types::ScriptHash,
 };
-use eyre::Result;
+use std::str::FromStr;
 
+/// Neo N3 Paginated Event Logs Example
+///
+/// This example demonstrates how to query and paginate through Neo N3 transaction logs
+/// and contract events. Unlike Ethereum's event filtering system, Neo N3 uses application
+/// logs and notifications to track contract events.
 #[tokio::main]
-async fn main() -> Result<()> {
-	let client: Provider<Ws> =
-		Provider::<Ws>::connect("wss://mainnet.infura.io/ws/v3/c60b0bb42f8a4c6481ecd229eddaca27")
-			.await?;
-	let client = Arc::new(client);
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+	println!("📋 Neo N3 Paginated Event Logs Example");
+	println!("======================================");
 
-	let last_block = client.get_block(BlockNumber::Latest).await?.unwrap().number.unwrap();
-	println!("last_block: {last_block}");
+	// 1. Connect to Neo N3 TestNet
+	println!("\n1. Connecting to Neo N3 TestNet...");
+	let provider = HttpProvider::new("https://testnet1.neo.coz.io:443/")?;
+	let client = RpcClient::new(provider);
+	println!("   ✅ Connected to Neo N3 TestNet");
 
-	let erc20_transfer_filter = Filter::new()
-		.from_block(last_block - 10000)
-		.event("Transfer(address,address,uint256)");
+	// 2. Get current block information
+	println!("\n2. Getting current block information...");
+	let latest_block_count = client.get_block_count().await?;
+	println!("   📦 Latest block: {}", latest_block_count);
 
-	let mut stream = client.get_logs_paginated(&erc20_transfer_filter, 10).take(5);
+	// Start from a recent block range for demonstration
+	let start_block = if latest_block_count > 1000 { latest_block_count - 1000 } else { 1 };
+	let end_block = latest_block_count;
 
-	while let Some(res) = stream.next().await {
-		let log = res?;
-		println!(
-			"block: {:?}, tx: {:?}, token: {:?}, from: {:?}, to: {:?}, amount: {:?}",
-			log.block_number,
-			log.transaction_hash,
-			log.address,
-			log.topics.get(1),
-			log.topics.get(2),
-			U256::decode(log.data)
-		);
+	println!("   🔍 Scanning blocks {} to {} for events", start_block, end_block);
+
+	// 3. Query NEP-17 token transfer events
+	println!("\n3. Querying NEP-17 token transfer events...");
+
+	let gas_token = ScriptHash::from_str("d2a4cff31913016155e38e474a2c06d08be276cf")?;
+	let neo_token = ScriptHash::from_str("ef4073a0f2b305a38ec4050e4d3d28bc40ea63f5")?;
+
+	// Paginated event scanning
+	let page_size = 10; // Process 10 blocks at a time
+	let mut total_events = 0;
+
+	for page_start in (start_block..end_block).step_by(page_size) {
+		let page_end = std::cmp::min(page_start + page_size as u32, end_block);
+
+		println!("   📄 Processing page: blocks {} to {}", page_start, page_end);
+
+		let page_events =
+			scan_blocks_for_events(&client, page_start, page_end, &[gas_token, neo_token]).await?;
+		total_events += page_events;
+
+		// Add a small delay to be respectful to the RPC server
+		tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
 	}
 
+	// 4. Query specific contract events
+	println!("\n4. Querying specific contract events...");
+
+	// Example: Query ManagementContract events
+	let management_contract = ScriptHash::from_str("fffdc93764dbaddd97c48f252a53ea4643faa3fd")?;
+	let management_events =
+		query_contract_events(&client, &management_contract, start_block, end_block).await?;
+
+	println!("   🏛️ Management contract events found: {}", management_events);
+
+	// 5. Summary
+	println!("\n5. Event scanning summary:");
+	println!("   📊 Total blocks scanned: {}", end_block - start_block);
+	println!("   🎯 Total events found: {}", total_events);
+	println!(
+		"   📄 Pages processed: {}",
+		(end_block - start_block + page_size as u32 - 1) / page_size as u32
+	);
+
+	println!("\n✅ Neo N3 paginated event logs example completed!");
+	println!("💡 Key features demonstrated:");
+	println!("   • Paginated block scanning for performance");
+	println!("   • NEP-17 token transfer event detection");
+	println!("   • Contract-specific event filtering");
+	println!("   • Rate-limited RPC calls for server respect");
+
 	Ok(())
+}
+
+/// Scan a range of blocks for NEP-17 transfer events
+async fn scan_blocks_for_events(
+	client: &RpcClient<HttpProvider>,
+	start_block: u32,
+	end_block: u32,
+	token_contracts: &[ScriptHash],
+) -> Result<usize, Box<dyn std::error::Error>> {
+	let mut event_count = 0;
+
+	for block_index in start_block..end_block {
+		// Get block with transactions
+		match client.get_block_by_index(block_index, true).await {
+			Ok(block) => {
+				if let Some(transactions) = &block.transactions {
+					for (tx_index, transaction) in transactions.iter().enumerate() {
+						// Check if this transaction involves our tokens of interest
+						if transaction_involves_tokens(&transaction.script, token_contracts) {
+							println!(
+								"      🔍 Found potential token transaction in block {}, tx {}",
+								block_index, tx_index
+							);
+							event_count += 1;
+
+							// In a real implementation, you would:
+							// 1. Get the application log for this transaction
+							// 2. Parse the notifications for Transfer events
+							// 3. Extract sender, receiver, and amount
+						}
+					}
+				}
+			},
+			Err(_) => {
+				// Skip blocks that can't be retrieved
+				continue;
+			},
+		}
+	}
+
+	Ok(event_count)
+}
+
+/// Check if a transaction script involves specific token contracts
+fn transaction_involves_tokens(script: &str, token_contracts: &[ScriptHash]) -> bool {
+	// Simplified check - in reality you'd parse the script properly
+	// This is a basic heuristic to detect token-related transactions
+	for contract in token_contracts {
+		let contract_hex = format!("{:x}", contract);
+		if script.contains(&contract_hex) {
+			return true;
+		}
+	}
+	false
+}
+
+/// Query events for a specific contract
+async fn query_contract_events(
+	client: &RpcClient<HttpProvider>,
+	contract_hash: &ScriptHash,
+	start_block: u32,
+	end_block: u32,
+) -> Result<usize, Box<dyn std::error::Error>> {
+	println!("   🔍 Querying events for contract: {:x}", contract_hash);
+
+	let mut event_count = 0;
+	let sample_size = std::cmp::min(50, end_block - start_block); // Sample up to 50 blocks
+
+	for block_index in start_block..(start_block + sample_size) {
+		match client.get_block_by_index(block_index, true).await {
+			Ok(block) =>
+				if let Some(transactions) = &block.transactions {
+					for transaction in transactions {
+						if transaction_involves_contract(&transaction.script, contract_hash) {
+							event_count += 1;
+							println!(
+								"      📝 Contract interaction found in block {}",
+								block_index
+							);
+						}
+					}
+				},
+			Err(_) => continue,
+		}
+	}
+
+	Ok(event_count)
+}
+
+/// Check if a transaction involves a specific contract
+fn transaction_involves_contract(script: &str, contract_hash: &ScriptHash) -> bool {
+	let contract_hex = format!("{:x}", contract_hash);
+	script.contains(&contract_hex)
 }

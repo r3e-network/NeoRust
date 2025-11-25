@@ -15,7 +15,7 @@ A comprehensive, production-ready Rust SDK for the Neo N3 blockchain platform. N
 
 ## 📊 Project Status
 
-- **Version**: 0.5.2 (Production Ready - Enterprise Features)
+- **Version**: 0.5.3 (Production Ready - Security Hardened)
 - **Rust Version**: 1.70.0+
 - **Platform Support**: Windows, macOS, Linux
 - **Security**: Dependencies audited; no known CVEs, with tracked unmaintained transitive crates only
@@ -53,7 +53,7 @@ Add NeoRust to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-neo3 = "0.5.2"
+neo3 = "0.5.3"
 ```
 
 ## Basic Usage
@@ -266,7 +266,7 @@ cd neo-gui && npm install && cargo build
 ## Documentation
 
 - [Getting Started Guide](docs/guides/getting-started.md)
-- [API Documentation](https://docs.rs/neo3/0.5.2)
+- [API Documentation](https://docs.rs/neo3/0.5.3)
 - [WebSocket Guide](docs/guides/websocket.md)
 - [HD Wallet Guide](docs/guides/hd-wallet.md)
 - [Transaction Simulation Guide](docs/guides/transaction-simulation.md)

@@ -31,20 +31,48 @@ pub trait APITrait: Sync + Send + Debug {
 
 	async fn network(&self) -> Result<u32, ProviderError>;
 
+	/// Returns the NNS resolver address.
+	///
+	/// # Panics
+	/// Panics if the global config mutex is poisoned (indicates a prior panic).
 	fn nns_resolver(&self) -> H160 {
-		NEOCONFIG.lock().unwrap().nns_resolver
+		NEOCONFIG
+			.lock()
+			.expect("NEOCONFIG mutex poisoned - a previous thread panicked while holding the lock")
+			.nns_resolver
 	}
 
+	/// Returns the block interval in milliseconds.
+	///
+	/// # Panics
+	/// Panics if the global config mutex is poisoned (indicates a prior panic).
 	fn block_interval(&self) -> u32 {
-		NEOCONFIG.lock().unwrap().milliseconds_per_block
+		NEOCONFIG
+			.lock()
+			.expect("NEOCONFIG mutex poisoned - a previous thread panicked while holding the lock")
+			.milliseconds_per_block
 	}
 
+	/// Returns the polling interval in milliseconds.
+	///
+	/// # Panics
+	/// Panics if the global config mutex is poisoned (indicates a prior panic).
 	fn polling_interval(&self) -> u32 {
-		NEOCONFIG.lock().unwrap().milliseconds_per_block
+		NEOCONFIG
+			.lock()
+			.expect("NEOCONFIG mutex poisoned - a previous thread panicked while holding the lock")
+			.milliseconds_per_block
 	}
 
+	/// Returns the maximum valid-until-block increment.
+	///
+	/// # Panics
+	/// Panics if the global config mutex is poisoned (indicates a prior panic).
 	fn max_valid_until_block_increment(&self) -> u32 {
-		NEOCONFIG.lock().unwrap().get_max_valid_until_block_increment()
+		NEOCONFIG
+			.lock()
+			.expect("NEOCONFIG mutex poisoned - a previous thread panicked while holding the lock")
+			.get_max_valid_until_block_increment()
 	}
 
 	// Blockchain methods

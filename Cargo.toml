@@ -1,6 +1,6 @@
 [package]
 name = "neo3"
-version = "0.5.2"
+version = "0.5.3"
 edition = "2021"
 authors = ["R3E Network <jimmy@r3e.network> (c) 2020-2025"]
 license = "MIT OR Apache-2.0"
@@ -13,6 +13,7 @@ categories = ["cryptography::cryptocurrencies", "api-bindings", "cryptography"]
 keywords = ["crypto", "neo", "neo-N3", "web3", "blockchain"]
 exclude = [
     ".github/",
+    ".hive-mind/",
     "bin/",
     "book/",
     "**/tests/",

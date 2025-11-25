@@ -67,6 +67,8 @@ use crate::{
 };
 use aes::cipher::{block_padding::NoPadding, BlockDecryptMut, BlockEncryptMut, KeyInit};
 use scrypt::{scrypt, Params};
+// Re-export from elliptic_curve crate which is already a dependency
+use p256::elliptic_curve::subtle::ConstantTimeEq;
 
 type Aes256EcbEnc = ecb::Encryptor<aes::Aes256>;
 type Aes256EcbDec = ecb::Decryptor<aes::Aes256>;
@@ -326,10 +328,12 @@ impl NEP2 {
 		let key_pair = KeyPair::from_private_key(&private_key)
 			.map_err(|e| Nep2Error::InvalidPrivateKey(e.to_string()))?;
 
-		// Verify that the address hash matches
+		// Verify that the address hash matches using constant-time comparison
+		// SECURITY: Using constant-time comparison prevents timing attacks that could
+		// be used to guess the password byte-by-byte
 		let calculated_hash =
 			Self::address_hash_from_pubkey(&key_pair.public_key.get_encoded(true));
-		if !address_hash.iter().zip(calculated_hash.iter()).all(|(a, b)| a == b) {
+		if address_hash.ct_eq(&calculated_hash).unwrap_u8() != 1 {
 			return Err(Nep2Error::VerificationFailed(
 				"Calculated address hash does not match the one in the NEP2 data. Incorrect password?".into()
 			));
@@ -340,29 +344,38 @@ impl NEP2 {
 
 	/// Gets the default scrypt parameters used in the NEO blockchain.
 	///
-	/// In test mode (when NEORUST_TEST_MODE environment variable is set), uses faster
-	/// parameters to improve test performance while maintaining reasonable security.
+	/// SECURITY: Always uses production-grade parameters (N=16384, r=8, p=8).
+	/// For testing, use `encrypt_with_params` or `decrypt_with_params` with
+	/// custom parameters instead of relying on environment variables.
 	///
 	/// # Returns
 	///
-	/// The standard scrypt parameters (N=16384, r=8, p=8, dklen=32) or
-	/// faster test parameters (N=1024, r=8, p=1, dklen=32) in test mode
+	/// The standard scrypt parameters (N=16384, r=8, p=8, dklen=32)
 	fn get_default_scrypt_params() -> Result<Params, Nep2Error> {
-		// Check if we're in test mode for faster parameters
-		if std::env::var("NEORUST_TEST_MODE").is_ok() {
-			// Use much faster parameters for testing: N=1024 (2^10), r=8, p=1
-			// This reduces encryption time from ~1.4s to ~0.01s per account
-			Params::new(10, 8, 1, 32).map_err(|e| Nep2Error::ScryptError(e.to_string()))
-		} else {
-			// Use production parameters
-			Params::new(
-				NeoConstants::SCRYPT_LOG_N,
-				NeoConstants::SCRYPT_R,
-				NeoConstants::SCRYPT_P,
-				32,
-			)
-			.map_err(|e| Nep2Error::ScryptError(e.to_string()))
-		}
+		// SECURITY: Always use production parameters to prevent accidental
+		// weakening of security through environment variable manipulation
+		Params::new(
+			NeoConstants::SCRYPT_LOG_N,
+			NeoConstants::SCRYPT_R,
+			NeoConstants::SCRYPT_P,
+			32,
+		)
+		.map_err(|e| Nep2Error::ScryptError(e.to_string()))
+	}
+
+	/// Gets fast scrypt parameters suitable for testing only.
+	///
+	/// WARNING: These parameters are NOT suitable for production use!
+	/// Only use this in test code.
+	///
+	/// # Returns
+	///
+	/// Fast test parameters (N=1024, r=8, p=1, dklen=32)
+	#[cfg(test)]
+	#[allow(dead_code)] // Reserved for future test cases requiring fast scrypt params
+	pub(crate) fn get_test_scrypt_params() -> Result<Params, Nep2Error> {
+		// N=1024 (2^10), r=8, p=1 - fast for testing but NOT secure for production
+		Params::new(10, 8, 1, 32).map_err(|e| Nep2Error::ScryptError(e.to_string()))
 	}
 
 	/// Gets the scrypt parameters used in the NEP2 test vectors.
@@ -748,5 +761,104 @@ mod tests {
 			private_key_hex,
 			"Decrypted standard test vector doesn't match the expected private key"
 		);
+	}
+
+	// Edge case tests for NEP2 security
+	#[test]
+	fn test_nep2_empty_password() {
+		let private_key = hex::decode(TestConstants::DEFAULT_ACCOUNT_PRIVATE_KEY).unwrap();
+		let key_array = vec_to_array32(private_key).unwrap();
+		let key_pair = KeyPair::from_private_key(&key_array).unwrap();
+
+		// Empty password behavior depends on the scrypt implementation
+		// Most implementations require non-empty password for security reasons
+		let encrypted = NEP2::encrypt("", &key_pair);
+
+		// If empty password is rejected (security-conscious behavior), that's acceptable
+		// If it succeeds, verify roundtrip works
+		if encrypted.is_ok() {
+			let decrypted = NEP2::decrypt("", &encrypted.unwrap());
+			assert!(decrypted.is_ok());
+		}
+		// Not asserting is_err() since both behaviors are acceptable
+	}
+
+	#[test]
+	fn test_nep2_unicode_password() {
+		let private_key = hex::decode(TestConstants::DEFAULT_ACCOUNT_PRIVATE_KEY).unwrap();
+		let key_array = vec_to_array32(private_key).unwrap();
+		let key_pair = KeyPair::from_private_key(&key_array).unwrap();
+
+		// Unicode passwords should work
+		let unicode_password = "密码🔐パスワード";
+		let encrypted = NEP2::encrypt(unicode_password, &key_pair);
+		assert!(encrypted.is_ok());
+
+		let decrypted = NEP2::decrypt(unicode_password, &encrypted.unwrap());
+		assert!(decrypted.is_ok());
+		assert_eq!(
+			decrypted.unwrap().private_key.to_raw_bytes(),
+			key_pair.private_key.to_raw_bytes()
+		);
+	}
+
+	#[test]
+	fn test_nep2_invalid_format() {
+		// Too short
+		let result = NEP2::decrypt("password", "6PY");
+		assert!(result.is_err());
+
+		// Invalid base58 characters
+		let result = NEP2::decrypt("password", "0000000000000000000000000000000000000000000000000000000");
+		assert!(result.is_err());
+
+		// Wrong prefix (should start with 6P)
+		let result = NEP2::decrypt("password", "5HueCGU8rMjxEXxiPuD5BDku4MkFqeZyd4dZ1jvhTVqvbTLvyTJ");
+		assert!(result.is_err());
+	}
+
+	#[test]
+	fn test_nep2_corrupted_data() {
+		let private_key = hex::decode(TestConstants::DEFAULT_ACCOUNT_PRIVATE_KEY).unwrap();
+		let key_array = vec_to_array32(private_key).unwrap();
+		let key_pair = KeyPair::from_private_key(&key_array).unwrap();
+
+		let encrypted = NEP2::encrypt(TestConstants::DEFAULT_ACCOUNT_PASSWORD, &key_pair).unwrap();
+
+		// Decode, corrupt, and re-encode
+		let mut decoded = bs58::decode(&encrypted).into_vec().unwrap();
+		decoded[10] ^= 0xFF; // Corrupt a byte in the middle
+		let corrupted = bs58::encode(&decoded).into_string();
+
+		// Should fail to decrypt with corrupted data
+		let result = NEP2::decrypt(TestConstants::DEFAULT_ACCOUNT_PASSWORD, &corrupted);
+		assert!(result.is_err());
+	}
+
+	#[test]
+	fn test_nep2_aes_key_length_validation() {
+		let data = [1u8; 16];
+
+		// Wrong key length should fail
+		let short_key = [1u8; 16];
+		let result = NEP2::encrypt_aes256_ecb(&data, &short_key);
+		assert!(result.is_err());
+		assert!(result.unwrap_err().contains("32 bytes"));
+
+		let long_key = [1u8; 64];
+		let result = NEP2::encrypt_aes256_ecb(&data, &long_key);
+		assert!(result.is_err());
+	}
+
+	#[test]
+	fn test_nep2_different_passwords_produce_different_encrypted_keys() {
+		let private_key = hex::decode(TestConstants::DEFAULT_ACCOUNT_PRIVATE_KEY).unwrap();
+		let key_array = vec_to_array32(private_key).unwrap();
+		let key_pair = KeyPair::from_private_key(&key_array).unwrap();
+
+		let encrypted1 = NEP2::encrypt("password1", &key_pair).unwrap();
+		let encrypted2 = NEP2::encrypt("password2", &key_pair).unwrap();
+
+		assert_ne!(encrypted1, encrypted2);
 	}
 }

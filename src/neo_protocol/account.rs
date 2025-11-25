@@ -473,8 +473,9 @@ impl AccountTrait for Account {
 
 		let (signing_threshold, nr_of_participants) = if script.is_multi_sig() {
 			(
-				Some(script.get_signing_threshold().unwrap()),
-				Some(script.get_nr_of_accounts().unwrap()),
+				// SAFETY: is_multi_sig() returned true, so these methods are guaranteed to succeed
+				Some(script.get_signing_threshold().expect("is_multi_sig implies valid threshold")),
+				Some(script.get_nr_of_accounts().expect("is_multi_sig implies valid account count")),
 			)
 		} else {
 			(None, None)
@@ -642,10 +643,15 @@ impl Account {
 		}
 
 		let mut parameters = Vec::new();
-		let script_data = self.verification_script.as_ref().unwrap();
+		// SAFETY: We already returned early if verification_script is None above
+		let script_data = self
+			.verification_script
+			.as_ref()
+			.expect("verification_script checked to be Some above");
 
 		if script_data.is_multi_sig() {
-			for i in 0..script_data.get_nr_of_accounts().unwrap() {
+			// SAFETY: is_multi_sig() returned true, so get_nr_of_accounts is guaranteed to succeed
+			for i in 0..script_data.get_nr_of_accounts().expect("is_multi_sig implies valid count") {
 				parameters.push(NEP6Parameter {
 					param_name: format!("signature{i}"),
 					param_type: ContractParameterType::Signature,

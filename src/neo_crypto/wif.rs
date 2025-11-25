@@ -1,4 +1,6 @@
 use sha2::{Digest, Sha256};
+// Re-export from elliptic_curve crate which is already a dependency
+use p256::elliptic_curve::subtle::ConstantTimeEq;
 
 use crate::crypto::{CryptoError, Secp256r1PrivateKey};
 
@@ -27,8 +29,10 @@ pub fn private_key_from_wif(wif: &str) -> Result<Secp256r1PrivateKey, CryptoErro
 		return Err(CryptoError::InvalidFormat("Incorrect WIF format.".to_string()));
 	}
 
+	// SECURITY: Use constant-time comparison for checksum verification
+	// to prevent timing attacks that could leak information about the WIF format
 	let checksum_calculated = Sha256::digest(Sha256::digest(&data[..34]));
-	if checksum_calculated[..4] != data[34..] {
+	if checksum_calculated[..4].ct_eq(&data[34..]).unwrap_u8() != 1 {
 		return Err(CryptoError::InvalidFormat("Incorrect WIF checksum.".to_string()));
 	}
 
@@ -120,5 +124,67 @@ mod tests {
 
 		// wif_from_private_key(&
 		assert!(Secp256r1PrivateKey::from_slice(&invalid_len).is_err());
+	}
+
+	// Edge case tests for WIF security
+	#[test]
+	fn test_wif_empty_string() {
+		assert!(private_key_from_wif("").is_err());
+	}
+
+	#[test]
+	fn test_wif_invalid_base58_characters() {
+		// Base58 doesn't include '0', 'O', 'I', 'l'
+		assert!(private_key_from_wif("0000000000000000000000000000000000000000000000000000").is_err());
+		assert!(private_key_from_wif("OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO").is_err());
+		assert!(private_key_from_wif("IIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIII").is_err());
+		assert!(private_key_from_wif("llllllllllllllllllllllllllllllllllllllllllllllllllll").is_err());
+	}
+
+	#[test]
+	fn test_wif_corrupted_checksum() {
+		let valid_wif = "L25kgAQJXNHnhc7Sx9bomxxwVSMsZdkaNQ3m2VfHrnLzKWMLP13A";
+		let mut decoded = bs58::decode(valid_wif).into_vec().unwrap();
+
+		// Corrupt the last byte (part of checksum)
+		decoded[37] ^= 0xFF;
+		let corrupted = bs58::encode(&decoded).into_string();
+
+		let result = private_key_from_wif(&corrupted);
+		assert!(result.is_err());
+		assert!(result.unwrap_err().to_string().contains("checksum"));
+	}
+
+	#[test]
+	fn test_wif_roundtrip() {
+		// Test that WIF encoding and decoding are inverse operations
+		let original_key =
+			hex::decode("9117f4bf9be717c9a90994326897f4243503accd06712162267e77f18b49c3a3")
+				.unwrap();
+		let private_key = Secp256r1PrivateKey::from_slice(&original_key).unwrap();
+
+		let wif = wif_from_private_key(&private_key);
+		let recovered_key = private_key_from_wif(&wif).unwrap();
+
+		assert_eq!(private_key.to_raw_bytes(), recovered_key.to_raw_bytes());
+	}
+
+	#[test]
+	fn test_wif_different_keys_produce_different_wifs() {
+		let key1 = Secp256r1PrivateKey::from_slice(
+			&hex::decode("9117f4bf9be717c9a90994326897f4243503accd06712162267e77f18b49c3a3")
+				.unwrap(),
+		)
+		.unwrap();
+		let key2 = Secp256r1PrivateKey::from_slice(
+			&hex::decode("c7134d6fd8e73d819e82755c64c93788d8db0961929e025a53363c4cc02a6962")
+				.unwrap(),
+		)
+		.unwrap();
+
+		let wif1 = wif_from_private_key(&key1);
+		let wif2 = wif_from_private_key(&key2);
+
+		assert_ne!(wif1, wif2);
 	}
 }

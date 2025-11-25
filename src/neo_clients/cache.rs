@@ -37,6 +37,9 @@ struct CacheEntry<V> {
 	value: V,
 	expires_at: Instant,
 	last_accessed: Instant,
+	/// Access count for potential frequency-based eviction (LFU).
+	/// Currently unused but reserved for future eviction strategy enhancements.
+	#[allow(dead_code)]
 	access_count: u64,
 }
 
@@ -50,6 +53,9 @@ impl<V> CacheEntry<V> {
 		Instant::now() > self.expires_at
 	}
 
+	/// Access the cached value and update tracking metadata.
+	/// Reserved for future use with write-lock-based access patterns.
+	#[allow(dead_code)]
 	fn access(&mut self) -> &V {
 		self.last_accessed = Instant::now();
 		self.access_count += 1;
@@ -100,21 +106,45 @@ where
 	}
 
 	/// Get a value from the cache
+	///
+	/// PERFORMANCE: Uses a two-phase approach - first tries with read lock,
+	/// only acquires write lock if the entry is expired and needs removal.
 	pub async fn get(&self, key: &K) -> Option<V> {
+		// Phase 1: Try to get with read lock first (fast path)
+		{
+			let entries = self.entries.read().await;
+			if let Some(entry) = entries.get(key) {
+				if !entry.is_expired() {
+					// Entry exists and is valid - update stats and return
+					let mut stats = self.stats.write().await;
+					stats.hits += 1;
+					return Some(entry.value.clone());
+				}
+				// Entry is expired - fall through to write lock path
+			} else {
+				// Entry doesn't exist
+				let mut stats = self.stats.write().await;
+				stats.misses += 1;
+				return None;
+			}
+		}
+
+		// Phase 2: Entry was expired, need write lock to remove it
 		let mut entries = self.entries.write().await;
 		let mut stats = self.stats.write().await;
 
-		if let Some(entry) = entries.get_mut(key) {
+		// Double-check the entry (another thread may have already removed it)
+		if let Some(entry) = entries.get(key) {
 			if entry.is_expired() {
 				entries.remove(key);
 				stats.expired_removals += 1;
 				stats.misses += 1;
 				stats.current_size = entries.len();
-				None
-			} else {
-				stats.hits += 1;
-				Some(entry.access().clone())
+				return None;
 			}
+			// Entry was refreshed by another thread
+			stats.hits += 1;
+			Some(entry.value.clone())
 		} else {
 			stats.misses += 1;
 			None

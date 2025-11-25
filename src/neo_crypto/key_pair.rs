@@ -38,12 +38,38 @@ impl KeyPair {
 		Self { private_key, public_key }
 	}
 
+	/// Returns a clone of the private key.
+	///
+	/// PERFORMANCE NOTE: Consider using `private_key_ref()` to avoid cloning
+	/// when you only need to read the key.
 	pub fn private_key(&self) -> Secp256r1PrivateKey {
 		self.private_key.clone()
 	}
 
+	/// Returns a reference to the private key without cloning.
+	///
+	/// Use this method when you only need to read the private key
+	/// to avoid unnecessary memory allocation.
+	#[inline]
+	pub fn private_key_ref(&self) -> &Secp256r1PrivateKey {
+		&self.private_key
+	}
+
+	/// Returns a clone of the public key.
+	///
+	/// PERFORMANCE NOTE: Consider using `public_key_ref()` to avoid cloning
+	/// when you only need to read the key.
 	pub fn public_key(&self) -> Secp256r1PublicKey {
 		self.public_key.clone()
+	}
+
+	/// Returns a reference to the public key without cloning.
+	///
+	/// Use this method when you only need to read the public key
+	/// to avoid unnecessary memory allocation.
+	#[inline]
+	pub fn public_key_ref(&self) -> &Secp256r1PublicKey {
+		&self.public_key
 	}
 
 	/// Derives a new `KeyPair` instance from just a private key.

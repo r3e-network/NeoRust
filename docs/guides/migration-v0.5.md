@@ -1,4 +1,4 @@
-# Migration Guide: v0.4.x → v0.5.2
+# Migration Guide: v0.4.x → v0.5.x
 
 NeoRust v0.5.x introduces a high-level SDK, WebSockets, HD wallets, and transaction simulation. Core APIs remain but some helpers were renamed or removed.
 

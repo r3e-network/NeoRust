@@ -76,8 +76,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let neo = Neo::builder()
         .network(Network::MainNet)
         .timeout(Duration::from_secs(30))
-        .websocket_url("wss://mainnet.neo.org/ws")
-        .enable_transaction_simulation()
+        .retries(3)
+        .cache(true)
         .build()
         .await?;
     
@@ -110,12 +110,15 @@ let client = RpcClient::new(http);
     let client = RpcClient::new(ipc);
 }
 
-// 4) Offline-friendly mock (great for tests/CI)
-use neo3::neo_clients::MockClient;
-let mut mock = MockClient::new().await;
-mock.mock_get_block_count(1_000).await;
-mock.mount_mocks().await;
-let client = RpcClient::new(HttpProvider::new(mock.url())?);
+// 4) Offline-friendly mock (enable the `mock` feature; great for tests/CI)
+#[cfg(feature = "mock")]
+{
+    use neo3::neo_clients::MockClient;
+    let mut mock = MockClient::new().await;
+    mock.mock_get_block_count(1_000).await;
+    mock.mount_mocks().await;
+    let client = RpcClient::new(HttpProvider::new(mock.url())?);
+}
 ```
 
 ### Feature Flags
@@ -123,10 +126,17 @@ let client = RpcClient::new(HttpProvider::new(mock.url())?);
 - `ws`: enable the modern WebSocket transport
 - `ipc`: enable IPC (Unix domain sockets / Windows named pipes)
 - `legacy-ws`: legacy WebSocket compatibility layer (fallback)
+- `mock`: enable `MockClient`/wiremock helpers
 - `ledger`, `yubi`: opt into hardware wallet support
 - `no_std`, `sgx`: specialized environments
 
 ### WebSocket Real-time Events
+
+Requires the `ws` feature:
+
+```toml
+neo3 = { version = "0.5.3", features = ["ws"] }
+```
 
 ```rust
 use neo3::sdk::websocket::{WebSocketClient, SubscriptionType};

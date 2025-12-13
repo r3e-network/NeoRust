@@ -267,6 +267,9 @@ pub extern "C" fn neo_remote_attestation(
     if let Err(_) = attestation.init_attestation(&sp_key) {
         return sgx_status_t::SGX_ERROR_UNEXPECTED;
     }
+
+    // Legacy EPID-based quote generation requires a SPID. Supply your real SPID here.
+    attestation.configure_spid([0u8; 16]);
     
     // Generate quote with user data (e.g., public key hash)
     let user_data = b"NEO_ENCLAVE_V1";

@@ -91,9 +91,17 @@ impl KeyPair {
 	/// Returns the 64-byte uncompressed representation of the public key.
 	pub fn public_key_bytes(&self) -> [u8; 64] {
 		let mut buf = [0u8; 64];
-		// Convert the Secp256r1PublicKey to its byte representation
-		let vec_bytes: Vec<u8> = self.public_key.to_vec(); // uncompressed form
-		buf.copy_from_slice(&vec_bytes[0..64]);
+		let uncompressed = self.public_key.get_encoded(false);
+		debug_assert_eq!(
+			uncompressed.len(),
+			65,
+			"Expected an uncompressed secp256r1 public key to be 65 bytes (0x04 || X || Y)"
+		);
+		if uncompressed.len() == 65 {
+			buf.copy_from_slice(&uncompressed[1..]);
+		} else if uncompressed.len() == 64 {
+			buf.copy_from_slice(&uncompressed);
+		}
 
 		buf
 	}
@@ -132,15 +140,19 @@ impl KeyPair {
 		Ok(Self::from_secret_key(&private_key))
 	}
 
-	/// Creates an `KeyPair` from a given 65-byte public key.
+	/// Creates a `KeyPair` from a given uncompressed public key (x || y, 64 bytes).
 	/// This will use a dummy private key internally.
 	///
 	/// # Arguments
 	///
-	/// * `public_key` - A 65-byte slice representing the uncompressed public key.
+	/// * `public_key` - The 64-byte uncompressed public key (x || y, without the 0x04 prefix).
 	pub fn from_public_key(public_key: &[u8; 64]) -> Result<Self, CryptoError> {
 		let public_key = Secp256r1PublicKey::from_slice(public_key)?;
-		let secret_key = Secp256r1PrivateKey::from_bytes(&[0u8; 32]).unwrap(); // dummy private key
+		// NOTE: This creates a placeholder private key because we only have a public key.
+		// It is not suitable for signing and exists only to satisfy the `KeyPair` API.
+		let mut placeholder_private_key = [0u8; 32];
+		placeholder_private_key[31] = 1; // secp256r1 private keys must be in the range [1, n-1]
+		let secret_key = Secp256r1PrivateKey::from_bytes(&placeholder_private_key)?;
 		Ok(Self::new(secret_key, public_key))
 	}
 
@@ -202,6 +214,18 @@ mod tests {
 			key_pair.get_script_hash(),
 			ScriptHash::from_hex(TestConstants::DEFAULT_ACCOUNT_SCRIPT_HASH).unwrap()
 		);
+	}
+
+	#[test]
+	fn test_public_key_bytes_uncompressed_xy() {
+		let private_key = hex::decode(TestConstants::DEFAULT_ACCOUNT_PRIVATE_KEY).unwrap();
+		let private_key_arr: &[u8; 32] = private_key.as_slice().try_into().unwrap();
+		let key_pair = KeyPair::from_private_key(private_key_arr).unwrap();
+
+		let bytes = key_pair.public_key_bytes();
+		let uncompressed = key_pair.public_key().get_encoded(false);
+		assert_eq!(uncompressed.len(), 65);
+		assert_eq!(&bytes[..], &uncompressed[1..]);
 	}
 
 	// #[test]

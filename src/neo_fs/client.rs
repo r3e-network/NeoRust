@@ -25,51 +25,18 @@ use crate::{
 use async_trait::async_trait;
 use base64;
 use reqwest::{
-	header::{HeaderMap, HeaderValue, AUTHORIZATION, CONTENT_TYPE},
+	header::{HeaderMap, HeaderValue, CONTENT_TYPE},
 	Client,
 };
 use serde_json::{json, Value};
-use std::fmt::Debug;
+use std::time::Duration;
+use tracing::warn;
 
-/// Default mainnet NeoFS gRPC endpoint
-pub const DEFAULT_MAINNET_ENDPOINT: &str = "grpc.mainnet.fs.neo.org:8082";
-
-/// Default testnet NeoFS gRPC endpoint
-pub const DEFAULT_TESTNET_ENDPOINT: &str = "grpc.testnet.fs.neo.org:8082";
-
-/// Default mainnet NeoFS HTTP gateway
-pub const DEFAULT_MAINNET_HTTP_GATEWAY: &str = "https://http.mainnet.fs.neo.org";
-
-/// Default testnet NeoFS HTTP gateway
-pub const DEFAULT_TESTNET_HTTP_GATEWAY: &str = "https://http.testnet.fs.neo.org";
-
-/// Default mainnet NeoFS REST API
-pub const DEFAULT_MAINNET_REST_API: &str = "https://rest.mainnet.fs.neo.org";
-
-/// Default testnet NeoFS REST API
-pub const DEFAULT_TESTNET_REST_API: &str = "https://rest.testnet.fs.neo.org";
-
-/// Configuration for NeoFS authentication
-#[derive(Debug, Clone)]
-pub struct NeoFSAuth {
-	/// The wallet address for authentication
-	pub wallet_address: String,
-	/// Optional private key for signing requests
-	pub private_key: Option<String>,
-}
-
-/// Configuration for NeoFS client
-#[derive(Debug, Clone)]
-pub struct NeoFSConfig {
-	/// NeoFS endpoint URL
-	pub endpoint: String,
-	/// Authentication information
-	pub auth: Option<NeoFSAuth>,
-	/// Connection timeout in seconds
-	pub timeout_sec: u64,
-	/// Whether to use insecure connection
-	pub insecure: bool,
-}
+pub use super::{
+	NeoFSAuth, NeoFSConfig, DEFAULT_MAINNET_ENDPOINT, DEFAULT_MAINNET_HTTP_GATEWAY,
+	DEFAULT_MAINNET_REST_API, DEFAULT_TESTNET_ENDPOINT, DEFAULT_TESTNET_HTTP_GATEWAY,
+	DEFAULT_TESTNET_REST_API,
+};
 
 /// Client for interacting with NeoFS
 #[derive(Debug, Clone)]
@@ -82,32 +49,43 @@ pub struct NeoFSClient {
 
 impl Default for NeoFSClient {
 	fn default() -> Self {
-		Self {
-			config: NeoFSConfig {
-				endpoint: DEFAULT_MAINNET_ENDPOINT.to_string(),
-				auth: None,
-				timeout_sec: 10,
-				insecure: false,
-			},
-			account: None,
-			http_client: Client::new(),
-			base_url: DEFAULT_MAINNET_HTTP_GATEWAY.to_string(),
-		}
+		Self::new(NeoFSConfig {
+			endpoint: DEFAULT_MAINNET_REST_API.to_string(),
+			auth: None,
+			timeout_sec: 10,
+			insecure: false,
+		})
 	}
 }
 
 impl NeoFSClient {
 	/// Creates a new NeoFS client with the given configuration
 	pub fn new(config: NeoFSConfig) -> Self {
-		let http_client = Client::new();
+		let http_client = {
+			let mut builder = Client::builder();
+
+			#[cfg(not(target_arch = "wasm32"))]
+			{
+				if config.insecure {
+					builder = builder
+						.danger_accept_invalid_certs(true)
+						.danger_accept_invalid_hostnames(true);
+				}
+			}
+
+			builder.build().unwrap_or_else(|err| {
+				warn!("Failed to build NeoFS HTTP client: {err}; falling back to default client");
+				Client::new()
+			})
+		};
 		let base_url = if config.endpoint.starts_with("http") {
 			config.endpoint.clone()
 		} else {
-			// Convert gRPC endpoint to HTTP gateway
+			// Convert gRPC endpoint to the REST API base URL.
 			if config.endpoint.contains("mainnet") {
-				DEFAULT_MAINNET_HTTP_GATEWAY.to_string()
+				DEFAULT_MAINNET_REST_API.to_string()
 			} else {
-				DEFAULT_TESTNET_HTTP_GATEWAY.to_string()
+				DEFAULT_TESTNET_REST_API.to_string()
 			}
 		};
 
@@ -129,6 +107,10 @@ impl NeoFSClient {
 				.to_string();
 
 			Ok(OwnerId(pubkey))
+		} else if let Some(auth) = &self.config.auth {
+			// Best-effort fallback for environments where a full Account is not available.
+			// Note: Real NeoFS owner IDs are derived from keys; treat this as an identifier only.
+			Ok(OwnerId(auth.wallet_address.clone()))
 		} else {
 			Err(NeoFSError::AuthenticationError(
 				"No account provided for authentication".to_string(),
@@ -142,14 +124,12 @@ impl NeoFSClient {
 		headers.insert(CONTENT_TYPE, HeaderValue::from_static("application/json"));
 
 		if let Some(auth) = &self.config.auth {
-			// Create a simple bearer token from wallet address
-			let token = format!("Bearer {}", auth.wallet_address);
-			headers.insert(
-				AUTHORIZATION,
-				HeaderValue::from_str(&token).map_err(|e| {
-					NeoFSError::AuthenticationError(format!("Invalid auth header: {}", e))
-				})?,
-			);
+			if auth.private_key.is_some() {
+				return Err(NeoFSError::NotImplemented(
+					"NeoFS request signing is not implemented; do not provide private_key"
+						.to_string(),
+				));
+			}
 		}
 
 		Ok(headers)
@@ -162,7 +142,7 @@ impl NeoFSClient {
 		endpoint: &str,
 		body: Option<Value>,
 	) -> NeoFSResult<Value> {
-		let url = format!("{}/v1/{}", self.base_url, endpoint);
+		let url = format!("{}/v1/{}", self.base_url.trim_end_matches('/'), endpoint);
 		let headers = self.create_auth_headers()?;
 
 		let mut request = match method {
@@ -179,6 +159,9 @@ impl NeoFSClient {
 		};
 
 		request = request.headers(headers);
+		if self.config.timeout_sec > 0 {
+			request = request.timeout(Duration::from_secs(self.config.timeout_sec));
+		}
 
 		if let Some(json_body) = body {
 			request = request.json(&json_body);
@@ -459,72 +442,18 @@ impl NeoFSService for NeoFSClient {
 		permissions: Vec<AccessPermission>,
 		expires_sec: u64,
 	) -> NeoFSResult<BearerToken> {
-		let owner_id = self.get_owner_id()?;
-		let expiration = chrono::Utc::now() + chrono::Duration::seconds(expires_sec as i64);
-
-		let request_body = json!({
-			"bearerToken": {
-				"containerId": container_id.0,
-				"ownerId": owner_id.0,
-				"permissions": permissions,
-				"expiresAt": expiration.timestamp()
-			}
-		});
-
-		let response = self.make_request("POST", "auth/bearer", Some(request_body)).await?;
-
-		if let Some(_token) = response.get("token").and_then(|v| v.as_str()) {
-			Ok(BearerToken {
-				owner_id,
-				token_id: format!("bearer-{}", chrono::Utc::now().timestamp()),
-				container_id: container_id.clone(),
-				operations: permissions,
-				expiration,
-				signature: vec![],
-			})
-		} else {
-			Err(NeoFSError::UnexpectedResponse("Missing token in response".to_string()))
-		}
+		let _ = (container_id, permissions, expires_sec);
+		Err(NeoFSError::NotImplemented(
+			"Bearer token creation is not implemented (requires NeoFS token signing/verification)"
+				.to_string(),
+		))
 	}
 
 	async fn get_session_token(&self) -> NeoFSResult<SessionToken> {
-		let owner_id = self.get_owner_id()?;
-
-		let request_body = json!({
-			"sessionToken": {
-				"ownerId": owner_id.0
-			}
-		});
-
-		let response = self.make_request("POST", "auth/session", Some(request_body)).await?;
-
-		if let Some(token_data) = response.get("sessionToken") {
-			let token_id = token_data
-				.get("tokenId")
-				.and_then(|v| v.as_str())
-				.ok_or_else(|| NeoFSError::UnexpectedResponse("Missing tokenId".to_string()))?;
-
-			let session_key = token_data
-				.get("sessionKey")
-				.and_then(|v| v.as_str())
-				.ok_or_else(|| NeoFSError::UnexpectedResponse("Missing sessionKey".to_string()))?;
-
-			let signature = token_data
-				.get("signature")
-				.and_then(|v| v.as_str())
-				.map(|s| base64::engine::general_purpose::STANDARD.decode(s).unwrap_or_default())
-				.unwrap_or_default();
-
-			Ok(SessionToken {
-				token_id: token_id.to_string(),
-				owner_id,
-				expiration: chrono::Utc::now() + chrono::Duration::hours(1),
-				session_key: session_key.to_string(),
-				signature,
-			})
-		} else {
-			Err(NeoFSError::UnexpectedResponse("Missing sessionToken in response".to_string()))
-		}
+		Err(NeoFSError::NotImplemented(
+			"Session token retrieval is not implemented (requires NeoFS authentication integration)"
+				.to_string(),
+		))
 	}
 
 	async fn initiate_multipart_upload(

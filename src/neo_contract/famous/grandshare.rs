@@ -1,7 +1,7 @@
 use async_trait::async_trait;
+use hex_literal::hex;
 use primitive_types::H160;
 use serde::{Deserialize, Serialize};
-use std::str::FromStr;
 
 use crate::{
 	builder::{AccountSigner, TransactionBuilder},
@@ -48,7 +48,10 @@ impl<'a, P: JsonRpcProvider + 'static> GrandShareContract<'a, P> {
 	///
 	/// A new GrandShareContract instance
 	pub fn new(provider: Option<&'a RpcClient<P>>) -> Self {
-		Self { script_hash: ScriptHash::from_str(Self::CONTRACT_HASH).unwrap(), provider }
+		Self {
+			script_hash: ScriptHash::from(hex!("74f2dc36a68fdc4682034178eb2220729231db76")),
+			provider,
+		}
 	}
 
 	/// Creates a new GrandShareContract instance with a custom script hash
@@ -88,8 +91,10 @@ impl<'a, P: JsonRpcProvider + 'static> GrandShareContract<'a, P> {
 			vec![title.into(), description.into(), ContractParameter::integer(requested_amount)];
 
 		let mut builder = self.invoke_function(Self::SUBMIT_PROPOSAL, params).await?;
+		let signer = AccountSigner::called_by_entry(account)
+			.map_err(|err| ContractError::RuntimeError(err.to_string()))?;
 		builder
-			.set_signers(vec![AccountSigner::called_by_entry(account).unwrap().into()])
+			.set_signers(vec![signer.into()])
 			.map_err(|err| ContractError::RuntimeError(err.to_string()))?;
 
 		Ok(builder)
@@ -118,8 +123,10 @@ impl<'a, P: JsonRpcProvider + 'static> GrandShareContract<'a, P> {
 		];
 
 		let mut builder = self.invoke_function(Self::VOTE, params).await?;
+		let signer = AccountSigner::called_by_entry(account)
+			.map_err(|err| ContractError::RuntimeError(err.to_string()))?;
 		builder
-			.set_signers(vec![AccountSigner::called_by_entry(account).unwrap().into()])
+			.set_signers(vec![signer.into()])
 			.map_err(|err| ContractError::RuntimeError(err.to_string()))?;
 
 		Ok(builder)
@@ -146,8 +153,10 @@ impl<'a, P: JsonRpcProvider + 'static> GrandShareContract<'a, P> {
 			vec![ContractParameter::integer(project_id.into()), ContractParameter::integer(amount)];
 
 		let mut builder = self.invoke_function(Self::FUND_PROJECT, params).await?;
+		let signer = AccountSigner::called_by_entry(account)
+			.map_err(|err| ContractError::RuntimeError(err.to_string()))?;
 		builder
-			.set_signers(vec![AccountSigner::called_by_entry(account).unwrap().into()])
+			.set_signers(vec![signer.into()])
 			.map_err(|err| ContractError::RuntimeError(err.to_string()))?;
 
 		Ok(builder)
@@ -171,8 +180,10 @@ impl<'a, P: JsonRpcProvider + 'static> GrandShareContract<'a, P> {
 		let params = vec![ContractParameter::integer(project_id.into())];
 
 		let mut builder = self.invoke_function(Self::CLAIM_FUNDS, params).await?;
+		let signer = AccountSigner::called_by_entry(account)
+			.map_err(|err| ContractError::RuntimeError(err.to_string()))?;
 		builder
-			.set_signers(vec![AccountSigner::called_by_entry(account).unwrap().into()])
+			.set_signers(vec![signer.into()])
 			.map_err(|err| ContractError::RuntimeError(err.to_string()))?;
 
 		Ok(builder)

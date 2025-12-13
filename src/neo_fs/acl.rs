@@ -17,6 +17,7 @@
 
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
+use std::fmt;
 
 use crate::neo_fs::types::{AccessPermission, ContainerId, OwnerId};
 
@@ -157,7 +158,7 @@ impl EACL {
 }
 
 /// Bearer token for delegated access to NeoFS resources
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct BearerToken {
 	/// Token owner
 	pub owner_id: OwnerId,
@@ -173,8 +174,21 @@ pub struct BearerToken {
 	pub signature: Vec<u8>,
 }
 
+impl fmt::Debug for BearerToken {
+	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+		f.debug_struct("BearerToken")
+			.field("owner_id", &self.owner_id)
+			.field("token_id", &self.token_id)
+			.field("expiration", &self.expiration)
+			.field("operations", &self.operations.len())
+			.field("container_id", &self.container_id)
+			.field("signature_len", &self.signature.len())
+			.finish()
+	}
+}
+
 /// Session token for authenticated access to NeoFS resources
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct SessionToken {
 	/// Token ID
 	pub token_id: String,
@@ -186,4 +200,16 @@ pub struct SessionToken {
 	pub session_key: String,
 	/// Signature to validate the session
 	pub signature: Vec<u8>,
+}
+
+impl fmt::Debug for SessionToken {
+	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+		f.debug_struct("SessionToken")
+			.field("token_id", &self.token_id)
+			.field("owner_id", &self.owner_id)
+			.field("expiration", &self.expiration)
+			.field("session_key", &"<redacted>")
+			.field("signature_len", &self.signature.len())
+			.finish()
+	}
 }

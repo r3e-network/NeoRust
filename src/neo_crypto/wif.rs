@@ -135,10 +135,18 @@ mod tests {
 	#[test]
 	fn test_wif_invalid_base58_characters() {
 		// Base58 doesn't include '0', 'O', 'I', 'l'
-		assert!(private_key_from_wif("0000000000000000000000000000000000000000000000000000").is_err());
-		assert!(private_key_from_wif("OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO").is_err());
-		assert!(private_key_from_wif("IIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIII").is_err());
-		assert!(private_key_from_wif("llllllllllllllllllllllllllllllllllllllllllllllllllll").is_err());
+		assert!(
+			private_key_from_wif("0000000000000000000000000000000000000000000000000000").is_err()
+		);
+		assert!(
+			private_key_from_wif("OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO").is_err()
+		);
+		assert!(
+			private_key_from_wif("IIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIII").is_err()
+		);
+		assert!(
+			private_key_from_wif("llllllllllllllllllllllllllllllllllllllllllllllllllll").is_err()
+		);
 	}
 
 	#[test]

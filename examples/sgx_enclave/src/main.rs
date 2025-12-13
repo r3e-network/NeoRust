@@ -102,8 +102,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
     
     println!("   ✓ Keypair generated");
-    println!("   Private key: {}", hex::encode(&private_key[..8]) + "...");
+    println!("   Private key: <redacted> (do not export from enclave in production)");
     println!("   Public key: {}", hex::encode(&public_key[..8]) + "...");
+    private_key.fill(0);
     
     // Sign a transaction inside the enclave
     println!("\n3. Signing transaction inside enclave...");

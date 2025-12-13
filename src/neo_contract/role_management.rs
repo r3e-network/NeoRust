@@ -28,7 +28,7 @@ impl<'a, P: JsonRpcProvider + 'static> RoleManagement<'a, P> {
 	// const SCRIPT_HASH: H160 = Self::calc_native_contract_hash(Self::NAME).unwrap(); // compute hash
 
 	pub fn new(provider: Option<&'a RpcClient<P>>) -> Self {
-		Self { script_hash: Self::calc_native_contract_hash(Self::NAME).unwrap(), provider }
+		Self { script_hash: Self::calc_native_contract_hash_unchecked(Self::NAME), provider }
 	}
 
 	pub async fn get_designated_by_role(
@@ -36,7 +36,7 @@ impl<'a, P: JsonRpcProvider + 'static> RoleManagement<'a, P> {
 		role: Role,
 		block_index: i32,
 	) -> Result<Vec<Secp256r1PublicKey>, ContractError> {
-		self.check_block_index_validity(block_index).await.unwrap();
+		self.check_block_index_validity(block_index).await?;
 
 		let invocation = self
 			.call_invoke_function(
@@ -44,17 +44,27 @@ impl<'a, P: JsonRpcProvider + 'static> RoleManagement<'a, P> {
 				vec![role.into(), block_index.into()],
 				vec![],
 			)
-			.await
-			.unwrap();
+			.await?;
+		self.throw_if_fault_state(&invocation)?;
 
-		let designated = invocation.stack[0]
+		let stack_item = invocation
+			.get_first_stack_item()
+			.map_err(|e| ContractError::InvalidResponse(e.to_string()))?;
+
+		let designated_items = stack_item
 			.as_array()
-			.unwrap()
+			.ok_or_else(|| ContractError::UnexpectedReturnType("Array".to_string()))?;
+
+		let designated = designated_items
 			.into_iter()
 			.map(|item| {
-				Secp256r1PublicKey::from_bytes(item.as_bytes().unwrap().as_slice()).unwrap()
+				let bytes = item.as_bytes().ok_or_else(|| {
+					ContractError::UnexpectedReturnType("Public key bytes".to_string())
+				})?;
+				Secp256r1PublicKey::from_bytes(&bytes)
+					.map_err(|e| ContractError::InvalidResponse(format!("Invalid public key: {e}")))
 			})
-			.collect();
+			.collect::<Result<Vec<Secp256r1PublicKey>, ContractError>>()?;
 
 		Ok(designated)
 	}
@@ -64,7 +74,11 @@ impl<'a, P: JsonRpcProvider + 'static> RoleManagement<'a, P> {
 			return Err(ContractError::InvalidNeoName("Block index must be positive".to_string()));
 		}
 
-		let current_block_count = self.provider.unwrap().get_block_count().await.unwrap();
+		let provider = self.provider.ok_or_else(|| {
+			ContractError::ProviderNotSet("Provider is required for RoleManagement".to_string())
+		})?;
+
+		let current_block_count = provider.get_block_count().await?;
 
 		if block_index > current_block_count as i32 {
 			return Err(ContractError::InvalidNeoName(format!(

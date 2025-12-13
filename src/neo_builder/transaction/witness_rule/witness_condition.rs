@@ -125,14 +125,13 @@ where
 			let group_bytes = group
 				.from_hex_string()
 				.map_err(|e| serde::de::Error::custom(format!("Failed to decode hex: {}", e)))?;
-			let condition = if v["type"] == "Group" {
-				WitnessCondition::Group(Secp256r1PublicKey::from_bytes(&group_bytes).unwrap())
+			let public_key = Secp256r1PublicKey::from_bytes(&group_bytes)
+				.map_err(|e| serde::de::Error::custom(format!("Invalid public key: {}", e)))?;
+			Ok(if v["type"] == "Group" {
+				WitnessCondition::Group(public_key)
 			} else {
-				WitnessCondition::CalledByGroup(
-					Secp256r1PublicKey::from_bytes(&group_bytes).unwrap(),
-				)
-			};
-			Ok(condition)
+				WitnessCondition::CalledByGroup(public_key)
+			})
 		},
 		Some("CalledByEntry") => Ok(WitnessCondition::CalledByEntry),
 		Some("CalledByContract") => {
@@ -307,12 +306,8 @@ impl NeoSerializable for WitnessCondition {
 	fn size(&self) -> usize {
 		match self {
 			WitnessCondition::Boolean(_) => 2,
-			WitnessCondition::Not(_) => 1 + self.expression().unwrap().size(),
-			WitnessCondition::And(_) | WitnessCondition::Or(_) => {
-				let exp = self.expression_list().unwrap();
-				//1 + exp.len() + exp.iter().map(|e| e.size()).sum::<usize>()
-				1 + exp.var_size()
-			},
+			WitnessCondition::Not(exp) => 1 + exp.size(),
+			WitnessCondition::And(exp) | WitnessCondition::Or(exp) => 1 + exp.var_size(),
 			WitnessCondition::ScriptHash(_) | WitnessCondition::CalledByContract(_) => 1 + 20,
 			WitnessCondition::Group(_) | WitnessCondition::CalledByGroup(_) => 1 + 33,
 			WitnessCondition::CalledByEntry => 1,
@@ -327,19 +322,19 @@ impl NeoSerializable for WitnessCondition {
 			},
 			WitnessCondition::Not(exp) => {
 				writer.write_u8(WitnessCondition::NOT_BYTE);
-				writer.write_serializable_fixed(exp.expression().unwrap());
+				writer.write_serializable_fixed(exp.as_ref());
 			},
 			WitnessCondition::And(exp) => {
 				writer.write_u8(WitnessCondition::AND_BYTE);
-				writer
-					.write_serializable_variable_list(exp)
-					.expect("Failed to encode AND witness condition");
+				if let Err(e) = writer.write_serializable_variable_list(exp) {
+					tracing::warn!(error = %e, "Failed to encode AND witness condition");
+				}
 			},
 			WitnessCondition::Or(exp) => {
 				writer.write_u8(WitnessCondition::OR_BYTE);
-				writer
-					.write_serializable_variable_list(exp)
-					.expect("Failed to encode OR witness condition");
+				if let Err(e) = writer.write_serializable_variable_list(exp) {
+					tracing::warn!(error = %e, "Failed to encode OR witness condition");
+				}
 			},
 			WitnessCondition::ScriptHash(hash) => {
 				writer.write_u8(WitnessCondition::SCRIPT_HASH_BYTE);
@@ -364,10 +359,10 @@ impl NeoSerializable for WitnessCondition {
 	}
 
 	fn decode(reader: &mut Decoder) -> Result<Self, Self::Error> {
-		let byte = reader.read_u8();
+		let byte = reader.read_u8_safe()?;
 		match byte {
 			WitnessCondition::BOOLEAN_BYTE => {
-				let b = reader.read_bool();
+				let b = reader.read_bool_safe()?;
 				Ok(WitnessCondition::Boolean(b))
 			},
 			WitnessCondition::NOT_BYTE => {
@@ -375,7 +370,10 @@ impl NeoSerializable for WitnessCondition {
 				Ok(WitnessCondition::Not(Box::from(exp)))
 			},
 			WitnessCondition::OR_BYTE | WitnessCondition::AND_BYTE => {
-				let len = reader.read_var_int()? as usize;
+				let len: usize = reader
+					.read_var_int()?
+					.try_into()
+					.map_err(|_| TransactionError::InvalidWitnessCondition)?;
 				if len > Self::MAX_SUBITEMS {
 					return Err(TransactionError::InvalidWitnessCondition);
 				}

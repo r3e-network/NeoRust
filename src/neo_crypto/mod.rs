@@ -28,7 +28,7 @@
 //! // Generate a new random key pair
 //! let key_pair = KeyPair::new_random();
 //! println!("Public key: {:?}", key_pair.public_key());
-//! println!("Private key: {:?}", key_pair.private_key());
+//! // SECURITY: Avoid logging private keys.
 //!
 //! // Create a key pair from a private key (32 bytes)
 //! let private_key_bytes = [1u8; 32]; // Replace with actual private key bytes
@@ -60,7 +60,7 @@
 //! use neo3::neo_crypto::KeyPair;
 //!
 //! // Import a private key from WIF format
-//! let wif = "KwDiBf89QgGbjEhKnhXJuH7LrciVrZi3qYjgd9M7rFU73sVHnoWn";
+//! let wif = "your-private-key-wif";
 //! let key_pair = KeyPair::from_wif(wif).unwrap();
 //!
 //! // Export a private key to WIF format

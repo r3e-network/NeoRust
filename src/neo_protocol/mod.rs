@@ -29,7 +29,7 @@
 //! println!("Script Hash: {}", account.script_hash());
 //!
 //! // Create an account from a WIF (Wallet Import Format) string
-//! let wif = "KwYgW8gcxj1JWJXhPSu4Fqwzfhp5Yfi42mdYmMa4XqK7NJxXUSK7";
+//! let wif = "your-private-key-wif";
 //! let account = Account::from_wif(wif).unwrap();
 //!
 //! // Sign a message

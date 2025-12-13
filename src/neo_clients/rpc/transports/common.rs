@@ -235,7 +235,7 @@ impl<'de: 'a, 'a> Deserialize<'de> for Response<'a> {
 /// Basic or bearer authentication in http or websocket transport
 ///
 /// Use to inject username and password or an auth token into requests
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub enum Authorization {
 	/// HTTP Basic Auth
 	Basic(String),
@@ -243,6 +243,22 @@ pub enum Authorization {
 	Bearer(String),
 	/// If you need to override the Authorization header value
 	Raw(String),
+}
+
+impl fmt::Debug for Authorization {
+	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+		match self {
+			Authorization::Basic(_) => {
+				f.debug_tuple("Authorization::Basic").field(&"<redacted>").finish()
+			},
+			Authorization::Bearer(_) => {
+				f.debug_tuple("Authorization::Bearer").field(&"<redacted>").finish()
+			},
+			Authorization::Raw(_) => {
+				f.debug_tuple("Authorization::Raw").field(&"<redacted>").finish()
+			},
+		}
+	}
 }
 
 impl Authorization {

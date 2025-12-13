@@ -21,7 +21,7 @@ use crate::{
 use getset::{Getters, Setters};
 use num_bigint::{BigInt, Sign};
 use serde::Deserialize;
-use serde_derive::Serialize;
+use serde::Serialize;
 
 /// A binary decoder that can read various types of data from a byte slice.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Deserialize, Serialize, Getters, Setters)]
@@ -53,6 +53,27 @@ impl<'a> Decoder<'a> {
 		Self { data, pointer: 0, marker: 0 }
 	}
 
+	/// Reads an unsigned 8-bit integer from the byte slice.
+	///
+	/// Unlike [`Self::read_u8`], this method returns an error instead of panicking when the
+	/// decoder is at EOF.
+	pub fn read_u8_safe(&mut self) -> Result<u8, CodecError> {
+		if self.pointer >= self.data.len() {
+			return Err(CodecError::IndexOutOfBounds("Read beyond end of buffer".to_string()));
+		}
+		let val = self.data[self.pointer];
+		self.pointer += 1;
+		Ok(val)
+	}
+
+	/// Reads a boolean value from the byte slice.
+	///
+	/// Unlike [`Self::read_bool`], this method returns an error instead of panicking when the
+	/// decoder is at EOF.
+	pub fn read_bool_safe(&mut self) -> Result<bool, CodecError> {
+		Ok(self.read_u8_safe()? == 1)
+	}
+
 	/// Reads a boolean value from the byte slice.
 	pub fn read_bool(&mut self) -> bool {
 		let val = self.data[self.pointer] == 1;
@@ -72,7 +93,7 @@ impl<'a> Decoder<'a> {
 		let bytes = self.read_bytes(2)?;
 		bytes
 			.try_into()
-			.map(u16::from_ne_bytes)
+			.map(u16::from_le_bytes)
 			.map_err(|_| CodecError::InvalidEncoding("Failed to convert bytes to u16".to_string()))
 	}
 
@@ -81,7 +102,7 @@ impl<'a> Decoder<'a> {
 		let bytes = self.read_bytes(2)?;
 		bytes
 			.try_into()
-			.map(i16::from_ne_bytes)
+			.map(i16::from_le_bytes)
 			.map_err(|_| CodecError::InvalidEncoding("Failed to convert bytes to i16".to_string()))
 	}
 
@@ -90,7 +111,7 @@ impl<'a> Decoder<'a> {
 		let bytes = self.read_bytes(4)?;
 		bytes
 			.try_into()
-			.map(u32::from_ne_bytes)
+			.map(u32::from_le_bytes)
 			.map_err(|_| CodecError::InvalidEncoding("Failed to convert bytes to u32".to_string()))
 	}
 
@@ -99,7 +120,7 @@ impl<'a> Decoder<'a> {
 		let bytes = self.read_bytes(4)?;
 		bytes
 			.try_into()
-			.map(i32::from_ne_bytes)
+			.map(i32::from_le_bytes)
 			.map_err(|_| CodecError::InvalidEncoding("Failed to convert bytes to i32".to_string()))
 	}
 
@@ -108,7 +129,7 @@ impl<'a> Decoder<'a> {
 		let bytes = self.read_bytes(8)?;
 		bytes
 			.try_into()
-			.map(u64::from_ne_bytes)
+			.map(u64::from_le_bytes)
 			.map_err(|_| CodecError::InvalidEncoding("Failed to convert bytes to u64".to_string()))
 	}
 
@@ -117,31 +138,30 @@ impl<'a> Decoder<'a> {
 		let bytes = self.read_bytes(8)?;
 		bytes
 			.try_into()
-			.map(i64::from_ne_bytes)
+			.map(i64::from_le_bytes)
 			.map_err(|_| CodecError::InvalidEncoding("Failed to convert bytes to i64".to_string()))
 	}
 
 	pub fn read_bigint(&mut self) -> Result<BigInt, CodecError> {
-		let byte = self.read_u8();
+		let byte = self.read_u8_safe()?;
 
 		let negative = byte & 0x80 != 0;
 		let len = match byte {
 			0..=0x4b => 1,
-			0x4c => self.read_u8() as usize,
+			0x4c => self.read_u8_safe()? as usize,
 			0x4d => self.read_u16()? as usize,
 			0x4e => self.read_u32()? as usize,
 			_ => return Err(CodecError::InvalidFormat),
 		};
 
-		let bytes = self.read_bytes(len)?;
+		let mut bytes = self.read_bytes(len)?;
 		if negative {
 			// Flip sign bit
-			if let Some(byte) = bytes.to_owned().get_mut(len - 1) {
+			if let Some(byte) = bytes.last_mut() {
 				*byte ^= 0x80;
-			} else {
+			} else if len == 0 {
 				return Err(CodecError::InvalidFormat);
 			}
-			// bytes.get_mut()[len - 1] ^= 0x80;
 		}
 		// Note: NEO uses little-endian byte order for BigIntegers
 		// The sign is determined by the 'negative' flag above
@@ -151,7 +171,7 @@ impl<'a> Decoder<'a> {
 
 	/// Reads an encoded EC point from the byte slice.
 	pub fn read_encoded_ec_point(&mut self) -> Result<Vec<u8>, CodecError> {
-		let byte = self.read_u8();
+		let byte = self.read_u8_safe()?;
 		match byte {
 			0x02 | 0x03 => self.read_bytes(32),
 			_ => Err(CodecError::InvalidEncoding("Invalid encoded EC point".to_string())),
@@ -160,27 +180,53 @@ impl<'a> Decoder<'a> {
 
 	/// Reads a byte slice of the given length from the byte slice.
 	pub fn read_bytes(&mut self, length: usize) -> Result<Vec<u8>, CodecError> {
-		if self.pointer + length > self.data.len() {
+		let end = self
+			.pointer
+			.checked_add(length)
+			.ok_or_else(|| CodecError::IndexOutOfBounds("Read beyond end of buffer".to_string()))?;
+		if end > self.data.len() {
 			return Err(CodecError::IndexOutOfBounds("Read beyond end of buffer".to_string()));
 		}
-		let result = self.data[self.pointer..self.pointer + length].to_vec();
-		self.pointer += length;
+		let result = self.data[self.pointer..end].to_vec();
+		self.pointer = end;
 		Ok(result)
 	}
 
 	/// Reads a variable-length byte slice from the byte slice.
 	pub fn read_var_bytes(&mut self) -> Result<Vec<u8>, CodecError> {
-		let len = self.read_var_int()? as usize;
+		let len = self
+			.read_var_int()?
+			.try_into()
+			.map_err(|_| CodecError::InvalidEncoding("Invalid length".into()))?;
+		self.read_bytes(len)
+	}
+
+	/// Reads a variable-length byte slice from the byte slice, enforcing a maximum length.
+	pub fn read_var_bytes_bounded(&mut self, max_len: usize) -> Result<Vec<u8>, CodecError> {
+		let len: usize = self
+			.read_var_int()?
+			.try_into()
+			.map_err(|_| CodecError::InvalidEncoding("Invalid length".into()))?;
+		if len > max_len {
+			return Err(CodecError::InvalidEncoding(format!(
+				"VarBytes length {len} exceeds maximum {max_len}"
+			)));
+		}
 		self.read_bytes(len)
 	}
 
 	/// Reads a variable-length integer from the byte slice.
 	pub fn read_var_int(&mut self) -> Result<i64, CodecError> {
-		let first = self.read_u8();
+		let first = self.read_u8_safe()?;
 		match first {
-			0xfd => self.read_i16().map(|v| v as i64),
-			0xfe => self.read_i32().map(|v| v as i64),
-			0xff => self.read_i64(),
+			0xfd => self.read_u16().map(|v| v as i64),
+			0xfe => self.read_u32().map(|v| v as i64),
+			0xff => {
+				let value = self.read_u64()?;
+				i64::try_from(value).map_err(|_| {
+					CodecError::InvalidEncoding("VarInt value too large for i64".to_string())
+				})
+			},
 			_ => Ok(first as i64),
 		}
 	}
@@ -188,13 +234,20 @@ impl<'a> Decoder<'a> {
 	pub fn read_var_string(&mut self) -> Result<String, CodecError> {
 		let bytes = self.read_var_bytes()?;
 
-		let string = match String::from_utf8(bytes.to_vec()) {
-			Ok(s) => s,
-			Err(e) => {
-				// Handle invalid UTF-8
-				return Err(CodecError::InvalidEncoding(e.to_string()));
-			},
-		};
+		let string =
+			String::from_utf8(bytes).map_err(|e| CodecError::InvalidEncoding(e.to_string()))?;
+
+		// Trim null bytes from end
+		let string = string.trim_end_matches(char::from(0));
+
+		Ok(string.to_string())
+	}
+
+	pub fn read_var_string_bounded(&mut self, max_len: usize) -> Result<String, CodecError> {
+		let bytes = self.read_var_bytes_bounded(max_len)?;
+
+		let string =
+			String::from_utf8(bytes).map_err(|e| CodecError::InvalidEncoding(e.to_string()))?;
 
 		// Trim null bytes from end
 		let string = string.trim_end_matches(char::from(0));
@@ -204,15 +257,15 @@ impl<'a> Decoder<'a> {
 
 	/// Reads a push byte slice from the byte slice.
 	pub fn read_push_bytes(&mut self) -> Result<Vec<u8>, CodecError> {
-		let opcode = self.read_u8();
+		let opcode = self.read_u8_safe()?;
 		let len =
 			match OpCode::try_from(opcode)? {
-				OpCode::PushData1 => self.read_u8() as usize,
-				OpCode::PushData2 => self.read_i16().map_err(|e| {
-					CodecError::InvalidEncoding(format!("Failed to read i16: {}", e))
+				OpCode::PushData1 => self.read_u8_safe()? as usize,
+				OpCode::PushData2 => self.read_u16().map_err(|e| {
+					CodecError::InvalidEncoding(format!("Failed to read u16: {}", e))
 				})? as usize,
-				OpCode::PushData4 => self.read_i32().map_err(|e| {
-					CodecError::InvalidEncoding(format!("Failed to read i32: {}", e))
+				OpCode::PushData4 => self.read_u32().map_err(|e| {
+					CodecError::InvalidEncoding(format!("Failed to read u32: {}", e))
 				})? as usize,
 				_ => return Err(CodecError::InvalidOpCode),
 			};
@@ -222,7 +275,7 @@ impl<'a> Decoder<'a> {
 
 	/// Reads a push integer from the byte slice.
 	pub fn read_push_int(&mut self) -> Result<BigInt, CodecError> {
-		let byte = self.read_u8();
+		let byte = self.read_u8_safe()?;
 
 		if (OpCode::PushM1 as u8..=OpCode::Push16 as u8).contains(&byte) {
 			return Ok(BigInt::from(byte as i8 - OpCode::Push0 as i8));
@@ -258,14 +311,48 @@ impl<'a> Decoder<'a> {
 		T::decode(self).map_err(|_e| CodecError::InvalidFormat)
 	}
 
+	fn read_serializable_list_len(&mut self) -> Result<usize, CodecError> {
+		let len = self.read_var_int()?;
+		len.try_into()
+			.map_err(|_| CodecError::InvalidEncoding("Invalid list length".into()))
+	}
+
+	/// Reads a list of deserializable values from the byte slice, enforcing a maximum length.
+	pub fn read_serializable_list_bounded<T: NeoSerializable>(
+		&mut self,
+		max_len: usize,
+	) -> Result<Vec<T>, CodecError> {
+		let len = self.read_serializable_list_len()?;
+		if len > max_len {
+			return Err(CodecError::InvalidEncoding(format!(
+				"List length {len} exceeds maximum {max_len}"
+			)));
+		}
+		if len > self.available() {
+			return Err(CodecError::InvalidEncoding(
+				"List length exceeds remaining bytes".to_string(),
+			));
+		}
+
+		let mut list = Vec::with_capacity(len);
+		for _ in 0..len {
+			list.push(T::decode(self).map_err(|_e| CodecError::InvalidFormat)?);
+		}
+		Ok(list)
+	}
+
 	/// Reads a list of deserializable values from the byte slice.
 	pub fn read_serializable_list<T: NeoSerializable>(&mut self) -> Result<Vec<T>, CodecError> {
-		let len = self.read_var_int()?;
-		let mut list = Vec::with_capacity(len as usize);
+		let len = self.read_serializable_list_len()?;
+		if len > self.available() {
+			return Err(CodecError::InvalidEncoding(
+				"List length exceeds remaining bytes".to_string(),
+			));
+		}
+
+		let mut list = Vec::new();
 		for _ in 0..len {
-			T::decode(self)
-				.map(|item| list.push(item))
-				.map_err(|_| CodecError::InvalidFormat)?;
+			list.push(T::decode(self).map_err(|_e| CodecError::InvalidFormat)?);
 		}
 		Ok(list)
 	}
@@ -273,16 +360,31 @@ impl<'a> Decoder<'a> {
 	pub fn read_serializable_list_var_bytes<T: NeoSerializable>(
 		&mut self,
 	) -> Result<Vec<T>, CodecError> {
-		let len = self.read_var_int()?;
-		let mut bytes_read = 0;
-		let offset = self.pointer;
-		let mut list = Vec::with_capacity(len as usize);
-		while bytes_read < len {
-			T::decode(self)
-				.map(|item| list.push(item))
-				.map_err(|_| CodecError::InvalidFormat)?;
-			bytes_read = (self.pointer - offset) as i64;
+		let len = self.read_serializable_list_len()?;
+		if len > self.available() {
+			return Err(CodecError::InvalidEncoding(
+				"List length exceeds remaining bytes".to_string(),
+			));
 		}
+
+		let start = self.pointer;
+		let end = start
+			.checked_add(len)
+			.ok_or_else(|| CodecError::InvalidEncoding("List length overflow".into()))?;
+
+		let mut list = Vec::new();
+		while self.pointer < end {
+			let before = self.pointer;
+			list.push(T::decode(self).map_err(|_e| CodecError::InvalidFormat)?);
+			if self.pointer == before {
+				return Err(CodecError::InvalidFormat);
+			}
+		}
+
+		if self.pointer != end {
+			return Err(CodecError::InvalidFormat);
+		}
+
 		Ok(list)
 	}
 
@@ -319,6 +421,36 @@ impl<'a> Decoder<'a> {
 mod tests {
 	use crate::codec::Decoder;
 	use num_bigint::BigInt;
+
+	#[test]
+	fn test_read_u16_is_little_endian() {
+		let bytes = [0x00_u8, 0x01_u8];
+		assert_eq!(Decoder::new(&bytes).read_u16().unwrap(), 256);
+
+		let bytes = [0x01_u8, 0x00_u8];
+		assert_eq!(Decoder::new(&bytes).read_u16().unwrap(), 1);
+	}
+
+	#[test]
+	fn test_read_var_int_u16_is_little_endian() {
+		// 256 encoded as VarInt: 0xfd 0x00 0x01 (u16 LE)
+		let bytes = [0xfd_u8, 0x00_u8, 0x01_u8];
+		assert_eq!(Decoder::new(&bytes).read_var_int().unwrap(), 256);
+	}
+
+	#[test]
+	fn test_read_var_bytes_bounded_rejects_excess_length() {
+		let bytes = [3_u8, b'a', b'b', b'c'];
+		let err = Decoder::new(&bytes).read_var_bytes_bounded(2).unwrap_err();
+		assert!(matches!(err, crate::codec::CodecError::InvalidEncoding(_)));
+	}
+
+	#[test]
+	fn test_read_var_string_bounded_rejects_excess_length() {
+		let bytes = [3_u8, b'a', b'b', b'c'];
+		let err = Decoder::new(&bytes).read_var_string_bounded(2).unwrap_err();
+		assert!(matches!(err, crate::codec::CodecError::InvalidEncoding(_)));
+	}
 
 	#[test]
 	fn test_read_push_data_bytes() {
@@ -402,5 +534,20 @@ mod tests {
 
 		let custom = [0x11, 0x33, 0x22, 0x8c, 0xae, 0x00, 0x00, 0x00, 0xff];
 		assert_eq!(Decoder::new(&custom).read_i64().unwrap(), 749_675_361_041);
+	}
+
+	#[test]
+	fn test_read_serializable_list_rejects_length_exceeding_remaining_bytes() {
+		// List length = 2, but only 1 element byte remains.
+		let bytes = [0x02_u8, 0x01_u8];
+		let err = Decoder::new(&bytes).read_serializable_list::<u8>().unwrap_err();
+		assert_eq!(err.to_string(), "Invalid encoding: List length exceeds remaining bytes");
+	}
+
+	#[test]
+	fn test_read_serializable_list_bounded_rejects_excess_length() {
+		let bytes = [0x03_u8, 0x01_u8, 0x02_u8, 0x03_u8];
+		let err = Decoder::new(&bytes).read_serializable_list_bounded::<u8>(2).unwrap_err();
+		assert_eq!(err.to_string(), "Invalid encoding: List length 3 exceeds maximum 2");
 	}
 }

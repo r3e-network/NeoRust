@@ -131,7 +131,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 	// 7. Native contract states
 	println!("\n📜 7. Querying native contracts...");
-	let native_contracts = vec![
+	let native_contracts = [
 		("ContractManagement", "fffdc93764dbaddd97c48f252a53ea4643faa3fd"),
 		("NeoToken", "ef4073a0f2b305a38ec4050e4d3d28bc40ea63f5"),
 		("GasToken", "d2a4cff31913016155e38e474a2c06d08be276cf"),
@@ -141,7 +141,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 		("NameService", "50ac1c37690cc2cfc594472833cf57505d5f46de"),
 	];
 
-	for (name, hash) in native_contracts.iter() {
+	for (name, hash) in native_contracts {
 		match client.get_contract_state(neo3::neo_types::ScriptHash::from_str(hash)?).await {
 			Ok(state) => {
 				println!(

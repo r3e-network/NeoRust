@@ -42,7 +42,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 	// Example 2: Create wallet from WIF
 	println!("\n{}", "📥 Loading Wallet from WIF...".yellow().bold());
 	let wif = key_pair.export_as_wif();
-	println!("  💾 WIF: {}", wif.dimmed());
+	let wif_preview = if wif.len() > 16 {
+		format!("{}...{}", &wif[..10], &wif[wif.len() - 6..])
+	} else {
+		"<redacted>".to_string()
+	};
+	println!("  💾 WIF: {} (truncated)", wif_preview.dimmed());
 
 	match KeyPair::from_wif(&wif) {
 		Ok(loaded_key) => {

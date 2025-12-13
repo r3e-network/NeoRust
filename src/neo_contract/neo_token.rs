@@ -40,7 +40,7 @@ impl<'a, P: JsonRpcProvider + 'static> NeoToken<'a, P> {
 
 	pub(crate) fn new(provider: Option<&'a RpcClient<P>>) -> Self {
 		Self {
-			script_hash: Self::calc_native_contract_hash(Self::NAME).unwrap(),
+			script_hash: Self::calc_native_contract_hash_unchecked(Self::NAME),
 			total_supply: Some(Self::TOTAL_SUPPLY),
 			decimals: Some(Self::DECIMALS),
 			symbol: Some(Self::SYMBOL.to_string()),
@@ -68,8 +68,7 @@ impl<'a, P: JsonRpcProvider + 'static> NeoToken<'a, P> {
 				"unclaimedGas",
 				vec![script_hash.into(), block_height.into()],
 			)
-			.await
-			.unwrap() as i64)
+			.await? as i64)
 	}
 
 	// Candidate Registration
@@ -91,41 +90,40 @@ impl<'a, P: JsonRpcProvider + 'static> NeoToken<'a, P> {
 	// Committee and Candidates Information
 
 	pub async fn get_committee(&self) -> Result<Vec<Secp256r1PublicKey>, ContractError> {
-		self.call_function_returning_list_of_public_keys("getCommittee")
-			.await
-			.map_err(|e| ContractError::UnexpectedReturnType(e.to_string()))
+		self.call_function_returning_list_of_public_keys("getCommittee").await
 	}
 
 	pub async fn get_candidates(&self) -> Result<Vec<Candidate>, ContractError> {
-		let candidates = self.call_invoke_function("getCandidates", vec![], vec![]).await.unwrap();
-		let item = candidates.stack.first().unwrap();
-		if let StackItem::Array { value: array } = item {
-			Ok(array
-				.to_vec()
-				.chunks(2)
-				.filter_map(|v| {
-					if v.len() == 2 {
-						Some(Candidate::from(v.to_vec()).unwrap())
+		let candidates = self.call_invoke_function("getCandidates", vec![], vec![]).await?;
+		self.throw_if_fault_state(&candidates)?;
+
+		let item = candidates
+			.get_first_stack_item()
+			.map_err(|e| ContractError::InvalidResponse(e.to_string()))?;
+
+		let StackItem::Array { value: array } = item else {
+			return Err(ContractError::UnexpectedReturnType("Candidates".to_string()));
+		};
+
+		array
+			.chunks(2)
+			.filter_map(
+				|chunk| {
+					if chunk.len() == 2 {
+						Some(Candidate::from(chunk.to_vec()))
 					} else {
 						None
 					}
-				})
-				.collect::<Vec<Candidate>>())
-		} else {
-			Err(ContractError::UnexpectedReturnType("Candidates".to_string()))
-		}
+				},
+			)
+			.collect::<Result<Vec<Candidate>, ContractError>>()
 	}
 
 	pub async fn is_candidate(
 		&self,
 		public_key: &Secp256r1PublicKey,
 	) -> Result<bool, ContractError> {
-		Ok(self
-			.get_candidates()
-			.await
-			.unwrap()
-			.into_iter()
-			.any(|c| c.public_key == *public_key))
+		Ok(self.get_candidates().await?.into_iter().any(|c| c.public_key == *public_key))
 	}
 
 	// Voting
@@ -190,26 +188,38 @@ impl<'a, P: JsonRpcProvider + 'static> NeoToken<'a, P> {
 	pub async fn get_account_state(&self, account: &H160) -> Result<AccountState, ContractError> {
 		let result = self
 			.call_invoke_function("getAccountState", vec![account.into()], vec![])
-			.await
-			.unwrap()
-			.stack
-			.first()
-			.unwrap()
+			.await?;
+		self.throw_if_fault_state(&result)?;
+
+		let result = result
+			.get_first_stack_item()
+			.map_err(|e| ContractError::InvalidResponse(e.to_string()))?
 			.clone();
 
 		match result {
 			StackItem::Any => Ok(AccountState::with_no_balance()),
 			StackItem::Array { value: items } if items.len() >= 3 => {
-				let balance = items[0].as_int().unwrap();
+				let balance = items[0].as_int().ok_or_else(|| {
+					ContractError::InvalidResponse(
+						"Account state balance is not an integer".to_string(),
+					)
+				})?;
 				let update_height = items[1].as_int();
 				let public_key = items[2].clone();
 
 				if let StackItem::Any = public_key {
 					Ok(AccountState { balance, balance_height: update_height, public_key: None })
 				} else {
-					let pubkey =
-						Secp256r1PublicKey::from_bytes(public_key.as_bytes().unwrap().as_slice())
-							.unwrap();
+					let bytes = public_key.as_bytes().ok_or_else(|| {
+						ContractError::InvalidResponse(
+							"Account state public key is not a byte array".to_string(),
+						)
+					})?;
+					let pubkey = Secp256r1PublicKey::from_bytes(&bytes).map_err(|_| {
+						ContractError::InvalidResponse(
+							"Account state public key is invalid".to_string(),
+						)
+					})?;
 					Ok(AccountState {
 						balance,
 						balance_height: update_height,
@@ -225,30 +235,27 @@ impl<'a, P: JsonRpcProvider + 'static> NeoToken<'a, P> {
 		&self,
 		function: &str,
 	) -> Result<Vec<Secp256r1PublicKey>, ContractError> {
-		let result = self.call_invoke_function(function, vec![], vec![]).await.unwrap();
-		let stack_item = result.stack.first().unwrap();
+		let result = self.call_invoke_function(function, vec![], vec![]).await?;
+		self.throw_if_fault_state(&result)?;
 
-		if let StackItem::Array { value: array } = stack_item {
-			let keys = array
-				.iter()
-				.map(|item| {
-					if let StackItem::ByteString { value: bytes } = item {
-						Secp256r1PublicKey::from_bytes(bytes.as_bytes()).map_err(|_| {
-							ContractError::InvalidNeoName("Invalid public key bytes".to_string())
-						})
-					} else {
-						Err(ContractError::UnexpectedReturnType(format!(
-							"Expected ByteString, got {:?}",
-							item
-						)))
-					}
+		let stack_item = result
+			.get_first_stack_item()
+			.map_err(|e| ContractError::InvalidResponse(e.to_string()))?;
+
+		let StackItem::Array { value: array } = stack_item else {
+			return Err(ContractError::UnexpectedReturnType("Expected Array".to_string()));
+		};
+
+		array
+			.iter()
+			.map(|item| {
+				item.as_public_key().ok_or_else(|| {
+					ContractError::InvalidResponse(format!(
+						"Invalid public key stack item: {item:?}"
+					))
 				})
-				.collect::<Result<Vec<Secp256r1PublicKey>, ContractError>>()?;
-
-			Ok(keys)
-		} else {
-			Err(ContractError::UnexpectedReturnType("Expected Array".to_string()))
-		}
+			})
+			.collect::<Result<Vec<Secp256r1PublicKey>, ContractError>>()
 	}
 
 	#[allow(dead_code)]
@@ -323,8 +330,12 @@ pub struct Candidate {
 
 impl Candidate {
 	fn from(items: Vec<StackItem>) -> Result<Self, ContractError> {
-		let key = items[0].as_public_key().unwrap();
-		let votes = items[1].as_int().unwrap() as i32;
+		let key = items.first().and_then(StackItem::as_public_key).ok_or_else(|| {
+			ContractError::InvalidResponse("Candidate public key is missing or invalid".to_string())
+		})?;
+		let votes = items.get(1).and_then(StackItem::as_int).ok_or_else(|| {
+			ContractError::InvalidResponse("Candidate votes is missing or invalid".to_string())
+		})? as i32;
 		Ok(Self { public_key: key, votes })
 	}
 }

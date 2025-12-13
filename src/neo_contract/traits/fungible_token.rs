@@ -26,10 +26,7 @@ pub trait FungibleTokenTrait<'a, P: JsonRpcProvider>: TokenTrait<'a, P> {
 	async fn get_total_balance(&self, wallet: &Wallet) -> Result<i32, ContractError> {
 		let mut sum = 0;
 		for account in wallet.accounts.values() {
-			sum += self
-				.get_balance_of(&account.address_or_scripthash().script_hash())
-				.await
-				.unwrap();
+			sum += self.get_balance_of(&account.address_or_scripthash().script_hash()).await?;
 		}
 		Ok(sum)
 	}
@@ -44,8 +41,10 @@ pub trait FungibleTokenTrait<'a, P: JsonRpcProvider>: TokenTrait<'a, P> {
 		let mut builder = self
 			.transfer_from_hash160(&from.address_or_scripthash().script_hash(), to, amount, data)
 			.await?;
+		let signer = AccountSigner::called_by_entry(from)
+			.map_err(|err| ContractError::RuntimeError(err.to_string()))?;
 		builder
-			.set_signers(vec![AccountSigner::called_by_entry(from).unwrap().into()])
+			.set_signers(vec![signer.into()])
 			.map_err(|err| ContractError::RuntimeError(err.to_string()))?;
 
 		Ok(builder)
@@ -64,7 +63,7 @@ pub trait FungibleTokenTrait<'a, P: JsonRpcProvider>: TokenTrait<'a, P> {
 			));
 		}
 
-		let transfer_script = self.build_transfer_script(from, to, amount, data).await.unwrap();
+		let transfer_script = self.build_transfer_script(from, to, amount, data).await?;
 		let mut builder = TransactionBuilder::new();
 		builder.set_script(Some(transfer_script));
 		Ok(builder)
@@ -79,7 +78,12 @@ pub trait FungibleTokenTrait<'a, P: JsonRpcProvider>: TokenTrait<'a, P> {
 	) -> Result<Bytes, ContractError> {
 		self.build_invoke_function_script(
 			<FungibleTokenContract<P> as FungibleTokenTrait<P>>::TRANSFER,
-			vec![from.into(), to.into(), amount.into(), data.unwrap()],
+			vec![
+				from.into(),
+				to.into(),
+				amount.into(),
+				data.unwrap_or_else(ContractParameter::any),
+			],
 		)
 		.await
 	}
@@ -95,10 +99,11 @@ pub trait FungibleTokenTrait<'a, P: JsonRpcProvider>: TokenTrait<'a, P> {
 	) -> Result<TransactionBuilder<P>, ContractError> {
 		let mut builder = self
 			.transfer_from_hash160_to_nns(&from.get_script_hash(), to, amount, data)
-			.await
-			.unwrap();
+			.await?;
+		let signer = AccountSigner::called_by_entry(from)
+			.map_err(|err| ContractError::RuntimeError(err.to_string()))?;
 		builder
-			.set_signers(vec![AccountSigner::called_by_entry(from).unwrap().into()])
+			.set_signers(vec![signer.into()])
 			.map_err(|err| ContractError::RuntimeError(err.to_string()))?;
 
 		Ok(builder)
@@ -111,7 +116,7 @@ pub trait FungibleTokenTrait<'a, P: JsonRpcProvider>: TokenTrait<'a, P> {
 		amount: i32,
 		data: Option<ContractParameter>,
 	) -> Result<TransactionBuilder<P>, ContractError> {
-		let script_hash = self.resolve_nns_text_record(to).await.unwrap();
+		let script_hash = self.resolve_nns_text_record(to).await?;
 		self.transfer_from_hash160(from, &script_hash, amount, data).await
 	}
 }

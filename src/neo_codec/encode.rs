@@ -82,7 +82,7 @@ impl NeoSerializable for u8 {
 	where
 		Self: Sized,
 	{
-		Ok(reader.read_u8())
+		reader.read_u8_safe()
 	}
 
 	fn to_array(&self) -> Vec<u8> {

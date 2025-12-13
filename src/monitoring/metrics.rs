@@ -190,8 +190,18 @@ pub fn init(port: u16) -> Result<(), Box<dyn std::error::Error>> {
             let encoder = TextEncoder::new();
             let metric_families = prometheus::gather();
             let mut buffer = Vec::new();
-            encoder.encode(&metric_families, &mut buffer).unwrap();
-            String::from_utf8(buffer).unwrap()
+            if let Err(e) = encoder.encode(&metric_families, &mut buffer) {
+                tracing::warn!(error = %e, "Failed to encode Prometheus metrics");
+                return String::new();
+            }
+
+            match String::from_utf8(buffer) {
+                Ok(metrics) => metrics,
+                Err(e) => {
+                    tracing::warn!(error = %e, "Prometheus metrics output was not valid UTF-8");
+                    String::new()
+                },
+            }
         });
     
     // Spawn metrics server

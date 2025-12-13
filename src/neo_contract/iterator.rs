@@ -35,9 +35,17 @@ impl<'a, T, P: JsonRpcProvider> NeoIterator<'a, T, P> {
 	}
 
 	pub async fn traverse(&self, count: i32) -> Result<Vec<T>, ContractError> {
-		let result = self
-			.provider
-			.unwrap()
+		if count < 0 {
+			return Err(ContractError::InvalidArgError(
+				"Iterator traversal count must be non-negative".to_string(),
+			));
+		}
+
+		let provider = self.provider.ok_or_else(|| {
+			ContractError::ProviderNotSet("Provider is required for iterator traversal".to_string())
+		})?;
+
+		let result = provider
 			.traverse_iterator(self.session_id.clone(), self.iterator_id.clone(), count as u32)
 			.await?;
 		let mapped = result.iter().map(|item| (self.mapper)(item.clone())).collect();
@@ -45,11 +53,12 @@ impl<'a, T, P: JsonRpcProvider> NeoIterator<'a, T, P> {
 	}
 
 	pub async fn terminate_session(&self) -> Result<(), ContractError> {
-		self.provider
-			.unwrap()
-			.terminate_session(&self.session_id)
-			.await
-			.expect("Could not terminate session");
+		let provider = self.provider.ok_or_else(|| {
+			ContractError::ProviderNotSet(
+				"Provider is required for iterator session termination".to_string(),
+			)
+		})?;
+		let _ = provider.terminate_session(&self.session_id).await?;
 		Ok(())
 	}
 }

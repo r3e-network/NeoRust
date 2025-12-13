@@ -34,16 +34,18 @@ println!("Flamingo Finance contract: {}", flamingo.script_hash);
 The NeoFS client provides constants for standard endpoints:
 
 ```rust
-use neo3::fs::client::{
-    DEFAULT_MAINNET_ENDPOINT, 
+use neo3::neo_fs::client::{
+    DEFAULT_MAINNET_ENDPOINT,
     DEFAULT_TESTNET_ENDPOINT,
     DEFAULT_MAINNET_HTTP_GATEWAY,
-    DEFAULT_TESTNET_HTTP_GATEWAY
+    DEFAULT_TESTNET_HTTP_GATEWAY,
+    DEFAULT_MAINNET_REST_API,
+    DEFAULT_TESTNET_REST_API,
 };
 
 // Use in NeoFS client configuration
 let config = NeoFSConfig {
-    endpoint: DEFAULT_MAINNET_ENDPOINT.to_string(),
+    endpoint: DEFAULT_MAINNET_REST_API.to_string(),
     // ...other config options
 };
 ```

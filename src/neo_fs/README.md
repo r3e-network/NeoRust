@@ -4,10 +4,10 @@ This module provides functionality for interacting with NeoFS, Neo's decentraliz
 
 ## Features
 
-- Container management: Create, get, delete containers
-- Object operations: Upload, download, delete objects
-- Access control: Control access to containers and objects with ACLs and bearer tokens
-- Multipart uploads: Upload large files in multiple parts
+- Container management: Create, get, list, and delete containers (REST gateway)
+- Object operations: Upload, download, list, and delete objects (REST gateway)
+- Multipart uploads: Scaffold for multipart flows via the REST gateway
+- Access control: Types are present, but token signing/auth is not implemented yet
 
 ## Usage
 
@@ -15,53 +15,31 @@ This module provides functionality for interacting with NeoFS, Neo's decentraliz
 
 ```rust
 use neo3::prelude::*;
-use neo3::fs::{NeoFSClient, NeoFSConfig, Container, Object};
+use neo3::neo_fs::client::{NeoFSClient, NeoFSConfig, DEFAULT_TESTNET_REST_API};
+use neo3::neo_fs::{NeoFSAuth, NeoFSService};
+use std::env;
 
 async fn example() -> Result<(), Box<dyn std::error::Error>> {
     // Configure NeoFS client
+    let endpoint = env::var("NEOFS_ENDPOINT").unwrap_or_else(|_| DEFAULT_TESTNET_REST_API.to_string());
+    let wallet_address = env::var("NEOFS_WALLET").unwrap_or_else(|_| "owner-demo-address".to_string());
+
     let config = NeoFSConfig {
-        endpoint: "grpc.testnet.fs.neo.org:8082".to_string(),
-        auth: None, // Will be set with wallet
-        timeout_sec: 60,
+        endpoint,
+        auth: Some(NeoFSAuth {
+            wallet_address,
+            private_key: None, // request signing not implemented; do not provide a private key
+        }),
+        timeout_sec: 10,
         insecure: false,
     };
-    
-    // Load wallet
-    let wallet = neo3::wallets::Wallet::load_from_file("wallet.json")?;
-    let account = wallet.default_account().unwrap().decrypt("password")?;
-    
-    // Create NeoFS client with account
-    let client = NeoFSClient::new(config).with_account(account);
-    
-    // Create a container
-    let mut container = Container::new();
-    container.set_name("My Test Container");
-    
-    // Create the container on NeoFS
-    let container_id = client.create_container(&container).await?;
-    
-    // Create an object
-    let content = "Hello, NeoFS!".as_bytes().to_vec();
-    let mut object = Object::new(container_id.clone(), client.get_owner_id()?);
-    object.set_payload(content);
-    object.set_filename("hello.txt");
-    object.set_content_type("text/plain");
-    
-    // Upload the object
-    let object_id = client.put_object(&container_id, &object).await?;
-    
-    // List all objects in the container
-    let objects = client.list_objects(&container_id).await?;
-    
-    // Download an object
-    let downloaded = client.get_object(&container_id, &object_id).await?;
-    
-    // Delete the object
-    client.delete_object(&container_id, &object_id).await?;
-    
-    // Delete the container
-    client.delete_container(&container_id).await?;
-    
+
+    let client = NeoFSClient::new(config);
+
+    // List containers for the configured owner identifier.
+    // Depending on the gateway, this may require additional auth/session integration.
+    let _containers = client.list_containers().await?;
+
     Ok(())
 }
 ```
@@ -71,7 +49,7 @@ async fn example() -> Result<(), Box<dyn std::error::Error>> {
 For large files, you can use multipart uploads:
 
 ```rust
-// Initiate multipart upload
+// Initiate multipart upload (gateway/session support required server-side)
 let upload = client.initiate_multipart_upload(&container_id, &object).await?;
 
 // Upload parts
@@ -87,18 +65,16 @@ let result = client.complete_multipart_upload(&upload, vec![part1, part2]).await
 NeoFS supports fine-grained access control through ACLs:
 
 ```rust
-// Create a bearer token for temporary access
-let permissions = vec![AccessPermission::GetObject, AccessPermission::PutObject];
-let token = client.create_bearer_token(&container_id, permissions, 3600).await?;
-
-// Token can be shared with other users for temporary access
+// Token signing/auth is not implemented yet. These calls currently return NotImplemented.
+// let permissions = vec![AccessPermission::GetObject, AccessPermission::PutObject];
+// let token = client.create_bearer_token(&container_id, permissions, 3600).await?;
 ```
 
 ## Implementation Status
 
-> **Important Note**: This module currently provides a placeholder implementation
-> with the full API surface defined. The actual gRPC implementation to communicate
-> with NeoFS nodes will be added in a future update.
+> **Important Note**: NeoFS support in this SDK is currently **experimental** and focuses on a
+> REST-style client scaffold. Authentication and token signing/verification are not implemented
+> yet; providing `NeoFSAuth.private_key` is intentionally rejected to avoid a false sense of security.
 
 ## Examples
 

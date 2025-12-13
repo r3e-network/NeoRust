@@ -5,7 +5,6 @@ use crate::{
 	neo_crypto::utils::{FromBase64String, FromHexString, ToHexString},
 	Bytes, ContractParameter, ContractParameterType, OpCode, ParameterValue, ScriptHashExtension,
 };
-use futures_util::future::ok;
 use getset::{Getters, Setters};
 use num_bigint::BigInt;
 use num_traits::{Signed, ToPrimitive};
@@ -18,7 +17,6 @@ use std::{
 	fmt::{Debug, Formatter},
 	str::FromStr,
 };
-use tokio::io::AsyncWriteExt;
 
 /// A builder for constructing Neo smart contract scripts.
 ///
@@ -186,16 +184,22 @@ impl ScriptBuilder {
 	/// builder.sys_call(InteropService::SystemRuntimeCheckWitness);
 	/// ```
 	pub fn sys_call(&mut self, operation: InteropService) -> &mut Self {
-		self.push_opcode_bytes(
-			OpCode::Syscall,
-			operation
-				.hash()
-				.from_hex_string()
-				.map_err(|e| {
-					BuilderError::IllegalArgument(format!("Invalid operation hash: {}", e))
-				})
-				.expect("InteropService hash should always be valid hex"),
-		)
+		let hash_bytes = match operation.hash().from_hex_string() {
+			Ok(bytes) => bytes,
+			Err(e) => {
+				// `InteropService::hash()` is derived from `hex::encode`, so this should be
+				// unreachable. Still, avoid panicking so callers can't trigger a DoS by
+				// feeding malformed data into higher-level builders.
+				tracing::warn!(
+					error = %e,
+					operation = %operation,
+					"Failed to decode InteropService hash; using zero bytes"
+				);
+				vec![0u8; 4]
+			},
+		};
+
+		self.push_opcode_bytes(OpCode::Syscall, hash_bytes)
 	}
 
 	/// Pushes an array of contract parameters to the script.
@@ -318,10 +322,20 @@ impl ScriptBuilder {
 	/// ```
 	pub fn push_integer(&mut self, i: BigInt) -> &mut Self {
 		if i >= BigInt::from(-1) && i <= BigInt::from(16) {
-			self.op_code(
-				vec![OpCode::try_from(i.to_i32().unwrap() as u8 + OpCode::Push0 as u8).unwrap()]
-					.as_slice(),
-			);
+			let Some(i32_value) = i.to_i32() else {
+				tracing::warn!(value = %i, "Failed to convert small integer to i32; skipping push");
+				return self;
+			};
+
+			let opcode_u8 = i32_value as u8 + OpCode::Push0 as u8;
+			if let Ok(opcode) = OpCode::try_from(opcode_u8) {
+				self.op_code(&[opcode]);
+			} else {
+				tracing::warn!(
+					opcode = opcode_u8,
+					"Invalid opcode for small integer push; skipping"
+				);
+			}
 		} else {
 			let mut bytes = i.to_signed_bytes_le();
 
@@ -360,7 +374,7 @@ impl ScriptBuilder {
 				_ => {
 					// Instead of panicking, we'll truncate to 32 bytes and log a warning
 					// This is safer than crashing the application
-					eprintln!("Warning: Integer too large, truncating to 32 bytes");
+					tracing::warn!("Integer too large, truncating to 32 bytes");
 					self.push_opcode_bytes(
 						OpCode::PushInt256,
 						Self::pad_right(&bytes[..32.min(bytes.len())], 32, i.is_negative()),
@@ -513,8 +527,8 @@ impl ScriptBuilder {
 		for (k, v) in map {
 			let kk: ContractParameter = k.clone().into();
 			let vv: ContractParameter = v.clone().into();
-			self.push_param(&vv).unwrap();
-			self.push_param(&kk).unwrap();
+			self.push_param(&vv)?;
+			self.push_param(&kk)?;
 		}
 
 		Ok(self.push_integer(BigInt::from(map.len())).op_code(&[OpCode::PackMap]))
@@ -682,7 +696,7 @@ impl ScriptBuilder {
 		let mut sb = Self::new();
 		sb.push_integer(BigInt::from(max_items));
 
-		sb.contract_call(contract_hash, method, params, call_flags).unwrap();
+		sb.contract_call(contract_hash, method, params, call_flags)?;
 
 		sb.op_code(&[OpCode::NewArray]);
 

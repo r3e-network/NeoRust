@@ -3,26 +3,49 @@ use futures_util::{select, sink::SinkExt, stream::StreamExt, FutureExt};
 use serde_json::value::RawValue;
 use tracing::{error, trace};
 
+use crate::config::NeoConstants;
+
 use super::{types::*, WsClientError};
+
+fn truncate_for_log(s: &str, max_bytes: usize) -> &str {
+	if s.len() <= max_bytes {
+		return s;
+	}
+	let mut end = max_bytes;
+	while end > 0 && !s.is_char_boundary(end) {
+		end -= 1;
+	}
+	&s[..end]
+}
 
 /// `BackendDriver` drives a specific `WsBackend`. It can be used to issue
 /// requests, receive responses, see errors, and shut down the backend.
-pub struct BackendDriver {
+pub(super) struct BackendDriver {
 	// Pubsub items from the backend, received via WS
-	pub to_handle: mpsc::UnboundedReceiver<PubSubItem>,
+	pub(super) to_handle: mpsc::UnboundedReceiver<PubSubItem>,
 	// Notification from the backend of a terminal error
-	pub error: oneshot::Receiver<()>,
+	pub(super) error: oneshot::Receiver<()>,
 
 	// Requests that the backend should dispatch
-	pub dispatcher: mpsc::UnboundedSender<Box<RawValue>>,
+	pub(super) dispatcher: mpsc::UnboundedSender<Box<RawValue>>,
 	// Notify the backend of intentional shutdown
 	shutdown: oneshot::Sender<()>,
 }
 
 impl BackendDriver {
-	pub fn shutdown(self) {
+	pub(super) fn shutdown(self) {
 		// don't care if it fails, as that means the backend is gone anyway
 		let _ = self.shutdown.send(());
+	}
+
+	#[cfg(all(test, not(target_arch = "wasm32")))]
+	pub(super) fn new_for_test() -> Self {
+		let (_to_handle_tx, to_handle) = mpsc::unbounded();
+		let (_error_tx, error) = oneshot::channel();
+		let (dispatcher, _dispatcher_rx) = mpsc::unbounded();
+		let (shutdown, _shutdown_rx) = oneshot::channel();
+
+		Self { to_handle, error, dispatcher, shutdown }
 	}
 }
 
@@ -32,7 +55,7 @@ impl BackendDriver {
 ///
 /// The `WsBackend` shuts down when instructed to by the `RequestManager` or
 /// when the `RequestManager` drops (because the inbound channel will close)
-pub struct WsBackend {
+pub(super) struct WsBackend {
 	server: InternalStream,
 
 	// channel to the manager, through which to send items received via WS
@@ -48,7 +71,7 @@ pub struct WsBackend {
 
 impl WsBackend {
 	#[cfg(target_arch = "wasm32")]
-	pub async fn connect(
+	pub(super) async fn connect(
 		details: ConnectionDetails,
 	) -> Result<(Self, BackendDriver), WsClientError> {
 		let wsio = WsMeta::connect(details.url, None)
@@ -61,24 +84,63 @@ impl WsBackend {
 	}
 
 	#[cfg(not(target_arch = "wasm32"))]
-	pub async fn connect(
+	pub(super) async fn connect(
 		details: ConnectionDetails,
 	) -> Result<(Self, BackendDriver), WsClientError> {
-		let ws = connect_async(details).await?.0.fuse();
+		let max_message_size = NeoConstants::max_rpc_message_size();
+		let config = WebSocketConfig {
+			max_message_size: Some(max_message_size),
+			max_frame_size: Some(max_message_size),
+			..Default::default()
+		};
+
+		let connect_fut = connect_async_with_config(details, Some(config), false);
+		let ws = if let Some(timeout) = NeoConstants::rpc_request_timeout() {
+			match tokio::time::timeout(timeout, connect_fut).await {
+				Ok(res) => res?,
+				Err(_) => {
+					let err = std::io::Error::new(
+						std::io::ErrorKind::TimedOut,
+						format!("WebSocket connect timed out after {timeout:?}"),
+					);
+					return Err(WsError::Io(err).into());
+				},
+			}
+		} else {
+			connect_fut.await?
+		}
+		.0
+		.fuse();
 		Ok(Self::new(ws))
 	}
 
 	#[cfg(not(target_arch = "wasm32"))]
-	pub async fn connect_with_config(
+	pub(super) async fn connect_with_config(
 		details: ConnectionDetails,
 		config: WebSocketConfig,
 		disable_nagle: bool,
 	) -> Result<(Self, BackendDriver), WsClientError> {
-		let ws = connect_async_with_config(details, Some(config), disable_nagle).await?.0.fuse();
+		let connect_fut = connect_async_with_config(details, Some(config), disable_nagle);
+		let ws = if let Some(timeout) = NeoConstants::rpc_request_timeout() {
+			match tokio::time::timeout(timeout, connect_fut).await {
+				Ok(res) => res?,
+				Err(_) => {
+					let err = std::io::Error::new(
+						std::io::ErrorKind::TimedOut,
+						format!("WebSocket connect timed out after {timeout:?}"),
+					);
+					return Err(WsError::Io(err).into());
+				},
+			}
+		} else {
+			connect_fut.await?
+		}
+		.0
+		.fuse();
 		Ok(Self::new(ws))
 	}
 
-	pub fn new(server: InternalStream) -> (Self, BackendDriver) {
+	fn new(server: InternalStream) -> (Self, BackendDriver) {
 		let (handler, to_handle) = mpsc::unbounded();
 		let (dispatcher, to_dispatch) = mpsc::unbounded();
 		let (error_tx, error_rx) = oneshot::channel();
@@ -90,8 +152,16 @@ impl WsBackend {
 		)
 	}
 
-	pub async fn handle_text(&mut self, t: String) -> Result<(), WsClientError> {
-		trace!(text = t, "Received message");
+	async fn handle_text(&mut self, t: String) -> Result<(), WsClientError> {
+		let max_message_size = NeoConstants::max_rpc_message_size();
+		if t.len() > max_message_size {
+			return Err(WsClientError::JsonError(serde::de::Error::custom(format!(
+				"WebSocket message exceeded {} bytes",
+				max_message_size
+			))));
+		}
+
+		trace!(len = t.len(), preview = truncate_for_log(&t, 512), "Received message");
 		match serde_json::from_str(&t) {
 			Ok(item) => {
 				trace!(%item, "Deserialized message");
@@ -120,8 +190,8 @@ impl WsBackend {
 
 				Message::Binary(buf) => Err(WsClientError::UnexpectedBinary(buf)),
 				Message::Close(frame) => {
-					if frame.is_some() {
-						error!("Close frame: {}", frame.unwrap());
+					if let Some(frame) = frame {
+						error!("Close frame: {}", frame);
 					}
 					Err(WsClientError::UnexpectedClose)
 				},
@@ -141,7 +211,7 @@ impl WsBackend {
 		}
 	}
 
-	pub fn spawn(mut self) {
+	pub(super) fn spawn(mut self) {
 		let fut = async move {
 			let mut err = false;
 			loop {
@@ -163,7 +233,9 @@ impl WsBackend {
 							break
 						}
 						#[cfg(target_arch = "wasm32")]
-						unreachable!();
+						{
+							// Keepalive is a pending future on wasm builds.
+						}
 					}
 					resp = self.server.next() => {
 						match resp {

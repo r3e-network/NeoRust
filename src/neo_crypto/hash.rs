@@ -34,7 +34,15 @@ impl HashableForVec for [u8] {
 
 	fn hmac_sha512(&self, key: &[u8]) -> Vec<u8> {
 		type HmacSha512 = Hmac<Sha512>;
-		let mut mac = HmacSha512::new_from_slice(key).expect("HMAC can take key of any size");
+		let mut mac = match HmacSha512::new_from_slice(key) {
+			Ok(mac) => mac,
+			Err(e) => {
+				// This should be unreachable for HMAC (it can accept keys of any size), but
+				// avoid panicking in case upstream behavior changes.
+				tracing::warn!(error = %e, "Failed to create HMAC-SHA512 instance");
+				return Vec::new();
+			},
+		};
 		mac.update(self);
 		mac.finalize().into_bytes().to_vec()
 	}

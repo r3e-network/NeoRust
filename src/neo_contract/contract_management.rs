@@ -26,74 +26,77 @@ impl<'a, P: JsonRpcProvider + 'static> ContractManagement<'a, P> {
 	}
 
 	pub async fn get_minimum_deployment_fee(&self) -> Result<u64, ContractError> {
-		Ok(self
-			.provider
-			.unwrap()
-			.invoke_function(&self.script_hash, "getMinimumDeploymentFee".to_string(), vec![], None)
-			.await?
-			.stack[0]
+		let output = self.call_invoke_function("getMinimumDeploymentFee", vec![], vec![]).await?;
+		self.throw_if_fault_state(&output)?;
+
+		let item = output
+			.get_first_stack_item()
+			.map_err(|e| ContractError::InvalidResponse(e.to_string()))?;
+		let value = item
 			.as_int()
-			.unwrap() as u64)
+			.ok_or_else(|| ContractError::UnexpectedReturnType("Int".to_string()))?;
+
+		u64::try_from(value).map_err(|_| {
+			ContractError::InvalidResponse("Minimum deployment fee cannot be negative".to_string())
+		})
 	}
 
 	pub async fn set_minimum_deployment_fee(&self, fee: u64) -> Result<u64, ContractError> {
-		Ok(self
-			.provider
-			.unwrap()
-			.invoke_function(
-				&self.script_hash,
-				"setMinimumDeploymentFee".to_string(),
-				vec![fee.into()],
-				None,
-			)
-			.await?
-			.stack[0]
+		let output = self
+			.call_invoke_function("setMinimumDeploymentFee", vec![fee.into()], vec![])
+			.await?;
+		self.throw_if_fault_state(&output)?;
+
+		let item = output
+			.get_first_stack_item()
+			.map_err(|e| ContractError::InvalidResponse(e.to_string()))?;
+		let value = item
 			.as_int()
-			.unwrap() as u64)
+			.ok_or_else(|| ContractError::UnexpectedReturnType("Int".to_string()))?;
+
+		u64::try_from(value).map_err(|_| {
+			ContractError::InvalidResponse("Minimum deployment fee cannot be negative".to_string())
+		})
 	}
 
 	pub async fn get_contract(&self, hash: H160) -> Result<ContractState, ContractError> {
-		self.provider
-			.unwrap()
-			.get_contract_state(hash)
-			.await
-			.map_err(|e| ContractError::RuntimeError(e.to_string()))
+		let provider = self.provider.ok_or_else(|| {
+			ContractError::ProviderNotSet("Provider is required for ContractManagement".to_string())
+		})?;
+		Ok(provider.get_contract_state(hash).await?)
 	}
 
 	pub async fn get_contract_by_id(&self, id: u32) -> Result<ContractState, ContractError> {
-		let hash = self.get_contract_hash_by_id(id).await.unwrap();
+		let hash = self.get_contract_hash_by_id(id).await?;
 		self.get_contract(hash).await
 	}
 
 	pub async fn get_contract_hash_by_id(&self, id: u32) -> Result<ScriptHash, ContractError> {
-		let result = self
-			.provider
-			.unwrap()
-			.invoke_function(
-				&self.script_hash,
-				"getContractById".to_string(),
-				vec![id.into()],
-				None,
-			)
-			.await
-			.unwrap()
-			.stack;
+		let result = self.call_invoke_function("getContractById", vec![id.into()], vec![]).await?;
+		self.throw_if_fault_state(&result)?;
 
-		let item = &result[0];
-		Ok(ScriptHash::from_slice(&item.as_bytes().unwrap()))
+		let item = result
+			.get_first_stack_item()
+			.map_err(|e| ContractError::InvalidResponse(e.to_string()))?;
+
+		let bytes = item
+			.as_bytes()
+			.ok_or_else(|| ContractError::UnexpectedReturnType("ByteString".to_string()))?;
+		if bytes.len() != 20 {
+			return Err(ContractError::InvalidScriptHash(format!(
+				"Expected 20 bytes for ScriptHash, got {}",
+				bytes.len()
+			)));
+		}
+		Ok(ScriptHash::from_slice(&bytes))
 	}
 
 	pub async fn get_contract_hashes(&self) -> Result<ContractIdentifiers, ContractError> {
-		self.provider
-			.unwrap()
-			.invoke_function(&self.script_hash, "getContractHashes".to_string(), vec![], None)
-			.await
-			.map(|item| ContractIdentifiers::from_invocation_result(item).unwrap())
-			.map_err(|e| {
-				// Convert ProviderError to ContractError here
-				// This assumes you have a way to convert from ProviderError to ContractError
-				ContractError::from(e)
-			})
+		let result = self.call_invoke_function("getContractHashes", vec![], vec![]).await?;
+		self.throw_if_fault_state(&result)?;
+
+		ContractIdentifiers::from_invocation_result(result)
+			.map_err(|e| ContractError::InvalidResponse(e.to_string()))
 	}
 
 	pub async fn has_method(
@@ -102,17 +105,20 @@ impl<'a, P: JsonRpcProvider + 'static> ContractManagement<'a, P> {
 		method: &str,
 		params: usize,
 	) -> Result<bool, ContractError> {
-		self.provider
-			.unwrap()
-			.invoke_function(
-				&self.script_hash,
-				"hasMethod".to_string(),
+		let result = self
+			.call_invoke_function(
+				"hasMethod",
 				vec![hash.into(), method.into(), params.into()],
-				None,
+				vec![],
 			)
-			.await
-			.map(|item| item.stack[0].as_bool().unwrap())
-			.map_err(|e| ContractError::RuntimeError(e.to_string()))
+			.await?;
+		self.throw_if_fault_state(&result)?;
+
+		let item = result
+			.get_first_stack_item()
+			.map_err(|e| ContractError::InvalidResponse(e.to_string()))?;
+		item.as_bool()
+			.ok_or_else(|| ContractError::UnexpectedReturnType("Bool".to_string()))
 	}
 
 	pub async fn deploy(
@@ -121,9 +127,8 @@ impl<'a, P: JsonRpcProvider + 'static> ContractManagement<'a, P> {
 		manifest: &[u8],
 		data: Option<ContractParameter>,
 	) -> Result<TransactionBuilder<'_, P>, ContractError> {
-		let params = vec![nef.into(), manifest.into(), data.unwrap()];
-		let tx = self.invoke_function("deploy", params).await;
-		tx
+		let params = vec![nef.into(), manifest.into(), data.unwrap_or_else(ContractParameter::any)];
+		self.invoke_function("deploy", params).await
 	}
 }
 

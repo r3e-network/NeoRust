@@ -64,8 +64,10 @@ pub trait WinitApp {
     /// The current frame number, as reported by egui.
     fn frame_nr(&self, viewport_id: ViewportId) -> u64;
 
+    #[allow(dead_code)]
     fn is_focused(&self, window_id: WindowId) -> bool;
 
+    #[allow(dead_code)]
     fn integration(&self) -> Option<&EpiIntegration>;
 
     fn window(&self, window_id: WindowId) -> Option<Arc<Window>>;

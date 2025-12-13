@@ -135,14 +135,15 @@ impl<P: JsonRpcProvider> RpcClient<P> {
 		T: Debug + Serialize + Send + Sync,
 		R: Serialize + DeserializeOwned + Debug + Send,
 	{
-		let span = tracing::trace_span!("rpc: ", method = method, params = ?serde_json::to_string(&params)?);
+		let span =
+			tracing::trace_span!("rpc", method = method, params_type = core::any::type_name::<T>());
 		// https://docs.rs/tracing/0.1.22/tracing/span/struct.Span.html#in-asynchronous-code
 		let res = async move {
 			// trace!("tx");
 			let fetched = self.provider.fetch(method, params).await;
 			let res: R = fetched.map_err(Into::into)?;
 			// debug!("Response: = {:?}", res);
-			trace!(rx = ?serde_json::to_string(&res)?);
+			trace!(rx_type = core::any::type_name::<R>());
 			Ok::<_, ProviderError>(res)
 		}
 		.instrument(span)

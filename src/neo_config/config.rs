@@ -1,3 +1,4 @@
+use hex_literal::hex;
 use lazy_static::lazy_static;
 use primitive_types::H160;
 use serde::{Deserialize, Serialize};
@@ -81,7 +82,9 @@ impl Default for NeoConfig {
 		hardforks.insert("HF_Domovoi".to_string(), 5570000);
 
 		NeoConfig {
-			network: Some(860833102), // TestNet
+			// Default to auto-detecting the network magic from the connected node.
+			// Users doing offline signing can set this manually if needed.
+			network: None,
 			address_version: 53,
 			milliseconds_per_block: 15000,
 			max_transactions_per_block: 512,
@@ -120,10 +123,7 @@ impl Default for NeoConfig {
 				"seed4.neo.org:10333".to_string(),
 				"seed5.neo.org:10333".to_string(),
 			],
-			nns_resolver: H160::from_slice(
-				&hex::decode("50ac1c37690cc2cfc594472833cf57505d5f46de")
-					.expect("Static hex string for NNS resolver should always be valid"),
-			),
+			nns_resolver: H160::from_slice(&hex!("50ac1c37690cc2cfc594472833cf57505d5f46de")),
 			allows_transmission_on_fault: false,
 		}
 	}
@@ -195,10 +195,7 @@ impl NeoConfig {
 				"seed4.neo.org:10333".to_string(),
 				"seed5.neo.org:10333".to_string(),
 			],
-			nns_resolver: H160::from_slice(
-				&hex::decode("50ac1c37690cc2cfc594472833cf57505d5f46de")
-					.expect("Static hex string for NNS resolver should always be valid"),
-			),
+			nns_resolver: H160::from_slice(&hex!("50ac1c37690cc2cfc594472833cf57505d5f46de")),
 			allows_transmission_on_fault: false,
 		}
 	}

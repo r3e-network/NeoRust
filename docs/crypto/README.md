@@ -34,9 +34,10 @@ The cryptography system in NeoRust includes several key components:
 use neo3::prelude::*;
 
 // Create a new random key pair
-let key_pair = KeyPair::new_random()?;
+let key_pair = KeyPair::new_random();
 println!("Public key: {}", key_pair.public_key());
-println!("Private key: {}", key_pair.private_key());
+// SECURITY: Avoid logging private keys. Use `private_key_bytes()` / `to_raw_bytes()` only when
+// you explicitly need to export key material.
 
 // Sign and verify data
 let data = b"Hello, Neo!";

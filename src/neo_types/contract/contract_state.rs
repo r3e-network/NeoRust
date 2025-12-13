@@ -43,6 +43,9 @@ impl ContractState {
 					.as_bytes()
 					.ok_or("Failed to get contract hash as bytes from stack item")?;
 
+				if v.len() != 20 {
+					return Err("Contract hash must be 20 bytes");
+				}
 				v.reverse();
 				let hash = H160::from_slice(&v);
 				Ok(ContractIdentifiers { id: id as i32, hash })

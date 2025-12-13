@@ -23,9 +23,30 @@ pub fn public_keys_to_scripthash(
 	public_keys: &mut [Secp256r1PublicKey],
 	threshold: usize,
 ) -> ScriptHash {
-	let script = ScriptBuilder::build_multi_sig_script(public_keys, threshold as u8).unwrap();
-	// Self::from_script(&script)
-	ScriptHash::from_slice(&script)
+	let threshold_u8 = match u8::try_from(threshold) {
+		Ok(v) if v > 0 => v,
+		_ => {
+			tracing::warn!(threshold, "Invalid multi-sig threshold; returning zero script hash");
+			return ScriptHash::zero();
+		},
+	};
+
+	if threshold > public_keys.len() {
+		tracing::warn!(
+			threshold,
+			public_keys_len = public_keys.len(),
+			"Multi-sig threshold exceeds public key count; returning zero script hash"
+		);
+		return ScriptHash::zero();
+	}
+
+	match ScriptBuilder::build_multi_sig_script(public_keys, threshold_u8) {
+		Ok(script) => ScriptHash::from_script(&script),
+		Err(e) => {
+			tracing::warn!(error = %e, "Failed to build multi-sig script; returning zero script hash");
+			ScriptHash::zero()
+		},
+	}
 }
 
 /// Converts a public key to a script hash.
@@ -54,7 +75,10 @@ impl ValueExtension for TransactionAttribute {
 
 impl ValueExtension for TransactionSendToken {
 	fn to_value(&self) -> Value {
-		Value::String(serde_json::to_string(self).unwrap())
+		Value::String(serde_json::to_string(self).unwrap_or_else(|e| {
+			tracing::warn!(error = %e, "Failed to serialize TransactionSendToken to JSON");
+			String::new()
+		}))
 	}
 }
 
@@ -71,7 +95,10 @@ impl VecValueExtension for Vec<TransactionAttribute> {
 }
 impl ValueExtension for Signer {
 	fn to_value(&self) -> Value {
-		Value::String(serde_json::to_string(self).unwrap())
+		Value::String(serde_json::to_string(self).unwrap_or_else(|e| {
+			tracing::warn!(error = %e, "Failed to serialize Signer to JSON");
+			String::new()
+		}))
 	}
 }
 
@@ -83,7 +110,10 @@ impl VecValueExtension for Vec<Signer> {
 
 impl ValueExtension for TransactionSigner {
 	fn to_value(&self) -> Value {
-		Value::String(serde_json::to_string(self).unwrap())
+		Value::String(serde_json::to_string(self).unwrap_or_else(|e| {
+			tracing::warn!(error = %e, "Failed to serialize TransactionSigner to JSON");
+			String::new()
+		}))
 	}
 }
 

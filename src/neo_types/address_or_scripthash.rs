@@ -4,7 +4,7 @@
 use std::hash::{Hash, Hasher};
 
 use primitive_types::H160;
-use serde_derive::{Deserialize, Serialize};
+use serde::{Deserialize, Serialize};
 
 use neo3::prelude::{Address, Bytes, ScriptHashExtension};
 
@@ -71,6 +71,10 @@ impl From<Bytes> for AddressOrScriptHash {
 	/// assert!(matches!(from_bytes, AddressOrScriptHash::ScriptHash(_)));
 	/// ```
 	fn from(s: Bytes) -> Self {
+		if s.len() != 20 {
+			tracing::warn!(len = s.len(), "Bytes length is not 20; using zero ScriptHash");
+			return Self::ScriptHash(H160::zero());
+		}
 		Self::ScriptHash(H160::from_slice(&s))
 	}
 }
@@ -109,7 +113,13 @@ impl AddressOrScriptHash {
 	/// ```
 	pub fn script_hash(&self) -> H160 {
 		match self {
-			AddressOrScriptHash::Address(a) => H160::from_address(a).unwrap(), //a.address_to_script_hash().unwrap(),
+			AddressOrScriptHash::Address(a) => match H160::from_address(a) {
+				Ok(hash) => hash,
+				Err(e) => {
+					tracing::warn!(error = %e, address = %a, "Invalid address; using zero ScriptHash");
+					H160::zero()
+				},
+			},
 			AddressOrScriptHash::ScriptHash(s) => *s,
 		}
 	}

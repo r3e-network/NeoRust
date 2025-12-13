@@ -30,7 +30,8 @@
 //! # fn main() -> Result<(), Box<dyn std::error::Error>> {
 //! // Generate new wallet with 24 words
 //! let wallet = HDWallet::generate(24, None)?;
-//! println!("Mnemonic: {}", wallet.mnemonic_phrase());
+//! let _mnemonic = wallet.mnemonic_phrase();
+//! // SECURITY: Store the mnemonic securely offline. Avoid logging it.
 //!
 //! // Derive accounts
 //! let mut wallet = wallet;
@@ -52,6 +53,7 @@ use crate::neo_error::unified::{ErrorRecovery, NeoError};
 use crate::neo_protocol::{Account, AccountTrait};
 use bip39::{Language, Mnemonic};
 use hmac::{Hmac, Mac};
+use p256::elliptic_curve::zeroize::Zeroize;
 use serde::{Deserialize, Serialize};
 use sha2::Sha512;
 use std::{collections::HashMap, fmt};
@@ -175,7 +177,6 @@ impl fmt::Display for DerivationPath {
 /// - Master seed and keys derived from mnemonic
 /// - Cache of derived accounts for performance
 /// - Support for multiple languages
-#[derive(Debug)]
 #[allow(dead_code)]
 pub struct HDWallet {
 	/// Mnemonic phrase
@@ -190,6 +191,28 @@ pub struct HDWallet {
 	accounts: HashMap<String, Account>,
 	/// Language for mnemonic
 	language: Language,
+}
+
+impl fmt::Debug for HDWallet {
+	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+		f.debug_struct("HDWallet")
+			.field("mnemonic_words", &self.mnemonic_phrase.split_whitespace().count())
+			.field("language", &self.language)
+			.field("accounts_cached", &self.accounts.len())
+			.field("mnemonic", &"<redacted>")
+			.field("seed", &"<redacted>")
+			.field("master_key", &"<redacted>")
+			.finish()
+	}
+}
+
+impl Drop for HDWallet {
+	fn drop(&mut self) {
+		self.seed.zeroize();
+		self.mnemonic_phrase.zeroize();
+		self.master_key.key.zeroize();
+		self.master_key.chain_code.zeroize();
+	}
 }
 
 impl HDWallet {
@@ -210,12 +233,8 @@ impl HDWallet {
 	/// The passphrase acts as a "25th word" and creates a completely
 	/// different wallet. Loss of the passphrase means loss of funds.
 	pub fn generate(word_count: usize, passphrase: Option<&str>) -> Result<Self, NeoError> {
-		let entropy_bits = match word_count {
-			12 => 128,
-			15 => 160,
-			18 => 192,
-			21 => 224,
-			24 => 256,
+		match word_count {
+			12 | 15 | 18 | 21 | 24 => {},
 			_ => {
 				return Err(NeoError::Wallet {
 					message: format!(
@@ -230,17 +249,12 @@ impl HDWallet {
 			},
 		};
 
-		let mnemonic = Mnemonic::generate(entropy_bits).or_else(|e| {
-			// Fall back to deterministic entropy if randomness is unavailable
-			let fallback_entropy = vec![0u8; entropy_bits / 8];
-			Mnemonic::from_entropy(&fallback_entropy).map_err(|fallback_err| NeoError::Wallet {
-				message: format!(
-					"Failed to generate mnemonic ({}), fallback generation failed ({})",
-					e, fallback_err
-				),
-				source: Some(Box::new(e)),
-				recovery: ErrorRecovery::new(),
-			})
+		let mnemonic = Mnemonic::generate(word_count).map_err(|e| NeoError::Wallet {
+			message: format!("Failed to generate mnemonic: {e}"),
+			source: Some(Box::new(e)),
+			recovery: ErrorRecovery::new()
+				.suggest("Ensure a secure OS random number generator is available")
+				.suggest("If running in a constrained environment, provide an existing mnemonic"),
 		})?;
 
 		Self::from_mnemonic(mnemonic, passphrase, Language::English)
@@ -403,48 +417,214 @@ impl HDWallet {
 	}
 
 	/// Export wallet to encrypted JSON
-	pub fn export_encrypted(&self, _password: &str) -> Result<String, NeoError> {
+	pub fn export_encrypted(&self, password: &str) -> Result<String, NeoError> {
+		use aes::cipher::{block_padding::Pkcs7, BlockEncryptMut, KeyInit};
+		use base64::engine::general_purpose;
+		use base64::Engine;
+		use rand::rngs::OsRng;
+		use rand::RngCore;
+		use scrypt::{scrypt, Params};
+
+		type Aes256EcbEnc = ecb::Encryptor<aes::Aes256>;
+
+		if password.is_empty() {
+			return Err(NeoError::Validation {
+				message: "Password cannot be empty".to_string(),
+				field: "password".to_string(),
+				value: None,
+				recovery: ErrorRecovery::new()
+					.suggest("Provide a non-empty password")
+					.suggest("Use a strong passphrase"),
+			});
+		}
+
 		let wallet_data = HDWalletData {
 			mnemonic: self.mnemonic_phrase.clone(),
 			language: format!("{:?}", self.language),
 			accounts: self.accounts.keys().cloned().collect(),
 		};
 
-		// Encrypt with password (simplified - in production use proper encryption)
-		let json = serde_json::to_string_pretty(&wallet_data).map_err(|e| NeoError::Wallet {
-			message: format!("Failed to serialize wallet: {}", e),
+		let plaintext = serde_json::to_vec(&wallet_data).map_err(|e| NeoError::Wallet {
+			message: format!("Failed to serialize wallet: {e}"),
 			source: Some(Box::new(e)),
 			recovery: ErrorRecovery::new(),
 		})?;
 
-		// TODO: Implement proper encryption with scrypt + AES
-		Ok(json)
+		// Derive key using standard Neo scrypt parameters and random salt
+		let scrypt_def = crate::neo_types::ScryptParamsDef::default();
+		let params =
+			Params::new(scrypt_def.log_n, scrypt_def.r, scrypt_def.p, 32).map_err(|e| {
+				NeoError::Wallet {
+					message: format!("Invalid scrypt parameters: {e}"),
+					source: None,
+					recovery: ErrorRecovery::new(),
+				}
+			})?;
+
+		let mut salt = [0u8; 16];
+		OsRng.fill_bytes(&mut salt);
+
+		let mut key = [0u8; 32];
+		scrypt(password.as_bytes(), &salt, &params, &mut key).map_err(|e| NeoError::Wallet {
+			message: format!("Failed to derive encryption key: {e}"),
+			source: Some(Box::new(e)),
+			recovery: ErrorRecovery::new()
+				.suggest("Check password encoding")
+				.suggest("Try a different password"),
+		})?;
+
+		let mut buf = vec![0u8; plaintext.len() + 16];
+		buf[..plaintext.len()].copy_from_slice(&plaintext);
+
+		let ciphertext = Aes256EcbEnc::new(&key.into())
+			.encrypt_padded_mut::<Pkcs7>(&mut buf, plaintext.len())
+			.map_err(|_| NeoError::Wallet {
+				message: "AES encryption failed".to_string(),
+				source: None,
+				recovery: ErrorRecovery::new(),
+			})?
+			.to_vec();
+
+		let encrypted = EncryptedHDWalletData {
+			version: 1,
+			scrypt: scrypt_def,
+			salt: general_purpose::STANDARD.encode(salt),
+			ciphertext: general_purpose::STANDARD.encode(ciphertext),
+		};
+
+		serde_json::to_string_pretty(&encrypted).map_err(|e| NeoError::Wallet {
+			message: format!("Failed to serialize encrypted wallet: {e}"),
+			source: Some(Box::new(e)),
+			recovery: ErrorRecovery::new(),
+		})
 	}
 
 	/// Import wallet from encrypted JSON
-	pub fn import_encrypted(json: &str, _password: &str) -> Result<Self, NeoError> {
-		// TODO: Implement proper decryption
-		let wallet_data: HDWalletData =
-			serde_json::from_str(json).map_err(|e| NeoError::Wallet {
-				message: format!("Failed to deserialize wallet: {}", e),
+	pub fn import_encrypted(json: &str, password: &str) -> Result<Self, NeoError> {
+		use aes::cipher::{block_padding::Pkcs7, BlockDecryptMut, KeyInit};
+		use base64::engine::general_purpose;
+		use base64::Engine;
+		use scrypt::{scrypt, Params};
+
+		type Aes256EcbDec = ecb::Decryptor<aes::Aes256>;
+
+		// First try to parse as encrypted payload (new format).
+		let encrypted_payload: Result<EncryptedHDWalletData, _> = serde_json::from_str(json);
+		let wallet_data: HDWalletData = if let Ok(encrypted_payload) = encrypted_payload {
+			if password.is_empty() {
+				return Err(NeoError::Validation {
+					message: "Password cannot be empty".to_string(),
+					field: "password".to_string(),
+					value: None,
+					recovery: ErrorRecovery::new().suggest("Provide the password used for export"),
+				});
+			}
+
+			let salt = general_purpose::STANDARD
+				.decode(encrypted_payload.salt.as_bytes())
+				.map_err(|e| NeoError::Wallet {
+					message: format!("Invalid salt encoding: {e}"),
+					source: Some(Box::new(e)),
+					recovery: ErrorRecovery::new(),
+				})?;
+
+			let ciphertext = general_purpose::STANDARD
+				.decode(encrypted_payload.ciphertext.as_bytes())
+				.map_err(|e| NeoError::Wallet {
+					message: format!("Invalid ciphertext encoding: {e}"),
+					source: Some(Box::new(e)),
+					recovery: ErrorRecovery::new(),
+				})?;
+
+			let params = Params::new(
+				encrypted_payload.scrypt.log_n,
+				encrypted_payload.scrypt.r,
+				encrypted_payload.scrypt.p,
+				32,
+			)
+			.map_err(|e| NeoError::Wallet {
+				message: format!("Invalid scrypt parameters: {e}"),
+				source: None,
+				recovery: ErrorRecovery::new(),
+			})?;
+
+			let mut key = [0u8; 32];
+			scrypt(password.as_bytes(), &salt, &params, &mut key).map_err(|e| {
+				NeoError::Wallet {
+					message: format!("Failed to derive decryption key: {e}"),
+					source: Some(Box::new(e)),
+					recovery: ErrorRecovery::new().suggest("Check password correctness"),
+				}
+			})?;
+
+			let mut buf = vec![0u8; ciphertext.len()];
+			let plaintext = Aes256EcbDec::new(&key.into())
+				.decrypt_padded_b2b_mut::<Pkcs7>(&ciphertext, &mut buf)
+				.map_err(|_| NeoError::Wallet {
+					message: "AES decryption failed (wrong password?)".to_string(),
+					source: None,
+					recovery: ErrorRecovery::new().suggest("Verify the password").retryable(false),
+				})?
+				.to_vec();
+
+			let plaintext_str = String::from_utf8(plaintext).map_err(|e| NeoError::Wallet {
+				message: format!("Decrypted data is not valid UTF-8: {e}"),
 				source: Some(Box::new(e)),
 				recovery: ErrorRecovery::new(),
 			})?;
+
+			serde_json::from_str::<HDWalletData>(&plaintext_str).map_err(|e| NeoError::Wallet {
+				message: format!("Failed to deserialize wallet data: {e}"),
+				source: Some(Box::new(e)),
+				recovery: ErrorRecovery::new(),
+			})?
+		} else {
+			// Backwards-compatible plaintext import.
+			serde_json::from_str::<HDWalletData>(json).map_err(|e| NeoError::Wallet {
+				message: format!("Failed to deserialize wallet: {e}"),
+				source: Some(Box::new(e)),
+				recovery: ErrorRecovery::new(),
+			})?
+		};
 
 		let language = match wallet_data.language.as_str() {
 			"English" => Language::English,
 			_ => Language::English, // Default to English
 		};
 
-		Self::from_phrase(&wallet_data.mnemonic, None, language)
+		let mut wallet = Self::from_phrase(&wallet_data.mnemonic, None, language)?;
+		// Restore cached accounts based on stored derivation paths.
+		for path in wallet_data.accounts {
+			let _ = wallet.derive_account(&path)?;
+		}
+
+		Ok(wallet)
 	}
 }
 
 /// Extended private key for HD derivation
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 struct ExtendedPrivateKey {
 	key: Vec<u8>,
 	chain_code: Vec<u8>,
+}
+
+impl fmt::Debug for ExtendedPrivateKey {
+	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+		f.debug_struct("ExtendedPrivateKey")
+			.field("key_len", &self.key.len())
+			.field("chain_code_len", &self.chain_code.len())
+			.field("key", &"<redacted>")
+			.field("chain_code", &"<redacted>")
+			.finish()
+	}
+}
+
+impl Drop for ExtendedPrivateKey {
+	fn drop(&mut self) {
+		self.key.zeroize();
+		self.chain_code.zeroize();
+	}
 }
 
 impl ExtendedPrivateKey {
@@ -494,17 +674,50 @@ struct HDWalletData {
 	accounts: Vec<String>,
 }
 
+/// Encrypted HD wallet export format.
+#[derive(Serialize, Deserialize)]
+struct EncryptedHDWalletData {
+	version: u8,
+	scrypt: crate::neo_types::ScryptParamsDef,
+	/// base64-encoded salt
+	salt: String,
+	/// base64-encoded AES-256-ECB ciphertext
+	ciphertext: String,
+}
+
 /// Builder for HD wallet configuration
 ///
 /// Provides a fluent interface for creating HD wallets with custom
 /// configuration. Supports both generating new wallets and importing
 /// existing mnemonics.
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct HDWalletBuilder {
 	word_count: usize,
 	passphrase: Option<String>,
 	language: Language,
 	mnemonic: Option<String>,
+}
+
+impl fmt::Debug for HDWalletBuilder {
+	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+		f.debug_struct("HDWalletBuilder")
+			.field("word_count", &self.word_count)
+			.field("language", &self.language)
+			.field("has_passphrase", &self.passphrase.is_some())
+			.field("has_mnemonic", &self.mnemonic.is_some())
+			.finish()
+	}
+}
+
+impl Drop for HDWalletBuilder {
+	fn drop(&mut self) {
+		if let Some(passphrase) = &mut self.passphrase {
+			passphrase.zeroize();
+		}
+		if let Some(mnemonic) = &mut self.mnemonic {
+			mnemonic.zeroize();
+		}
+	}
 }
 
 impl Default for HDWalletBuilder {
@@ -545,10 +758,13 @@ impl HDWalletBuilder {
 
 	/// Build the HD wallet
 	pub fn build(self) -> Result<HDWallet, NeoError> {
-		if let Some(mnemonic_phrase) = self.mnemonic {
-			HDWallet::from_phrase(&mnemonic_phrase, self.passphrase.as_deref(), self.language)
+		let language = self.language;
+		let passphrase = self.passphrase.as_deref();
+
+		if let Some(mnemonic_phrase) = self.mnemonic.as_deref() {
+			HDWallet::from_phrase(mnemonic_phrase, passphrase, language)
 		} else {
-			HDWallet::generate(self.word_count, self.passphrase.as_deref())
+			HDWallet::generate(self.word_count, passphrase)
 		}
 	}
 }
@@ -613,5 +829,23 @@ mod tests {
 			.build();
 
 		assert!(wallet.is_ok());
+	}
+
+	#[test]
+	fn test_export_import_encrypted_roundtrip() {
+		let phrase = "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about";
+		let mut wallet = HDWallet::from_phrase(phrase, None, Language::English).unwrap();
+
+		wallet.derive_account("m/44'/888'/0'/0/0").unwrap();
+		wallet.derive_account("m/44'/888'/0'/0/1").unwrap();
+
+		let password = "correct horse battery staple";
+		let exported = wallet.export_encrypted(password).unwrap();
+		let imported = HDWallet::import_encrypted(&exported, password).unwrap();
+
+		assert_eq!(imported.mnemonic_phrase(), phrase);
+		assert_eq!(imported.accounts.len(), 2);
+		assert!(imported.accounts.contains_key("m/44'/888'/0'/0/0"));
+		assert!(imported.accounts.contains_key("m/44'/888'/0'/0/1"));
 	}
 }

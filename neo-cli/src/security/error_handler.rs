@@ -222,8 +222,9 @@ impl ErrorHandler {
 		let result = operation().await;
 
 		let mut breakers = self.circuit_breakers.lock().unwrap();
-		let breaker =
-			breakers.entry(name.to_string()).or_insert_with(|| CircuitBreaker::new(threshold, timeout));
+		let breaker = breakers
+			.entry(name.to_string())
+			.or_insert_with(|| CircuitBreaker::new(threshold, timeout));
 
 		match result {
 			Ok(result) => {

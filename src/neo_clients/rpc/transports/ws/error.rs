@@ -1,8 +1,3 @@
-use std::{
-	error::Error,
-	fmt::{Display, Formatter},
-};
-
 use primitive_types::U256;
 
 use crate::neo_clients::{JsonRpcError, ProviderError, RpcError};

@@ -21,9 +21,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 	let client = RpcClient::new(HttpProvider::new("https://testnet1.neo.org:443")?);
 	println!("   ✅ Connected to TestNet");
 
-	// 2) Load deployer (demo WIF; replace for production)
-	let deployer_wif = "L1eV34wPoj9weqhGijdDLtVQzUpWGHszXXpdU9dPuh2nRFFzFa7E";
-	let deployer = Account::from_wif(deployer_wif)?;
+	// 2) Load deployer key from environment (avoid hardcoding secrets).
+	let deployer_wif = env::var("NEO_WIF")?;
+	let deployer = Account::from_wif(&deployer_wif)?;
 	println!("   📍 Deployer: {}", deployer.get_address());
 
 	// 3) Load NEF + manifest fixtures from repo
@@ -52,8 +52,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 		ContractParameter::any(),
 	];
 	let deploy_script = ScriptBuilder::new()
-		.contract_call(&mgmt_hash, "deploy", &deploy_params, Some(CallFlags::All))
-		.unwrap()
+		.contract_call(&mgmt_hash, "deploy", &deploy_params, Some(CallFlags::All))?
 		.to_bytes();
 	println!("   🔧 Deployment script size: {} bytes", deploy_script.len());
 
@@ -72,7 +71,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 	// 6) Compute expected contract hash (simplified demo hash)
 	let expected_hash = calculate_contract_hash(&deployer.get_script_hash(), &manifest_json)?;
-	println!("   🔑 Expected contract hash: {}", expected_hash.to_string());
+	println!("   🔑 Expected contract hash: {expected_hash}");
 
 	// 7) (Optional) Build a transaction with signer; not signed/broadcast here
 	let mut builder: neo3::neo_builder::TransactionBuilder<HttpProvider> =

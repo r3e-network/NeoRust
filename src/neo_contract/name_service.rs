@@ -7,8 +7,8 @@ use crate::{
 	neo_contract::{
 		ContractError, NeoIterator, NonFungibleTokenTrait, SmartContractTrait, TokenTrait,
 	},
-	serialize_script_hash, serialize_script_hash_option, AddressOrScriptHash, ContractParameter,
-	NNSName, ScriptHash, StackItem,
+	serialize_script_hash, serialize_script_hash_option, ContractParameter, NNSName, ScriptHash,
+	ScriptHashExtension, StackItem,
 };
 use async_trait::async_trait;
 use primitive_types::H160;
@@ -246,12 +246,10 @@ impl<'a, P: JsonRpcProvider + 'static> NeoNameService<'a, P> {
 				Self::ADMIN_PROPERTY
 			))
 		})?;
+		let admin_script_hash = H160::from_address(&admin)
+			.map_err(|e| ContractError::InvalidResponse(format!("Invalid admin address: {e}")))?;
 
-		Ok(NameState {
-			name,
-			expiration,
-			admin: Some(AddressOrScriptHash::from(admin).script_hash()),
-		})
+		Ok(NameState { name, expiration, admin: Some(admin_script_hash) })
 	}
 	async fn check_domain_name_availability(
 		&self,
@@ -285,7 +283,7 @@ impl<'a, P: JsonRpcProvider> TokenTrait<'a, P> for NeoNameService<'a, P> {
 	fn set_total_supply(&mut self, _total_supply: u64) {
 		// NNS doesn't have a total supply concept
 		// This is intentionally a no-op as NNS is not a fungible token
-		eprintln!("Warning: Cannot set total supply for NNS contract - operation not supported");
+		tracing::warn!("Cannot set total supply for NNS contract - operation not supported");
 	}
 
 	fn decimals(&self) -> Option<u8> {
@@ -325,23 +323,23 @@ impl<'a, P: JsonRpcProvider> TokenTrait<'a, P> for NeoNameService<'a, P> {
 			.map_err(|e| {
 				ContractError::InvocationFailed(format!("Failed to invoke resolve function: {}", e))
 			})?;
+		self.throw_if_fault_state(&req)?;
 
-		let address = req
-			.stack
-			.first()
-			.ok_or(ContractError::InvalidResponse("Empty stack in response".to_string()))?
-			.clone();
+		let stack_item = req
+			.get_first_stack_item()
+			.map_err(|e| ContractError::InvalidResponse(e.to_string()))?;
 
-		let bytes = match address {
-			StackItem::ByteString { value } => Ok(value.clone()),
-			_ => Err(ContractError::InvalidResponse(
-				"Invalid address format in response".to_string(),
-			)),
-		}?;
+		let bytes = stack_item
+			.as_bytes()
+			.ok_or_else(|| ContractError::UnexpectedReturnType("ByteString".to_string()))?;
+		if bytes.len() != 20 {
+			return Err(ContractError::InvalidResponse(format!(
+				"Expected 20 bytes for ScriptHash, got {}",
+				bytes.len()
+			)));
+		}
 
-		// Convert String to bytes
-		let bytes_vec = bytes.as_bytes().to_vec();
-		Ok(H160::from_slice(&bytes_vec))
+		Ok(H160::from_slice(&bytes))
 	}
 }
 

@@ -14,7 +14,7 @@
 /// The prelude includes:
 ///
 /// - **Core Types**: Basic blockchain primitives like Address, ScriptHash
-/// - **Errors**: The unified NeoError type for error handling
+/// - **Errors**: The legacy `NeoError` alias (see `neo_error::unified` for richer errors)
 /// - **Contracts**: Types for interacting with Neo smart contracts
 /// - **Wallets**: Account and wallet management
 /// - **Clients**: RPC and other client interfaces
@@ -25,7 +25,7 @@
 ///
 /// The prelude is ideal for applications that use multiple Neo features.
 /// For more targeted imports, you can import specific modules directly.
-// Core error type
+// Core error type (legacy alias)
 pub use crate::neo_error::NeoError;
 
 // === Core Types ===

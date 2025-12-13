@@ -1,4 +1,3 @@
-use byte_slice_cast::AsByteSlice;
 use primitive_types::H160;
 
 use crate::{config::DEFAULT_ADDRESS_VERSION, crypto::HashableForVec, neo_types::TypeError};
@@ -99,7 +98,14 @@ impl ScriptHashExtension for H160 {
 			Err(_) => return Err(TypeError::InvalidAddress),
 		};
 
-		let _salt = bytes[0];
+		if bytes.len() != 25 {
+			return Err(TypeError::InvalidAddress);
+		}
+
+		if bytes[0] != DEFAULT_ADDRESS_VERSION {
+			return Err(TypeError::InvalidAddress);
+		}
+
 		let hash = &bytes[1..21];
 		let checksum = &bytes[21..25];
 		let sha = &bytes[..21].hash256().hash256();
@@ -144,11 +150,16 @@ impl ScriptHashExtension for H160 {
 	}
 
 	fn from_script(script: &[u8]) -> Self {
-		let mut hash: [u8; 20] = script
-			.sha256_ripemd160()
-			.as_byte_slice()
-			.try_into()
-			.expect("script does not have exactly 20 elements");
+		let hash_bytes = script.sha256_ripemd160();
+		let mut hash = [0u8; 20];
+		if hash_bytes.len() != hash.len() {
+			tracing::warn!(
+				len = hash_bytes.len(),
+				"sha256_ripemd160 returned unexpected length; using zero ScriptHash"
+			);
+		} else {
+			hash.copy_from_slice(&hash_bytes);
+		}
 		hash.reverse();
 		Self(hash)
 	}
@@ -178,6 +189,202 @@ impl ScriptHashExtension for H160 {
 		Ok(Self::from_script(&script))
 	}
 }
+
+// =============================================================================
+// Convenient type conversions for ScriptHash (H160)
+// =============================================================================
+
+/// Wrapper type for Neo addresses that provides type safety and convenient conversions.
+///
+/// This type wraps a Neo N3 address string and provides conversions to/from `ScriptHash`.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct Address(pub String);
+
+impl Address {
+	/// Creates a new Address from a string.
+	///
+	/// # Note
+	///
+	/// This does not validate the address format. Use `try_from` for validation.
+	pub fn new(address: impl Into<String>) -> Self {
+		Self(address.into())
+	}
+
+	/// Returns the address string.
+	pub fn as_str(&self) -> &str {
+		&self.0
+	}
+
+	/// Converts this address to a ScriptHash.
+	///
+	/// # Errors
+	///
+	/// Returns `TypeError::InvalidAddress` if the address is invalid.
+	pub fn to_script_hash(&self) -> Result<ScriptHash, TypeError> {
+		ScriptHash::from_address(&self.0)
+	}
+}
+
+impl std::fmt::Display for Address {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		write!(f, "{}", self.0)
+	}
+}
+
+impl From<String> for Address {
+	fn from(s: String) -> Self {
+		Self(s)
+	}
+}
+
+impl From<&str> for Address {
+	fn from(s: &str) -> Self {
+		Self(s.to_string())
+	}
+}
+
+impl TryFrom<Address> for ScriptHash {
+	type Error = TypeError;
+
+	fn try_from(address: Address) -> Result<Self, Self::Error> {
+		ScriptHash::from_address(&address.0)
+	}
+}
+
+impl TryFrom<&Address> for ScriptHash {
+	type Error = TypeError;
+
+	fn try_from(address: &Address) -> Result<Self, Self::Error> {
+		ScriptHash::from_address(&address.0)
+	}
+}
+
+impl From<ScriptHash> for Address {
+	fn from(hash: ScriptHash) -> Self {
+		Self(hash.to_address())
+	}
+}
+
+impl From<&ScriptHash> for Address {
+	fn from(hash: &ScriptHash) -> Self {
+		Self(hash.to_address())
+	}
+}
+
+/// Extension trait for convenient ScriptHash creation from various types.
+pub trait IntoScriptHash {
+	/// Converts this value into a ScriptHash.
+	///
+	/// # Errors
+	///
+	/// Returns an error if the conversion fails.
+	fn into_script_hash(self) -> Result<ScriptHash, TypeError>;
+}
+
+impl IntoScriptHash for &str {
+	fn into_script_hash(self) -> Result<ScriptHash, TypeError> {
+		// Try to parse as address first (starts with 'N')
+		if self.starts_with('N') {
+			ScriptHash::from_address(self)
+		} else if self.starts_with("0x") || self.len() == 40 {
+			// Try to parse as hex
+			ScriptHash::from_hex(self).map_err(|_| TypeError::InvalidAddress)
+		} else {
+			Err(TypeError::InvalidAddress)
+		}
+	}
+}
+
+impl IntoScriptHash for String {
+	fn into_script_hash(self) -> Result<ScriptHash, TypeError> {
+		self.as_str().into_script_hash()
+	}
+}
+
+impl IntoScriptHash for &String {
+	fn into_script_hash(self) -> Result<ScriptHash, TypeError> {
+		self.as_str().into_script_hash()
+	}
+}
+
+impl IntoScriptHash for Address {
+	fn into_script_hash(self) -> Result<ScriptHash, TypeError> {
+		ScriptHash::from_address(&self.0)
+	}
+}
+
+impl IntoScriptHash for &Address {
+	fn into_script_hash(self) -> Result<ScriptHash, TypeError> {
+		ScriptHash::from_address(&self.0)
+	}
+}
+
+impl IntoScriptHash for ScriptHash {
+	fn into_script_hash(self) -> Result<ScriptHash, TypeError> {
+		Ok(self)
+	}
+}
+
+impl IntoScriptHash for &ScriptHash {
+	fn into_script_hash(self) -> Result<ScriptHash, TypeError> {
+		Ok(*self)
+	}
+}
+
+impl IntoScriptHash for [u8; 20] {
+	fn into_script_hash(self) -> Result<ScriptHash, TypeError> {
+		Ok(ScriptHash::from(self))
+	}
+}
+
+impl IntoScriptHash for &[u8] {
+	fn into_script_hash(self) -> Result<ScriptHash, TypeError> {
+		<ScriptHash as ScriptHashExtension>::from_slice(self)
+	}
+}
+
+impl IntoScriptHash for Vec<u8> {
+	fn into_script_hash(self) -> Result<ScriptHash, TypeError> {
+		<ScriptHash as ScriptHashExtension>::from_slice(&self)
+	}
+}
+
+// Add tests for new conversion traits
+#[cfg(test)]
+mod conversion_tests {
+	use super::*;
+
+	#[test]
+	fn test_address_type() {
+		let addr = Address::new("NLnyLtep7jwyq1qhNPkwXbJpurC4jUT8ke");
+		assert_eq!(addr.as_str(), "NLnyLtep7jwyq1qhNPkwXbJpurC4jUT8ke");
+		assert!(addr.to_script_hash().is_ok());
+	}
+
+	#[test]
+	fn test_into_script_hash_from_address_string() {
+		let result = "NLnyLtep7jwyq1qhNPkwXbJpurC4jUT8ke".into_script_hash();
+		assert!(result.is_ok());
+	}
+
+	#[test]
+	fn test_into_script_hash_from_hex() {
+		let result = "23ba2703c53263e8d6e522dc32203339dcd8eee9".into_script_hash();
+		assert!(result.is_ok());
+	}
+
+	#[test]
+	fn test_address_to_script_hash_roundtrip() {
+		let original_addr = "NLnyLtep7jwyq1qhNPkwXbJpurC4jUT8ke";
+		let hash = original_addr.into_script_hash().unwrap();
+		let addr: Address = hash.into();
+		assert_eq!(addr.as_str(), original_addr);
+	}
+}
+
+// =============================================================================
+// Tests
+// =============================================================================
 
 #[cfg(test)]
 mod tests {

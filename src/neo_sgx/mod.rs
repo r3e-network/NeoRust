@@ -1,5 +1,116 @@
-// SGX Support Module for NeoRust
-// Enables running Neo blockchain operations in Intel SGX secure enclaves
+//! # Neo SGX Support
+//!
+//! Support for running Neo blockchain operations in Intel SGX secure enclaves.
+//!
+//! ## Overview
+//!
+//! The neo_sgx module provides interfaces for running Neo blockchain operations
+//! within Intel SGX (Software Guard Extensions) secure enclaves. This enables:
+//!
+//! - **Secure Key Management**: Private keys never leave the enclave
+//! - **Remote Attestation**: Prove code integrity to remote parties
+//! - **Confidential Computing**: Process sensitive data in isolated memory
+//! - **Tamper-Resistant Execution**: Protected from privileged software attacks
+//!
+//! ## Feature Flag
+//!
+//! This module requires the `sgx` feature flag to be enabled:
+//!
+//! ```toml
+//! [dependencies]
+//! neo3 = { version = "0.5", features = ["sgx"] }
+//! ```
+//!
+//! ## Architecture
+//!
+//! The SGX module is organized into several submodules:
+//!
+//! - **allocator**: Custom memory allocator for SGX enclaves
+//! - **attestation**: Remote attestation and quote verification
+//! - **crypto**: Cryptographic operations within the enclave
+//! - **enclave**: Enclave lifecycle management
+//! - **networking**: Secure network communication from enclaves
+//! - **storage**: Sealed storage for persistent data
+//!
+//! ## Examples
+//!
+//! ### Initializing SGX Environment
+//!
+//! ```ignore
+//! use neo3::neo_sgx::prelude::*;
+//!
+//! fn main() -> Result<(), SgxError> {
+//!     // Initialize the SGX environment
+//!     init_sgx()?;
+//!
+//!     println!("SGX environment initialized successfully");
+//!     Ok(())
+//! }
+//! ```
+//!
+//! ### Creating a Secure Enclave for Key Management
+//!
+//! ```ignore
+//! use neo3::neo_sgx::prelude::*;
+//!
+//! fn main() -> Result<(), SgxError> {
+//!     // Configure the enclave
+//!     let config = EnclaveConfig::builder()
+//!         .debug_mode(false)
+//!         .heap_size(1024 * 1024) // 1MB heap
+//!         .stack_size(64 * 1024)  // 64KB stack
+//!         .build();
+//!
+//!     // Create the enclave
+//!     let enclave = SgxEnclave::create(config)?;
+//!
+//!     // Use the enclave for secure operations
+//!     let key_manager = SgxKeyManager::new(&enclave)?;
+//!     let keypair = key_manager.generate_keypair()?;
+//!
+//!     println!("Generated secure keypair in enclave");
+//!     Ok(())
+//! }
+//! ```
+//!
+//! ### Remote Attestation
+//!
+//! ```ignore
+//! use neo3::neo_sgx::prelude::*;
+//!
+//! async fn verify_enclave() -> Result<(), SgxError> {
+//!     // Create attestation instance
+//!     let attestation = RemoteAttestation::new()?;
+//!
+//!     // Generate a quote for remote verification
+//!     let quote = attestation.generate_quote()?;
+//!
+//!     // Send quote to verifier and get attestation result
+//!     let verifier = QuoteVerifier::new("https://attestation-service.example.com");
+//!     let result = verifier.verify(&quote).await?;
+//!
+//!     if result.is_valid() {
+//!         println!("Enclave attestation successful");
+//!     }
+//!
+//!     Ok(())
+//! }
+//! ```
+//!
+//! ## Security Considerations
+//!
+//! - Always use release builds for production enclaves
+//! - Disable debug mode in production
+//! - Regularly update SGX SDK and platform software
+//! - Implement proper error handling for attestation failures
+//! - Use sealed storage for persistent sensitive data
+//!
+//! ## Platform Requirements
+//!
+//! - Intel CPU with SGX support (different generations have different capabilities)
+//! - SGX-enabled BIOS settings
+//! - Intel SGX SDK installed
+//! - Linux with SGX driver or Windows with SGX PSW
 
 #![cfg_attr(feature = "sgx", no_std)]
 #![cfg_attr(feature = "sgx", feature(rustc_private))]

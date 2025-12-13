@@ -58,6 +58,10 @@ features = [
 ]
 default-features = false
 
+# Allow running `cargo metadata` directly on this vendored crate without
+# accidentally inheriting the parent workspace.
+[workspace]
+
 [dependencies.egui_glow]
 version = "0.27.2"
 optional = true

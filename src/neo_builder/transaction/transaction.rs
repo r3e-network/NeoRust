@@ -228,15 +228,16 @@ impl<'a, T: JsonRpcProvider + 'static> Transaction<'a, T> {
 	}
 
 	pub async fn get_hash_data(&self) -> Result<Bytes, TransactionError> {
-		if self.network.is_none() {
-			return Err(TransactionError::TransactionConfiguration(
+		let network = self.network.ok_or_else(|| {
+			TransactionError::TransactionConfiguration(
 				"Transaction network magic is not set".to_string(),
-			));
-		}
+			)
+		})?;
+
 		let mut encoder = Encoder::new();
 		self.serialize_without_witnesses(&mut encoder);
 		let mut data = encoder.to_bytes().hash256();
-		let network_value = self.network.as_ref().unwrap().network().await?;
+		let network_value = network.network().await?;
 		data.splice(0..0, network_value.to_be_bytes());
 
 		Ok(data)
@@ -256,13 +257,15 @@ impl<'a, T: JsonRpcProvider + 'static> Transaction<'a, T> {
 		writer.write_i64(self.sys_fee);
 		writer.write_i64(self.net_fee);
 		writer.write_u32(self.valid_until_block);
-		writer
-			.write_serializable_variable_list(&self.signers)
-			.expect("Failed to encode signers");
-		writer
-			.write_serializable_variable_list(&self.attributes)
-			.expect("Failed to encode attributes");
-		writer.write_var_bytes(&self.script).expect("Failed to encode script");
+		if let Err(e) = writer.write_serializable_variable_list(&self.signers) {
+			tracing::warn!(error = %e, "Failed to encode transaction signers");
+		}
+		if let Err(e) = writer.write_serializable_variable_list(&self.attributes) {
+			tracing::warn!(error = %e, "Failed to encode transaction attributes");
+		}
+		if let Err(e) = writer.write_var_bytes(&self.script) {
+			tracing::warn!(error = %e, "Failed to encode transaction script");
+		}
 	}
 
 	/// Sends the transaction to the Neo N3 network.
@@ -344,6 +347,10 @@ impl<'a, T: JsonRpcProvider + 'static> Transaction<'a, T> {
 // where
 	// 	P: APITrait,
 	{
+		let network = self.network.ok_or_else(|| {
+			TransactionError::IllegalState("Transaction network is not set".to_string())
+		})?;
+
 		if self.signers.len() != self.witnesses.len() {
 			return Err(TransactionError::TransactionConfiguration(
 				"The transaction does not have the same number of signers and witnesses."
@@ -357,9 +364,8 @@ impl<'a, T: JsonRpcProvider + 'static> Transaction<'a, T> {
 		}
 		let hex = hex::encode(self.to_array());
 		// self.throw()?;
-		self.block_count_when_sent = Some(self.network().unwrap().get_block_count().await?);
-		self.network()
-			.unwrap()
+		self.block_count_when_sent = Some(network.get_block_count().await?);
+		network
 			.send_raw_transaction(hex)
 			.await
 			.map_err(|e| TransactionError::IllegalState(e.to_string()))
@@ -445,6 +451,10 @@ impl<'a, T: JsonRpcProvider + 'static> Transaction<'a, T> {
 	/// }
 	/// ```
 	pub async fn track_tx(&self, max_blocks: u32) -> Result<(), TransactionError> {
+		let network = self.network.ok_or_else(|| {
+			TransactionError::IllegalState("Transaction network is not set".to_string())
+		})?;
+
 		let block_count_when_sent =
 			self.block_count_when_sent.ok_or(TransactionError::IllegalState(
 				"Cannot track transaction before it has been sent.".to_string(),
@@ -456,13 +466,13 @@ impl<'a, T: JsonRpcProvider + 'static> Transaction<'a, T> {
 
 		while current_block <= max_block {
 			// Get the current block count
-			let latest_block = self.network().unwrap().get_block_count().await?;
+			let latest_block = network.get_block_count().await?;
 
 			// If there are new blocks, check them for our transaction
 			if latest_block > current_block {
 				while current_block < latest_block {
-					let block_hash = self.network().unwrap().get_block_hash(current_block).await?;
-					let block = self.network().unwrap().get_block(block_hash, true).await?;
+					let block_hash = network.get_block_hash(current_block).await?;
+					let block = network.get_block(block_hash, true).await?;
 
 					if let Some(transactions) = &block.transactions {
 						for tx in transactions.iter() {
@@ -643,16 +653,18 @@ impl<'a, P: JsonRpcProvider + 'static> NeoSerializable for Transaction<'a, P> {
 
 	fn encode(&self, writer: &mut Encoder) {
 		self.serialize_without_witnesses(writer);
-		writer
-			.write_serializable_variable_list(&self.witnesses)
-			.expect("Failed to encode witnesses");
+		if let Err(e) = writer.write_serializable_variable_list(&self.witnesses) {
+			tracing::warn!(error = %e, "Failed to encode transaction witnesses");
+		}
 	}
 
 	fn decode(reader: &mut Decoder) -> Result<Self, Self::Error>
 	where
 		Self: Sized,
 	{
-		let version = reader.read_u8();
+		let start = *reader.pointer();
+
+		let version = reader.read_u8_safe()?;
 		let nonce = reader.read_u32().map_err(|e| {
 			TransactionError::TransactionConfiguration(format!("Failed to read nonce: {}", e))
 		})?;
@@ -670,17 +682,26 @@ impl<'a, P: JsonRpcProvider + 'static> NeoSerializable for Transaction<'a, P> {
 		})?;
 
 		// Read signers
-		let signers: Vec<Signer> = reader.read_serializable_list::<Signer>()?;
+		let signers: Vec<Signer> = reader
+			.read_serializable_list_bounded::<Signer>(NeoConstants::MAX_SIGNER_SUBITEMS as usize)?;
 
 		// Read attributes
-		let attributes: Vec<TransactionAttribute> =
-			reader.read_serializable_list::<TransactionAttribute>()?;
+		let attributes: Vec<TransactionAttribute> = reader
+			.read_serializable_list_bounded::<TransactionAttribute>(
+				NeoConstants::MAX_TRANSACTION_ATTRIBUTES as usize,
+			)?;
 
-		let script = reader.read_var_bytes()?.to_vec();
+		let script = reader.read_var_bytes_bounded(NeoConstants::MAX_TRANSACTION_SIZE as usize)?;
 
 		let mut witnesses = vec![];
 		if reader.available() > 0 {
-			witnesses.append(&mut reader.read_serializable_list::<Witness>()?);
+			witnesses.append(&mut reader.read_serializable_list_bounded::<Witness>(signers.len())?);
+		}
+
+		let end = *reader.pointer();
+		let tx_len = end.checked_sub(start).ok_or(TransactionError::InvalidTransaction)?;
+		if tx_len > NeoConstants::MAX_TRANSACTION_SIZE as usize {
+			return Err(TransactionError::TxTooLarge);
 		}
 
 		Ok(Self {

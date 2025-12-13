@@ -38,17 +38,24 @@
 //! }
 //! ```
 
+use crate::config::NeoConstants;
 use crate::neo_error::unified::{ErrorRecovery, NeoError};
 use crate::neo_types::{Address, ScriptHash};
 use futures_util::{SinkExt, StreamExt};
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::net::TcpStream;
 use tokio::sync::{mpsc, oneshot, RwLock};
-use tokio_tungstenite::{connect_async, MaybeTlsStream, WebSocketStream};
-use tungstenite::protocol::Message;
+use tokio_tungstenite::{connect_async_with_config, MaybeTlsStream, WebSocketStream};
+use tungstenite::protocol::{Message, WebSocketConfig};
+
+#[derive(Debug)]
+enum Command {
+	Send(Message),
+	Shutdown,
+}
 /// WebSocket subscription types
 ///
 /// Defines the different types of events that can be subscribed to via WebSocket.
@@ -144,12 +151,12 @@ impl SubscriptionHandle {
 /// and efficient message passing.
 pub struct WebSocketClient {
 	url: String,
-	ws_stream: Option<WebSocketStream<MaybeTlsStream<TcpStream>>>,
 	subscriptions: Arc<RwLock<HashMap<String, SubscriptionType>>>,
 	event_tx: mpsc::UnboundedSender<(SubscriptionType, EventData)>,
 	event_rx: Option<mpsc::UnboundedReceiver<(SubscriptionType, EventData)>>,
 	reconnect_interval: Duration,
 	max_reconnect_attempts: u32,
+	command_tx: Option<mpsc::UnboundedSender<Command>>,
 }
 
 impl WebSocketClient {
@@ -183,13 +190,17 @@ impl WebSocketClient {
 
 		Ok(Self {
 			url: url.to_string(),
-			ws_stream: None,
 			subscriptions: Arc::new(RwLock::new(HashMap::new())),
 			event_tx,
 			event_rx: Some(event_rx),
 			reconnect_interval: Duration::from_secs(5),
 			max_reconnect_attempts: 5,
+			command_tx: None,
 		})
+	}
+
+	fn is_connected(&self) -> bool {
+		self.command_tx.as_ref().is_some_and(|tx| !tx.is_closed())
 	}
 
 	/// Connect to the WebSocket server
@@ -205,33 +216,66 @@ impl WebSocketClient {
 	/// - Server is unreachable
 	/// - WebSocket handshake fails
 	pub async fn connect(&mut self) -> Result<(), NeoError> {
-		let (ws_stream, _) =
-			connect_async(self.url.as_str()).await.map_err(|e| NeoError::Network {
-				message: format!("Failed to connect to WebSocket: {}", e),
-				source: None,
-				recovery: ErrorRecovery::new()
-					.suggest("Check network connection")
-					.suggest("Verify the WebSocket server is running")
-					.suggest("Try a different WebSocket endpoint")
-					.retryable(true)
-					.retry_after(self.reconnect_interval),
-			})?;
+		if self.is_connected() {
+			return Ok(());
+		}
 
-		self.ws_stream = Some(ws_stream);
-		self.start_event_loop().await;
+		let max_message_size = NeoConstants::max_rpc_message_size();
+		let config = WebSocketConfig {
+			max_message_size: Some(max_message_size),
+			max_frame_size: Some(max_message_size),
+			..Default::default()
+		};
+		let recovery = ErrorRecovery::new()
+			.suggest("Check network connection")
+			.suggest("Verify the WebSocket server is running")
+			.suggest("Try a different WebSocket endpoint")
+			.retryable(true)
+			.retry_after(self.reconnect_interval);
+
+		let connect_fut = connect_async_with_config(self.url.as_str(), Some(config), false);
+		let connect_result = if let Some(timeout) = NeoConstants::rpc_request_timeout() {
+			match tokio::time::timeout(timeout, connect_fut).await {
+				Ok(res) => res,
+				Err(_) => {
+					return Err(NeoError::Network {
+						message: format!(
+							"Failed to connect to WebSocket: timed out after {timeout:?}"
+						),
+						source: None,
+						recovery,
+					});
+				},
+			}
+		} else {
+			connect_fut.await
+		};
+
+		let (ws_stream, _) = connect_result.map_err(|e| NeoError::Network {
+			message: format!("Failed to connect to WebSocket: {}", e),
+			source: None,
+			recovery,
+		})?;
+
+		let (command_tx, command_rx) = mpsc::unbounded_channel();
+		self.command_tx = Some(command_tx);
+		self.start_event_loop(ws_stream, command_rx).await;
 
 		Ok(())
 	}
 
 	/// Disconnect from the WebSocket server
 	pub async fn disconnect(&mut self) -> Result<(), NeoError> {
-		if let Some(mut ws) = self.ws_stream.take() {
-			ws.close(None).await.map_err(|e| NeoError::Network {
-				message: format!("Failed to close WebSocket connection: {}", e),
-				source: None,
-				recovery: ErrorRecovery::new().suggest("Connection may already be closed"),
-			})?;
-		}
+		let Some(tx) = self.command_tx.take() else {
+			return Ok(());
+		};
+
+		tx.send(Command::Shutdown).map_err(|e| NeoError::Network {
+			message: format!("Failed to send WebSocket shutdown: {}", e),
+			source: None,
+			recovery: ErrorRecovery::new().suggest("Connection may already be closed"),
+		})?;
+
 		Ok(())
 	}
 
@@ -258,7 +302,7 @@ impl WebSocketClient {
 		subscription_type: SubscriptionType,
 	) -> Result<SubscriptionHandle, NeoError> {
 		// Ensure we're connected
-		if self.ws_stream.is_none() {
+		if !self.is_connected() {
 			self.connect().await?;
 		}
 
@@ -273,7 +317,29 @@ impl WebSocketClient {
 		subs.insert(subscription_id.clone(), subscription_type.clone());
 
 		// Create cancellation channel
-		let (cancel_tx, _cancel_rx) = oneshot::channel();
+		let (cancel_tx, cancel_rx) = oneshot::channel();
+
+		let subscriptions = self.subscriptions.clone();
+		let subscription_id_for_task = subscription_id.clone();
+		let command_tx = self.command_tx.clone();
+		tokio::spawn(async move {
+			// Dropping the handle should NOT cancel the subscription.
+			if cancel_rx.await.is_err() {
+				return;
+			}
+
+			let removed = subscriptions.write().await.remove(&subscription_id_for_task).is_some();
+			if !removed {
+				return;
+			}
+
+			let Some(command_tx) = command_tx else {
+				return;
+			};
+
+			let request = Self::create_unsubscribe_request_static(&subscription_id_for_task);
+			let _ = command_tx.send(Command::Send(Message::Text(request)));
+		});
 
 		Ok(SubscriptionHandle { id: subscription_id, subscription_type, cancel_tx })
 	}
@@ -287,8 +353,10 @@ impl WebSocketClient {
 		}
 
 		// Send unsubscribe request
-		let request = self.create_unsubscribe_request(&handle.id);
-		self.send_message(request).await?;
+		if self.is_connected() {
+			let request = self.create_unsubscribe_request(&handle.id);
+			self.send_message(request).await?;
+		}
 
 		Ok(())
 	}
@@ -307,12 +375,11 @@ impl WebSocketClient {
 	}
 
 	/// Start the event processing loop
-	async fn start_event_loop(&mut self) {
-		let ws_stream = match self.ws_stream.take() {
-			Some(ws) => ws,
-			None => return,
-		};
-
+	async fn start_event_loop(
+		&mut self,
+		ws_stream: WebSocketStream<MaybeTlsStream<TcpStream>>,
+		mut command_rx: mpsc::UnboundedReceiver<Command>,
+	) {
 		let subscriptions = self.subscriptions.clone();
 		let event_tx = self.event_tx.clone();
 		let reconnect_interval = self.reconnect_interval;
@@ -320,104 +387,204 @@ impl WebSocketClient {
 		let url = self.url.clone();
 
 		tokio::spawn(async move {
-			let mut ws = ws_stream;
 			let mut reconnect_attempts = 0;
+			let mut sent_subscriptions = HashSet::<String>::new();
+			let max_message_size = NeoConstants::max_rpc_message_size();
+			let (mut ws_write, mut ws_read) = ws_stream.split();
 
 			loop {
-				match ws.next().await {
-					Some(Ok(msg)) => {
-						reconnect_attempts = 0; // Reset on successful message
-						if let Err(e) = Self::process_message(msg, &subscriptions, &event_tx).await
-						{
-							eprintln!("Error processing WebSocket message: {}", e);
+				tokio::select! { biased;
+					cmd = command_rx.recv() => {
+						match cmd {
+							Some(Command::Send(msg)) => {
+								let mut subscribe_id = None;
+								let mut unsubscribe_id = None;
+
+								if let Message::Text(text) = &msg {
+									if let Ok(json) = serde_json::from_str::<serde_json::Value>(text) {
+										if let Some(method) = json.get("method").and_then(|m| m.as_str()) {
+											if method.starts_with("subscribe_") {
+												subscribe_id = json.get("id").and_then(|id| id.as_str()).map(ToString::to_string);
+											} else if method == "unsubscribe" {
+												unsubscribe_id = json
+													.get("params")
+													.and_then(|p| p.as_array())
+													.and_then(|a| a.first())
+													.and_then(|v| v.as_str())
+													.map(ToString::to_string);
+											}
+										}
+									}
+								}
+
+								if let Some(id) = &subscribe_id {
+									if sent_subscriptions.contains(id) {
+										continue;
+									}
+								}
+
+								if let Err(e) = ws_write.send(msg).await {
+									tracing::warn!(error = %e, "WebSocket send error");
+								} else {
+									if let Some(id) = subscribe_id {
+										sent_subscriptions.insert(id);
+									}
+									if let Some(id) = unsubscribe_id {
+										sent_subscriptions.remove(&id);
+									}
+								}
+							}
+							Some(Command::Shutdown) | None => {
+								let _ = ws_write.send(Message::Close(None)).await;
+								let _ = ws_write.close().await;
+								break;
+							}
 						}
-					},
-					Some(Err(e)) => {
-						eprintln!("WebSocket error: {}", e);
+					}
+					next = ws_read.next() => {
+						let mut should_reconnect = false;
+
+						match next {
+							Some(Ok(msg)) => {
+								reconnect_attempts = 0; // Reset on successful message
+								match msg {
+									Message::Text(text) => {
+										if let Err(e) = Self::process_text_message(&text, max_message_size, &subscriptions, &event_tx).await {
+											tracing::warn!(error = %e, "Error processing WebSocket message");
+										}
+									},
+									Message::Ping(data) => {
+										if let Err(e) = ws_write.send(Message::Pong(data)).await {
+											tracing::warn!(error = %e, "Failed to send Pong");
+										}
+									},
+									Message::Close(frame) => {
+										tracing::info!(?frame, "WebSocket closed");
+										should_reconnect = true;
+									},
+									_ => {}
+								}
+							},
+							Some(Err(e)) => {
+								tracing::warn!(error = %e, "WebSocket error");
+								should_reconnect = true;
+							},
+							None => {
+								tracing::info!("WebSocket connection closed");
+								should_reconnect = true;
+							},
+						}
+
+						if !should_reconnect {
+							continue;
+						}
 
 						// Attempt reconnection
 						if reconnect_attempts < max_reconnect_attempts {
 							reconnect_attempts += 1;
-							eprintln!(
-								"Attempting reconnection ({}/{})",
-								reconnect_attempts, max_reconnect_attempts
+							sent_subscriptions.clear();
+							tracing::info!(
+								attempt = reconnect_attempts,
+								max_attempts = max_reconnect_attempts,
+								"Attempting WebSocket reconnection"
 							);
 
 							tokio::time::sleep(reconnect_interval).await;
 
-							match connect_async(url.as_str()).await {
+							let config = WebSocketConfig {
+								max_message_size: Some(max_message_size),
+								max_frame_size: Some(max_message_size),
+								..Default::default()
+							};
+							let connect_fut =
+								connect_async_with_config(url.as_str(), Some(config), false);
+							let connect_result =
+								if let Some(timeout) = NeoConstants::rpc_request_timeout() {
+									match tokio::time::timeout(timeout, connect_fut).await {
+										Ok(res) => res,
+										Err(_) => {
+											tracing::warn!(
+												"WebSocket reconnection timed out after {timeout:?}"
+											);
+											continue;
+										},
+									}
+								} else {
+									connect_fut.await
+								};
+
+							match connect_result {
 								Ok((new_ws, _)) => {
-									ws = new_ws;
-									eprintln!("Reconnected successfully");
+									(ws_write, ws_read) = new_ws.split();
+									tracing::info!("WebSocket reconnected successfully");
+									reconnect_attempts = 0;
 
 									// Resubscribe to all active subscriptions
 									let subs = subscriptions.read().await;
 									for (id, sub_type) in subs.iter() {
-										let request =
-											Self::create_subscription_request_static(sub_type, id);
-										if let Err(e) = ws.send(Message::Text(request)).await {
-											eprintln!("Failed to resubscribe {}: {}", id, e);
+										if sent_subscriptions.contains(id) {
+											continue;
+										}
+
+										let request = Self::create_subscription_request_static(sub_type, id);
+										if let Err(e) = ws_write.send(Message::Text(request)).await {
+											tracing::warn!(
+												subscription_id = %id,
+												error = %e,
+												"Failed to resubscribe"
+											);
+										} else {
+											sent_subscriptions.insert(id.clone());
 										}
 									}
 								},
 								Err(e) => {
-									eprintln!("Reconnection failed: {}", e);
+									tracing::warn!(error = %e, "WebSocket reconnection failed");
 								},
 							}
 						} else {
-							eprintln!("Max reconnection attempts reached, stopping event loop");
+							tracing::warn!(
+								attempts = reconnect_attempts,
+								max_attempts = max_reconnect_attempts,
+								"Max reconnection attempts reached, stopping event loop"
+							);
 							break;
 						}
-					},
-					None => {
-						eprintln!("WebSocket connection closed");
-						break;
-					},
+					}
 				}
 			}
 		});
 	}
 
-	/// Process incoming WebSocket message
-	async fn process_message(
-		msg: Message,
+	async fn process_text_message(
+		text: &str,
+		max_message_size: usize,
 		subscriptions: &Arc<RwLock<HashMap<String, SubscriptionType>>>,
 		event_tx: &mpsc::UnboundedSender<(SubscriptionType, EventData)>,
 	) -> Result<(), NeoError> {
-		match msg {
-			Message::Text(text) => {
-				let json: serde_json::Value =
-					serde_json::from_str(&text).map_err(|e| NeoError::Network {
-						message: format!("Failed to parse WebSocket message: {}", e),
-						source: None,
-						recovery: ErrorRecovery::new(),
-					})?;
+		if text.len() > max_message_size {
+			return Err(NeoError::Network {
+				message: format!("WebSocket message exceeded {} bytes", max_message_size),
+				source: None,
+				recovery: ErrorRecovery::new(),
+			});
+		}
 
-				// Parse event and subscription ID
-				if let Some(event_data) = Self::parse_event(&json).await? {
-					if let Some(sub_id) = json.get("subscription").and_then(|s| s.as_str()) {
-						let subs = subscriptions.read().await;
-						if let Some(sub_type) = subs.get(sub_id) {
-							let _ = event_tx.send((sub_type.clone(), event_data));
-						}
-					}
+		let json: serde_json::Value =
+			serde_json::from_str(text).map_err(|e| NeoError::Network {
+				message: format!("Failed to parse WebSocket message: {}", e),
+				source: None,
+				recovery: ErrorRecovery::new(),
+			})?;
+
+		// Parse event and subscription ID
+		if let Some(event_data) = Self::parse_event(&json).await? {
+			if let Some(sub_id) = json.get("subscription").and_then(|s| s.as_str()) {
+				let subs = subscriptions.read().await;
+				if let Some(sub_type) = subs.get(sub_id) {
+					let _ = event_tx.send((sub_type.clone(), event_data));
 				}
-			},
-			Message::Binary(_) => {
-				// Handle binary messages if needed
-			},
-			Message::Ping(_data) => {
-				// Auto-handled by tungstenite
-			},
-			Message::Pong(_) => {
-				// Auto-handled by tungstenite
-			},
-			Message::Close(_) => {
-				// Connection closing
-			},
-			Message::Frame(_) => {
-				// Raw frame, rarely used
-			},
+			}
 		}
 
 		Ok(())
@@ -472,21 +639,29 @@ impl WebSocketClient {
 
 	/// Send a message through the WebSocket
 	async fn send_message(&mut self, message: String) -> Result<(), NeoError> {
-		if let Some(ref mut ws) = self.ws_stream {
-			ws.send(Message::Text(message)).await.map_err(|e| NeoError::Network {
-				message: format!("Failed to send WebSocket message: {}", e),
+		if message.len() > NeoConstants::max_rpc_message_size() {
+			return Err(NeoError::Network {
+				message: "WebSocket message too large".to_string(),
 				source: None,
 				recovery: ErrorRecovery::new()
-					.suggest("Check WebSocket connection")
-					.retryable(true),
-			})?;
-		} else {
+					.suggest("Reduce message size")
+					.suggest("If needed, increase NEO3_MAX_RPC_MESSAGE_SIZE (bytes)"),
+			});
+		}
+
+		let Some(tx) = self.command_tx.as_ref() else {
 			return Err(NeoError::Network {
 				message: "WebSocket not connected".to_string(),
 				source: None,
 				recovery: ErrorRecovery::new().suggest("Call connect() before sending messages"),
 			});
-		}
+		};
+
+		tx.send(Command::Send(Message::Text(message))).map_err(|e| NeoError::Network {
+			message: format!("Failed to queue WebSocket message: {}", e),
+			source: None,
+			recovery: ErrorRecovery::new().suggest("Check WebSocket connection").retryable(true),
+		})?;
 
 		Ok(())
 	}
@@ -557,6 +732,10 @@ impl WebSocketClient {
 
 	/// Create unsubscribe request message
 	fn create_unsubscribe_request(&self, id: &str) -> String {
+		Self::create_unsubscribe_request_static(id)
+	}
+
+	fn create_unsubscribe_request_static(id: &str) -> String {
 		serde_json::json!({
 			"jsonrpc": "2.0",
 			"method": "unsubscribe",
@@ -607,6 +786,7 @@ impl WebSocketClientBuilder {
 #[cfg(test)]
 mod tests {
 	use super::*;
+	use tokio::net::TcpListener;
 
 	#[tokio::test]
 	async fn test_websocket_client_creation() {
@@ -632,5 +812,275 @@ mod tests {
 		assert_ne!(id1, id2);
 		assert!(id1.starts_with("sub_"));
 		assert!(id2.starts_with("sub_"));
+	}
+
+	#[tokio::test]
+	async fn subscribe_receives_event() {
+		let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+		let addr = listener.local_addr().unwrap();
+		let url = format!("ws://{}", addr);
+
+		let server = tokio::spawn(async move {
+			let (stream, _) = listener.accept().await.unwrap();
+			let mut ws = tokio_tungstenite::accept_async(stream).await.unwrap();
+
+			let msg = tokio::time::timeout(Duration::from_secs(2), ws.next())
+				.await
+				.unwrap()
+				.unwrap()
+				.unwrap();
+			let text = match msg {
+				Message::Text(t) => t,
+				other => panic!("unexpected ws message: {other:?}"),
+			};
+			let json: serde_json::Value = serde_json::from_str(&text).unwrap();
+			assert_eq!(json.get("method").and_then(|m| m.as_str()), Some("subscribe_blocks"));
+			let sub_id = json.get("id").and_then(|id| id.as_str()).unwrap().to_string();
+
+			let event = serde_json::json!({
+				"type": "block_added",
+				"subscription": sub_id,
+				"height": 1,
+				"hash": "0x01",
+				"timestamp": 1,
+				"transactions": []
+			})
+			.to_string();
+			ws.send(Message::Text(event)).await.unwrap();
+		});
+
+		let mut client = WebSocketClient::new(&url).await.unwrap();
+		client.connect().await.unwrap();
+		let _handle = client.subscribe(SubscriptionType::NewBlocks).await.unwrap();
+
+		let mut rx = client.take_event_receiver().unwrap();
+		let (sub_type, event) =
+			tokio::time::timeout(Duration::from_secs(2), rx.recv()).await.unwrap().unwrap();
+		assert_eq!(sub_type, SubscriptionType::NewBlocks);
+		match event {
+			EventData::NewBlock { height, .. } => assert_eq!(height, 1),
+			other => panic!("unexpected event: {other:?}"),
+		}
+
+		server.await.unwrap();
+	}
+
+	#[tokio::test]
+	async fn unsubscribe_sends_request() {
+		let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+		let addr = listener.local_addr().unwrap();
+		let url = format!("ws://{}", addr);
+
+		let (unsub_tx, unsub_rx) = oneshot::channel::<()>();
+		let server = tokio::spawn(async move {
+			let (stream, _) = listener.accept().await.unwrap();
+			let mut ws = tokio_tungstenite::accept_async(stream).await.unwrap();
+
+			let msg = tokio::time::timeout(Duration::from_secs(2), ws.next())
+				.await
+				.unwrap()
+				.unwrap()
+				.unwrap();
+			let text = match msg {
+				Message::Text(t) => t,
+				other => panic!("unexpected ws message: {other:?}"),
+			};
+			let json: serde_json::Value = serde_json::from_str(&text).unwrap();
+			let sub_id = json.get("id").and_then(|id| id.as_str()).unwrap().to_string();
+
+			let msg = tokio::time::timeout(Duration::from_secs(2), ws.next())
+				.await
+				.unwrap()
+				.unwrap()
+				.unwrap();
+			let text = match msg {
+				Message::Text(t) => t,
+				other => panic!("unexpected ws message: {other:?}"),
+			};
+			let json: serde_json::Value = serde_json::from_str(&text).unwrap();
+			assert_eq!(json.get("method").and_then(|m| m.as_str()), Some("unsubscribe"));
+			assert_eq!(
+				json.get("params")
+					.and_then(|p| p.as_array())
+					.and_then(|arr| arr.first())
+					.and_then(|v| v.as_str()),
+				Some(sub_id.as_str())
+			);
+
+			let _ = unsub_tx.send(());
+		});
+
+		let mut client = WebSocketClient::new(&url).await.unwrap();
+		client.connect().await.unwrap();
+		let handle = client.subscribe(SubscriptionType::NewBlocks).await.unwrap();
+		client.unsubscribe(handle).await.unwrap();
+
+		tokio::time::timeout(Duration::from_secs(2), unsub_rx).await.unwrap().unwrap();
+		server.await.unwrap();
+	}
+
+	#[tokio::test]
+	async fn cancel_sends_request() {
+		let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+		let addr = listener.local_addr().unwrap();
+		let url = format!("ws://{}", addr);
+
+		let (unsub_tx, unsub_rx) = oneshot::channel::<()>();
+		let server = tokio::spawn(async move {
+			let (stream, _) = listener.accept().await.unwrap();
+			let mut ws = tokio_tungstenite::accept_async(stream).await.unwrap();
+
+			let msg = tokio::time::timeout(Duration::from_secs(2), ws.next())
+				.await
+				.unwrap()
+				.unwrap()
+				.unwrap();
+			let text = match msg {
+				Message::Text(t) => t,
+				other => panic!("unexpected ws message: {other:?}"),
+			};
+			let json: serde_json::Value = serde_json::from_str(&text).unwrap();
+			let sub_id = json.get("id").and_then(|id| id.as_str()).unwrap().to_string();
+
+			let msg = tokio::time::timeout(Duration::from_secs(2), ws.next())
+				.await
+				.unwrap()
+				.unwrap()
+				.unwrap();
+			let text = match msg {
+				Message::Text(t) => t,
+				other => panic!("unexpected ws message: {other:?}"),
+			};
+			let json: serde_json::Value = serde_json::from_str(&text).unwrap();
+			assert_eq!(json.get("method").and_then(|m| m.as_str()), Some("unsubscribe"));
+			assert_eq!(
+				json.get("params")
+					.and_then(|p| p.as_array())
+					.and_then(|arr| arr.first())
+					.and_then(|v| v.as_str()),
+				Some(sub_id.as_str())
+			);
+
+			let _ = unsub_tx.send(());
+		});
+
+		let mut client = WebSocketClient::new(&url).await.unwrap();
+		client.connect().await.unwrap();
+		let handle = client.subscribe(SubscriptionType::NewBlocks).await.unwrap();
+		handle.cancel();
+
+		tokio::time::timeout(Duration::from_secs(2), unsub_rx).await.unwrap().unwrap();
+		server.await.unwrap();
+	}
+
+	#[tokio::test]
+	async fn dropping_handle_does_not_cancel() {
+		let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+		let addr = listener.local_addr().unwrap();
+		let url = format!("ws://{}", addr);
+
+		let server = tokio::spawn(async move {
+			let (stream, _) = listener.accept().await.unwrap();
+			let mut ws = tokio_tungstenite::accept_async(stream).await.unwrap();
+
+			let msg = tokio::time::timeout(Duration::from_secs(2), ws.next())
+				.await
+				.unwrap()
+				.unwrap()
+				.unwrap();
+			let text = match msg {
+				Message::Text(t) => t,
+				other => panic!("unexpected ws message: {other:?}"),
+			};
+			let json: serde_json::Value = serde_json::from_str(&text).unwrap();
+			assert_eq!(json.get("method").and_then(|m| m.as_str()), Some("subscribe_blocks"));
+
+			let next = tokio::time::timeout(Duration::from_millis(300), ws.next()).await;
+			if let Ok(Some(Ok(Message::Text(text)))) = next {
+				let json: serde_json::Value = serde_json::from_str(&text).unwrap();
+				assert_ne!(json.get("method").and_then(|m| m.as_str()), Some("unsubscribe"));
+			}
+		});
+
+		let mut client = WebSocketClient::new(&url).await.unwrap();
+		client.connect().await.unwrap();
+		let handle = client.subscribe(SubscriptionType::NewBlocks).await.unwrap();
+		drop(handle);
+
+		server.await.unwrap();
+	}
+
+	#[tokio::test]
+	async fn reconnects_on_close_and_receives_event() {
+		let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+		let addr = listener.local_addr().unwrap();
+		let url = format!("ws://{}", addr);
+
+		let server = tokio::spawn(async move {
+			// First connection: accept the subscription request and then close.
+			let (stream, _) = listener.accept().await.unwrap();
+			let mut ws = tokio_tungstenite::accept_async(stream).await.unwrap();
+
+			let msg = tokio::time::timeout(Duration::from_secs(2), ws.next())
+				.await
+				.unwrap()
+				.unwrap()
+				.unwrap();
+			let text = match msg {
+				Message::Text(t) => t,
+				other => panic!("unexpected ws message: {other:?}"),
+			};
+			let json: serde_json::Value = serde_json::from_str(&text).unwrap();
+			assert_eq!(json.get("method").and_then(|m| m.as_str()), Some("subscribe_blocks"));
+			let sub_id = json.get("id").and_then(|id| id.as_str()).unwrap().to_string();
+
+			ws.send(Message::Close(None)).await.unwrap();
+			drop(ws);
+
+			// Second connection: expect resubscribe and then send an event.
+			let (stream, _) = listener.accept().await.unwrap();
+			let mut ws = tokio_tungstenite::accept_async(stream).await.unwrap();
+
+			let msg = tokio::time::timeout(Duration::from_secs(2), ws.next())
+				.await
+				.unwrap()
+				.unwrap()
+				.unwrap();
+			let text = match msg {
+				Message::Text(t) => t,
+				other => panic!("unexpected ws message: {other:?}"),
+			};
+			let json: serde_json::Value = serde_json::from_str(&text).unwrap();
+			assert_eq!(json.get("method").and_then(|m| m.as_str()), Some("subscribe_blocks"));
+			let resub_id = json.get("id").and_then(|id| id.as_str()).unwrap();
+			assert_eq!(resub_id, sub_id.as_str());
+
+			let event = serde_json::json!({
+				"type": "block_added",
+				"subscription": sub_id,
+				"height": 1,
+				"hash": "0x01",
+				"timestamp": 1,
+				"transactions": []
+			})
+			.to_string();
+			ws.send(Message::Text(event)).await.unwrap();
+		});
+
+		let mut client = WebSocketClient::new(&url).await.unwrap();
+		client.set_reconnect_params(Duration::from_millis(50), 3);
+		client.connect().await.unwrap();
+		let _handle = client.subscribe(SubscriptionType::NewBlocks).await.unwrap();
+
+		let mut rx = client.take_event_receiver().unwrap();
+		let (sub_type, event) =
+			tokio::time::timeout(Duration::from_secs(2), rx.recv()).await.unwrap().unwrap();
+		assert_eq!(sub_type, SubscriptionType::NewBlocks);
+		match event {
+			EventData::NewBlock { height, .. } => assert_eq!(height, 1),
+			other => panic!("unexpected event: {other:?}"),
+		}
+
+		server.await.unwrap();
 	}
 }

@@ -11,6 +11,8 @@ use num_traits::FromPrimitive;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 
+use crate::config::DEFAULT_ADDRESS_VERSION;
+
 /// `Bytes` is a wrapper around a vector of bytes (`Vec<u8>`) providing utility methods
 /// for encoding, decoding, and other common operations on byte arrays.
 #[derive(Debug, Serialize, Deserialize, AsRef, Deref, IntoIterator, Index, IndexMut)]
@@ -48,7 +50,7 @@ impl Bytes {
 	}
 
 	fn scripthash_to_address(&self) -> String {
-		let mut script = vec![0x17];
+		let mut script = vec![DEFAULT_ADDRESS_VERSION];
 		script.extend_from_slice(&self.0.iter().rev().copied().collect::<Vec<_>>());
 
 		let mut hasher = Sha256::new();

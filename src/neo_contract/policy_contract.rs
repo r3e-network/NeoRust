@@ -27,7 +27,7 @@ impl<'a, P: JsonRpcProvider + 'static> PolicyContract<'a, P> {
 	// pub const SCRIPT_HASH: H160 = Self::calc_native_contract_hash(Self::NAME).unwrap();
 
 	pub fn new(provider: Option<&'a RpcClient<P>>) -> Self {
-		Self { script_hash: Self::calc_native_contract_hash(Self::NAME).unwrap(), provider }
+		Self { script_hash: Self::calc_native_contract_hash_unchecked(Self::NAME), provider }
 	}
 
 	pub async fn get_fee_per_byte(&self) -> Result<i32, ContractError> {
@@ -80,7 +80,8 @@ impl<'a, P: JsonRpcProvider + 'static> PolicyContract<'a, P> {
 		&self,
 		address: &str,
 	) -> Result<TransactionBuilder<'_, P>, ContractError> {
-		let account = ScriptHash::from_address(address).unwrap();
+		let account = ScriptHash::from_address(address)
+			.map_err(|_| ContractError::InvalidAccount("Invalid address".to_string()))?;
 		self.block_account(&account).await
 	}
 
@@ -95,7 +96,8 @@ impl<'a, P: JsonRpcProvider + 'static> PolicyContract<'a, P> {
 		&self,
 		address: &str,
 	) -> Result<TransactionBuilder<'_, P>, ContractError> {
-		let account = ScriptHash::from_address(address).unwrap();
+		let account = ScriptHash::from_address(address)
+			.map_err(|_| ContractError::InvalidAccount("Invalid address".to_string()))?;
 		self.unblock_account(&account).await
 	}
 }

@@ -32,8 +32,7 @@ pub trait TokenTrait<'a, P: JsonRpcProvider>: SmartContractTrait<'a, P = P> {
 			return Ok(*supply);
 		}
 
-		let supply =
-			self.call_function_returning_int(Self::TOTAL_SUPPLY, vec![]).await.unwrap() as u64;
+		let supply = self.call_function_returning_int(Self::TOTAL_SUPPLY, vec![]).await? as u64;
 
 		self.set_total_supply(supply);
 		Ok(supply)
@@ -44,8 +43,7 @@ pub trait TokenTrait<'a, P: JsonRpcProvider>: SmartContractTrait<'a, P = P> {
 			return Ok(*decimals);
 		}
 
-		let decimals =
-			self.call_function_returning_int(Self::DECIMALS, vec![]).await.unwrap() as u8;
+		let decimals = self.call_function_returning_int(Self::DECIMALS, vec![]).await? as u8;
 
 		self.set_decimals(decimals);
 		Ok(decimals)
@@ -58,22 +56,17 @@ pub trait TokenTrait<'a, P: JsonRpcProvider>: SmartContractTrait<'a, P = P> {
 			return Ok(symbol.clone());
 		}
 
-		let symbol = self.call_function_returning_string(Self::SYMBOL, vec![]).await.unwrap();
+		let symbol = self.call_function_returning_string(Self::SYMBOL, vec![]).await?;
 
 		self.set_symbol(symbol.clone());
 		Ok(symbol)
 	}
 
 	fn to_fractions(&self, amount: u64, decimals: u32) -> Result<i32, ContractError> {
-		let scale = (amount as f64).log10().floor() as u32 + 1;
-		if scale > decimals {
-			return Err(ContractError::RuntimeError(
-				"Amount has too many decimal points".to_string(),
-			));
-		}
-
 		let scaled = Decimal::from(amount) * Decimal::from(10i32.pow(decimals));
-		Ok(scaled.trunc().to_i32().unwrap())
+		scaled.trunc().to_i32().ok_or_else(|| {
+			ContractError::RuntimeError("Amount is too large to fit into i32 fractions".to_string())
+		})
 	}
 
 	fn to_fractions_decimal(&self, amount: Decimal, decimals: u32) -> Result<u64, ContractError> {
@@ -86,8 +79,9 @@ pub trait TokenTrait<'a, P: JsonRpcProvider>: SmartContractTrait<'a, P = P> {
 		let mut scaled = amount;
 		scaled *= Decimal::from(10_u32.pow(decimals));
 
-		let fractions = scaled.trunc().to_u64().unwrap();
-		Ok(fractions)
+		scaled.trunc().to_u64().ok_or_else(|| {
+			ContractError::RuntimeError("Amount is too large to fit into u64 fractions".to_string())
+		})
 	}
 
 	fn to_decimals_u64(&self, fractions: u64, decimals: u32) -> Decimal {

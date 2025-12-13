@@ -1,13 +1,13 @@
-#[cfg(test)]
+#[cfg(all(test, feature = "mock"))]
 mod gas_estimator_integration_tests {
-	use std::env;
 	use neo3::neo_builder::{AccountSigner, GasEstimator, ScriptBuilder, Signer, WitnessScope};
 	use neo3::neo_clients::{HttpProvider, MockClient, RpcClient};
 	use neo3::neo_protocol::{Account, AccountTrait};
 	use neo3::neo_types::{ContractParameter, OpCode, ScriptHash};
 	use num_bigint::BigInt;
-	use std::str::FromStr;
 	use serde_json::json;
+	use std::env;
+	use std::str::FromStr;
 
 	// Helper function to create a test client (mock by default, live if env provided)
 	async fn create_test_client(mock_gas: i64) -> (Option<MockClient>, RpcClient<HttpProvider>) {

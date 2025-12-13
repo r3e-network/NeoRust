@@ -30,8 +30,8 @@
 //!     println!("Script Hash: {}", account.get_script_hash());
 //!     
 //!     // Create an account from an existing WIF (Wallet Import Format)
-//!     let wif = "KwVEKk78X65fDrJ3VgqHLcpPpbQVfJLjXrkFUCozHQBJ5nT2xwP8";
-//!     let account_from_wif = Account::from_wif(wif)?;
+//!     let wif = std::env::var("NEO_WIF")?;
+//!     let account_from_wif = Account::from_wif(&wif)?;
 //!     println!("Imported account address: {}", account_from_wif.get_address());
 //!     
 //!     // Create an account from a public key (watch-only)
@@ -81,7 +81,7 @@ use std::{
 
 use crate::neo_crypto::utils::ToHexString;
 use primitive_types::H160;
-use serde_derive::{Deserialize, Serialize};
+use serde::{Deserialize, Serialize};
 use signature::{hazmat::PrehashSigner, Error};
 
 use crate::{
@@ -185,7 +185,7 @@ pub trait AccountTrait: Sized + PartialEq + Send + Sync + Debug + Clone {
 	fn is_multi_sig(&self) -> bool;
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[derive(Clone, Serialize, Deserialize, Default)]
 pub struct Account {
 	#[serde(skip)]
 	pub key_pair: Option<KeyPair>,
@@ -203,6 +203,22 @@ pub struct Account {
 	pub nr_of_participants: Option<u32>,
 	#[serde(skip)]
 	pub wallet: Option<Weak<Wallet>>,
+}
+
+impl std::fmt::Debug for Account {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		f.debug_struct("Account")
+			.field("address_or_scripthash", &self.address_or_scripthash)
+			.field("label", &self.label)
+			.field("is_default", &self.is_default)
+			.field("is_locked", &self.is_locked)
+			.field("has_key_pair", &self.key_pair.is_some())
+			.field("has_encrypted_private_key", &self.encrypted_private_key.is_some())
+			.field("has_verification_script", &self.verification_script.is_some())
+			.field("signing_threshold", &self.signing_threshold)
+			.field("nr_of_participants", &self.nr_of_participants)
+			.finish()
+	}
 }
 
 impl Account {
@@ -472,11 +488,35 @@ impl AccountTrait for Account {
 		let address = ScriptHash::from_script(script.script());
 
 		let (signing_threshold, nr_of_participants) = if script.is_multi_sig() {
-			(
-				// SAFETY: is_multi_sig() returned true, so these methods are guaranteed to succeed
-				Some(script.get_signing_threshold().expect("is_multi_sig implies valid threshold")),
-				Some(script.get_nr_of_accounts().expect("is_multi_sig implies valid account count")),
-			)
+			let signing_threshold: u32 = script
+				.get_signing_threshold()
+				.map_err(|e| {
+					ProviderError::ParseError(format!(
+						"Invalid multi-sig verification script signing threshold: {e}"
+					))
+				})?
+				.try_into()
+				.map_err(|_| {
+					ProviderError::IllegalState(
+						"Multi-sig signing threshold does not fit into u32".to_string(),
+					)
+				})?;
+
+			let nr_of_participants: u32 = script
+				.get_nr_of_accounts()
+				.map_err(|e| {
+					ProviderError::ParseError(format!(
+						"Invalid multi-sig verification script account count: {e}"
+					))
+				})?
+				.try_into()
+				.map_err(|_| {
+					ProviderError::IllegalState(
+						"Multi-sig account count does not fit into u32".to_string(),
+					)
+				})?;
+
+			(Some(signing_threshold), Some(nr_of_participants))
 		} else {
 			(None, None)
 		};
@@ -485,8 +525,8 @@ impl AccountTrait for Account {
 			address_or_scripthash: AddressOrScriptHash::ScriptHash(address),
 			label: Some(address.to_address()),
 			verification_script: Some(script.clone()),
-			signing_threshold: signing_threshold.map(|x| x as u32),
-			nr_of_participants: nr_of_participants.map(|x| x as u32),
+			signing_threshold,
+			nr_of_participants,
 			..Default::default()
 		})
 	}
@@ -643,15 +683,20 @@ impl Account {
 		}
 
 		let mut parameters = Vec::new();
-		// SAFETY: We already returned early if verification_script is None above
-		let script_data = self
-			.verification_script
-			.as_ref()
-			.expect("verification_script checked to be Some above");
+		let script_data = self.verification_script.as_ref().ok_or_else(|| {
+			ProviderError::IllegalState(
+				"verification_script unexpectedly None in to_nep6_account".to_string(),
+			)
+		})?;
 
 		if script_data.is_multi_sig() {
-			// SAFETY: is_multi_sig() returned true, so get_nr_of_accounts is guaranteed to succeed
-			for i in 0..script_data.get_nr_of_accounts().expect("is_multi_sig implies valid count") {
+			let nr_of_accounts = script_data.get_nr_of_accounts().map_err(|e| {
+				ProviderError::ParseError(format!(
+					"Invalid multi-sig verification script account count: {e}"
+				))
+			})?;
+
+			for i in 0..nr_of_accounts {
 				parameters.push(NEP6Parameter {
 					param_name: format!("signature{i}"),
 					param_type: ContractParameterType::Signature,

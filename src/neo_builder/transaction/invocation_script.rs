@@ -3,11 +3,12 @@ use std::hash::Hash;
 use crate::{
 	builder::{BuilderError, ScriptBuilder},
 	codec::{Decoder, Encoder, NeoSerializable},
+	config::NeoConstants,
 	crypto::{KeyPair, Secp256r1Signature},
 	var_size, OpCode,
 };
 use getset::{Getters, Setters};
-use serde_derive::{Deserialize, Serialize};
+use serde::{Deserialize, Serialize};
 
 /// An invocation script is part of a witness and is simply a sequence of neo-vm instructions.
 ///
@@ -46,8 +47,30 @@ impl InvocationScript {
 	}
 
 	pub fn from_serialized_script(script: Vec<u8>) -> Self {
+		if script.is_empty() {
+			return Self::new();
+		}
+
+		// `InvocationScript` is serialized as VarBytes (var-int length prefix + script bytes).
+		// To avoid panics and to avoid ambiguously treating a raw script as length-prefixed,
+		// only parse it as "serialized" when the length prefix matches the total input size.
 		let mut decoder = Decoder::new(&script);
-		Self::decode(&mut decoder).unwrap()
+		let declared_len = match decoder.read_var_int() {
+			Ok(len) if len >= 0 => match len.try_into() {
+				Ok(len) => len,
+				Err(_) => return Self::new_with_script(script),
+			},
+			_ => return Self::new_with_script(script),
+		};
+		let prefix_len = *decoder.pointer();
+		if prefix_len + declared_len != script.len() {
+			return Self::new_with_script(script);
+		}
+
+		match decoder.read_bytes(declared_len) {
+			Ok(bytes) => Self::new_with_script(bytes),
+			Err(_) => Self::new_with_script(script),
+		}
 	}
 
 	/// Creates an invocation script from the given signature.
@@ -112,11 +135,24 @@ impl InvocationScript {
 	pub fn get_signatures(&self) -> Vec<Secp256r1Signature> {
 		let mut reader = Decoder::new(&self.script);
 		let mut sigs = Vec::new();
-		while reader.available() > 0 && reader.read_u8() == OpCode::PushData1 as u8 {
-			reader.read_u8(); // ignore opcode size
-			if let Ok(signature) = Secp256r1Signature::from_bytes(&reader.read_bytes(64).unwrap()) {
-				sigs.push(signature);
+		while reader.available() > 0 {
+			let opcode = reader.read_u8();
+			if opcode != OpCode::PushData1.opcode() {
+				break;
 			}
+			if reader.available() == 0 {
+				break;
+			}
+			let len = reader.read_u8() as usize;
+			let bytes = match reader.read_bytes(len) {
+				Ok(bytes) => bytes,
+				Err(_) => break,
+			};
+			let signature = match Secp256r1Signature::from_bytes(&bytes) {
+				Ok(sig) => sig,
+				Err(_) => break,
+			};
+			sigs.push(signature);
 		}
 		sigs
 	}
@@ -130,13 +166,13 @@ impl NeoSerializable for InvocationScript {
 	}
 
 	fn encode(&self, writer: &mut Encoder) {
-		writer
-			.write_var_bytes(&self.script)
-			.expect("Failed to encode invocation script");
+		if let Err(e) = writer.write_var_bytes(&self.script) {
+			tracing::warn!(error = %e, "Failed to encode invocation script");
+		}
 	}
 
 	fn decode(reader: &mut Decoder) -> Result<Self, Self::Error> {
-		let script = reader.read_var_bytes()?;
+		let script = reader.read_var_bytes_bounded(NeoConstants::MAX_TRANSACTION_SIZE as usize)?;
 		Ok(Self { script })
 	}
 	fn to_array(&self) -> Vec<u8> {
@@ -213,5 +249,17 @@ mod tests {
 			signature.clone(),
 		]);
 		inv.get_signatures().iter().for_each(|sig| assert_eq!(*sig, signature));
+	}
+
+	#[test]
+	fn test_from_serialized_script_accepts_raw_script() {
+		let message = vec![0u8; 10];
+		let key_pair = KeyPair::new_random();
+		let signature = key_pair.private_key().sign_tx(&message).unwrap();
+		let script =
+			format!("{}40{}", OpCode::PushData1.to_hex_string(), hex::encode(signature.to_bytes()));
+		let raw = hex::decode(&script).unwrap();
+		let deserialized = InvocationScript::from_serialized_script(raw.clone());
+		assert_eq!(deserialized.script, raw);
 	}
 }

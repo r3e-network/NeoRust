@@ -1,5 +1,5 @@
 # NeoRust API Documentation (historical v0.4.4)
-> This document reflects the v0.4.4 API surface. For the latest (v0.5.2) APIs and examples, refer to the root README and current guides.
+> This document reflects the v0.4.4 API surface. For the latest (v0.5.3) APIs and examples, refer to the root README and current guides.
 
 ## Table of Contents
 1. [Core Components](#core-components)
@@ -210,7 +210,8 @@ wallet.save_to_file("wallet.json", "password")?;
 let wallet = Wallet::from_file("wallet.json", "password")?;
 
 // Import from WIF
-let account = Account::from_wif("L1QqQJnpBwbsPGAuutuzPTac8piqvbR1HRjrY5qHup48TBCBFe4g")?;
+let wif = std::env::var("NEO_WIF")?;
+let account = Account::from_wif(&wif)?;
 
 // Import from private key
 let private_key = PrivateKey::from_bytes(&key_bytes)?;

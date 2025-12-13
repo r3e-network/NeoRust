@@ -54,7 +54,8 @@
 //! async fn main() -> Result<(), Box<dyn std::error::Error>> {
 //!     // Create a new BIP-39 account
 //!     let account = Bip39Account::create("password123")?;
-//!     println!("Generated mnemonic: {}", account.mnemonic());
+//!     let _mnemonic = account.mnemonic().to_string();
+//!     // SECURITY: Store the mnemonic securely offline. Avoid logging it.
 //!     
 //!     // Recover an account from a mnemonic
 //!     let mnemonic = "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon art";

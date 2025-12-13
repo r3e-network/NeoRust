@@ -1,7 +1,7 @@
 use std::hash::{Hash, Hasher};
 
 use crate::{
-	builder::{SignerTrait, SignerType, TransactionError, WitnessRule, WitnessScope},
+	builder::{BuilderError, SignerTrait, SignerType, TransactionError, WitnessRule, WitnessScope},
 	codec::{Decoder, Encoder, NeoSerializable, VarSizeTrait},
 	config::NeoConstants,
 	crypto::Secp256r1PublicKey,
@@ -158,14 +158,14 @@ impl NeoSerializable for TransactionSigner {
 	fn size(&self) -> usize {
 		let mut size = (NeoConstants::HASH160_SIZE + 1) as usize;
 		if self.scopes.contains(&WitnessScope::CustomContracts) {
-			size += &self.allowed_contracts.clone().unwrap().var_size();
+			size += self.get_allowed_contracts().var_size();
 		}
 		if self.scopes.contains(&WitnessScope::CustomGroups) {
-			size += &self.allowed_groups.clone().unwrap().var_size();
+			size += self.get_allowed_groups().var_size();
 		}
 
 		if self.scopes.contains(&WitnessScope::WitnessRules) {
-			size += &self.rules.clone().unwrap().var_size();
+			size += self.get_rules().var_size();
 		}
 
 		size
@@ -176,19 +176,19 @@ impl NeoSerializable for TransactionSigner {
 		writer.write_serializable_fixed(self.get_signer_hash());
 		writer.write_u8(WitnessScope::combine(self.scopes.as_slice()));
 		if self.scopes.contains(&WitnessScope::CustomContracts) {
-			writer
-				.write_serializable_variable_list(self.allowed_contracts.as_ref().unwrap())
-				.expect("Failed to encode transaction signer allowed contracts");
+			if let Err(e) = writer.write_serializable_variable_list(self.get_allowed_contracts()) {
+				tracing::warn!(error = %e, "Failed to encode transaction signer allowed contracts");
+			}
 		}
 		if self.scopes.contains(&WitnessScope::CustomGroups) {
-			writer
-				.write_serializable_variable_list(self.allowed_groups.as_ref().unwrap())
-				.expect("Failed to encode transaction signer allowed groups");
+			if let Err(e) = writer.write_serializable_variable_list(self.get_allowed_groups()) {
+				tracing::warn!(error = %e, "Failed to encode transaction signer allowed groups");
+			}
 		}
 		if self.scopes.contains(&WitnessScope::WitnessRules) {
-			writer
-				.write_serializable_variable_list(self.rules.as_ref().unwrap())
-				.expect("Failed to encode transaction signer rules");
+			if let Err(e) = writer.write_serializable_variable_list(self.get_rules()) {
+				tracing::warn!(error = %e, "Failed to encode transaction signer rules");
+			}
 		}
 	}
 
@@ -197,18 +197,55 @@ impl NeoSerializable for TransactionSigner {
 	where
 		Self: Sized,
 	{
+		fn read_bounded_list<T: NeoSerializable>(
+			reader: &mut Decoder,
+			max_len: usize,
+			item_name: &str,
+		) -> Result<Vec<T>, TransactionError> {
+			let len = reader.read_var_int()?;
+			let len: usize = len.try_into().map_err(|_| {
+				crate::codec::CodecError::InvalidEncoding("Invalid list length".into())
+			})?;
+
+			if len > max_len {
+				return Err(BuilderError::SignerConfiguration(format!(
+					"A signer's scope can only contain {} {}. The input data contained {} {}.",
+					max_len, item_name, len, item_name
+				))
+				.into());
+			}
+
+			let mut items = Vec::with_capacity(len);
+			for _ in 0..len {
+				items.push(reader.read_serializable::<T>()?);
+			}
+			Ok(items)
+		}
+
 		let mut signer = TransactionSigner::default();
-		signer.set_signer_hash(reader.read_serializable().unwrap());
-		let scopes = WitnessScope::split(reader.read_u8());
+		signer.set_signer_hash(reader.read_serializable()?);
+		let scopes = WitnessScope::split(reader.read_u8_safe()?);
 		signer.set_scopes(scopes);
 		if signer.get_scopes().contains(&WitnessScope::CustomContracts) {
-			signer.allowed_contracts = Some(reader.read_serializable_list().unwrap());
+			signer.allowed_contracts = Some(read_bounded_list::<H160>(
+				reader,
+				NeoConstants::MAX_SIGNER_SUBITEMS as usize,
+				"allowed contracts",
+			)?);
 		}
 		if signer.get_scopes().contains(&WitnessScope::CustomGroups) {
-			signer.allowed_groups = Some(reader.read_serializable_list().unwrap());
+			signer.allowed_groups = Some(read_bounded_list::<Secp256r1PublicKey>(
+				reader,
+				NeoConstants::MAX_SIGNER_SUBITEMS as usize,
+				"allowed contract groups",
+			)?);
 		}
 		if signer.get_scopes().contains(&WitnessScope::WitnessRules) {
-			signer.rules = Some(reader.read_serializable_list().unwrap());
+			signer.rules = Some(read_bounded_list::<WitnessRule>(
+				reader,
+				NeoConstants::MAX_SIGNER_SUBITEMS as usize,
+				"rules",
+			)?);
 		}
 		Ok(signer)
 	}

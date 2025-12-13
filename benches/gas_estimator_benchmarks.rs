@@ -1,6 +1,7 @@
 use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion};
 use neo3::neo_builder::{GasEstimator, ScriptBuilder};
 use neo3::neo_types::OpCode;
+use num_bigint::BigInt;
 
 fn benchmark_script_building(c: &mut Criterion) {
 	let mut group = c.benchmark_group("script_building");
@@ -9,9 +10,9 @@ fn benchmark_script_building(c: &mut Criterion) {
 	group.bench_function("simple_script", |b| {
 		b.iter(|| {
 			ScriptBuilder::new()
-				.push_integer(black_box(42))
-				.push_integer(black_box(13))
-				.emit(OpCode::Add)
+				.push_integer(black_box(BigInt::from(42)))
+				.push_integer(black_box(BigInt::from(13)))
+				.op_code(&[OpCode::Add])
 				.to_bytes()
 		})
 	});
@@ -21,20 +22,23 @@ fn benchmark_script_building(c: &mut Criterion) {
 		b.iter(|| {
 			let mut builder = ScriptBuilder::new();
 			for i in 0..100 {
-				builder = builder.push_integer(black_box(i));
+				builder.push_integer(black_box(BigInt::from(i)));
 			}
-			builder.emit(OpCode::Pack).to_bytes()
+			builder.push_integer(black_box(BigInt::from(100)));
+			builder.pack().to_bytes()
 		})
 	});
 
 	// Benchmark script with strings
 	group.bench_function("string_script", |b| {
 		let test_string = "Hello, Neo Blockchain!";
+		let test_string_bytes = test_string.as_bytes().to_vec();
+		let world_bytes = "World".as_bytes().to_vec();
 		b.iter(|| {
 			ScriptBuilder::new()
-				.push_string(black_box(test_string.to_string()))
-				.push_string(black_box("World".to_string()))
-				.emit(OpCode::Cat)
+				.push_data(black_box(test_string_bytes.clone()))
+				.push_data(black_box(world_bytes.clone()))
+				.op_code(&[OpCode::Cat])
 				.to_bytes()
 		})
 	});
@@ -78,7 +82,7 @@ fn benchmark_script_sizes(c: &mut Criterion) {
 			b.iter(|| {
 				let mut builder = ScriptBuilder::new();
 				for i in 0..size {
-					builder = builder.push_integer(black_box(i as i64));
+					builder.push_integer(black_box(BigInt::from(i)));
 				}
 				builder.to_bytes()
 			})
@@ -93,29 +97,33 @@ fn benchmark_opcode_emission(c: &mut Criterion) {
 
 	// Benchmark single opcode emission
 	group.bench_function("single_opcode", |b| {
-		b.iter(|| ScriptBuilder::new().emit(black_box(OpCode::Nop)).to_bytes())
+		b.iter(|| {
+			let opcode = black_box(OpCode::Nop);
+			ScriptBuilder::new().op_code(&[opcode]).to_bytes()
+		})
 	});
 
 	// Benchmark multiple opcode emission
 	group.bench_function("multiple_opcodes", |b| {
 		b.iter(|| {
 			ScriptBuilder::new()
-				.emit(black_box(OpCode::Push1))
-				.emit(black_box(OpCode::Push2))
-				.emit(black_box(OpCode::Add))
-				.emit(black_box(OpCode::Push3))
-				.emit(black_box(OpCode::Mul))
+				.op_code(&[
+					black_box(OpCode::Push1),
+					black_box(OpCode::Push2),
+					black_box(OpCode::Add),
+					black_box(OpCode::Push3),
+					black_box(OpCode::Mul),
+				])
 				.to_bytes()
 		})
 	});
 
 	// Benchmark opcode with parameters
 	group.bench_function("opcode_with_params", |b| {
-		let contract_hash = [0u8; 20];
+		let syscall_arg = vec![0u8; 4];
 		b.iter(|| {
 			ScriptBuilder::new()
-				.emit_push(&black_box(contract_hash))
-				.emit(OpCode::Appcall)
+				.op_code_with_arg(OpCode::Syscall, black_box(syscall_arg.clone()))
 				.to_bytes()
 		})
 	});

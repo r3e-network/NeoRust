@@ -96,6 +96,7 @@ pub use circuit_breaker::{
 pub use connection_pool::{ConnectionPool, PoolConfig, PoolStats};
 pub use errors::ProviderError;
 pub use ext::*;
+#[cfg(any(test, feature = "mock"))]
 pub use mock_client::MockClient;
 pub use production_client::{ProductionClientConfig, ProductionClientStats, ProductionRpcClient};
 pub use rate_limiter::{RateLimitPermit, RateLimiter, RateLimiterBuilder, RateLimiterPresets};
@@ -112,6 +113,7 @@ mod connection_pool;
 mod errors;
 mod ext;
 mod mock_blocks;
+#[cfg(any(test, feature = "mock"))]
 mod mock_client;
 mod production_client;
 mod rate_limiter;
@@ -124,8 +126,23 @@ lazy_static! {
 	pub static ref HTTP_PROVIDER: RpcClient<Http> = {
 		let url_str =
 			std::env::var("ENDPOINT").unwrap_or_else(|_| NeoConstants::SEED_1.to_string());
-		let url = url::Url::parse(&url_str).expect("Failed to parse URL");
-		let http_provider = Http::new(url).expect("Failed to create HTTP provider");
+		let url = url::Url::parse(&url_str).unwrap_or_else(|e| {
+			tracing::warn!(
+				error = %e,
+				endpoint = %url_str,
+				"Failed to parse ENDPOINT; falling back to default seed URL"
+			);
+			url::Url::parse(NeoConstants::SEED_1).expect("NeoConstants::SEED_1 must be a valid URL")
+		});
+		let http_provider = Http::new(url).unwrap_or_else(|e| {
+			tracing::warn!(
+				error = %e,
+				"Failed to create HTTP provider; falling back to default seed URL"
+			);
+			let url = url::Url::parse(NeoConstants::SEED_1)
+				.expect("NeoConstants::SEED_1 must be a valid URL");
+			Http::new(url).expect("Should be able to create HTTP provider for default seed URL")
+		});
 		RpcClient::new(http_provider)
 	};
 }
@@ -162,25 +179,50 @@ mod test_provider {
 
 		pub fn url(&self) -> String {
 			let Self { network, keys } = self;
-			let key = keys.lock().unwrap().next().unwrap();
-			format!("https://{network}.infura.io/v3/{key}")
+			let key = keys.lock().unwrap_or_else(|e| e.into_inner()).next().copied();
+			match key {
+				Some(key) => format!("https://{network}.infura.io/v3/{key}"),
+				None => {
+					tracing::warn!(
+						network = %network,
+						"Infura keys list is empty; falling back to default seed URL"
+					);
+					NeoConstants::SEED_1.to_string()
+				},
+			}
 		}
 
 		pub fn provider(&self) -> RpcClient<Http> {
 			let url_str = self.url();
-			let url = url::Url::parse(&url_str).expect("Failed to parse URL");
-			let http_provider = Http::new(url).expect("Failed to create HTTP provider");
+			let url = url::Url::parse(&url_str).unwrap_or_else(|e| {
+				tracing::warn!(
+					error = %e,
+					endpoint = %url_str,
+					"Failed to parse Infura URL; falling back to default seed URL"
+				);
+				url::Url::parse(NeoConstants::SEED_1)
+					.expect("NeoConstants::SEED_1 must be a valid URL")
+			});
+			let http_provider = Http::new(url).unwrap_or_else(|e| {
+				tracing::warn!(
+					error = %e,
+					"Failed to create Infura HTTP provider; falling back to default seed URL"
+				);
+				let url = url::Url::parse(NeoConstants::SEED_1)
+					.expect("NeoConstants::SEED_1 must be a valid URL");
+				Http::new(url).expect("Should be able to create HTTP provider for default seed URL")
+			});
 			RpcClient::new(http_provider)
 		}
 
 		#[cfg(feature = "ws")]
-		pub async fn ws(&self) -> RpcClient<Ws> {
-			let url = format!(
-				"wss://{}.infura.neo.io/ws/v3/{}",
-				self.network,
-				self.keys.lock().unwrap().next().unwrap()
-			);
-			RpcClient::connect(url.as_str()).await.unwrap()
+		pub async fn ws(&self) -> Result<RpcClient<Ws>, ProviderError> {
+			let key =
+				self.keys.lock().unwrap_or_else(|e| e.into_inner()).next().copied().ok_or_else(
+					|| ProviderError::CustomError("Infura keys list is empty".into()),
+				)?;
+			let url = format!("wss://{}.infura.neo.io/ws/v3/{}", self.network, key);
+			RpcClient::connect(url.as_str()).await
 		}
 	}
 }

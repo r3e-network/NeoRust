@@ -67,7 +67,7 @@ macro_rules! if_not_wasm {
 
 if_not_wasm! {
 	use tokio_tungstenite::{
-		connect_async,
+		connect_async_with_config,
 		tungstenite::{
 			self,
 			protocol::CloseFrame,
@@ -77,6 +77,11 @@ if_not_wasm! {
 	type WsError = tungstenite::Error;
 	type WsStreamItem = Result<Message, WsError>;
 	use super::Authorization;
+	use crate::config::NeoConstants;
+	use futures_util::{
+		future::{pending, Either},
+		FutureExt,
+	};
 	use tracing::{error, warn};
 	use http::Request as HttpRequest;
 	use tungstenite::client::IntoClientRequest;
@@ -84,6 +89,42 @@ if_not_wasm! {
 
 type Pending = oneshot::Sender<Result<Box<RawValue>, JsonRpcError>>;
 type Subscription = mpsc::UnboundedSender<Box<RawValue>>;
+
+#[derive(Debug)]
+struct PendingRequest {
+	sender: Pending,
+	#[cfg(not(target_arch = "wasm32"))]
+	deadline: Option<std::time::Instant>,
+}
+
+impl PendingRequest {
+	#[cfg(not(target_arch = "wasm32"))]
+	fn new(sender: Pending, timeout: Option<core::time::Duration>) -> Self {
+		Self { sender, deadline: timeout.map(|t| std::time::Instant::now() + t) }
+	}
+
+	fn is_canceled(&self) -> bool {
+		self.sender.is_canceled()
+	}
+
+	fn send(
+		self,
+		value: Result<Box<RawValue>, JsonRpcError>,
+	) -> Result<(), Result<Box<RawValue>, JsonRpcError>> {
+		self.sender.send(value)
+	}
+}
+
+fn truncate_for_log(s: &str, max_bytes: usize) -> &str {
+	if s.len() <= max_bytes {
+		return s;
+	}
+	let mut end = max_bytes;
+	while end > 0 && !s.is_char_boundary(end) {
+		end -= 1;
+	}
+	&s[..end]
+}
 
 /// Instructions for the `WsServer`.
 enum Instruction {
@@ -154,7 +195,28 @@ impl Ws {
 	/// Initializes a new WebSocket Client
 	#[cfg(not(target_arch = "wasm32"))]
 	pub async fn connect(url: impl IntoClientRequest + Unpin) -> Result<Self, ClientError> {
-		let (ws, _) = connect_async(url).await?;
+		let max_message_size = NeoConstants::max_rpc_message_size();
+		let config = tungstenite::protocol::WebSocketConfig {
+			max_message_size: Some(max_message_size),
+			max_frame_size: Some(max_message_size),
+			..Default::default()
+		};
+
+		let connect_fut = connect_async_with_config(url, Some(config), false);
+		let (ws, _) = if let Some(timeout) = NeoConstants::rpc_request_timeout() {
+			match tokio::time::timeout(timeout, connect_fut).await {
+				Ok(res) => res?,
+				Err(_) => {
+					let err = std::io::Error::new(
+						std::io::ErrorKind::TimedOut,
+						format!("WebSocket connect timed out after {timeout:?}"),
+					);
+					return Err(WsError::Io(err).into());
+				},
+			}
+		} else {
+			connect_fut.await?
+		};
 		Ok(Self::new(ws))
 	}
 
@@ -227,8 +289,10 @@ struct WsServer<S> {
 	ws: Fuse<S>,
 	instructions: Fuse<mpsc::UnboundedReceiver<Instruction>>,
 
-	pending: BTreeMap<u64, Pending>,
+	pending: BTreeMap<u64, PendingRequest>,
 	subscriptions: BTreeMap<U256, Subscription>,
+	#[cfg(not(target_arch = "wasm32"))]
+	request_timeout: Option<core::time::Duration>,
 }
 
 impl<S> WsServer<S>
@@ -244,6 +308,8 @@ where
 			instructions: requests.fuse(),
 			pending: BTreeMap::default(),
 			subscriptions: BTreeMap::default(),
+			#[cfg(not(target_arch = "wasm32"))]
+			request_timeout: NeoConstants::rpc_request_timeout(),
 		}
 	}
 
@@ -298,7 +364,13 @@ where
 		request: String,
 		sender: Pending,
 	) -> Result<(), ClientError> {
-		if self.pending.insert(id, sender).is_some() {
+		#[cfg(not(target_arch = "wasm32"))]
+		let pending = PendingRequest::new(sender, self.request_timeout);
+
+		#[cfg(target_arch = "wasm32")]
+		let pending = PendingRequest { sender };
+
+		if self.pending.insert(id, pending).is_some() {
 			warn!("Replacing a pending request with id {:?}", id);
 		}
 
@@ -343,7 +415,15 @@ where
 	}
 
 	async fn handle_text(&mut self, inner: String) -> Result<(), ClientError> {
-		trace!(msg=?inner, "received message");
+		let max_message_size = NeoConstants::max_rpc_message_size();
+		if inner.len() > max_message_size {
+			return Err(ClientError::JsonError(serde::de::Error::custom(format!(
+				"WebSocket message exceeded {} bytes",
+				max_message_size
+			))));
+		}
+
+		trace!(len = inner.len(), preview = truncate_for_log(&inner, 512), "received message");
 		let (id, result) = match serde_json::from_str(&inner)? {
 			Response::Success { id, result } => (id, Ok(result.to_owned())),
 			Response::Error { id, error } => (id, Err(error)),
@@ -357,6 +437,42 @@ where
 		}
 
 		Ok(())
+	}
+
+	#[cfg(not(target_arch = "wasm32"))]
+	fn next_request_deadline(&self) -> Option<std::time::Instant> {
+		self.pending.values().filter_map(|p| p.deadline).min()
+	}
+
+	#[cfg(not(target_arch = "wasm32"))]
+	fn expire_timed_out_requests(&mut self) {
+		let Some(timeout) = self.request_timeout else {
+			return;
+		};
+
+		let now = std::time::Instant::now();
+		let mut expired_ids = Vec::new();
+		for (id, pending) in self.pending.iter() {
+			if pending.deadline.is_some_and(|d| d <= now) {
+				expired_ids.push(*id);
+			}
+		}
+
+		for id in expired_ids {
+			let Some(pending) = self.pending.remove(&id) else {
+				continue;
+			};
+
+			if pending.is_canceled() {
+				continue;
+			}
+
+			let _ = pending.send(Err(JsonRpcError {
+				code: -32000,
+				message: format!("request timed out after {timeout:?}"),
+				data: None,
+			}));
+		}
 	}
 
 	fn handle_notification(&mut self, params: Params<'_>) -> Result<(), ClientError> {
@@ -420,10 +536,25 @@ where
 	#[allow(clippy::single_match)]
 	#[cfg(not(target_arch = "wasm32"))]
 	async fn tick(&mut self) -> Result<(), ClientError> {
+		self.expire_timed_out_requests();
+
+		let request_timeout = {
+			let fut = if let Some(deadline) = self.next_request_deadline() {
+				Either::Left(tokio::time::sleep_until(tokio::time::Instant::from_std(deadline)))
+			} else {
+				Either::Right(pending::<()>())
+			};
+			fut.fuse()
+		};
+		tokio::pin!(request_timeout);
+
 		futures_util::select! {
 			// Handle requests
 			instruction = self.instructions.select_next_some() => {
 				self.service(instruction).await?;
+			},
+			_ = request_timeout => {
+				self.expire_timed_out_requests();
 			},
 			// Handle ws messages
 			resp = self.ws.next() => match resp {

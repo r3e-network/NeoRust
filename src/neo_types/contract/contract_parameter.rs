@@ -434,7 +434,7 @@ impl ValueExtension for ContractParameter {
 			Err(e) => {
 				// Professional error handling with logging for debugging purposes
 				// Since the trait doesn't allow for Result, we'll log the error and return a null value
-				eprintln!("Error serializing ContractParameter: {}", e);
+				tracing::warn!(error = %e, "Error serializing ContractParameter");
 				Value::Null
 			},
 		}

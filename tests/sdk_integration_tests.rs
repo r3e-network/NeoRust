@@ -5,16 +5,20 @@
 
 #[cfg(test)]
 mod sdk_tests {
-	use std::{env, time::Duration};
+	#[cfg(feature = "mock")]
+	use std::env;
+	use std::time::Duration;
 
+	#[cfg(feature = "mock")]
 	use neo3::neo_clients::MockClient;
 	use neo3::neo_error::unified::{ErrorRecovery, NeoError};
-	use neo3::sdk::{Balance, Neo, Network, NeoBuilder, Token};
+	#[cfg(feature = "mock")]
+	use neo3::sdk::NeoBuilder;
+	use neo3::sdk::{Balance, Neo, Network, Token};
 
 	// Helper that uses live RPC if provided, otherwise spins up a mock server that serves getblockcount
-	async fn build_neo_with_fallback(
-		env_var: &str,
-	) -> (Option<MockClient>, Result<Neo, NeoError>) {
+	#[cfg(feature = "mock")]
+	async fn build_neo_with_fallback(env_var: &str) -> (Option<MockClient>, Result<Neo, NeoError>) {
 		if let Ok(url) = env::var(env_var) {
 			let builder = Neo::builder().network(Network::Custom(url));
 			return (None, builder.build().await);
@@ -100,6 +104,7 @@ mod sdk_tests {
 	}
 
 	#[tokio::test]
+	#[cfg(feature = "mock")]
 	async fn test_testnet_connection() {
 		let (_mock, result) = build_neo_with_fallback("NEO_TESTNET_RPC_URL").await;
 
@@ -129,14 +134,14 @@ mod sdk_tests {
 	}
 
 	#[tokio::test]
+	#[cfg(feature = "mock")]
 	async fn test_mainnet_connection() {
 		let (_mock, result) = build_neo_with_fallback("NEO_MAINNET_RPC_URL").await;
 
 		match result {
 			Ok(neo) => {
 				// If connection succeeds, ensure client is usable
-				let height = neo.get_block_height().await.unwrap_or_default();
-				assert!(height >= 0);
+				let _height = neo.get_block_height().await.unwrap_or_default();
 			},
 			Err(_) => {
 				// Network might be unavailable in test environment

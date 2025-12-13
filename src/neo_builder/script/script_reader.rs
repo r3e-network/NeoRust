@@ -4,7 +4,6 @@ use crate::{
 	neo_crypto::utils::ToHexString,
 	Bytes, OpCode, OperandSize,
 };
-use tokio::io::AsyncReadExt;
 
 /// A utility struct for reading and interpreting Neo smart contract scripts.
 pub struct ScriptReader;
@@ -69,21 +68,38 @@ impl ScriptReader {
 				if let Some(size) = op_code.operand_size() {
 					if size.size().clone() > 0 {
 						// Fixed size operand
-						result.push_str(&format!(
-							" {}",
-							reader
-								.read_bytes(size.size().clone() as usize)
-								.unwrap()
-								.to_hex_string()
-						));
+						match reader.read_bytes(size.size().clone() as usize) {
+							Ok(bytes) => {
+								result.push_str(&format!(" {}", bytes.to_hex_string()));
+							},
+							Err(_) => {
+								result.push_str(" <invalid operand>");
+								result.push('\n');
+								break;
+							},
+						}
 					} else if size.prefix_size().clone() > 0 {
 						// Variable size operand with prefix
-						let prefix_size = Self::get_prefix_size(&mut reader, size).unwrap();
-						result.push_str(&format!(
-							" {} {}",
-							prefix_size,
-							reader.read_bytes(prefix_size).unwrap().to_hex_string()
-						));
+						let prefix_size = match Self::get_prefix_size(&mut reader, size) {
+							Ok(prefix_size) => prefix_size,
+							Err(_) => {
+								result.push_str(" <invalid operand prefix>");
+								result.push('\n');
+								break;
+							},
+						};
+
+						result.push_str(&format!(" {}", prefix_size));
+						match reader.read_bytes(prefix_size) {
+							Ok(bytes) => {
+								result.push_str(&format!(" {}", bytes.to_hex_string()));
+							},
+							Err(_) => {
+								result.push_str(" <invalid operand>");
+								result.push('\n');
+								break;
+							},
+						}
 					}
 				}
 				result.push('\n');
@@ -116,9 +132,25 @@ impl ScriptReader {
 	/// ```
 	fn get_prefix_size(reader: &mut Decoder, size: OperandSize) -> Result<usize, BuilderError> {
 		match size.prefix_size() {
-			1 => Ok(reader.read_u8() as usize),
-			2 => Ok(reader.read_i16().map(|v| v as usize)?),
-			4 => Ok(reader.read_i32().map(|v| v as usize)?),
+			1 => Ok(reader.read_bytes(1)?[0] as usize),
+			2 => {
+				let value = reader.read_i16()?;
+				if value < 0 {
+					return Err(BuilderError::IllegalArgument(
+						"Operand prefix size cannot be negative".to_string(),
+					));
+				}
+				Ok(value as usize)
+			},
+			4 => {
+				let value = reader.read_i32()?;
+				if value < 0 {
+					return Err(BuilderError::IllegalArgument(
+						"Operand prefix size cannot be negative".to_string(),
+					));
+				}
+				Ok(value as usize)
+			},
 			_ => Err(BuilderError::UnsupportedOperation(
 				"Only operand prefix sizes 1, 2, and 4 are supported".to_string(),
 			)),

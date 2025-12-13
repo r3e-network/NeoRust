@@ -1,4 +1,6 @@
-use std::{future::Future, pin::Pin, str::FromStr, sync::Arc, time::Duration};
+#[cfg(any(test, feature = "mock"))]
+use std::sync::Arc;
+use std::{future::Future, pin::Pin, str::FromStr, time::Duration};
 
 use crate::{
 	builder::VerificationScript,
@@ -10,13 +12,61 @@ use crate::{
 use futures_timer::Delay;
 use futures_util::{stream, FutureExt, StreamExt};
 use primitive_types::{H160, U256};
+#[cfg(any(test, feature = "mock"))]
 use regex::Regex;
+#[cfg(any(test, feature = "mock"))]
 use wiremock::{Match, Request};
 
 /// A simple gas escalation policy
 pub type EscalationPolicy = Box<dyn Fn(U256, usize) -> U256 + Send + Sync>;
 
-// Helper type alias
+// =============================================================================
+// Type Aliases for Simplified Generic Bounds
+// =============================================================================
+
+/// Type alias for the standard HTTP RPC client.
+///
+/// This provides a convenient shorthand for the most common client configuration.
+///
+/// # Example
+///
+/// ```rust,no_run
+/// use neo3::neo_clients::{NeoHttpClient, APITrait};
+///
+/// async fn example(client: &NeoHttpClient) -> Result<(), Box<dyn std::error::Error>> {
+///     let block_count = client.get_block_count().await?;
+///     Ok(())
+/// }
+/// ```
+pub type NeoHttpClient = super::RpcClient<super::Http>;
+
+/// Type alias for provider results.
+///
+/// Simplifies return types for functions that interact with providers.
+///
+/// # Example
+///
+/// ```rust
+/// use neo3::neo_clients::ProviderResult;
+///
+/// fn process_block_count(count: ProviderResult<u32>) {
+///     match count {
+///         Ok(n) => println!("Block count: {}", n),
+///         Err(e) => println!("Error: {}", e),
+///     }
+/// }
+/// ```
+pub type ProviderResult<T> = Result<T, ProviderError>;
+
+/// Type alias for async provider results (pinned boxed future).
+#[cfg(not(target_arch = "wasm32"))]
+pub type AsyncProviderResult<'a, T> =
+	Pin<Box<dyn Future<Output = ProviderResult<T>> + Send + 'a>>;
+
+#[cfg(target_arch = "wasm32")]
+pub type AsyncProviderResult<'a, T> = Pin<Box<dyn Future<Output = ProviderResult<T>> + 'a>>;
+
+// Helper type alias (internal)
 #[allow(dead_code)]
 #[cfg(target_arch = "wasm32")]
 pub(crate) type PinBoxFut<'a, T> = Pin<Box<dyn Future<Output = Result<T, ProviderError>> + 'a>>;
@@ -44,7 +94,10 @@ pub fn interval(duration: Duration) -> impl stream::Stream<Item = ()> + Send + U
 
 // A generic function to serialize any data structure that implements Serialize trait
 pub fn serialize<T: serde::Serialize>(t: &T) -> serde_json::Value {
-	serde_json::to_value(t).expect("Failed to serialize value")
+	serde_json::to_value(t).unwrap_or_else(|e| {
+		tracing::warn!(error = %e, "Failed to serialize value; returning null");
+		serde_json::Value::Null
+	})
 }
 
 /// Convert a script to a script hash.
@@ -94,7 +147,15 @@ pub fn address_to_script_hash(address: &str) -> Result<ScriptHash, ProviderError
 		Ok(bytes) => bytes,
 		Err(_) => return Err(ProviderError::InvalidAddress),
 	};
-	let _salt = bytes[0];
+
+	if bytes.len() != 25 {
+		return Err(ProviderError::InvalidAddress);
+	}
+
+	if bytes[0] != DEFAULT_ADDRESS_VERSION {
+		return Err(ProviderError::InvalidAddress);
+	}
+
 	let hash = &bytes[1..21];
 	let checksum = &bytes[21..25];
 	let sha = &bytes[..21].hash256().hash256();
@@ -132,16 +193,28 @@ pub fn hex_to_address(hex: &str) -> Result<String, ProviderError> {
 	Ok(script_hash.to_address())
 }
 
+#[cfg(any(test, feature = "mock"))]
 pub struct BodyRegexMatcher {
 	pattern: Arc<Regex>,
 }
 
+#[cfg(any(test, feature = "mock"))]
 impl BodyRegexMatcher {
 	pub fn new(pattern: &str) -> Self {
-		BodyRegexMatcher { pattern: Arc::new(Regex::new(pattern).expect("Invalid regex pattern")) }
+		let regex = Regex::new(pattern).unwrap_or_else(|e| {
+			tracing::warn!(
+				error = %e,
+				pattern,
+				"Invalid regex pattern; using match-nothing regex"
+			);
+			Regex::new("$^").expect("match-nothing regex should be valid")
+		});
+
+		BodyRegexMatcher { pattern: Arc::new(regex) }
 	}
 }
 
+#[cfg(any(test, feature = "mock"))]
 impl Match for BodyRegexMatcher {
 	fn matches(&self, request: &Request) -> bool {
 		std::str::from_utf8(&request.body)

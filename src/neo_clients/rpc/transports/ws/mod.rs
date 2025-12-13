@@ -1,11 +1,6 @@
 #![allow(missing_docs)]
 
-use std::{
-	fmt,
-	fmt::{Debug, Formatter},
-	future::Future,
-	pin::Pin,
-};
+use std::fmt::{self, Debug};
 
 use async_trait::async_trait;
 use futures_channel::{mpsc, oneshot};
@@ -18,9 +13,9 @@ use manager::{RequestManager, SharedChannelMap};
 pub use types::ConnectionDetails;
 use types::*;
 
-use crate::neo_clients::{JsonRpcProvider, ProviderError, PubsubClient, RpcClient};
 #[cfg(not(target_arch = "wasm32"))]
-use crate::Authorization;
+use super::Authorization;
+use crate::neo_clients::{JsonRpcProvider, ProviderError, PubsubClient, RpcClient};
 
 mod backend;
 
@@ -96,7 +91,7 @@ impl WsClient {
 			.map_err(|_| WsClientError::UnexpectedClose)?;
 
 		let res = rx.await.map_err(|_| WsClientError::UnexpectedClose)??;
-		tracing::trace!(res = %res, "Received response from request manager");
+		tracing::trace!(len = res.get().len(), "Received response from request manager");
 		let resp = serde_json::from_str(res.get())?;
 		tracing::trace!("Deserialization success");
 		Ok(resp)
@@ -135,7 +130,7 @@ impl PubsubClient for WsClient {
 		let id = id.into();
 		self.channel_map
 			.lock()
-			.unwrap()
+			.unwrap_or_else(|e| e.into_inner())
 			.remove(&id)
 			.ok_or(WsClientError::UnknownSubscription(id))
 	}
@@ -208,7 +203,7 @@ impl RpcClient<WsClient> {
 		reconnects: usize,
 	) -> Result<Self, ProviderError> {
 		let conn = ConnectionDetails::new(url, Some(auth));
-		let ws = crate::Ws::connect_with_reconnects(conn, reconnects).await?;
+		let ws = WsClient::connect_with_reconnects(conn, reconnects).await?;
 		Ok(Self::new(ws))
 	}
 }

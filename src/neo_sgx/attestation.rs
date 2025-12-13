@@ -15,6 +15,7 @@ pub struct RemoteAttestation {
 	#[cfg(feature = "sgx")]
 	context: sgx_ra_context_t,
 	sp_public_key: Option<[u8; 64]>,
+	spid: Option<[u8; 16]>,
 	quote: Option<Vec<u8>>,
 }
 
@@ -25,8 +26,16 @@ impl RemoteAttestation {
 			#[cfg(feature = "sgx")]
 			context: 0,
 			sp_public_key: None,
+			spid: None,
 			quote: None,
 		}
+	}
+
+	/// Configure the Intel SGX Service Provider ID (SPID) used for EPID-based quotes.
+	///
+	/// Note: This is only required for quote generation flows that use a SPID (legacy EPID).
+	pub fn configure_spid(&mut self, spid: [u8; 16]) {
+		self.spid = Some(spid);
 	}
 
 	/// Initialize remote attestation with service provider
@@ -64,11 +73,17 @@ impl RemoteAttestation {
 			return Err(SgxError::AttestationError("User data too large".into()));
 		}
 
+		let spid = self
+			.spid
+			.ok_or_else(|| SgxError::AttestationError("SPID not configured".into()))?;
+
 		// Get enclave report
 		let mut target_info = sgx_target_info_t::default();
+		let mut report_data = sgx_report_data_t::default();
+		report_data.d[..user_data.len()].copy_from_slice(user_data);
 		let mut report = sgx_report_t::default();
 
-		let result = unsafe { sgx_create_report(&target_info, std::ptr::null(), &mut report) };
+		let result = unsafe { sgx_create_report(&target_info, &report_data, &mut report) };
 
 		if result != sgx_status_t::SGX_SUCCESS {
 			return Err(SgxError::AttestationError("Failed to create report".into()));
@@ -83,7 +98,7 @@ impl RemoteAttestation {
 			sgx_get_quote(
 				&report,
 				sgx_quote_sign_type_t::SGX_LINKABLE_SIGNATURE,
-				&self.sp_public_key.unwrap_or([0u8; 64]) as *const _ as *const sgx_spid_t,
+				&spid as *const _ as *const sgx_spid_t,
 				std::ptr::null(),
 				std::ptr::null(),
 				0,
@@ -94,10 +109,7 @@ impl RemoteAttestation {
 		};
 
 		if qe_result != sgx_status_t::SGX_SUCCESS {
-			// Fallback: construct basic quote structure
-			quote[..64].copy_from_slice(&report.body.mr_enclave.m);
-			quote[64..128].copy_from_slice(&report.body.mr_signer.m);
-			quote[128..128 + user_data.len()].copy_from_slice(user_data);
+			return Err(SgxError::AttestationError("Failed to generate quote".into()));
 		}
 
 		self.quote = Some(quote.clone());
@@ -106,9 +118,13 @@ impl RemoteAttestation {
 
 	#[cfg(not(feature = "sgx"))]
 	pub fn generate_quote(&mut self, user_data: &[u8]) -> Result<Vec<u8>, SgxError> {
+		if user_data.len() > 64 {
+			return Err(SgxError::AttestationError("User data too large".into()));
+		}
+
 		// Simulated quote for non-SGX builds
 		let mut quote = vec![0u8; 256];
-		quote[..user_data.len().min(64)].copy_from_slice(&user_data[..user_data.len().min(64)]);
+		quote[..user_data.len()].copy_from_slice(user_data);
 		self.quote = Some(quote.clone());
 		Ok(quote)
 	}
@@ -152,11 +168,13 @@ impl QuoteVerifier {
 	}
 
 	/// Verify quote with Intel Attestation Service
-	fn verify_with_ias(&self, quote: &[u8], api_key: &str, url: &str) -> Result<bool, SgxError> {
+	fn verify_with_ias(&self, _quote: &[u8], _api_key: &str, _url: &str) -> Result<bool, SgxError> {
 		// IAS verification implementation
 		// This would make HTTPS request to IAS in production
 		// Returns verification status
-		Ok(true)
+		Err(SgxError::AttestationError(
+			"IAS quote verification is not implemented; do not treat quotes as verified".into(),
+		))
 	}
 
 	/// Configure Intel Attestation Service (IAS)
@@ -180,9 +198,13 @@ impl QuoteVerifier {
 		// Perform IAS verification via HTTPS
 		let verification_result = self.verify_with_ias(quote, ias_api_key, ias_url)?;
 
+		if !verification_result {
+			return Err(SgxError::AttestationError("Quote verification failed".into()));
+		}
+
 		// Extract and validate measurements
 		Ok(QuoteVerificationResult {
-			verified: true,
+			verified: verification_result,
 			mrenclave: extract_mrenclave(quote),
 			mrsigner: extract_mrsigner(quote),
 			product_id: 0,

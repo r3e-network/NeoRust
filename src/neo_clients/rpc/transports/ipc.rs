@@ -26,18 +26,31 @@ use tokio::{
 	sync::oneshot::{self, error::RecvError},
 };
 
-use hashers::fx_hash::FxHasher64;
+use rustc_hash::FxHasher;
 
+use crate::config::NeoConstants;
 use crate::neo_clients::{JsonRpcProvider, ProviderError, PubsubClient, RpcError};
 
 use super::common::{JsonRpcError, Params, Request, Response};
 
 use self::imp::*;
 
-type FxHashMap<K, V> = std::collections::HashMap<K, V, BuildHasherDefault<FxHasher64>>;
+type FxHashMap<K, V> = std::collections::HashMap<K, V, BuildHasherDefault<FxHasher>>;
 
 type Pending = oneshot::Sender<Result<Box<RawValue>, JsonRpcError>>;
 type Subscription = mpsc::UnboundedSender<Box<RawValue>>;
+
+#[derive(Debug)]
+struct PendingRequest {
+	sender: Pending,
+	deadline: Option<std::time::Instant>,
+}
+
+impl PendingRequest {
+	fn new(sender: Pending, timeout: Option<core::time::Duration>) -> Self {
+		Self { sender, deadline: timeout.map(|t| std::time::Instant::now() + t) }
+	}
+}
 
 #[cfg(unix)]
 #[doc(hidden)]
@@ -63,7 +76,6 @@ mod imp {
 mod imp {
 	use std::{
 		io,
-		ops::{Deref, DerefMut},
 		path::Path,
 		pin::Pin,
 		task::{Context, Poll},
@@ -84,19 +96,8 @@ mod imp {
 	#[repr(transparent)]
 	pub(super) struct Stream(pub NamedPipeClient);
 
-	impl Deref for Stream {
-		type Target = NamedPipeClient;
-
-		fn deref(&self) -> &Self::Target {
-			&self.0
-		}
-	}
-
-	impl DerefMut for Stream {
-		fn deref_mut(&mut self) -> &mut Self::Target {
-			&mut self.0
-		}
-	}
+	pub(super) type ReadHalf<'a> = tokio::io::ReadHalf<&'a mut Stream>;
+	pub(super) type WriteHalf<'a> = tokio::io::WriteHalf<&'a mut Stream>;
 
 	impl Stream {
 		pub async fn connect(addr: impl AsRef<Path>) -> Result<Self, io::Error> {
@@ -110,31 +111,6 @@ mod imp {
 
 				sleep(Duration::from_millis(50)).await;
 			}
-		}
-
-		/// Split the stream into read and write halves.
-		///
-		/// # Safety
-		///
-		/// This method uses unsafe code to create two mutable references to the same object.
-		/// This is safe in this specific context because:
-		/// 1. ReadHalf only performs read operations on the underlying NamedPipeClient
-		/// 2. WriteHalf only performs write operations on the underlying NamedPipeClient  
-		/// 3. NamedPipeClient internally handles synchronization for concurrent reads/writes
-		/// 4. The split references have non-overlapping access patterns
-		#[allow(unsafe_code)]
-		pub fn split(&mut self) -> (ReadHalf, WriteHalf) {
-			// SAFETY: This creates aliased mutable references, but they access
-			// non-overlapping functionality of the underlying NamedPipeClient.
-			// ReadHalf cannot write and WriteHalf cannot read, ensuring memory safety.
-			// SAFETY: This unsafe block creates two non-overlapping references to different
-			// parts of the same object. This is safe because ReadHalf and WriteHalf access
-			// completely separate functionality of the underlying NamedPipeClient.
-			// nosemgrep: rust.lang.security.unsafe-usage.unsafe-usage
-			#[allow(clippy::cast_ptr_alignment, clippy::transmute_ptr_to_ptr)]
-			let read_ref = unsafe { &mut *(self as *mut Self) };
-			let write_ref = self;
-			(ReadHalf(read_ref), WriteHalf(write_ref))
 		}
 	}
 
@@ -168,65 +144,23 @@ mod imp {
 			this.poll_write_vectored(cx, bufs)
 		}
 
-		fn poll_flush(self: Pin<&mut Self>, _cx: &mut Context<'_>) -> Poll<io::Result<()>> {
-			Poll::Ready(Ok(()))
-		}
-
-		fn poll_shutdown(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<io::Result<()>> {
-			self.poll_flush(cx)
-		}
-	}
-
-	pub(super) struct ReadHalf<'a>(pub &'a mut Stream);
-
-	pub(super) struct WriteHalf<'a>(pub &'a mut Stream);
-
-	impl AsyncRead for ReadHalf<'_> {
-		fn poll_read(
-			self: Pin<&mut Self>,
-			cx: &mut Context<'_>,
-			buf: &mut ReadBuf<'_>,
-		) -> Poll<io::Result<()>> {
-			let this = Pin::new(&mut self.get_mut().0 .0);
-			this.poll_read(cx, buf)
-		}
-	}
-
-	impl AsyncWrite for WriteHalf<'_> {
-		fn poll_write(
-			self: Pin<&mut Self>,
-			cx: &mut Context<'_>,
-			buf: &[u8],
-		) -> Poll<io::Result<usize>> {
-			let this = Pin::new(&mut self.get_mut().0 .0);
-			this.poll_write(cx, buf)
-		}
-
-		fn poll_write_vectored(
-			self: Pin<&mut Self>,
-			cx: &mut Context<'_>,
-			bufs: &[io::IoSlice<'_>],
-		) -> Poll<io::Result<usize>> {
-			let this = Pin::new(&mut self.get_mut().0 .0);
-			this.poll_write_vectored(cx, bufs)
-		}
-
 		fn is_write_vectored(&self) -> bool {
 			self.0.is_write_vectored()
 		}
 
 		fn poll_flush(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<io::Result<()>> {
-			let this = Pin::new(&mut self.get_mut().0 .0);
+			let this = Pin::new(&mut self.get_mut().0);
 			this.poll_flush(cx)
 		}
 
 		fn poll_shutdown(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<io::Result<()>> {
-			self.poll_flush(cx)
+			let this = Pin::new(&mut self.get_mut().0);
+			this.poll_shutdown(cx)
 		}
 	}
 
 	pub(super) fn split(stream: &mut Stream) -> (ReadHalf<'_>, WriteHalf<'_>) {
-		stream.split()
+		tokio::io::split(stream)
 	}
 }
 
@@ -271,7 +205,7 @@ impl Ipc {
 		let (request_tx, request_rx) = mpsc::unbounded();
 
 		let stream = Stream::connect(path).await?;
-		spawn_ipc_server(stream, request_rx);
+		spawn_ipc_server(stream, request_rx)?;
 
 		Ok(Self { id, request_tx })
 	}
@@ -329,25 +263,32 @@ impl PubsubClient for Ipc {
 	}
 }
 
-fn spawn_ipc_server(stream: Stream, request_rx: mpsc::UnboundedReceiver<TransportMessage>) {
+fn spawn_ipc_server(
+	stream: Stream,
+	request_rx: mpsc::UnboundedReceiver<TransportMessage>,
+) -> Result<(), IpcError> {
 	// 256 Kb should be more than enough for this thread, as all unbounded data
 	// growth occurs on heap-allocated data structures and buffers and the call
 	// stack is not going to do anything crazy either
 	const STACK_SIZE: usize = 1 << 18;
 	// spawn a light-weight thread with a thread-local async runtime just for
 	// sending and receiving data over the IPC socket
-	let _ = thread::Builder::new()
+	thread::Builder::new()
 		.name("ipc-server-thread".to_string())
 		.stack_size(STACK_SIZE)
 		.spawn(move || {
-			let rt = runtime::Builder::new_current_thread()
-				.enable_io()
-				.build()
-				.expect("failed to create ipc-server-thread async runtime");
+			let rt = match runtime::Builder::new_current_thread().enable_io().build() {
+				Ok(rt) => rt,
+				Err(err) => {
+					tracing::error!(error = %err, "failed to create ipc-server-thread async runtime");
+					return;
+				},
+			};
 
 			rt.block_on(run_ipc_server(stream, request_rx));
 		})
-		.expect("failed to spawn ipc server thread");
+		.map_err(|e| IpcError::ChannelError(format!("failed to spawn ipc server thread: {e}")))?;
+	Ok(())
 }
 
 async fn run_ipc_server(mut stream: Stream, request_rx: mpsc::UnboundedReceiver<TransportMessage>) {
@@ -369,19 +310,56 @@ async fn run_ipc_server(mut stream: Stream, request_rx: mpsc::UnboundedReceiver<
 			IpcError::ServerExit => {},
 			err => tracing::error!(?err, "exiting IPC server due to error"),
 		},
-		Ok(_) => unreachable!("IPC read/write futures are infallible"),
-	};
+	}
 }
 
 struct Shared {
-	pending: RefCell<FxHashMap<u64, Pending>>,
+	pending: RefCell<FxHashMap<u64, PendingRequest>>,
 	subs: RefCell<FxHashMap<U256, Subscription>>,
 }
 
 impl Shared {
+	fn next_pending_deadline(&self) -> Option<std::time::Instant> {
+		self.pending.borrow().values().filter_map(|p| p.deadline).min()
+	}
+
+	fn expire_timed_out_requests(&self, timeout: core::time::Duration) {
+		let now = std::time::Instant::now();
+		let mut expired: Vec<Pending> = Vec::new();
+
+		{
+			let mut pending = self.pending.borrow_mut();
+			let expired_ids: Vec<u64> = pending
+				.iter()
+				.filter_map(|(&id, req)| req.deadline.is_some_and(|d| d <= now).then_some(id))
+				.collect();
+
+			for id in expired_ids {
+				if let Some(req) = pending.remove(&id) {
+					expired.push(req.sender);
+				}
+			}
+		}
+
+		if expired.is_empty() {
+			return;
+		}
+
+		let err = JsonRpcError {
+			code: -32000,
+			message: format!("request timed out after {timeout:?}"),
+			data: None,
+		};
+
+		for sender in expired {
+			let _ = sender.send(Err(err.clone()));
+		}
+	}
+
 	async fn handle_ipc_reads(&self, reader: ReadHalf<'_>) -> Result<Infallible, IpcError> {
 		let mut reader = BufReader::new(reader);
 		let mut buf = BytesMut::with_capacity(4096);
+		let max_buffer_size: usize = NeoConstants::max_rpc_message_size();
 
 		loop {
 			// try to read the next batch of bytes into the buffer
@@ -389,6 +367,14 @@ impl Shared {
 			if read == 0 {
 				// eof, socket was closed
 				return Err(IpcError::ServerExit);
+			}
+
+			if buf.len() > max_buffer_size {
+				return Err(io::Error::new(
+					io::ErrorKind::InvalidData,
+					format!("IPC message exceeded {max_buffer_size} bytes"),
+				)
+				.into());
 			}
 
 			// parse the received bytes into 0-n jsonrpc messages
@@ -405,35 +391,30 @@ impl Shared {
 		mut writer: WriteHalf<'_>,
 		mut request_rx: mpsc::UnboundedReceiver<TransportMessage>,
 	) -> Result<Infallible, IpcError> {
-		use TransportMessage::*;
+		let request_timeout = NeoConstants::rpc_request_timeout();
 
-		while let Some(msg) = request_rx.next().await {
-			match msg {
-				Request { id, request, sender } => {
-					let prev = self.pending.borrow_mut().insert(id, sender);
-					assert!(prev.is_none(), "{}", "replaced pending IPC request (id={id})");
+		loop {
+			if let Some(timeout) = request_timeout {
+				let deadline = self.next_pending_deadline();
+				let sleep = match deadline {
+					Some(deadline) => {
+						tokio::time::sleep_until(tokio::time::Instant::from_std(deadline))
+					},
+					None => tokio::time::sleep(timeout),
+				};
 
-					if let Err(err) = writer.write_all(&request).await {
-						tracing::error!("IPC connection error: {:?}", err);
-						self.pending.borrow_mut().remove(&id);
+				tokio::select! {
+					_ = sleep => {
+						self.expire_timed_out_requests(timeout);
 					}
-				},
-				Subscribe { id, sink } => {
-					if self.subs.borrow_mut().insert(id, sink).is_some() {
-						tracing::warn!(
-							%id,
-							"replaced already-registered subscription"
-						);
+					msg = request_rx.next() => {
+						let Some(msg) = msg else { break };
+						self.handle_write_message(&mut writer, msg, request_timeout).await?;
 					}
-				},
-				Unsubscribe { id } => {
-					if self.subs.borrow_mut().remove(&id).is_none() {
-						tracing::warn!(
-							%id,
-							"attempted to unsubscribe from non-existent subscription"
-						);
-					}
-				},
+				}
+			} else {
+				let Some(msg) = request_rx.next().await else { break };
+				self.handle_write_message(&mut writer, msg, request_timeout).await?;
 			}
 		}
 
@@ -444,15 +425,57 @@ impl Shared {
 		Err(IpcError::ServerExit)
 	}
 
+	async fn handle_write_message(
+		&self,
+		writer: &mut WriteHalf<'_>,
+		msg: TransportMessage,
+		request_timeout: Option<core::time::Duration>,
+	) -> Result<(), IpcError> {
+		use TransportMessage::*;
+		match msg {
+			Request { id, request, sender } => {
+				let prev = self
+					.pending
+					.borrow_mut()
+					.insert(id, PendingRequest::new(sender, request_timeout));
+				if prev.is_some() {
+					tracing::warn!(%id, "replaced pending IPC request (ID collision or misuse)");
+				}
+
+				if let Err(err) = writer.write_all(&request).await {
+					tracing::error!("IPC connection error: {:?}", err);
+					self.pending.borrow_mut().remove(&id);
+				}
+			},
+			Subscribe { id, sink } => {
+				if self.subs.borrow_mut().insert(id, sink).is_some() {
+					tracing::warn!(%id, "replaced already-registered subscription");
+				}
+			},
+			Unsubscribe { id } => {
+				if self.subs.borrow_mut().remove(&id).is_none() {
+					tracing::warn!(%id, "attempted to unsubscribe from non-existent subscription");
+				}
+			},
+		}
+		Ok(())
+	}
+
 	fn handle_bytes(&self, bytes: &BytesMut) -> Result<usize, IpcError> {
 		// deserialize all complete jsonrpc responses in the buffer
 		let mut de = Deserializer::from_slice(bytes.as_ref()).into_iter();
-		while let Some(Ok(response)) = de.next() {
+		for response in de.by_ref() {
 			match response {
-				Response::Success { id, result } => self.send_response(id, Ok(result.to_owned())),
-				Response::Error { id, error } => self.send_response(id, Err(error)),
-				Response::Notification { params, .. } => self.send_notification(params),
-			};
+				Ok(response) => match response {
+					Response::Success { id, result } => {
+						self.send_response(id, Ok(result.to_owned()))
+					},
+					Response::Error { id, error } => self.send_response(id, Err(error)),
+					Response::Notification { params, .. } => self.send_notification(params),
+				},
+				Err(err) if err.is_eof() => break,
+				Err(err) => return Err(IpcError::JsonError(err)),
+			}
 		}
 
 		Ok(de.byte_offset())
@@ -461,7 +484,7 @@ impl Shared {
 	fn send_response(&self, id: u64, result: Result<Box<RawValue>, JsonRpcError>) {
 		// retrieve the channel sender for responding to the pending request
 		let response_tx = match self.pending.borrow_mut().remove(&id) {
-			Some(tx) => tx,
+			Some(req) => req.sender,
 			None => {
 				tracing::warn!(%id, "no pending request exists for the response ID");
 				return;

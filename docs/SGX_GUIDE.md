@@ -1,9 +1,11 @@
-# SGX Support Guide - NeoRust (updated for v0.5.2)
+# SGX Support Guide - NeoRust (updated for v0.5.3)
 > Note: This guide originated with v0.4.4; the SGX/no_std feature set remains the same. Use the latest published crate version in the snippets below.
 
 ## Overview
 
-NeoRust v0.5.2 continues to support Intel SGX (Software Guard Extensions), enabling blockchain operations to run in secure enclaves with hardware-based security. This feature provides `no_std` compatibility and enhanced security for sensitive operations like key management and transaction signing.
+NeoRust v0.5.3 continues to support Intel SGX (Software Guard Extensions), enabling blockchain operations to run in secure enclaves with hardware-based security. This feature provides `no_std` compatibility and enhanced security for sensitive operations like key management and transaction signing.
+
+> Security note: The SGX module is still evolving. In particular, remote attestation quote verification is **not implemented** in the current SDK (`QuoteVerifier::verify_quote` returns an error). Do not treat quotes as verified unless you integrate a real verifier (DCAP/IAS) in your deployment.
 
 ## Table of Contents
 
@@ -72,10 +74,10 @@ chmod +x sgx_linux_x64_sdk_2.19.100.3.bin
    - Encrypted persistent storage
    - Secure key-value store
 
-5. **Remote Attestation**
-   - Prove enclave integrity
-   - Establish secure channels
-   - Verify enclave measurements
+5. **Remote Attestation (Experimental)**
+   - Quote generation scaffolding
+   - Measurement extraction helpers
+   - **Verification must be implemented by integrators** (DCAP/IAS)
 
 ## Setup
 
@@ -84,7 +86,7 @@ chmod +x sgx_linux_x64_sdk_2.19.100.3.bin
 ```toml
 # Cargo.toml
 [dependencies]
-neo3 = { version = "0.5.2", features = ["sgx", "no_std"] }
+neo3 = { version = "0.5.3", features = ["sgx", "no_std"] }
 
 [target.'cfg(target_env = "sgx")'.dependencies]
 sgx_tstd = { git = "https://github.com/apache/teaclave-sgx-sdk.git", rev = "v2.0.0" }
@@ -257,7 +259,7 @@ fn manage_keys() -> Result<(), SgxError> {
 ### Remote Attestation
 
 ```rust
-use neo3::neo_sgx::attestation::{RemoteAttestation, QuoteVerifier};
+use neo3::neo_sgx::attestation::RemoteAttestation;
 
 fn perform_attestation() -> Result<Vec<u8>, SgxError> {
     let mut attestation = RemoteAttestation::new();
@@ -265,12 +267,17 @@ fn perform_attestation() -> Result<Vec<u8>, SgxError> {
     // Initialize with service provider's public key
     let sp_pub_key = [0u8; 64]; // SP's public key
     attestation.init_attestation(&sp_pub_key)?;
+
+    // Legacy EPID flows require a SPID for quote generation.
+    // (DCAP/ECDSA-based attestation uses a different flow.)
+    attestation.configure_spid([0u8; 16]);
     
     // Generate quote with user data
     let user_data = b"NEO_WALLET_V1";
     let quote = attestation.generate_quote(user_data)?;
     
-    // Quote can be sent to service provider for verification
+    // Quote can be sent to service provider for verification.
+    // Note: QuoteVerifier::verify_quote is not implemented in the SDK yet.
     Ok(quote)
 }
 ```
@@ -307,7 +314,7 @@ async fn secure_rpc_call() -> Result<Vec<u8>, SgxError> {
 ### Hardware-Based Protection
 - **Memory Encryption**: Enclave memory encrypted by CPU
 - **Isolation**: Protected from OS, hypervisor, and other processes
-- **Attestation**: Cryptographic proof of enclave integrity
+- **Attestation**: Experimental scaffolding; verification requires external integration (DCAP/IAS)
 
 ### Key Protection
 - **Sealed Storage**: Keys bound to specific platform and enclave
@@ -367,7 +374,7 @@ Error: SGX_ERROR_OUT_OF_EPC
 ```
 Error: Quote verification failed
 ```
-**Solution**: Check IAS subscription and network connectivity
+**Solution**: Quote verification is not implemented in the SDK. Integrate a real DCAP/IAS verifier in your deployment and ensure network/configuration are correct.
 
 ### Debug Mode
 
@@ -387,7 +394,7 @@ let config = EnclaveConfig {
 1. **Minimize Enclave Size**: Keep enclave code minimal
 2. **Validate Inputs**: Always validate untrusted inputs
 3. **Handle Errors**: Proper error handling for all operations
-4. **Secure Channels**: Use attestation before sensitive operations
+4. **Secure Channels**: Use verified attestation (external verifier) before sensitive operations
 5. **Regular Updates**: Keep SGX SDK and PSW updated
 6. **Production Config**: Disable debug, enable ASLR
 7. **Monitoring**: Log enclave events for audit
@@ -413,12 +420,12 @@ let config = EnclaveConfig {
 
 ## Summary
 
-SGX support in NeoRust v0.4.4 provides:
+SGX support in NeoRust v0.5.3 provides:
 
 - **Hardware Security**: CPU-based memory encryption and isolation
 - **Key Protection**: Secure key generation and sealed storage
-- **Remote Attestation**: Cryptographic proof of enclave integrity
+- **Remote Attestation**: Experimental scaffolding; verification is not implemented in the SDK
 - **No-STD Support**: Run in constrained environments
-- **Production Ready**: Enterprise-grade security for blockchain operations
+- **Deployment Ready**: For key protection/signing use-cases; attestation verification requires external integration
 
 For production deployments, ensure proper configuration, disable debug mode, and implement comprehensive error handling and monitoring.

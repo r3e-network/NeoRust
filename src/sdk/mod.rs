@@ -6,6 +6,7 @@
 
 pub mod hd_wallet;
 pub mod transaction_simulator;
+#[cfg(feature = "ws")]
 pub mod websocket;
 
 use crate::{
@@ -15,7 +16,7 @@ use crate::{
 	neo_wallets::wallet::Wallet,
 };
 use base64::Engine;
-use std::str::FromStr;
+use hex_literal::hex;
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -185,8 +186,7 @@ impl Neo {
 		})?;
 
 		// Get NEO balance
-		let neo_hash = ScriptHash::from_str("ef4073a0f2b305a38ec4050e4d3d28bc40ea63f5")
-			.expect("NEO contract hash is valid");
+		let neo_hash = ScriptHash::from(hex!("ef4073a0f2b305a38ec4050e4d3d28bc40ea63f5"));
 		let neo_balance = self
 			.client
 			.invoke_function(
@@ -205,8 +205,7 @@ impl Neo {
 			})?;
 
 		// Get GAS balance
-		let gas_hash = ScriptHash::from_str("d2a4cff31913016155e38e474a2c06d08be276cf")
-			.expect("GAS contract hash is valid");
+		let gas_hash = ScriptHash::from(hex!("d2a4cff31913016155e38e474a2c06d08be276cf"));
 		let gas_balance = self
 			.client
 			.invoke_function(
@@ -280,8 +279,41 @@ impl Neo {
 			.unwrap_or(0) as u64;
 		let gas = gas_raw as f64 / 100_000_000.0; // GAS has 8 decimals
 
-		// TODO: Get other NEP-17 token balances
-		let tokens = Vec::new();
+		// Get other NEP-17 token balances
+		let nep17 =
+			self.client
+				.get_nep17_balances(script_hash)
+				.await
+				.map_err(|e| NeoError::Network {
+					message: format!("Failed to get NEP-17 balances: {}", e),
+					source: None,
+					recovery: crate::neo_error::unified::ErrorRecovery::new()
+						.suggest("Check network connection")
+						.retryable(true),
+				})?;
+
+		let tokens = nep17
+			.balances
+			.into_iter()
+			.filter(|b| b.asset_hash != neo_hash && b.asset_hash != gas_hash)
+			.map(|b| {
+				let decimals =
+					b.decimals.as_deref().and_then(|s| s.parse::<u8>().ok()).unwrap_or(0);
+				let amount_int = b.amount.parse::<u128>().unwrap_or(0);
+				let amount = (amount_int as f64) / 10f64.powi(decimals as i32);
+
+				TokenBalance {
+					contract: b.asset_hash,
+					symbol: b
+						.symbol
+						.clone()
+						.or_else(|| b.name.clone())
+						.unwrap_or_else(|| b.asset_hash.to_hex()),
+					amount,
+					decimals,
+				}
+			})
+			.collect::<Vec<_>>();
 
 		Ok(Balance { neo, gas, tokens })
 	}
@@ -303,13 +335,121 @@ impl Neo {
 	/// ```
 	pub async fn transfer(
 		&self,
-		_from: &Wallet,
-		_to: &str,
-		_amount: u64,
-		_token: Token,
+		from: &Wallet,
+		to: &str,
+		amount: u64,
+		token: Token,
 	) -> Result<TxHash, NeoError> {
-		// Implementation would handle transaction building and sending
-		todo!("Implement simplified transfer")
+		use crate::neo_builder::{AccountSigner, CallFlags, ScriptBuilder, TransactionBuilder};
+		use crate::neo_error::unified::ErrorRecovery;
+		use crate::neo_types::ScriptHashExtension;
+		use crate::neo_wallets::WalletTrait;
+
+		let from_account = from.default_account().ok_or_else(|| NeoError::Wallet {
+			message: "No default account set in wallet".to_string(),
+			source: None,
+			recovery: ErrorRecovery::new()
+				.suggest("Set a default account using set_default_account()")
+				.suggest("Add an account to the wallet first"),
+		})?;
+
+		let to_hash = ScriptHash::from_address(to).map_err(|e| NeoError::Validation {
+			message: format!("Invalid recipient address: {}", e),
+			field: "to".to_string(),
+			value: Some(to.to_string()),
+			recovery: ErrorRecovery::new()
+				.suggest("Check the address format")
+				.suggest("Ensure it's a valid Neo N3 address"),
+		})?;
+
+		let contract_hash = match token {
+			Token::NEO => ScriptHash::from(hex!("ef4073a0f2b305a38ec4050e4d3d28bc40ea63f5")),
+			Token::GAS => ScriptHash::from(hex!("d2a4cff31913016155e38e474a2c06d08be276cf")),
+			Token::Custom(hash) => hash,
+		};
+
+		let amount_i64 = i64::try_from(amount).map_err(|_| NeoError::Validation {
+			message: "Amount is too large to fit Neo VM integer".to_string(),
+			field: "amount".to_string(),
+			value: Some(amount.to_string()),
+			recovery: ErrorRecovery::new()
+				.suggest("Use a smaller amount")
+				.suggest("Split into multiple transfers if needed"),
+		})?;
+
+		let mut sb = ScriptBuilder::new();
+		sb.contract_call(
+			&contract_hash,
+			"transfer",
+			&[
+				ContractParameter::h160(&from_account.get_script_hash()),
+				ContractParameter::h160(&to_hash),
+				ContractParameter::integer(amount_i64),
+				ContractParameter::any(),
+			],
+			Some(CallFlags::All),
+		)
+		.map_err(|e| NeoError::Contract {
+			message: format!("Failed to build transfer script: {}", e),
+			contract: Some(contract_hash.to_hex()),
+			method: Some("transfer".to_string()),
+			source: None,
+			recovery: ErrorRecovery::new()
+				.suggest("Check token contract hash")
+				.suggest("Check transfer parameters"),
+		})?;
+
+		let signer =
+			AccountSigner::called_by_entry(from_account).map_err(|e| NeoError::Transaction {
+				message: format!("Failed to create signer: {}", e),
+				tx_hash: None,
+				source: None,
+				recovery: ErrorRecovery::new()
+					.suggest("Ensure the wallet has an unlocked private key")
+					.suggest("Multi-sig accounts require manual signing"),
+			})?;
+
+		let current_height =
+			self.client.get_block_count().await.map_err(|e| NeoError::Network {
+				message: format!("Failed to fetch current block height: {}", e),
+				source: None,
+				recovery: ErrorRecovery::new().suggest("Check network connection").retryable(true),
+			})?;
+
+		let mut tb = TransactionBuilder::with_client(self.client.as_ref());
+		tb.extend_script(sb.to_bytes());
+		tb.set_signers(vec![signer.into()]).map_err(|e| NeoError::Transaction {
+			message: format!("Failed to set signers: {}", e),
+			tx_hash: None,
+			source: None,
+			recovery: ErrorRecovery::new().suggest("Ensure signer configuration is valid"),
+		})?;
+		tb.valid_until_block(current_height + 5760).map_err(|e| NeoError::Transaction {
+			message: format!("Invalid valid-until-block: {}", e),
+			tx_hash: None,
+			source: None,
+			recovery: ErrorRecovery::new().suggest("Check network height").retryable(true),
+		})?;
+
+		let mut tx = tb.sign().await.map_err(|e| NeoError::Transaction {
+			message: format!("Failed to sign transfer: {}", e),
+			tx_hash: None,
+			source: None,
+			recovery: ErrorRecovery::new()
+				.suggest("Ensure the wallet has the correct private key")
+				.suggest("Check signer scopes"),
+		})?;
+
+		let result = tx.send_tx().await.map_err(|e| NeoError::Transaction {
+			message: format!("Failed to send transfer transaction: {}", e),
+			tx_hash: None,
+			source: None,
+			recovery: ErrorRecovery::new()
+				.suggest("Check RPC endpoint availability")
+				.retryable(true),
+		})?;
+
+		Ok(result.hash.to_string())
 	}
 
 	/// Deploy a smart contract
@@ -328,12 +468,152 @@ impl Neo {
 	/// ```
 	pub async fn deploy_contract(
 		&self,
-		_deployer: &Wallet,
-		_nef: Vec<u8>,
-		_manifest: String,
+		deployer: &Wallet,
+		nef: Vec<u8>,
+		manifest: String,
 	) -> Result<ScriptHash, NeoError> {
-		// Implementation would handle contract deployment
-		todo!("Implement contract deployment")
+		use crate::neo_builder::{AccountSigner, CallFlags, ScriptBuilder, TransactionBuilder};
+		use crate::neo_error::unified::ErrorRecovery;
+		use crate::neo_types::{ContractManifest, NefFile, ScriptHashExtension};
+		use crate::neo_wallets::WalletTrait;
+
+		let deployer_account = deployer.default_account().ok_or_else(|| NeoError::Wallet {
+			message: "No default account set in deployer wallet".to_string(),
+			source: None,
+			recovery: ErrorRecovery::new()
+				.suggest("Set a default account using set_default_account()")
+				.suggest("Add an account to the wallet first"),
+		})?;
+
+		let nef_file = NefFile::deserialize(&nef).map_err(|e| NeoError::Validation {
+			message: format!("Invalid NEF file: {}", e),
+			field: "nef".to_string(),
+			value: None,
+			recovery: ErrorRecovery::new()
+				.suggest("Ensure the NEF bytes are valid")
+				.suggest("Load the NEF file using std::fs::read"),
+		})?;
+
+		let manifest_bytes = manifest.as_bytes().to_vec();
+		let manifest_struct: ContractManifest =
+			serde_json::from_str(&manifest).map_err(|e| NeoError::Validation {
+				message: format!("Invalid manifest JSON: {}", e),
+				field: "manifest".to_string(),
+				value: None,
+				recovery: ErrorRecovery::new()
+					.suggest("Ensure the manifest is valid JSON")
+					.suggest("Provide the full contract manifest"),
+			})?;
+
+		let contract_name = manifest_struct.name.clone().ok_or_else(|| NeoError::Validation {
+			message: "Manifest is missing contract name".to_string(),
+			field: "manifest.name".to_string(),
+			value: None,
+			recovery: ErrorRecovery::new()
+				.suggest("Include a `name` field in the manifest")
+				.suggest("Check your contract compiler output"),
+		})?;
+
+		let nef_checksum = {
+			if nef_file.checksum.len() != 4 {
+				return Err(NeoError::Validation {
+					message: "NEF checksum length is invalid".to_string(),
+					field: "nef.checksum".to_string(),
+					value: None,
+					recovery: ErrorRecovery::new().suggest("Provide a valid NEF file"),
+				});
+			}
+			let mut arr = [0u8; 4];
+			arr.copy_from_slice(&nef_file.checksum);
+			arr.reverse();
+			u32::from_be_bytes(arr)
+		};
+
+		let contract_script = ScriptBuilder::build_contract_script(
+			&deployer_account.get_script_hash(),
+			nef_checksum,
+			&contract_name,
+		)
+		.map_err(|e| NeoError::Contract {
+			message: format!("Failed to derive contract script: {}", e),
+			contract: None,
+			method: Some("deploy".to_string()),
+			source: None,
+			recovery: ErrorRecovery::new().suggest("Check NEF checksum and manifest name"),
+		})?;
+		let expected_hash = ScriptHash::from_script(&contract_script);
+
+		let management_hash = ScriptHash::from(hex!("fffdc93764dbaddd97c48f252a53ea4643faa3fd"));
+		let mut sb = ScriptBuilder::new();
+		sb.contract_call(
+			&management_hash,
+			"deploy",
+			&[
+				ContractParameter::byte_array(nef),
+				ContractParameter::byte_array(manifest_bytes),
+				ContractParameter::any(),
+			],
+			Some(CallFlags::All),
+		)
+		.map_err(|e| NeoError::Contract {
+			message: format!("Failed to build deploy script: {}", e),
+			contract: Some(management_hash.to_hex()),
+			method: Some("deploy".to_string()),
+			source: None,
+			recovery: ErrorRecovery::new().suggest("Check NEF and manifest parameters"),
+		})?;
+
+		let signer = AccountSigner::called_by_entry(deployer_account).map_err(|e| {
+			NeoError::Transaction {
+				message: format!("Failed to create signer: {}", e),
+				tx_hash: None,
+				source: None,
+				recovery: ErrorRecovery::new()
+					.suggest("Ensure the wallet has an unlocked private key"),
+			}
+		})?;
+
+		let current_height =
+			self.client.get_block_count().await.map_err(|e| NeoError::Network {
+				message: format!("Failed to fetch current block height: {}", e),
+				source: None,
+				recovery: ErrorRecovery::new().suggest("Check network connection").retryable(true),
+			})?;
+
+		let mut tb = TransactionBuilder::with_client(self.client.as_ref());
+		tb.extend_script(sb.to_bytes());
+		tb.set_signers(vec![signer.into()]).map_err(|e| NeoError::Transaction {
+			message: format!("Failed to set signer: {}", e),
+			tx_hash: None,
+			source: None,
+			recovery: ErrorRecovery::new().suggest("Ensure signer configuration is valid"),
+		})?;
+		tb.valid_until_block(current_height + 2400).map_err(|e| NeoError::Transaction {
+			message: format!("Invalid valid-until-block: {}", e),
+			tx_hash: None,
+			source: None,
+			recovery: ErrorRecovery::new().retryable(true),
+		})?;
+
+		let mut tx = tb.sign().await.map_err(|e| NeoError::Transaction {
+			message: format!("Failed to sign deploy transaction: {}", e),
+			tx_hash: None,
+			source: None,
+			recovery: ErrorRecovery::new()
+				.suggest("Ensure deployer account has a private key")
+				.suggest("Multi-sig accounts require manual signing"),
+		})?;
+
+		tx.send_tx().await.map_err(|e| NeoError::Transaction {
+			message: format!("Failed to send deploy transaction: {}", e),
+			tx_hash: None,
+			source: None,
+			recovery: ErrorRecovery::new()
+				.suggest("Check RPC endpoint availability")
+				.retryable(true),
+		})?;
+
+		Ok(expected_hash)
 	}
 
 	/// Invoke a smart contract method (read-only)
@@ -351,12 +631,43 @@ impl Neo {
 	/// ```
 	pub async fn invoke_read(
 		&self,
-		_contract: &ScriptHash,
-		_method: &str,
-		_params: Vec<ContractParameter>,
+		contract: &ScriptHash,
+		method: &str,
+		params: Vec<ContractParameter>,
 	) -> Result<serde_json::Value, NeoError> {
-		// Implementation would handle read-only invocation
-		todo!("Implement read-only invocation")
+		use crate::neo_error::unified::ErrorRecovery;
+		use crate::neo_types::ScriptHashExtension;
+
+		let result = self
+			.client
+			.invoke_function(contract, method.to_string(), params, None)
+			.await
+			.map_err(|e| NeoError::Network {
+				message: format!("Failed to invoke read-only method: {}", e),
+				source: None,
+				recovery: ErrorRecovery::new().suggest("Check network connection").retryable(true),
+			})?;
+
+		if result.has_state_fault() {
+			return Err(NeoError::Contract {
+				message: result
+					.exception
+					.clone()
+					.unwrap_or_else(|| "Invocation resulted in FAULT state".to_string()),
+				contract: Some(contract.to_hex()),
+				method: Some(method.to_string()),
+				source: None,
+				recovery: ErrorRecovery::new()
+					.suggest("Check contract parameters")
+					.suggest("Ensure the method is safe/read-only"),
+			});
+		}
+
+		serde_json::to_value(result).map_err(|e| NeoError::Other {
+			message: format!("Failed to serialize invocation result: {}", e),
+			source: None,
+			recovery: ErrorRecovery::new(),
+		})
 	}
 
 	/// Invoke a smart contract method (with transaction)
@@ -375,13 +686,86 @@ impl Neo {
 	/// ```
 	pub async fn invoke_write(
 		&self,
-		_signer: &Wallet,
-		_contract: &ScriptHash,
-		_method: &str,
-		_params: Vec<ContractParameter>,
+		signer: &Wallet,
+		contract: &ScriptHash,
+		method: &str,
+		params: Vec<ContractParameter>,
 	) -> Result<TxHash, NeoError> {
-		// Implementation would handle state-changing invocation
-		todo!("Implement write invocation")
+		use crate::neo_builder::{AccountSigner, CallFlags, ScriptBuilder, TransactionBuilder};
+		use crate::neo_error::unified::ErrorRecovery;
+		use crate::neo_types::ScriptHashExtension;
+		use crate::neo_wallets::WalletTrait;
+
+		let signer_account = signer.default_account().ok_or_else(|| NeoError::Wallet {
+			message: "No default account set in signer wallet".to_string(),
+			source: None,
+			recovery: ErrorRecovery::new()
+				.suggest("Set a default account using set_default_account()")
+				.suggest("Add an account to the wallet first"),
+		})?;
+
+		let mut sb = ScriptBuilder::new();
+		sb.contract_call(contract, method, params.as_slice(), Some(CallFlags::All))
+			.map_err(|e| NeoError::Contract {
+				message: format!("Failed to build invocation script: {}", e),
+				contract: Some(contract.to_hex()),
+				method: Some(method.to_string()),
+				source: None,
+				recovery: ErrorRecovery::new()
+					.suggest("Check contract hash")
+					.suggest("Check method name and parameters"),
+			})?;
+
+		let signer_obj =
+			AccountSigner::called_by_entry(signer_account).map_err(|e| NeoError::Transaction {
+				message: format!("Failed to create signer: {}", e),
+				tx_hash: None,
+				source: None,
+				recovery: ErrorRecovery::new()
+					.suggest("Ensure signer wallet has an unlocked private key"),
+			})?;
+
+		let current_height =
+			self.client.get_block_count().await.map_err(|e| NeoError::Network {
+				message: format!("Failed to fetch current block height: {}", e),
+				source: None,
+				recovery: ErrorRecovery::new().suggest("Check network connection").retryable(true),
+			})?;
+
+		let mut tb = TransactionBuilder::with_client(self.client.as_ref());
+		tb.extend_script(sb.to_bytes());
+		tb.set_signers(vec![signer_obj.into()]).map_err(|e| NeoError::Transaction {
+			message: format!("Failed to set signer: {}", e),
+			tx_hash: None,
+			source: None,
+			recovery: ErrorRecovery::new(),
+		})?;
+		tb.valid_until_block(current_height + 2400).map_err(|e| NeoError::Transaction {
+			message: format!("Invalid valid-until-block: {}", e),
+			tx_hash: None,
+			source: None,
+			recovery: ErrorRecovery::new().retryable(true),
+		})?;
+
+		let mut tx = tb.sign().await.map_err(|e| NeoError::Transaction {
+			message: format!("Failed to sign invocation transaction: {}", e),
+			tx_hash: None,
+			source: None,
+			recovery: ErrorRecovery::new()
+				.suggest("Ensure signer has a private key")
+				.suggest("Multi-sig accounts require manual signing"),
+		})?;
+
+		let result = tx.send_tx().await.map_err(|e| NeoError::Transaction {
+			message: format!("Failed to send invocation transaction: {}", e),
+			tx_hash: None,
+			source: None,
+			recovery: ErrorRecovery::new()
+				.suggest("Check RPC endpoint availability")
+				.retryable(true),
+		})?;
+
+		Ok(result.hash.to_string())
 	}
 
 	/// Wait for a transaction to be confirmed
@@ -393,11 +777,37 @@ impl Neo {
 	/// ```
 	pub async fn wait_for_confirmation(
 		&self,
-		_tx_hash: &str,
-		_timeout: Duration,
+		tx_hash: &str,
+		timeout: Duration,
 	) -> Result<(), NeoError> {
-		// Implementation would poll for transaction confirmation
-		todo!("Implement confirmation waiting")
+		use crate::neo_error::unified::ErrorRecovery;
+		use primitive_types::H256;
+		use std::str::FromStr;
+		use std::time::Instant;
+
+		let tx_h256 = H256::from_str(tx_hash).map_err(|e| NeoError::Validation {
+			message: format!("Invalid transaction hash: {}", e),
+			field: "tx_hash".to_string(),
+			value: Some(tx_hash.to_string()),
+			recovery: ErrorRecovery::new().suggest("Provide a valid 0x-prefixed transaction hash"),
+		})?;
+
+		let start = Instant::now();
+		while start.elapsed() < timeout {
+			match self.client.get_application_log(tx_h256).await {
+				Ok(_) => return Ok(()),
+				Err(_) => tokio::time::sleep(Duration::from_secs(1)).await,
+			}
+		}
+
+		Err(NeoError::Timeout {
+			duration: timeout,
+			operation: "wait_for_confirmation".to_string(),
+			recovery: ErrorRecovery::new()
+				.suggest("Increase the timeout duration")
+				.suggest("Check the transaction hash")
+				.retryable(true),
+		})
 	}
 
 	/// Get the current block height
@@ -524,9 +934,107 @@ impl Transfer {
 	}
 
 	/// Execute the transfer
-	pub async fn execute(self, _client: &RpcClient<HttpProvider>) -> Result<TxHash, NeoError> {
-		// Implementation would build and send the transfer transaction
-		todo!("Implement transfer execution")
+	pub async fn execute(self, client: &RpcClient<HttpProvider>) -> Result<TxHash, NeoError> {
+		use crate::neo_builder::{AccountSigner, CallFlags, ScriptBuilder, TransactionBuilder};
+		use crate::neo_error::unified::ErrorRecovery;
+		use crate::neo_types::ScriptHashExtension;
+		use crate::neo_wallets::WalletTrait;
+
+		let from_account = self.from.default_account().ok_or_else(|| NeoError::Wallet {
+			message: "No default account set in wallet".to_string(),
+			source: None,
+			recovery: ErrorRecovery::new()
+				.suggest("Set a default account using set_default_account()")
+				.suggest("Add an account to the wallet first"),
+		})?;
+
+		let to_hash = ScriptHash::from_address(&self.to).map_err(|e| NeoError::Validation {
+			message: format!("Invalid recipient address: {}", e),
+			field: "to".to_string(),
+			value: Some(self.to.clone()),
+			recovery: ErrorRecovery::new()
+				.suggest("Check the address format")
+				.suggest("Ensure it's a valid Neo N3 address"),
+		})?;
+
+		let contract_hash = match self.token {
+			Token::NEO => ScriptHash::from(hex!("ef4073a0f2b305a38ec4050e4d3d28bc40ea63f5")),
+			Token::GAS => ScriptHash::from(hex!("d2a4cff31913016155e38e474a2c06d08be276cf")),
+			Token::Custom(hash) => hash,
+		};
+
+		let amount_i64 = i64::try_from(self.amount).map_err(|_| NeoError::Validation {
+			message: "Amount is too large to fit Neo VM integer".to_string(),
+			field: "amount".to_string(),
+			value: Some(self.amount.to_string()),
+			recovery: ErrorRecovery::new().suggest("Use a smaller amount"),
+		})?;
+
+		let mut sb = ScriptBuilder::new();
+		sb.contract_call(
+			&contract_hash,
+			"transfer",
+			&[
+				ContractParameter::h160(&from_account.get_script_hash()),
+				ContractParameter::h160(&to_hash),
+				ContractParameter::integer(amount_i64),
+				ContractParameter::any(),
+			],
+			Some(CallFlags::All),
+		)
+		.map_err(|e| NeoError::Contract {
+			message: format!("Failed to build transfer script: {}", e),
+			contract: Some(contract_hash.to_hex()),
+			method: Some("transfer".to_string()),
+			source: None,
+			recovery: ErrorRecovery::new(),
+		})?;
+
+		let signer =
+			AccountSigner::called_by_entry(from_account).map_err(|e| NeoError::Transaction {
+				message: format!("Failed to create signer: {}", e),
+				tx_hash: None,
+				source: None,
+				recovery: ErrorRecovery::new()
+					.suggest("Ensure the wallet has an unlocked private key"),
+			})?;
+
+		let current_height = client.get_block_count().await.map_err(|e| NeoError::Network {
+			message: format!("Failed to fetch current block height: {}", e),
+			source: None,
+			recovery: ErrorRecovery::new().retryable(true),
+		})?;
+
+		let mut tb = TransactionBuilder::with_client(client);
+		tb.extend_script(sb.to_bytes());
+		tb.set_signers(vec![signer.into()]).map_err(|e| NeoError::Transaction {
+			message: format!("Failed to set signers: {}", e),
+			tx_hash: None,
+			source: None,
+			recovery: ErrorRecovery::new(),
+		})?;
+		tb.valid_until_block(current_height + 5760).map_err(|e| NeoError::Transaction {
+			message: format!("Invalid valid-until-block: {}", e),
+			tx_hash: None,
+			source: None,
+			recovery: ErrorRecovery::new(),
+		})?;
+
+		let mut tx = tb.sign().await.map_err(|e| NeoError::Transaction {
+			message: format!("Failed to sign transfer: {}", e),
+			tx_hash: None,
+			source: None,
+			recovery: ErrorRecovery::new(),
+		})?;
+
+		let result = tx.send_tx().await.map_err(|e| NeoError::Transaction {
+			message: format!("Failed to send transfer: {}", e),
+			tx_hash: None,
+			source: None,
+			recovery: ErrorRecovery::new().retryable(true),
+		})?;
+
+		Ok(result.hash.to_string())
 	}
 }
 

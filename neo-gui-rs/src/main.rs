@@ -15,7 +15,7 @@ use tokio::runtime::Runtime;
 use tokio::sync::mpsc::{unbounded_channel, UnboundedSender};
 use tokio::time::{sleep, Duration};
 
-static VERSION: Lazy<String> = Lazy::new(|| "0.5.2".to_string());
+static VERSION: Lazy<String> = Lazy::new(|| "0.5.3".to_string());
 const GAS_HASH: &str = "d2a4cff31913016155e38e474a2c06d08be276cf";
 const NEO_HASH: &str = "c56f33fc6ecfcd0c225c4ab356fee59390af8560";
 
@@ -1155,7 +1155,7 @@ fn spawn_background(
 					}
 				},
 				Action::DraftTransfer { to, amount } => {
-				let sender = state.lock().accounts.first().cloned();
+					let sender = state.lock().accounts.first().cloned();
 					let sender = match sender {
 						Some(acc) => acc,
 						None => {

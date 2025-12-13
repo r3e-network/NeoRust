@@ -8,6 +8,7 @@ use rand::Rng;
 use serde::{Deserialize, Serialize};
 
 use crate::{
+	config::DEFAULT_ADDRESS_VERSION,
 	crypto::HashableForVec,
 	neo_crypto::utils::FromHexString,
 	neo_error::NeoError,
@@ -81,13 +82,7 @@ pub trait AddressExtension {
 
 impl AddressExtension for String {
 	fn address_to_script_hash(&self) -> Result<ScriptHash, TypeError> {
-		// Base58-decode the address
-		let decoded_data = match bs58::decode(self).into_vec() {
-			Ok(data) => data,
-			Err(_) => return Err(TypeError::InvalidAddress),
-		};
-		let data_payload = decoded_data[1..decoded_data.len() - 4].to_vec();
-		Ok(H160::from_slice(data_payload.as_slice()))
+		<H160 as ScriptHashExtension>::from_address(self.as_str())
 	}
 
 	fn script_to_script_hash(&self) -> Result<ScriptHash, TypeError> {
@@ -110,7 +105,7 @@ impl AddressExtension for String {
 		let mut bytes = [0u8; 20];
 		rng.fill(&mut bytes);
 		let script_hash = bytes.sha256_ripemd160();
-		let mut data = vec![0x17];
+		let mut data = vec![DEFAULT_ADDRESS_VERSION];
 		data.extend_from_slice(&script_hash);
 		let sha = &data.hash256().hash256();
 		data.extend_from_slice(&sha[..4]);
@@ -146,7 +141,7 @@ mod tests {
 	fn test_address_to_script_hash() {
 		// Test case 1: Valid N3 address
 		let n3_address = "NTGYC16CN5QheM4ZwfhUp9JKq8bMjWtcAp";
-		let expected_script_hash_hex = "50acc01271492d7b0e264ace0d60d572e66bc087";
+		let expected_script_hash_hex = "87c06be672d5600dce4a260e7b2d497112c0ac50";
 		let result = n3_address
 			.address_to_script_hash()
 			.expect("Should be able to convert valid N3 address to script hash");

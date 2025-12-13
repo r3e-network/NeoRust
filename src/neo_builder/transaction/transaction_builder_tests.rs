@@ -342,6 +342,8 @@ mod tests {
 					"calculatenetworkfee.json",
 				)
 				.await;
+			let mut mock_provider_guard =
+				mock_provider_guard.mock_response_ignore_param("getversion", json!({})).await;
 			mock_provider_guard.mount_mocks().await;
 		}
 		let client = {
@@ -403,6 +405,8 @@ mod tests {
 					"calculatenetworkfee.json",
 				)
 				.await;
+			let mut mock_provider_guard =
+				mock_provider_guard.mock_response_ignore_param("getversion", json!({})).await;
 			mock_provider_guard.mount_mocks().await;
 		}
 		let client = {
@@ -1037,6 +1041,8 @@ mod tests {
 					"calculatenetworkfee.json",
 				)
 				.await;
+			let mut mock_provider_guard =
+				mock_provider_guard.mock_response_ignore_param("getversion", json!({})).await;
 			mock_provider_guard.mount_mocks().await;
 		}
 
@@ -1076,6 +1082,8 @@ mod tests {
 					"calculatenetworkfee.json",
 				)
 				.await;
+			let mut mock_provider_guard =
+				mock_provider_guard.mock_response_ignore_param("getversion", json!({})).await;
 			mock_provider_guard.mount_mocks().await;
 		}
 		let client = {
@@ -1118,6 +1126,8 @@ mod tests {
 					"calculatenetworkfee.json",
 				)
 				.await;
+			let mut mock_provider_guard =
+				mock_provider_guard.mock_response_ignore_param("getversion", json!({})).await;
 			mock_provider_guard.mount_mocks().await;
 		}
 		let client = {
@@ -1279,6 +1289,8 @@ mod tests {
 					"calculatenetworkfee.json",
 				)
 				.await;
+			let mut mock_provider_guard =
+				mock_provider_guard.mock_response_ignore_param("getversion", json!({})).await;
 			mock_provider_guard.mount_mocks().await;
 		}
 		let client = {

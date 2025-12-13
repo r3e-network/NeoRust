@@ -36,7 +36,7 @@ impl<'a, P: JsonRpcProvider> GasToken<'a, P> {
 
 	pub fn new(provider: Option<&'a RpcClient<P>>) -> Self {
 		Self {
-			script_hash: Self::calc_native_contract_hash(Self::NAME).unwrap(),
+			script_hash: Self::calc_native_contract_hash_unchecked(Self::NAME),
 			total_supply: None,
 			decimals: Some(Self::DECIMALS),
 			symbol: Some(Self::SYMBOL.to_string()),

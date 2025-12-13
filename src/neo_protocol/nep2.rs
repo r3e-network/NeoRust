@@ -163,7 +163,7 @@ impl NEP2 {
 		let private_key = key_pair.private_key.to_raw_bytes().to_vec();
 
 		// Calculate the address hash from the public key
-		let address_hash = Self::address_hash_from_pubkey(&key_pair.public_key.get_encoded(true));
+		let address_hash = Self::address_hash_from_pubkey(&key_pair.public_key.get_encoded(true))?;
 
 		// Derive the encryption key using scrypt
 		let mut derived_key = vec![0u8; Self::DKLEN];
@@ -332,7 +332,7 @@ impl NEP2 {
 		// SECURITY: Using constant-time comparison prevents timing attacks that could
 		// be used to guess the password byte-by-byte
 		let calculated_hash =
-			Self::address_hash_from_pubkey(&key_pair.public_key.get_encoded(true));
+			Self::address_hash_from_pubkey(&key_pair.public_key.get_encoded(true))?;
 		if address_hash.ct_eq(&calculated_hash).unwrap_u8() != 1 {
 			return Err(Nep2Error::VerificationFailed(
 				"Calculated address hash does not match the one in the NEP2 data. Incorrect password?".into()
@@ -354,13 +354,8 @@ impl NEP2 {
 	fn get_default_scrypt_params() -> Result<Params, Nep2Error> {
 		// SECURITY: Always use production parameters to prevent accidental
 		// weakening of security through environment variable manipulation
-		Params::new(
-			NeoConstants::SCRYPT_LOG_N,
-			NeoConstants::SCRYPT_R,
-			NeoConstants::SCRYPT_P,
-			32,
-		)
-		.map_err(|e| Nep2Error::ScryptError(e.to_string()))
+		Params::new(NeoConstants::SCRYPT_LOG_N, NeoConstants::SCRYPT_R, NeoConstants::SCRYPT_P, 32)
+			.map_err(|e| Nep2Error::ScryptError(e.to_string()))
 	}
 
 	/// Gets fast scrypt parameters suitable for testing only.
@@ -482,10 +477,11 @@ impl NEP2 {
 	/// # Returns
 	///
 	/// A 4-byte address hash
-	fn address_hash_from_pubkey(pubkey: &[u8]) -> [u8; 4] {
+	fn address_hash_from_pubkey(pubkey: &[u8]) -> Result<[u8; 4], Nep2Error> {
 		// Convert bytes to a public key
-		let public_key = Secp256r1PublicKey::from_bytes(pubkey)
-			.expect("Invalid public key format in address_hash_from_pubkey");
+		let public_key = Secp256r1PublicKey::from_bytes(pubkey).map_err(|_| {
+			Nep2Error::InvalidFormat("Invalid public key format in address_hash_from_pubkey".into())
+		})?;
 
 		// Calculate the Neo address
 		let addr = public_key_to_address(&public_key);
@@ -496,7 +492,7 @@ impl NEP2 {
 		// Return the first 4 bytes
 		let mut result = [0u8; 4];
 		result.copy_from_slice(&hash[..4]);
-		result
+		Ok(result)
 	}
 
 	/// Decrypts a NEP2-formatted string for test vector compatibility.
@@ -776,8 +772,8 @@ mod tests {
 
 		// If empty password is rejected (security-conscious behavior), that's acceptable
 		// If it succeeds, verify roundtrip works
-		if encrypted.is_ok() {
-			let decrypted = NEP2::decrypt("", &encrypted.unwrap());
+		if let Ok(encrypted) = encrypted {
+			let decrypted = NEP2::decrypt("", &encrypted);
 			assert!(decrypted.is_ok());
 		}
 		// Not asserting is_err() since both behaviors are acceptable
@@ -791,15 +787,10 @@ mod tests {
 
 		// Unicode passwords should work
 		let unicode_password = "密码🔐パスワード";
-		let encrypted = NEP2::encrypt(unicode_password, &key_pair);
-		assert!(encrypted.is_ok());
+		let encrypted = NEP2::encrypt(unicode_password, &key_pair).unwrap();
 
-		let decrypted = NEP2::decrypt(unicode_password, &encrypted.unwrap());
-		assert!(decrypted.is_ok());
-		assert_eq!(
-			decrypted.unwrap().private_key.to_raw_bytes(),
-			key_pair.private_key.to_raw_bytes()
-		);
+		let decrypted = NEP2::decrypt(unicode_password, &encrypted).unwrap();
+		assert_eq!(decrypted.private_key.to_raw_bytes(), key_pair.private_key.to_raw_bytes());
 	}
 
 	#[test]
@@ -809,12 +800,20 @@ mod tests {
 		assert!(result.is_err());
 
 		// Invalid base58 characters
-		let result = NEP2::decrypt("password", "0000000000000000000000000000000000000000000000000000000");
+		let result =
+			NEP2::decrypt("password", "0000000000000000000000000000000000000000000000000000000");
 		assert!(result.is_err());
 
 		// Wrong prefix (should start with 6P)
-		let result = NEP2::decrypt("password", "5HueCGU8rMjxEXxiPuD5BDku4MkFqeZyd4dZ1jvhTVqvbTLvyTJ");
+		let result =
+			NEP2::decrypt("password", "5HueCGU8rMjxEXxiPuD5BDku4MkFqeZyd4dZ1jvhTVqvbTLvyTJ");
 		assert!(result.is_err());
+	}
+
+	#[test]
+	fn test_address_hash_from_pubkey_rejects_invalid_pubkey() {
+		let err = NEP2::address_hash_from_pubkey(&[1, 2, 3]).unwrap_err();
+		assert!(matches!(err, Nep2Error::InvalidFormat(_)));
 	}
 
 	#[test]

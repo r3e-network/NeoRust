@@ -7,7 +7,7 @@
 )]
 #![allow(unexpected_cfgs)]
 //! ![Neo Logo](https://neo.org/images/neo-logo/NEO-logo.svg)
-//! # NeoRust SDK v0.5.2
+//! # NeoRust SDK v0.5.3
 //!
 //! A production-ready Rust SDK for the Neo N3 blockchain with enterprise-grade features.
 //!
@@ -42,13 +42,13 @@
 //!
 //! ```toml
 //! [dependencies]
-//! neo3 = { version = "0.5.2", features = ["futures", "ledger"] }
+//! neo3 = { version = "0.5.3", features = ["futures", "ledger"] }
 //! ```
 //!
 //! You can disable default features with:
 //!
 //! ```toml
-//! neo3 = { version = "0.5.2", default-features = false, features = ["futures"] }
+//! neo3 = { version = "0.5.3", default-features = false, features = ["futures"] }
 //! ```
 //!
 //! ## Overview
@@ -161,8 +161,9 @@
 //!     let client = RpcClient::new(provider);
 //!
 //!     // Create accounts for the sender and recipient
-//!     // Using TestNet test account - replace with your own WIF for actual use
-//!     let sender = Account::from_wif("L1eV34wPoj9weqhGijdDLtVQzUpWGHszXXpdU9dPuh2nRFFzFa7E")?;
+//!     // Load sender key from an environment variable to avoid hardcoding secrets.
+//!     let sender_wif = std::env::var("NEO_WIF")?;
+//!     let sender = Account::from_wif(&sender_wif)?;
 //!     let recipient = ScriptHash::from_address("NbTiM6h8r99kpRtb428XcsUk1TzKed2gTc")?;
 //!
 //!     // Get the GAS token contract
@@ -270,8 +271,8 @@
 //!     let client = RpcClient::new(provider);
 //!     
 //!     // Create an account from WIF (Wallet Import Format)
-//!     // This is a TestNet test account - replace with your own WIF for actual use
-//!     let account = Account::from_wif("L1eV34wPoj9weqhGijdDLtVQzUpWGHszXXpdU9dPuh2nRFFzFa7E")?;
+//!     let wif = std::env::var("NEO_WIF")?;
+//!     let account = Account::from_wif(&wif)?;
 //!     
 //!     // Get account information
 //!     println!("Account address: {}", account.get_address());
@@ -428,6 +429,7 @@ extern crate alloc;
 extern crate self as neo3;
 
 // Core modules - always available
+pub mod constants;
 pub mod neo_error;
 pub mod neo_types;
 pub mod neo_utils;
@@ -613,9 +615,10 @@ mod tests {
 		Ok(())
 	}
 
-	async fn setup_test_client(
-	) -> Result<(bool, RpcClient<HttpProvider>, Option<Arc<Mutex<MockClient>>>), Box<dyn std::error::Error>>
-	{
+	async fn setup_test_client() -> Result<
+		(bool, RpcClient<HttpProvider>, Option<Arc<Mutex<MockClient>>>),
+		Box<dyn std::error::Error>,
+	> {
 		if let Ok(url) = std::env::var("NEO_LIVE_RPC_URL") {
 			let http_provider = HttpProvider::new(url.as_str())?;
 			return Ok((true, RpcClient::new(http_provider), None));

@@ -45,51 +45,19 @@ impl TransactionAttribute {
 	pub const MAX_RESULT_SIZE: usize = 0xffff;
 
 	pub fn to_bytes(&self) -> Vec<u8> {
-		let mut bytes = vec![];
-
-		match self {
-			TransactionAttribute::HighPriority => {
-				bytes.push(0x01);
-			},
-			TransactionAttribute::OracleResponse(OracleResponse { id, response_code, result }) => {
-				bytes.push(0x11);
-				bytes.extend(&id.to_be_bytes());
-				bytes.push(*response_code as u8);
-				bytes.extend(result.as_bytes());
-			},
-			_ => {},
-		}
-
-		bytes
+		self.to_array()
 	}
 
 	pub fn from_bytes(bytes: &[u8]) -> Result<Self, &'static str> {
-		match bytes[0] {
-			0x01 => Ok(TransactionAttribute::HighPriority),
-			0x11 => {
-				if bytes.len() < 9 {
-					return Err("Not enough bytes for OracleResponse");
-				}
-				let mut array = [0; 8];
-				let slice_len = bytes[1..9].len();
-				array[8 - slice_len..].copy_from_slice(&bytes[1..9]);
-				let id = u64::from_be_bytes(array);
-				let response_code = OracleResponseCode::try_from(bytes[9]).unwrap();
-				let result =
-					String::from_utf8(bytes[10..].to_vec()).map_err(|_| "Invalid UTF-8").unwrap();
-
-				Ok(TransactionAttribute::OracleResponse(OracleResponse {
-					id: id as u32,
-					response_code,
-					result,
-				}))
-			},
-			_ => Err("Invalid attribute type byte"),
-		}
+		let mut reader = Decoder::new(bytes);
+		Self::decode(&mut reader).map_err(|_| "Invalid transaction attribute")
 	}
 
 	pub fn to_json(&self) -> String {
-		serde_json::to_string(self).unwrap()
+		serde_json::to_string(self).unwrap_or_else(|e| {
+			tracing::warn!(error = %e, "Failed to serialize TransactionAttribute to JSON");
+			String::new()
+		})
 	}
 
 	// Get the height for NotValidBefore attribute
@@ -136,16 +104,26 @@ impl NeoSerializable for TransactionAttribute {
 				v.reverse();
 				writer.write(&v);
 				writer.write_u8(*response_code as u8);
-				writer
-					.write_var_bytes(result.from_base64_string().unwrap().as_slice())
-					.expect("Failed to encode oracle response");
+				let decoded = match result.from_base64_string() {
+					Ok(bytes) => bytes,
+					Err(err) => {
+						tracing::warn!(
+							error = %err,
+							"OracleResponse.result is not valid base64; encoding raw string bytes"
+						);
+						result.as_bytes().to_vec()
+					},
+				};
+				if let Err(e) = writer.write_var_bytes(&decoded) {
+					tracing::warn!(error = %e, "Failed to encode oracle response");
+				}
 			},
 			_ => {},
 		}
 	}
 
 	fn decode(reader: &mut Decoder) -> Result<Self, Self::Error> {
-		match reader.read_u8() {
+		match reader.read_u8_safe()? {
 			0x01 => Ok(TransactionAttribute::HighPriority),
 			0x11 => {
 				let id = reader.read_u32().map_err(|e| {
@@ -154,14 +132,15 @@ impl NeoSerializable for TransactionAttribute {
 						e
 					))
 				})?;
+				let response_code_byte = reader.read_u8_safe()?;
 				let response_code =
-					OracleResponseCode::try_from(reader.read_u8()).map_err(|_| {
+					OracleResponseCode::try_from(response_code_byte).map_err(|_| {
 						TransactionError::TransactionConfiguration(
 							"Invalid oracle response code".to_string(),
 						)
 					})?;
 				let result = reader
-					.read_var_bytes()
+					.read_var_bytes_bounded(Self::MAX_RESULT_SIZE)
 					.map_err(|e| {
 						TransactionError::TransactionConfiguration(format!(
 							"Failed to read oracle response result: {}",

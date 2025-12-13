@@ -9,7 +9,7 @@ use std::{
 
 use primitive_types::H160;
 use rayon::prelude::*;
-use serde_derive::{Deserialize, Serialize};
+use serde::{Deserialize, Serialize};
 
 use crate::{
 	neo_builder::{Transaction, TransactionBuilder, Witness},
@@ -77,8 +77,8 @@ impl WalletTrait for Wallet {
 		self.accounts.values().cloned().collect::<Vec<Self::Account>>()
 	}
 
-	fn default_account(&self) -> &Account {
-		&self.accounts[&self.default_account]
+	fn default_account(&self) -> Option<&Account> {
+		self.accounts.get(&self.default_account)
 	}
 
 	fn set_name(&mut self, name: String) {
@@ -120,8 +120,12 @@ impl Wallet {
 	fn effective_scrypt_params(&self) -> Params {
 		Params::new(self.scrypt_params.log_n, self.scrypt_params.r, self.scrypt_params.p, 32)
 			.unwrap_or_else(|e| {
-				eprintln!(
-					"Invalid scrypt params ({e}); falling back to Neo defaults for wallet operations"
+				tracing::warn!(
+					error = %e,
+					log_n = self.scrypt_params.log_n,
+					r = self.scrypt_params.r,
+					p = self.scrypt_params.p,
+					"Invalid scrypt params; falling back to Neo defaults"
 				);
 				Params::new(
 					NeoConstants::SCRYPT_LOG_N,
@@ -129,7 +133,13 @@ impl Wallet {
 					NeoConstants::SCRYPT_P,
 					32,
 				)
-				.expect("Neo default scrypt parameters must be valid")
+				.unwrap_or_else(|e| {
+					tracing::error!(
+						error = %e,
+						"Neo default scrypt parameters are invalid; falling back to scrypt recommended params"
+					);
+					Params::recommended()
+				})
 			})
 	}
 
@@ -141,7 +151,7 @@ impl Wallet {
 				acc
 			},
 			Err(e) => {
-				eprintln!("Failed to create account: {}", e);
+				tracing::error!(error = %e, "Failed to create account; returning default wallet");
 				return Self::default();
 			},
 		};
@@ -167,7 +177,7 @@ impl Wallet {
 			.filter_map(|(_, account)| match NEP6Account::from_account(&account) {
 				Ok(nep6_account) => Some(nep6_account),
 				Err(e) => {
-					eprintln!("Failed to convert account to NEP6Account: {}", e);
+					tracing::warn!(error = %e, "Failed to convert account to NEP6Account");
 					None
 				},
 			})
@@ -192,10 +202,10 @@ impl Wallet {
 			if let Some(account) = nep6.accounts().iter().find(|a| a.is_default) {
 				account.address().clone()
 			} else if let Some(account) = nep6.accounts().first() {
-				eprintln!("No default account found, using first account");
+				tracing::warn!("No default account found, using first account");
 				account.address().clone()
 			} else {
-				eprintln!("No accounts found, using empty address");
+				tracing::warn!("No accounts found in NEP6 wallet");
 				String::new()
 			};
 
@@ -314,10 +324,10 @@ impl Wallet {
 			// Only encrypt accounts that have a key pair
 			if account.key_pair().is_some() {
 				if let Err(e) = account.encrypt_private_key_with_params(password, &params) {
-					eprintln!(
-						"Warning: Failed to encrypt private key for account {}: {}",
-						account.get_address(),
-						e
+					tracing::warn!(
+						address = %account.get_address(),
+						error = %e,
+						"Failed to encrypt private key for account"
 					);
 				}
 			}
@@ -372,7 +382,7 @@ impl Wallet {
 
 		// Log any errors that occurred
 		for (address, error) in errors {
-			eprintln!("Warning: Failed to encrypt private key for account {}: {}", address, error);
+			tracing::warn!(address = %address, error = %error, "Failed to encrypt private key");
 		}
 	}
 
@@ -397,7 +407,18 @@ impl Wallet {
 	/// ```
 	pub fn encrypt_accounts_parallel_with_threads(&mut self, password: &str, num_threads: usize) {
 		// Create a custom thread pool with the specified number of threads
-		let pool = rayon::ThreadPoolBuilder::new().num_threads(num_threads).build().unwrap();
+		let pool = match rayon::ThreadPoolBuilder::new().num_threads(num_threads).build() {
+			Ok(pool) => pool,
+			Err(err) => {
+				tracing::warn!(
+					threads = num_threads,
+					error = %err,
+					"Failed to build custom rayon thread pool; falling back to default pool"
+				);
+				self.encrypt_accounts_parallel(password);
+				return;
+			},
+		};
 
 		pool.install(|| {
 			self.encrypt_accounts_parallel(password);
@@ -453,18 +474,21 @@ impl Wallet {
 				})
 				.collect();
 
-			results.lock().unwrap().extend(batch_results);
+			results.lock().unwrap_or_else(|e| e.into_inner()).extend(batch_results);
 		});
 
 		// Apply successful encryptions and collect errors
-		let results = Arc::try_unwrap(results).unwrap().into_inner().unwrap();
+		let results = match Arc::try_unwrap(results) {
+			Ok(mutex) => mutex.into_inner().unwrap_or_else(|e| e.into_inner()),
+			Err(arc) => arc.lock().unwrap_or_else(|e| e.into_inner()).clone(),
+		};
 		for (hash, result) in results {
 			match result {
 				Ok(encrypted_account) => {
 					self.accounts.insert(hash, encrypted_account);
 				},
 				Err(error_msg) => {
-					eprintln!("Warning: Failed to encrypt private key for account {}", error_msg);
+					tracing::warn!("Failed to encrypt private key for account {}", error_msg);
 				},
 			}
 		}
@@ -515,7 +539,9 @@ impl Wallet {
 	pub fn create_account(&mut self) -> Result<&Account, WalletError> {
 		let account = Account::create()?;
 		self.add_account(account.clone());
-		Ok(self.get_account(&account.get_script_hash()).unwrap())
+		self.get_account(&account.get_script_hash()).ok_or_else(|| {
+			WalletError::AccountState("Account was added but could not be retrieved".to_string())
+		})
 	}
 
 	/// Imports a private key in WIF format
@@ -526,7 +552,9 @@ impl Wallet {
 		let account =
 			Account::from_key_pair(key_pair, None, None).map_err(WalletError::ProviderError)?;
 		self.add_account(account.clone());
-		Ok(self.get_account(&account.get_script_hash()).unwrap())
+		self.get_account(&account.get_script_hash()).ok_or_else(|| {
+			WalletError::AccountState("Account was added but could not be retrieved".to_string())
+		})
 	}
 
 	/// Verifies if the provided password is correct by attempting to decrypt any encrypted account
@@ -735,10 +763,10 @@ impl Wallet {
 		let binding = message.hash256();
 		let message_hash = binding.as_slice();
 		self.default_account()
-			.clone()
+			.ok_or(WalletError::NoDefaultAccount)?
 			.key_pair()
 			.clone()
-			.ok_or_else(|| WalletError::NoKeyPair)?
+			.ok_or(WalletError::NoKeyPair)?
 			.private_key()
 			.sign_tx(message_hash)
 			.map_err(|_e| WalletError::NoKeyPair)
@@ -785,11 +813,10 @@ impl Wallet {
 			// tx_with_chain.set_network(Some(self.network()));
 		}
 
-		Witness::create(
-			tx.get_hash_data().await?,
-			&self.default_account().key_pair.clone().ok_or_else(|| WalletError::NoKeyPair)?,
-		)
-		.map_err(|_e| WalletError::NoKeyPair)
+		let account = self.default_account().ok_or(WalletError::NoDefaultAccount)?;
+		let key_pair = account.key_pair.clone().ok_or(WalletError::NoKeyPair)?;
+		Witness::create(tx.get_hash_data().await?, &key_pair)
+			.map_err(|_e| WalletError::NoKeyPair)
 	}
 
 	/// Signs a transaction using the specified account.
@@ -950,7 +977,9 @@ impl Wallet {
 		let script_hash = account.address_or_scripthash.script_hash();
 		self.add_account(account);
 
-		Ok(self.get_account(&script_hash).unwrap())
+		self.get_account(&script_hash).ok_or_else(|| {
+			WalletError::AccountState("Account was added but could not be retrieved".to_string())
+		})
 	}
 
 	/// Imports a private key into the wallet.
@@ -974,7 +1003,9 @@ impl Wallet {
 		// Add the account to the wallet
 		self.add_account(account);
 
-		Ok(self.get_account(&script_hash).unwrap())
+		self.get_account(&script_hash).ok_or_else(|| {
+			WalletError::AccountState("Account was added but could not be retrieved".to_string())
+		})
 	}
 
 	/// Gets the unclaimed GAS for the wallet as a float value.
@@ -1118,7 +1149,7 @@ mod tests {
 		let wallet = Wallet::from_accounts(vec![account1.clone(), account2.clone()])
 			.expect("Should be able to create wallet from accounts in test");
 
-		assert_eq!(wallet.default_account(), &account1);
+		assert_eq!(wallet.default_account(), Some(&account1));
 		assert_eq!(wallet.accounts.len(), 2);
 		assert!(wallet
 			.accounts

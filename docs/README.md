@@ -128,6 +128,16 @@ let client = RpcClient::new(http);
     let ipc = Ipc::connect("/tmp/neo.ipc").await?;
     let client = RpcClient::new(ipc);
 }
+
+// Offline mock transport (enable the `mock` feature)
+#[cfg(feature = "mock")]
+{
+    use neo3::neo_clients::MockClient;
+    let mut mock = MockClient::new().await;
+    mock.mock_get_block_count(1_000).await;
+    mock.mount_mocks().await;
+    let client = RpcClient::new(HttpProvider::new(mock.url())?);
+}
 ```
 
 ## 🏆 Production Ready Features

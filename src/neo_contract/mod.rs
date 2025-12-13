@@ -142,7 +142,8 @@
 //!     let client = RpcClient::new(provider);
 //!     
 //!     // Create or load an account with GAS for deployment
-//!     let account = Account::from_wif("KwVEKk78X65fDrJ3VgqHLcpPpbQVfJLjXrkFUCozHQBJ5nT2xwP8")?;
+//!     let wif = std::env::var("NEO_WIF")?;
+//!     let account = Account::from_wif(&wif)?;
 //!     
 //!     // Load contract files (NEF and manifest)
 //!     let nef_bytes = fs::read("path/to/contract.nef")?;

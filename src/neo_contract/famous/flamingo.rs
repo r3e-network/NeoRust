@@ -1,7 +1,7 @@
 use async_trait::async_trait;
+use hex_literal::hex;
 use primitive_types::H160;
 use serde::{Deserialize, Serialize};
-use std::str::FromStr;
 
 use crate::{
 	builder::{AccountSigner, TransactionBuilder},
@@ -50,7 +50,10 @@ impl<'a, P: JsonRpcProvider + 'static> FlamingoContract<'a, P> {
 	///
 	/// A new FlamingoContract instance
 	pub fn new(provider: Option<&'a RpcClient<P>>) -> Self {
-		Self { script_hash: ScriptHash::from_str(Self::CONTRACT_HASH).unwrap(), provider }
+		Self {
+			script_hash: ScriptHash::from(hex!("f970f4cddcd087ab5d8a5697a32b3cfd32c8b465")),
+			provider,
+		}
 	}
 
 	/// Creates a new FlamingoContract instance with a custom script hash
@@ -96,8 +99,10 @@ impl<'a, P: JsonRpcProvider + 'static> FlamingoContract<'a, P> {
 		];
 
 		let mut builder = self.invoke_function(Self::SWAP, params).await?;
+		let signer = AccountSigner::called_by_entry(account)
+			.map_err(|err| ContractError::RuntimeError(err.to_string()))?;
 		builder
-			.set_signers(vec![AccountSigner::called_by_entry(account).unwrap().into()])
+			.set_signers(vec![signer.into()])
 			.map_err(|err| ContractError::RuntimeError(err.to_string()))?;
 
 		Ok(builder)
@@ -132,8 +137,10 @@ impl<'a, P: JsonRpcProvider + 'static> FlamingoContract<'a, P> {
 		];
 
 		let mut builder = self.invoke_function(Self::ADD_LIQUIDITY, params).await?;
+		let signer = AccountSigner::called_by_entry(account)
+			.map_err(|err| ContractError::RuntimeError(err.to_string()))?;
 		builder
-			.set_signers(vec![AccountSigner::called_by_entry(account).unwrap().into()])
+			.set_signers(vec![signer.into()])
 			.map_err(|err| ContractError::RuntimeError(err.to_string()))?;
 
 		Ok(builder)
@@ -161,8 +168,10 @@ impl<'a, P: JsonRpcProvider + 'static> FlamingoContract<'a, P> {
 		let params = vec![token_a.into(), token_b.into(), ContractParameter::integer(liquidity)];
 
 		let mut builder = self.invoke_function(Self::REMOVE_LIQUIDITY, params).await?;
+		let signer = AccountSigner::called_by_entry(account)
+			.map_err(|err| ContractError::RuntimeError(err.to_string()))?;
 		builder
-			.set_signers(vec![AccountSigner::called_by_entry(account).unwrap().into()])
+			.set_signers(vec![signer.into()])
 			.map_err(|err| ContractError::RuntimeError(err.to_string()))?;
 
 		Ok(builder)
@@ -188,8 +197,10 @@ impl<'a, P: JsonRpcProvider + 'static> FlamingoContract<'a, P> {
 		let params = vec![token.into(), ContractParameter::integer(amount)];
 
 		let mut builder = self.invoke_function(Self::STAKE, params).await?;
+		let signer = AccountSigner::called_by_entry(account)
+			.map_err(|err| ContractError::RuntimeError(err.to_string()))?;
 		builder
-			.set_signers(vec![AccountSigner::called_by_entry(account).unwrap().into()])
+			.set_signers(vec![signer.into()])
 			.map_err(|err| ContractError::RuntimeError(err.to_string()))?;
 
 		Ok(builder)
@@ -211,8 +222,10 @@ impl<'a, P: JsonRpcProvider + 'static> FlamingoContract<'a, P> {
 		let params = vec![];
 
 		let mut builder = self.invoke_function(Self::CLAIM_REWARDS, params).await?;
+		let signer = AccountSigner::called_by_entry(account)
+			.map_err(|err| ContractError::RuntimeError(err.to_string()))?;
 		builder
-			.set_signers(vec![AccountSigner::called_by_entry(account).unwrap().into()])
+			.set_signers(vec![signer.into()])
 			.map_err(|err| ContractError::RuntimeError(err.to_string()))?;
 
 		Ok(builder)

@@ -201,7 +201,7 @@ fn get_timestamp() -> u64 {
 #[cfg(not(feature = "sgx"))]
 fn get_timestamp() -> u64 {
 	use std::time::{SystemTime, UNIX_EPOCH};
-	SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()
+	SystemTime::now().duration_since(UNIX_EPOCH).unwrap_or_default().as_secs()
 }
 
 #[cfg(feature = "sgx")]

@@ -7,11 +7,14 @@ use std::{
 };
 
 use futures_channel::{mpsc, oneshot};
-use futures_util::{select_biased, StreamExt};
+use futures_util::{select_biased, FutureExt, StreamExt};
 use primitive_types::U256;
 use serde_json::value::{to_raw_value, RawValue};
 
-use crate::JsonRpcError;
+#[cfg(not(target_arch = "wasm32"))]
+use futures_util::future::Either;
+
+use super::super::JsonRpcError;
 
 #[cfg(not(target_arch = "wasm32"))]
 use super::WebSocketConfig;
@@ -20,10 +23,13 @@ use super::{
 	ActiveSub, ConnectionDetails, InFlight, Instruction, Notification, PubSubItem, Response, SubId,
 	WsClient, WsClientError,
 };
+#[cfg(not(target_arch = "wasm32"))]
+use crate::config::NeoConstants;
 
-pub type SharedChannelMap = Arc<Mutex<HashMap<U256, mpsc::UnboundedReceiver<Box<RawValue>>>>>;
+pub(super) type SharedChannelMap =
+	Arc<Mutex<HashMap<U256, mpsc::UnboundedReceiver<Box<RawValue>>>>>;
 
-pub const DEFAULT_RECONNECTS: usize = 5;
+pub(super) const DEFAULT_RECONNECTS: usize = 5;
 
 /// This struct manages the relationship between the u64 request ID, and U256
 /// server-side subscription ID. It does this by aliasing the server ID to the
@@ -31,7 +37,7 @@ pub const DEFAULT_RECONNECTS: usize = 5;
 /// ID in the SubscriptionManager internals.) Giving the caller a "fake"
 /// subscription id allows the subscription to behave consistently across
 /// reconnections
-pub struct SubscriptionManager {
+struct SubscriptionManager {
 	// Active subs indexed by request id
 	subs: BTreeMap<u64, ActiveSub>,
 	// Maps active server-side IDs to local subscription IDs
@@ -43,6 +49,13 @@ pub struct SubscriptionManager {
 impl SubscriptionManager {
 	fn new(channel_map: SharedChannelMap) -> Self {
 		Self { subs: Default::default(), aliases: Default::default(), channel_map }
+	}
+
+	fn reset_server_ids(&mut self) {
+		self.aliases.clear();
+		for sub in self.subs.values_mut() {
+			sub.current_server_id = None;
+		}
 	}
 
 	fn count(&self) -> usize {
@@ -67,6 +80,13 @@ impl SubscriptionManager {
 
 	#[tracing::instrument(skip(self))]
 	fn end_subscription(&mut self, id: u64) -> Option<Box<RawValue>> {
+		// Ensure any channel created during subscription establishment is cleaned up, even if
+		// the request fails before the user calls `subscribe`.
+		self.channel_map
+			.lock()
+			.unwrap_or_else(|e| e.into_inner())
+			.remove(&U256::from(id));
+
 		if let Some(sub) = self.subs.remove(&id) {
 			if let Some(server_id) = sub.current_server_id {
 				tracing::debug!(server_id = format!("0x{server_id:x}"), "Ending subscription");
@@ -80,6 +100,8 @@ impl SubscriptionManager {
 					method: "neo_unsubscribe".to_string(),
 					params: SubId(server_id).serialize_raw().ok()?,
 					channel,
+					#[cfg(not(target_arch = "wasm32"))]
+					deadline: None,
 				};
 				// reuse the RPC ID. this is somewhat dirty.
 				return unsub_request.serialize_raw(id).ok();
@@ -94,24 +116,19 @@ impl SubscriptionManager {
 	fn handle_notification(&mut self, notification: Notification) {
 		let server_id = notification.subscription;
 
-		// If no alias, just return
-		let id_opt = self.aliases.get(&server_id).copied();
-		if id_opt.is_none() {
+		let Some(id) = self.aliases.get(&server_id).copied() else {
 			tracing::debug!(
 				server_id = format!("0x{server_id:x}"),
 				"No aliased subscription found"
 			);
 			return;
-		}
-		let id = id_opt.unwrap();
+		};
 
-		// alias exists, or should be dropped from alias table
-		let sub_opt = self.subs.get(&id);
-		if sub_opt.is_none() {
+		let Some(active) = self.subs.get(&id) else {
 			tracing::trace!(id, "Aliased subscription found, but not active");
 			self.aliases.remove(&server_id);
-		}
-		let active = sub_opt.unwrap();
+			return;
+		};
 
 		tracing::debug!(id, "Forwarding notification to listener");
 		// send the notification over the channel
@@ -133,8 +150,20 @@ impl SubscriptionManager {
 		if let Ok(server_id) = serde_json::from_str::<SubId>(result.get()) {
 			tracing::debug!(id, server_id = %server_id.0, "Registering new sub alias");
 			self.add_alias(server_id.0, id);
-			let result = U256::from(id);
-			to_raw_value(&format!("0x{result:x}")).expect("valid json")
+			let client_id = U256::from(id);
+			match to_raw_value(&format!("0x{client_id:x}")) {
+				Ok(raw) => raw,
+				Err(e) => {
+					// Best-effort: if we can't serialize the aliased subscription ID, fall back to
+					// the server-provided subscription id instead of panicking.
+					tracing::warn!(
+						error = %e,
+						id,
+						"Failed to encode aliased subscription id; returning server id"
+					);
+					result
+				},
+			}
 		} else {
 			result
 		}
@@ -162,11 +191,97 @@ impl SubscriptionManager {
 		// This insertion should be made BEFORE the request returns.
 		// So we make it before the request is even dispatched :)
 		{
-			self.channel_map.lock().unwrap().insert(id.into(), rx);
+			self.channel_map.lock().unwrap_or_else(|e| e.into_inner()).insert(id.into(), rx);
 		}
 		self.subs.insert(id, active_sub);
 
 		Ok(req)
+	}
+}
+
+#[cfg(all(test, not(target_arch = "wasm32")))]
+mod tests {
+	use super::*;
+
+	fn make_manager(timeout: core::time::Duration) -> RequestManager {
+		let backend = BackendDriver::new_for_test();
+		let conn = ConnectionDetails::new("ws://localhost:8545", None);
+		let (_instructions_tx, instructions) = mpsc::unbounded();
+
+		RequestManager {
+			id: AtomicU64::new(1),
+			reconnects: 0,
+			subs: SubscriptionManager::new(Default::default()),
+			reqs: Default::default(),
+			backend,
+			conn,
+			config: None,
+			request_timeout: Some(timeout),
+			instructions,
+		}
+	}
+
+	#[tokio::test]
+	async fn expires_timed_out_requests() {
+		let mut manager = make_manager(core::time::Duration::from_millis(10));
+		let (tx, rx) = oneshot::channel::<Response>();
+
+		manager.reqs.insert(
+			1,
+			InFlight {
+				method: "test_method".to_string(),
+				params: to_raw_value(&()).unwrap(),
+				channel: tx,
+				deadline: Some(std::time::Instant::now() - core::time::Duration::from_secs(1)),
+			},
+		);
+
+		manager.expire_timed_out_requests();
+
+		let response = rx.await.unwrap();
+		let err = response.unwrap_err();
+		assert_eq!(err.code, -32000);
+		assert!(err.message.contains("request timed out"));
+		assert!(manager.reqs.is_empty());
+	}
+
+	#[tokio::test]
+	async fn cleans_up_subscription_on_timeout() {
+		let mut manager = make_manager(core::time::Duration::from_millis(10));
+
+		let id = 7u64;
+		let params = to_raw_value(&["newHeads"]).unwrap();
+		manager.subs.service_subscription_request(id, params.clone()).unwrap();
+
+		assert!(manager
+			.subs
+			.channel_map
+			.lock()
+			.unwrap_or_else(|e| e.into_inner())
+			.contains_key(&U256::from(id)));
+
+		let (tx, rx) = oneshot::channel::<Response>();
+		manager.reqs.insert(
+			id,
+			InFlight {
+				method: "neo_subscribe".to_string(),
+				params,
+				channel: tx,
+				deadline: Some(std::time::Instant::now() - core::time::Duration::from_secs(1)),
+			},
+		);
+
+		manager.expire_timed_out_requests();
+
+		let response = rx.await.unwrap();
+		assert!(response.is_err());
+		assert!(!manager.subs.has(id));
+		assert!(!manager
+			.subs
+			.channel_map
+			.lock()
+			.unwrap_or_else(|e| e.into_inner())
+			.contains_key(&U256::from(id)));
 	}
 }
 
@@ -191,7 +306,7 @@ impl SubscriptionManager {
 /// The `RequestManager` shuts down and drops when all `WsClient` instances have
 /// been dropped (because all instruction channel `UnboundedSender` instances
 /// will have dropped).
-pub struct RequestManager {
+pub(super) struct RequestManager {
 	// Next JSON-RPC Request ID
 	id: AtomicU64,
 	// How many times we should reconnect the backend before erroring
@@ -207,6 +322,8 @@ pub struct RequestManager {
 	#[cfg(not(target_arch = "wasm32"))]
 	// An Option wrapping a tungstenite WebsocketConfig. If None, the default config is used.
 	config: Option<WebSocketConfig>,
+	#[cfg(not(target_arch = "wasm32"))]
+	request_timeout: Option<core::time::Duration>,
 	// Instructions from the user-facing providers
 	instructions: mpsc::UnboundedReceiver<Instruction>,
 }
@@ -216,7 +333,9 @@ impl RequestManager {
 		self.id.fetch_add(1, Ordering::Relaxed)
 	}
 
-	pub async fn connect(conn: ConnectionDetails) -> Result<(Self, WsClient), WsClientError> {
+	pub(super) async fn connect(
+		conn: ConnectionDetails,
+	) -> Result<(Self, WsClient), WsClientError> {
 		Self::connect_with_reconnects(conn, DEFAULT_RECONNECTS).await
 	}
 
@@ -238,7 +357,7 @@ impl RequestManager {
 	}
 
 	#[cfg(target_arch = "wasm32")]
-	pub async fn connect_with_reconnects(
+	pub(super) async fn connect_with_reconnects(
 		conn: ConnectionDetails,
 		reconnects: usize,
 	) -> Result<(Self, WsClient), WsClientError> {
@@ -260,7 +379,7 @@ impl RequestManager {
 	}
 
 	#[cfg(not(target_arch = "wasm32"))]
-	pub async fn connect_with_reconnects(
+	pub(super) async fn connect_with_reconnects(
 		conn: ConnectionDetails,
 		reconnects: usize,
 	) -> Result<(Self, WsClient), WsClientError> {
@@ -276,6 +395,7 @@ impl RequestManager {
 				backend,
 				conn,
 				config: None,
+				request_timeout: NeoConstants::rpc_request_timeout(),
 				instructions: instructions_rx,
 			},
 			WsClient { instructions: instructions_tx, channel_map },
@@ -283,7 +403,7 @@ impl RequestManager {
 	}
 
 	#[cfg(not(target_arch = "wasm32"))]
-	pub async fn connect_with_config(
+	pub(super) async fn connect_with_config(
 		conn: ConnectionDetails,
 		config: WebSocketConfig,
 	) -> Result<(Self, WsClient), WsClientError> {
@@ -291,7 +411,7 @@ impl RequestManager {
 	}
 
 	#[cfg(not(target_arch = "wasm32"))]
-	pub async fn connect_with_config_and_reconnects(
+	pub(super) async fn connect_with_config_and_reconnects(
 		conn: ConnectionDetails,
 		config: WebSocketConfig,
 		reconnects: usize,
@@ -308,6 +428,7 @@ impl RequestManager {
 				backend,
 				conn,
 				config: Some(config),
+				request_timeout: NeoConstants::rpc_request_timeout(),
 				instructions: instructions_rx,
 			},
 			WsClient { instructions: instructions_tx, channel_map },
@@ -356,6 +477,9 @@ impl RequestManager {
 		// issue a shutdown command (even though it's likely gone)
 		old_backend.shutdown();
 
+		// Clear stale server-side subscription IDs before re-subscribing.
+		self.subs.reset_server_ids();
+
 		tracing::debug!(count = self.subs.count(), "Re-starting active subscriptions");
 		let req_cnt = self.reqs.len();
 
@@ -366,6 +490,8 @@ impl RequestManager {
 				method: "neo_subscribe".to_string(),
 				params: sub.params.clone(),
 				channel: tx,
+				#[cfg(not(target_arch = "wasm32"))]
+				deadline: self.request_timeout.map(|timeout| std::time::Instant::now() + timeout),
 			};
 			// Need an entry in reqs to ensure response with new server sub ID is processed
 			self.reqs.insert(*id, in_flight);
@@ -387,7 +513,7 @@ impl RequestManager {
 	#[tracing::instrument(skip(self, result))]
 	fn req_success(&mut self, id: u64, result: Box<RawValue>) {
 		// pending fut is missing, this is fine
-		tracing::trace!(%result, "Success response received");
+		tracing::trace!(len = result.get().len(), "Success response received");
 		if let Some(req) = self.reqs.remove(&id) {
 			tracing::debug!("Sending result to request listener");
 			// Allow subscription manager to rewrite the result if the request
@@ -402,6 +528,9 @@ impl RequestManager {
 	fn req_fail(&mut self, id: u64, error: JsonRpcError) {
 		// pending fut is missing, this is fine
 		if let Some(req) = self.reqs.remove(&id) {
+			if self.subs.has(id) {
+				let _ = self.subs.end_subscription(id);
+			}
 			// pending fut has been dropped, this is fine
 			let _ = req.channel.send(Err(error));
 		}
@@ -423,7 +552,13 @@ impl RequestManager {
 		params: Box<RawValue>,
 		sender: oneshot::Sender<Response>,
 	) -> Result<(), WsClientError> {
-		let in_flight = InFlight { method, params, channel: sender };
+		let in_flight = InFlight {
+			method,
+			params,
+			channel: sender,
+			#[cfg(not(target_arch = "wasm32"))]
+			deadline: self.request_timeout.map(|timeout| std::time::Instant::now() + timeout),
+		};
 		let req = in_flight.serialize_raw(id)?;
 
 		// Ordering matters here. We want this block above the unbounded send,
@@ -441,6 +576,42 @@ impl RequestManager {
 
 		self.reqs.insert(id, in_flight);
 		Ok(())
+	}
+
+	#[cfg(not(target_arch = "wasm32"))]
+	fn next_request_deadline(&self) -> Option<std::time::Instant> {
+		self.reqs.values().filter_map(|req| req.deadline).min()
+	}
+
+	#[cfg(not(target_arch = "wasm32"))]
+	fn expire_timed_out_requests(&mut self) {
+		let Some(timeout) = self.request_timeout else {
+			return;
+		};
+
+		let now = std::time::Instant::now();
+		let mut expired_ids = Vec::new();
+		for (id, req) in self.reqs.iter() {
+			if req.deadline.is_some_and(|d| d <= now) {
+				expired_ids.push(*id);
+			}
+		}
+
+		for id in expired_ids {
+			let Some(req) = self.reqs.remove(&id) else {
+				continue;
+			};
+
+			if self.subs.has(id) {
+				let _ = self.subs.end_subscription(id);
+			}
+
+			let _ = req.channel.send(Err(JsonRpcError {
+				code: -32000,
+				message: format!("request timed out after {timeout:?}: {}", req.method),
+				data: None,
+			}));
+		}
 	}
 
 	fn service_instruction(&mut self, instruction: Instruction) -> Result<(), WsClientError> {
@@ -461,9 +632,29 @@ impl RequestManager {
 		Ok(())
 	}
 
-	pub fn spawn(mut self) {
+	pub(super) fn spawn(mut self) {
 		let fut = async move {
 			let result = loop {
+				#[cfg(not(target_arch = "wasm32"))]
+				self.expire_timed_out_requests();
+
+				#[cfg(not(target_arch = "wasm32"))]
+				let request_timeout = {
+					let fut = if let Some(deadline) = self.next_request_deadline() {
+						Either::Left(tokio::time::sleep_until(tokio::time::Instant::from_std(
+							deadline,
+						)))
+					} else {
+						Either::Right(futures_util::future::pending::<()>())
+					};
+					fut.fuse()
+				};
+
+				#[cfg(target_arch = "wasm32")]
+				let request_timeout = futures_util::future::pending::<()>().fuse();
+
+				futures_util::pin_mut!(request_timeout);
+
 				// We bias the loop so that we always handle messages before
 				// reconnecting, and always reconnect before dispatching new
 				// requests
@@ -481,6 +672,10 @@ impl RequestManager {
 						if let Err(e) = self.reconnect().await {
 							break Err(e);
 						}
+					},
+					_ = request_timeout => {
+						#[cfg(not(target_arch = "wasm32"))]
+						self.expire_timed_out_requests();
 					},
 					inst_opt = self.instructions.next() => {
 						match inst_opt {

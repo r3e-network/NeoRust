@@ -254,11 +254,11 @@ fn estimate_crack_time(score: u8) -> &'static str {
 /// Simulate encryption timing (professional implementation framework)
 fn simulate_encryption_time() -> u32 {
 	// Typical scrypt timing on modern hardware
-	100 + (rand::random::<u32>() % 50) // 100-150ms
+	125 // 100-150ms (representative)
 }
 
 /// Simulate decryption timing (professional implementation framework)
 fn simulate_decryption_time() -> u32 {
 	// Decryption has same complexity as encryption
-	100 + (rand::random::<u32>() % 50) // 100-150ms
+	125 // 100-150ms (representative)
 }

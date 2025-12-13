@@ -63,7 +63,7 @@ pub fn result_to_option<T, E: std::fmt::Display>(result: Result<T, E>) -> Option
 	match result {
 		Ok(value) => Some(value),
 		Err(err) => {
-			eprintln!("Error: {}", err);
+			tracing::warn!(error = %err, "Converting error result to None");
 			None
 		},
 	}
@@ -102,6 +102,10 @@ where
 	Fut: std::future::Future<Output = Result<T, E>>,
 	E: std::fmt::Display,
 {
+	if max_attempts == 0 {
+		return operation().await;
+	}
+
 	let mut attempts = 0;
 	let mut last_error = None;
 
@@ -111,7 +115,7 @@ where
 			Err(err) => {
 				attempts += 1;
 				if attempts < max_attempts {
-					eprintln!("Attempt {} failed: {}. Retrying...", attempts, err);
+					tracing::warn!(attempt = attempts, error = %err, "Attempt failed; retrying");
 					tokio::time::sleep(delay).await;
 				}
 				last_error = Some(err);
@@ -119,5 +123,49 @@ where
 		}
 	}
 
-	Err(last_error.expect("Should have at least one error after failed attempts"))
+	match last_error {
+		Some(err) => Err(err),
+		None => operation().await,
+	}
+}
+
+#[cfg(test)]
+mod tests {
+	use super::retry;
+	use std::{
+		sync::{
+			atomic::{AtomicUsize, Ordering},
+			Arc,
+		},
+		time::Duration,
+	};
+
+	#[tokio::test]
+	async fn test_retry_zero_attempts_runs_once_ok() {
+		let calls = Arc::new(AtomicUsize::new(0));
+		let calls_for_closure = calls.clone();
+
+		let result: Result<u32, &'static str> = retry(
+			move || {
+				let calls = calls_for_closure.clone();
+				async move {
+					calls.fetch_add(1, Ordering::SeqCst);
+					Ok(42)
+				}
+			},
+			0,
+			Duration::from_millis(1),
+		)
+		.await;
+
+		assert_eq!(result.unwrap(), 42);
+		assert_eq!(calls.load(Ordering::SeqCst), 1);
+	}
+
+	#[tokio::test]
+	async fn test_retry_zero_attempts_runs_once_err() {
+		let result: Result<(), &'static str> =
+			retry(|| async { Err("fail") }, 0, Duration::from_millis(1)).await;
+		assert_eq!(result.unwrap_err(), "fail");
+	}
 }

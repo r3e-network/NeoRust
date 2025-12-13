@@ -13,7 +13,6 @@ use crate::{
 	codec::{Decoder, Encoder, NeoSerializable},
 	config::NeoConstants,
 	crypto::Secp256r1PublicKey,
-	neo_protocol::AccountTrait,
 };
 use primitive_types::H160;
 use serde::{Deserialize, Serialize, Serializer};
@@ -422,20 +421,14 @@ impl From<ContractSigner> for Signer {
 
 // Keep the existing Into implementations for backward compatibility
 impl Into<AccountSigner> for Signer {
+	#[track_caller]
 	fn into(self) -> AccountSigner {
 		match self {
 			Signer::AccountSigner(account_signer) => account_signer,
 			_ => {
-				eprintln!("Warning: Cannot convert ContractSigner or TransactionSigner into AccountSigner, returning default");
-				// Return a default AccountSigner as fallback
-				AccountSigner::none_hash160(primitive_types::H160::zero()).unwrap_or_else(|_| {
-					// If even the default creation fails, create one with a valid account
-					let account = crate::neo_protocol::Account::from_wif(
-						"L1WMhxazScMhUrdv34JqQb1HFSQmWeN2Kpc1R9JGKwL7CDNP21uR",
-					)
-					.unwrap();
-					AccountSigner::new(&account, crate::builder::WitnessScope::None)
-				})
+				panic!(
+					"Cannot convert ContractSigner or TransactionSigner into AccountSigner. Use Signer::to_account_signer() instead."
+				)
 			},
 		}
 	}
@@ -512,26 +505,28 @@ impl Into<TransactionSigner> for &mut Signer {
 }
 
 impl Into<ContractSigner> for &mut Signer {
+	#[track_caller]
 	fn into(self) -> ContractSigner {
 		match self {
 			Signer::ContractSigner(contract_signer) => contract_signer.clone(),
 			_ => {
-				// Log the error and return a minimal ContractSigner to avoid panic
-				eprintln!("Warning: Cannot convert signer type to ContractSigner, returning minimal fallback");
-				ContractSigner::called_by_entry(H160::zero(), &[])
+				panic!(
+					"Cannot convert AccountSigner or TransactionSigner into ContractSigner. Use Signer::to_contract_signer() instead."
+				)
 			},
 		}
 	}
 }
 
 impl Into<ContractSigner> for Signer {
+	#[track_caller]
 	fn into(self) -> ContractSigner {
 		match self {
 			Signer::ContractSigner(contract_signer) => contract_signer,
 			_ => {
-				// Log the error and return a minimal ContractSigner to avoid panic
-				eprintln!("Warning: Cannot convert signer type to ContractSigner, returning minimal fallback");
-				ContractSigner::called_by_entry(H160::zero(), &[])
+				panic!(
+					"Cannot convert AccountSigner or TransactionSigner into ContractSigner. Use Signer::to_contract_signer() instead."
+				)
 			},
 		}
 	}
@@ -575,7 +570,7 @@ impl NeoSerializable for Signer {
 	where
 		Self: Sized,
 	{
-		match reader.read_u8() {
+		match reader.read_u8_safe()? {
 			0 => Ok(Signer::AccountSigner(AccountSigner::decode(reader)?)),
 			1 => Ok(Signer::ContractSigner(ContractSigner::decode(reader)?)),
 			//_ => Ok(Signer::Transaction(TransactionSigner::decode(reader)?)),

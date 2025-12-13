@@ -45,13 +45,13 @@ impl HealthRegistry {
     
     /// Register a health check
     pub fn register(&self, name: String, check: HealthCheck) {
-        let mut checks = self.checks.write().unwrap();
+        let mut checks = self.checks.write().unwrap_or_else(|e| e.into_inner());
         checks.insert(name, check);
     }
     
     /// Update health check status
     pub fn update(&self, name: &str, status: HealthStatus, message: Option<String>) {
-        let mut checks = self.checks.write().unwrap();
+        let mut checks = self.checks.write().unwrap_or_else(|e| e.into_inner());
         if let Some(check) = checks.get_mut(name) {
             check.status = status;
             check.message = message;
@@ -61,7 +61,7 @@ impl HealthRegistry {
     
     /// Get overall health status
     pub fn overall_status(&self) -> HealthStatus {
-        let checks = self.checks.read().unwrap();
+        let checks = self.checks.read().unwrap_or_else(|e| e.into_inner());
         
         if checks.is_empty() {
             return HealthStatus::Healthy;
@@ -81,7 +81,7 @@ impl HealthRegistry {
     
     /// Get all health checks
     pub fn get_all(&self) -> Vec<HealthCheck> {
-        let checks = self.checks.read().unwrap();
+        let checks = self.checks.read().unwrap_or_else(|e| e.into_inner());
         checks.values().cloned().collect()
     }
 }
@@ -108,15 +108,18 @@ pub fn init(port: u16) -> Result<(), Box<dyn std::error::Error>> {
     let health_route = warp::path("health")
         .and(warp::get())
         .map(move || {
-            let registry = HEALTH_REGISTRY.get().unwrap();
+            let (status, checks) = HEALTH_REGISTRY
+                .get()
+                .map(|registry| (registry.overall_status(), registry.get_all()))
+                .unwrap_or((HealthStatus::Unhealthy, Vec::new()));
             let response = HealthResponse {
-                status: registry.overall_status(),
+                status,
                 timestamp: std::time::SystemTime::now()
                     .duration_since(std::time::UNIX_EPOCH)
-                    .unwrap()
+                    .unwrap_or_default()
                     .as_secs(),
                 version: env!("CARGO_PKG_VERSION").to_string(),
-                checks: registry.get_all(),
+                checks,
             };
             warp::reply::json(&response)
         });
@@ -129,7 +132,7 @@ pub fn init(port: u16) -> Result<(), Box<dyn std::error::Error>> {
                 "status": "alive",
                 "timestamp": std::time::SystemTime::now()
                     .duration_since(std::time::UNIX_EPOCH)
-                    .unwrap()
+                    .unwrap_or_default()
                     .as_secs(),
             }))
         });
@@ -138,8 +141,10 @@ pub fn init(port: u16) -> Result<(), Box<dyn std::error::Error>> {
         .and(warp::path("readiness"))
         .and(warp::get())
         .map(move || {
-            let registry = HEALTH_REGISTRY.get().unwrap();
-            let status = registry.overall_status();
+            let status =
+                HEALTH_REGISTRY.get().map(|registry| registry.overall_status()).unwrap_or(
+                    HealthStatus::Unhealthy,
+                );
             let status_code = match status {
                 HealthStatus::Healthy => warp::http::StatusCode::OK,
                 HealthStatus::Degraded => warp::http::StatusCode::OK,
@@ -152,7 +157,7 @@ pub fn init(port: u16) -> Result<(), Box<dyn std::error::Error>> {
                     "status": status,
                     "timestamp": std::time::SystemTime::now()
                         .duration_since(std::time::UNIX_EPOCH)
-                        .unwrap()
+                        .unwrap_or_default()
                         .as_secs(),
                 })),
                 status_code,

@@ -60,13 +60,13 @@ use std::{
 };
 
 // Re-export from elliptic_curve crate which is already a dependency
-use p256::elliptic_curve::zeroize::Zeroize;
 use crate::{
 	codec::{Decoder, Encoder, NeoSerializable},
 	config::NeoConstants,
 	crypto::CryptoError,
 	neo_crypto::utils::{FromHexString, ToHexString},
 };
+use p256::elliptic_curve::zeroize::Zeroize;
 use p256::{
 	ecdsa::{signature::Signer, Signature, SigningKey, VerifyingKey},
 	elliptic_curve::sec1::{FromEncodedPoint, ToEncodedPoint},
@@ -86,9 +86,15 @@ pub struct Secp256r1PublicKey {
 ///
 /// SECURITY: This struct implements ZeroizeOnDrop to ensure private key
 /// material is securely erased from memory when the key goes out of scope.
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct Secp256r1PrivateKey {
 	inner: SecretKey,
+}
+
+impl fmt::Debug for Secp256r1PrivateKey {
+	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+		f.debug_tuple("Secp256r1PrivateKey").field(&"<redacted>").finish()
+	}
 }
 
 // Implement Zeroize for secure memory cleanup
@@ -151,15 +157,9 @@ impl Secp256r1PublicKey {
 		uncompressed_point.extend_from_slice(&gy);
 
 		let encoded_point = EncodedPoint::from_bytes(&uncompressed_point).ok()?;
-		let public_key_option = PublicKey::from_encoded_point(&encoded_point);
-
-		if public_key_option.is_some().into() {
-			// Safe to unwrap since we checked is_some()
-			let public_key = public_key_option.unwrap();
-			Some(Secp256r1PublicKey { inner: public_key })
-		} else {
-			None
-		}
+		let public_key_option: Option<PublicKey> =
+			PublicKey::from_encoded_point(&encoded_point).into();
+		public_key_option.map(|inner| Secp256r1PublicKey { inner })
 	}
 
 	/// Constructs a `Secp256r1PublicKey` from an existing `PublicKey`.
@@ -194,12 +194,10 @@ impl Secp256r1PublicKey {
 			EncodedPoint::from_bytes(bytes).map_err(|_| CryptoError::InvalidPublicKey)?
 		};
 
-		let public_key = PublicKey::from_encoded_point(&point);
-		if public_key.is_some().into() {
-			Ok(Self { inner: public_key.unwrap() })
-		} else {
-			Err(CryptoError::InvalidPublicKey)
-		}
+		let public_key_option: Option<PublicKey> = PublicKey::from_encoded_point(&point).into();
+		public_key_option
+			.map(|inner| Self { inner })
+			.ok_or(CryptoError::InvalidPublicKey)
 	}
 
 	/// Verifies a digital signature against a message using this public key.
@@ -312,12 +310,10 @@ impl Secp256r1PrivateKey {
 	///
 	/// - Returns: A 32-byte array representing the private key.
 	pub fn to_raw_bytes(&self) -> [u8; 32] {
-		self.inner
-			.clone()
-			.to_bytes()
-			.as_slice()
-			.try_into()
-			.expect("Private key should always be 32 bytes")
+		let bytes = self.inner.clone().to_bytes();
+		let mut out = [0u8; 32];
+		out.copy_from_slice(bytes.as_slice());
+		out
 	}
 
 	/// Converts the private key to its corresponding public key.
@@ -447,7 +443,7 @@ impl Secp256r1Signature {
 
 impl fmt::Display for Secp256r1PrivateKey {
 	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-		writeln!(f, "Secp256r1PrivateKey: {}", hex::encode(self.inner.to_bytes()))
+		write!(f, "Secp256r1PrivateKey(<redacted>)")
 	}
 }
 
@@ -581,16 +577,17 @@ impl PartialEq for Secp256r1Signature {
 }
 
 impl From<Vec<u8>> for Secp256r1PublicKey {
+	#[track_caller]
 	fn from(bytes: Vec<u8>) -> Self {
-		Secp256r1PublicKey::from_bytes(&bytes).unwrap_or_else(|e| {
-			eprintln!("Warning: Failed to create public key from bytes: {}", e);
-			// Return a default/zero public key as fallback
-			// Using a known valid compressed public key (generator point)
-			Secp256r1PublicKey::from_encoded(
-				"036b17d1f2e12c4247f8bce6e563a440f277037d812deb33a0f4a13945d898c296",
-			)
-			.expect("Generator point should always be valid")
-		})
+		Secp256r1PublicKey::from_bytes(&bytes).expect("Invalid secp256r1 public key bytes")
+	}
+}
+
+impl TryFrom<&[u8]> for Secp256r1PublicKey {
+	type Error = CryptoError;
+
+	fn try_from(bytes: &[u8]) -> Result<Self, Self::Error> {
+		Secp256r1PublicKey::from_bytes(bytes)
 	}
 }
 
@@ -610,12 +607,12 @@ impl PrivateKeyExtension for Secp256r1PrivateKey {
 
 	fn from_slice(slice: &[u8]) -> Result<Self, CryptoError> {
 		if slice.len() != 32 {
-			return Err(CryptoError::InvalidPublicKey);
+			return Err(CryptoError::InvalidPrivateKey);
 		}
 
 		let mut arr = [0u8; 32];
 		arr.copy_from_slice(slice);
-		Self::from_bytes(&arr).map_err(|_| CryptoError::InvalidPublicKey)
+		Self::from_bytes(&arr).map_err(|_| CryptoError::InvalidPrivateKey)
 	}
 }
 
@@ -633,10 +630,16 @@ impl PublicKeyExtension for Secp256r1PublicKey {
 	}
 
 	fn from_slice(slice: &[u8]) -> Result<Self, CryptoError> {
-		if slice.len() != 64 && slice.len() != 33 {
-			return Err(CryptoError::InvalidPublicKey);
+		match slice.len() {
+			33 | 65 => Secp256r1PublicKey::from_bytes(slice),
+			64 => {
+				let mut uncompressed = Vec::with_capacity(65);
+				uncompressed.push(0x04);
+				uncompressed.extend_from_slice(slice);
+				Secp256r1PublicKey::from_bytes(&uncompressed)
+			},
+			_ => Err(CryptoError::InvalidPublicKey),
 		}
-		Self::from_slice(slice).map_err(|_| CryptoError::InvalidPublicKey)
 	}
 }
 
@@ -673,7 +676,10 @@ mod tests {
 
 	use crate::{
 		codec::{Decoder, NeoSerializable},
-		crypto::{HashableForVec, Secp256r1PrivateKey, Secp256r1PublicKey, Secp256r1Signature},
+		crypto::{
+			HashableForVec, PublicKeyExtension, Secp256r1PrivateKey, Secp256r1PublicKey,
+			Secp256r1Signature,
+		},
 		neo_crypto::utils::ToHexString,
 	};
 
@@ -707,6 +713,23 @@ mod tests {
 				.get_encoded_compressed_hex(),
 			ENCODED_POINT
 		);
+	}
+
+	#[test]
+	fn test_public_key_from_slice_formats() {
+		let compressed_bytes = hex::decode(ENCODED_POINT).unwrap();
+		let key_from_compressed = Secp256r1PublicKey::from_slice(&compressed_bytes).unwrap();
+		let key_from_encoded = Secp256r1PublicKey::from_encoded(ENCODED_POINT).unwrap();
+		assert_eq!(key_from_compressed, key_from_encoded);
+
+		let uncompressed = key_from_encoded.get_encoded(false);
+		assert_eq!(uncompressed.len(), 65);
+
+		let key_from_xy = Secp256r1PublicKey::from_slice(&uncompressed[1..]).unwrap();
+		assert_eq!(key_from_xy, key_from_encoded);
+
+		let key_from_uncompressed = Secp256r1PublicKey::from_slice(&uncompressed).unwrap();
+		assert_eq!(key_from_uncompressed, key_from_encoded);
 	}
 
 	#[test]

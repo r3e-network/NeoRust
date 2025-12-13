@@ -39,7 +39,7 @@ impl Witness {
 
 	pub fn create(message_to_sign: Bytes, key_pair: &KeyPair) -> Result<Self, BuilderError> {
 		let invocation_script =
-			InvocationScript::from_message_and_key_pair(message_to_sign, key_pair).unwrap();
+			InvocationScript::from_message_and_key_pair(message_to_sign, key_pair)?;
 		let verification_script = VerificationScript::from_public_key(&key_pair.public_key());
 		Ok(Self { invocation: invocation_script, verification: verification_script })
 	}
@@ -58,7 +58,7 @@ impl Witness {
 		signatures: Vec<Secp256r1Signature>,
 		verification_script: VerificationScript,
 	) -> Result<Self, BuilderError> {
-		let threshold = verification_script.get_signing_threshold().unwrap();
+		let threshold = verification_script.get_signing_threshold()?;
 		if signatures.len() < threshold {
 			return Err(BuilderError::SignerConfiguration(
 				"Not enough signatures provided for the required signing threshold.".to_string(),

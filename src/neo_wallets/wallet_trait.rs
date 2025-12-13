@@ -67,7 +67,30 @@ pub trait WalletTrait {
 	fn accounts(&self) -> Vec<Self::Account>;
 
 	/// Returns a reference to the default account of the wallet.
-	fn default_account(&self) -> &Self::Account;
+	///
+	/// # Returns
+	///
+	/// `Some(&Account)` if a default account is set and exists, `None` otherwise.
+	///
+	/// # Note
+	///
+	/// This method returns `Option` to avoid panics when the default account
+	/// is not set or has been removed. Use `default_account_or_err()` if you
+	/// need a `Result` with a descriptive error.
+	fn default_account(&self) -> Option<&Self::Account>;
+
+	/// Returns a reference to the default account, or an error if not available.
+	///
+	/// This is a convenience method that converts the `Option` from `default_account()`
+	/// into a `Result` with a descriptive error message.
+	///
+	/// # Errors
+	///
+	/// Returns `WalletError::NoDefaultAccount` if no default account is set.
+	fn default_account_or_err(&self) -> Result<&Self::Account, crate::neo_wallets::WalletError> {
+		self.default_account()
+			.ok_or(crate::neo_wallets::WalletError::NoDefaultAccount)
+	}
 
 	/// Sets the name of the wallet.
 	fn set_name(&mut self, name: String);

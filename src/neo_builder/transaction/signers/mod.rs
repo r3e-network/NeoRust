@@ -26,7 +26,7 @@
 //!    use std::str::FromStr;
 //!
 //!    // For an account-based signer
-//!    let account = Account::from_wif("KxDgvEKzgSBPPfuVfw67oPQBSjidEiqTHURKSDL1R7yGaGYAeYnr").unwrap();
+//!    let account = Account::from_wif("YOUR_WIF_HERE").unwrap();
 //!    let account_signer = AccountSigner::called_by_entry(&account).unwrap();
 //!
 //!    // For a contract-based signer
@@ -41,7 +41,7 @@
 //!    ```rust
 //!    # use neo3::neo_builder::{TransactionBuilder, AccountSigner};
 //!    # use neo3::neo_protocol::{Account, AccountTrait};
-//!    # let account = Account::from_wif("KxDgvEKzgSBPPfuVfw67oPQBSjidEiqTHURKSDL1R7yGaGYAeYnr").unwrap();
+//!    # let account = Account::from_wif("YOUR_WIF_HERE").unwrap();
 //!    # let account_signer = AccountSigner::called_by_entry(&account).unwrap();
 //!    # use neo3::neo_clients::HttpProvider;
 //!    let mut tx_builder: TransactionBuilder<'_, HttpProvider> = TransactionBuilder::default();
@@ -56,7 +56,7 @@
 //!    ```rust
 //!    # use neo3::neo_builder::{Signer, AccountSigner};
 //!    # use neo3::neo_protocol::{Account, AccountTrait};
-//!    # let account = Account::from_wif("KxDgvEKzgSBPPfuVfw67oPQBSjidEiqTHURKSDL1R7yGaGYAeYnr").unwrap();
+//!    # let account = Account::from_wif("YOUR_WIF_HERE").unwrap();
 //!    # let account_signer = AccountSigner::called_by_entry(&account).unwrap();
 //!    let generic_signer: Signer = account_signer.into();
 //!    ```

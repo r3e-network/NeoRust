@@ -162,6 +162,82 @@ impl fmt::Display for ErrorRecovery {
 /// Result type alias for Neo operations
 pub type Result<T> = std::result::Result<T, NeoError>;
 
+/// Convert legacy `Neo3Error` values into the unified error type.
+///
+/// This is a best-effort mapping intended to ease migration for callers that
+/// still receive `Neo3Error` from lower-level APIs.
+impl From<super::Neo3Error> for NeoError {
+	fn from(err: super::Neo3Error) -> Self {
+		use super::{Neo3Error, NetworkError, TransactionError};
+
+		match err {
+			Neo3Error::Network(network_error) => match network_error {
+				NetworkError::RateLimitExceeded => NeoError::RateLimit {
+					message: network_error.to_string(),
+					retry_after: None,
+					recovery: ErrorRecovery::new()
+						.suggest("Retry after a short delay")
+						.retryable(true),
+				},
+				_ => NeoError::Network {
+					message: network_error.to_string(),
+					source: None,
+					recovery: ErrorRecovery::new().retryable(true),
+				},
+			},
+			Neo3Error::Wallet(wallet_error) => NeoError::Wallet {
+				message: wallet_error.to_string(),
+				source: None,
+				recovery: ErrorRecovery::new(),
+			},
+			Neo3Error::Transaction(tx_error) => match tx_error {
+				TransactionError::InsufficientFunds { required, available } => {
+					NeoError::InsufficientFunds {
+						required: required.to_string(),
+						available: available.to_string(),
+						token: "unknown".to_string(),
+						recovery: ErrorRecovery::new()
+							.suggest("Check the account balance")
+							.retryable(false),
+					}
+				},
+				_ => NeoError::Transaction {
+					message: tx_error.to_string(),
+					tx_hash: None,
+					source: None,
+					recovery: ErrorRecovery::new(),
+				},
+			},
+			Neo3Error::Contract(contract_error) => NeoError::Contract {
+				message: contract_error.to_string(),
+				contract: None,
+				method: None,
+				source: None,
+				recovery: ErrorRecovery::new(),
+			},
+			Neo3Error::Config(message) => {
+				NeoError::Configuration { message, field: None, recovery: ErrorRecovery::new() }
+			},
+			Neo3Error::Crypto(crypto_error) => NeoError::Other {
+				message: crypto_error.to_string(),
+				source: None,
+				recovery: ErrorRecovery::new(),
+			},
+			Neo3Error::Serialization(serialization_error) => NeoError::Other {
+				message: serialization_error.to_string(),
+				source: None,
+				recovery: ErrorRecovery::new(),
+			},
+			Neo3Error::Generic { message } => {
+				NeoError::Other { message, source: None, recovery: ErrorRecovery::new() }
+			},
+			Neo3Error::UnsupportedOperation(message) => {
+				NeoError::Other { message, source: None, recovery: ErrorRecovery::new() }
+			},
+		}
+	}
+}
+
 /// Builder for creating detailed errors with context
 pub struct ErrorBuilder {
 	kind: ErrorKind,
@@ -321,6 +397,341 @@ where
 		}
 	}
 }
+
+// =============================================================================
+// From implementations for legacy error types
+// =============================================================================
+
+impl From<crate::neo_crypto::CryptoError> for NeoError {
+	fn from(err: crate::neo_crypto::CryptoError) -> Self {
+		use crate::neo_crypto::CryptoError;
+		match &err {
+			CryptoError::InvalidPassphrase(msg) => NeoError::Wallet {
+				message: format!("Invalid passphrase: {}", msg),
+				source: None,
+				recovery: ErrorRecovery::new()
+					.suggest("Check that the password is correct")
+					.suggest("Ensure the wallet file is not corrupted"),
+			},
+			CryptoError::InvalidPrivateKey | CryptoError::InvalidPublicKey => NeoError::Wallet {
+				message: err.to_string(),
+				source: None,
+				recovery: ErrorRecovery::new()
+					.suggest("Verify the key format is correct")
+					.suggest("Ensure the key was not truncated"),
+			},
+			CryptoError::SigningError | CryptoError::SignatureVerificationError => {
+				NeoError::Transaction {
+					message: err.to_string(),
+					tx_hash: None,
+					source: None,
+					recovery: ErrorRecovery::new().suggest("Verify the signing key is correct"),
+				}
+			},
+			CryptoError::DecryptionError(msg) => NeoError::Wallet {
+				message: format!("Decryption failed: {}", msg),
+				source: None,
+				recovery: ErrorRecovery::new()
+					.suggest("Check that the password is correct")
+					.suggest("Ensure the encrypted data is not corrupted"),
+			},
+			_ => NeoError::Other {
+				message: err.to_string(),
+				source: None,
+				recovery: ErrorRecovery::new(),
+			},
+		}
+	}
+}
+
+impl From<crate::neo_wallets::WalletError> for NeoError {
+	fn from(err: crate::neo_wallets::WalletError) -> Self {
+		use crate::neo_wallets::WalletError;
+		match &err {
+			WalletError::NoKeyPair => NeoError::Wallet {
+				message: "No key pair available".to_string(),
+				source: None,
+				recovery: ErrorRecovery::new()
+					.suggest("Import a private key or create a new account")
+					.suggest("Decrypt the wallet if it is encrypted"),
+			},
+			WalletError::NoDefaultAccount => NeoError::Wallet {
+				message: "No default account set".to_string(),
+				source: None,
+				recovery: ErrorRecovery::new()
+					.suggest("Set a default account using set_default_account()")
+					.suggest("Add an account to the wallet first"),
+			},
+			WalletError::NoAccounts => NeoError::Wallet {
+				message: "Wallet has no accounts".to_string(),
+				source: None,
+				recovery: ErrorRecovery::new()
+					.suggest("Create a new account")
+					.suggest("Import an existing account"),
+			},
+			WalletError::DecryptionError(msg) => NeoError::Wallet {
+				message: format!("Decryption failed: {}", msg),
+				source: None,
+				recovery: ErrorRecovery::new()
+					.suggest("Verify the password is correct")
+					.suggest("Check if the wallet file is corrupted"),
+			},
+			WalletError::AccountState(msg) => NeoError::Wallet {
+				message: format!("Account state error: {}", msg),
+				source: None,
+				recovery: ErrorRecovery::new(),
+			},
+			WalletError::FileError(msg) => NeoError::Wallet {
+				message: format!("File operation failed: {}", msg),
+				source: None,
+				recovery: ErrorRecovery::new()
+					.suggest("Check file permissions")
+					.suggest("Verify the file path is correct"),
+			},
+			_ => NeoError::Wallet {
+				message: err.to_string(),
+				source: None,
+				recovery: ErrorRecovery::new(),
+			},
+		}
+	}
+}
+
+impl From<crate::neo_builder::BuilderError> for NeoError {
+	fn from(err: crate::neo_builder::BuilderError) -> Self {
+		use crate::neo_builder::BuilderError;
+		match &err {
+			BuilderError::SignerConfiguration(msg) => NeoError::Transaction {
+				message: format!("Signer configuration error: {}", msg),
+				tx_hash: None,
+				source: None,
+				recovery: ErrorRecovery::new()
+					.suggest("Verify signer accounts are valid")
+					.suggest("Check signer scopes are appropriate"),
+			},
+			BuilderError::TransactionConfiguration(msg) => NeoError::Transaction {
+				message: format!("Transaction configuration error: {}", msg),
+				tx_hash: None,
+				source: None,
+				recovery: ErrorRecovery::new()
+					.suggest("Review transaction parameters")
+					.suggest("Ensure all required fields are set"),
+			},
+			BuilderError::TooManySigners(msg) => NeoError::Transaction {
+				message: format!("Too many signers: {}", msg),
+				tx_hash: None,
+				source: None,
+				recovery: ErrorRecovery::new()
+					.suggest("Reduce the number of signers")
+					.doc("https://docs.neo.org/docs/n3/foundation/Transactions"),
+			},
+			BuilderError::InvalidScript(msg) => NeoError::Transaction {
+				message: format!("Invalid script: {}", msg),
+				tx_hash: None,
+				source: None,
+				recovery: ErrorRecovery::new()
+					.suggest("Verify the script is correctly formatted")
+					.suggest("Check for invalid opcodes"),
+			},
+			_ => NeoError::Transaction {
+				message: err.to_string(),
+				tx_hash: None,
+				source: None,
+				recovery: ErrorRecovery::new(),
+			},
+		}
+	}
+}
+
+impl From<crate::neo_builder::TransactionError> for NeoError {
+	fn from(err: crate::neo_builder::TransactionError) -> Self {
+		use crate::neo_builder::TransactionError;
+		match &err {
+			TransactionError::NoSigners => NeoError::Transaction {
+				message: "Transaction has no signers".to_string(),
+				tx_hash: None,
+				source: None,
+				recovery: ErrorRecovery::new()
+					.suggest("Add at least one signer to the transaction")
+					.suggest("Use set_signers() or add_signer()"),
+			},
+			TransactionError::NoScript | TransactionError::EmptyScript => NeoError::Transaction {
+				message: "Transaction has no script".to_string(),
+				tx_hash: None,
+				source: None,
+				recovery: ErrorRecovery::new()
+					.suggest("Set the transaction script using set_script()")
+					.suggest("Build a script using ScriptBuilder"),
+			},
+			TransactionError::InsufficientFunds => NeoError::InsufficientFunds {
+				required: "unknown".to_string(),
+				available: "unknown".to_string(),
+				token: "GAS".to_string(),
+				recovery: ErrorRecovery::new()
+					.suggest("Check account balance")
+					.suggest("Acquire more GAS tokens")
+					.retryable(false),
+			},
+			TransactionError::TxTooLarge => NeoError::Transaction {
+				message: "Transaction exceeds maximum size".to_string(),
+				tx_hash: None,
+				source: None,
+				recovery: ErrorRecovery::new()
+					.suggest("Split the transaction into smaller parts")
+					.suggest("Reduce the script size"),
+			},
+			_ => NeoError::Transaction {
+				message: err.to_string(),
+				tx_hash: None,
+				source: None,
+				recovery: ErrorRecovery::new(),
+			},
+		}
+	}
+}
+
+impl From<crate::neo_contract::ContractError> for NeoError {
+	fn from(err: crate::neo_contract::ContractError) -> Self {
+		use crate::neo_contract::ContractError;
+		match &err {
+			ContractError::InvalidNeoName(name) => NeoError::Contract {
+				message: format!("Invalid NNS name: {}", name),
+				contract: Some("NameService".to_string()),
+				method: None,
+				source: None,
+				recovery: ErrorRecovery::new()
+					.suggest("Check the domain name format")
+					.suggest("Ensure the name follows NNS naming rules"),
+			},
+			ContractError::UnresolvableDomainName(name) => NeoError::Contract {
+				message: format!("Cannot resolve domain: {}", name),
+				contract: Some("NameService".to_string()),
+				method: Some("resolve".to_string()),
+				source: None,
+				recovery: ErrorRecovery::new()
+					.suggest("Verify the domain is registered")
+					.suggest("Check if the domain has expired"),
+			},
+			ContractError::InvocationFailed(msg) => NeoError::Contract {
+				message: format!("Contract invocation failed: {}", msg),
+				contract: None,
+				method: None,
+				source: None,
+				recovery: ErrorRecovery::new()
+					.suggest("Check contract parameters")
+					.suggest("Verify the contract is deployed")
+					.retryable(true),
+			},
+			ContractError::ProviderNotSet(msg) => NeoError::Configuration {
+				message: format!("Provider not configured: {}", msg),
+				field: Some("provider".to_string()),
+				recovery: ErrorRecovery::new()
+					.suggest("Set an RPC provider before calling contract methods")
+					.suggest("Use with_provider() to configure the client"),
+			},
+			_ => NeoError::Contract {
+				message: err.to_string(),
+				contract: None,
+				method: None,
+				source: None,
+				recovery: ErrorRecovery::new(),
+			},
+		}
+	}
+}
+
+impl From<crate::neo_types::TypeError> for NeoError {
+	fn from(err: crate::neo_types::TypeError) -> Self {
+		use crate::neo_types::TypeError;
+		match &err {
+			TypeError::InvalidAddress => NeoError::Validation {
+				message: "Invalid Neo address".to_string(),
+				field: "address".to_string(),
+				value: None,
+				recovery: ErrorRecovery::new()
+					.suggest("Check the address format (should start with 'N')")
+					.suggest("Verify the address checksum"),
+			},
+			TypeError::InvalidPrivateKey | TypeError::InvalidPublicKey => NeoError::Validation {
+				message: err.to_string(),
+				field: "key".to_string(),
+				value: None,
+				recovery: ErrorRecovery::new()
+					.suggest("Verify the key format")
+					.suggest("Check key length (32 bytes for private, 33/65 for public)"),
+			},
+			TypeError::InvalidFormat(msg) => NeoError::Validation {
+				message: format!("Invalid format: {}", msg),
+				field: "data".to_string(),
+				value: None,
+				recovery: ErrorRecovery::new().suggest("Check the data format"),
+			},
+			TypeError::NumericOverflow => NeoError::Validation {
+				message: "Numeric overflow".to_string(),
+				field: "number".to_string(),
+				value: None,
+				recovery: ErrorRecovery::new().suggest("Use a smaller value"),
+			},
+			_ => NeoError::Other {
+				message: err.to_string(),
+				source: None,
+				recovery: ErrorRecovery::new(),
+			},
+		}
+	}
+}
+
+impl From<crate::neo_clients::ProviderError> for NeoError {
+	fn from(err: crate::neo_clients::ProviderError) -> Self {
+		NeoError::Network {
+			message: err.to_string(),
+			source: None,
+			recovery: ErrorRecovery::new()
+				.suggest("Check network connectivity")
+				.suggest("Verify the RPC endpoint is accessible")
+				.retryable(true),
+		}
+	}
+}
+
+impl From<std::io::Error> for NeoError {
+	fn from(err: std::io::Error) -> Self {
+		NeoError::Other {
+			message: format!("IO error: {}", err),
+			source: Some(Box::new(err)),
+			recovery: ErrorRecovery::new()
+				.suggest("Check file permissions")
+				.suggest("Verify the path exists"),
+		}
+	}
+}
+
+impl From<hex::FromHexError> for NeoError {
+	fn from(err: hex::FromHexError) -> Self {
+		NeoError::Validation {
+			message: format!("Invalid hex string: {}", err),
+			field: "hex".to_string(),
+			value: None,
+			recovery: ErrorRecovery::new()
+				.suggest("Ensure the string contains only hex characters (0-9, a-f)")
+				.suggest("Check for correct string length"),
+		}
+	}
+}
+
+impl From<serde_json::Error> for NeoError {
+	fn from(err: serde_json::Error) -> Self {
+		NeoError::Other {
+			message: format!("JSON error: {}", err),
+			source: Some(Box::new(err)),
+			recovery: ErrorRecovery::new().suggest("Check JSON format and structure"),
+		}
+	}
+}
+
+// =============================================================================
+// Tests
+// =============================================================================
 
 #[cfg(test)]
 mod tests {

@@ -8,10 +8,7 @@ pub(super) struct MockBlocks;
 
 impl MockBlocks {
 	fn unix_timestamp_ms() -> u64 {
-		SystemTime::now()
-			.duration_since(UNIX_EPOCH)
-			.expect("Time went backwards")
-			.as_millis() as u64
+		SystemTime::now().duration_since(UNIX_EPOCH).unwrap_or_default().as_millis() as u64
 	}
 	pub(super) fn random_uint256() -> H256 {
 		let mut rng = rand::thread_rng();

@@ -74,7 +74,7 @@
 use base64::{engine::general_purpose, Engine};
 pub use log::*;
 use primitive_types::H256;
-use serde_derive::{Deserialize, Serialize};
+use serde::{Deserialize, Serialize};
 
 // Re-export everything from these modules
 pub use address::*;
@@ -169,12 +169,17 @@ impl Base64Encode for &[u8] {
 
 impl Base64Encode for String {
 	fn to_base64(&self) -> String {
-		match hex::decode(self) {
+		let hex_str = self.trim_start_matches("0x");
+		match hex::decode(hex_str) {
 			Ok(bytes) => general_purpose::STANDARD.encode(&bytes),
-			Err(_) => {
+			Err(err) => {
 				// If hex decoding fails, return an empty string
-				// Professional error handling with logging for debugging
-				eprintln!("Failed to decode hex string: {}", self);
+				// Avoid logging raw input to prevent leaking sensitive data
+				tracing::warn!(
+					len = self.len(),
+					error = %err,
+					"Failed to decode hex string for base64 encoding"
+				);
 				String::new()
 			},
 		}

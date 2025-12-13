@@ -1,17 +1,19 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, fmt};
 
 use crate::{
 	builder::VerificationScript,
 	codec::NeoSerializable,
 	neo_protocol::Account,
 	neo_wallets::{NEP6Contract, NEP6Parameter, WalletError},
-	Address, AddressOrScriptHash, Base64Encode, ContractParameterType, StringExt,
+	Address, AddressOrScriptHash, Base64Encode, ContractParameterType, ScriptHashExtension,
+	StringExt,
 };
 use getset::{Getters, Setters};
+use primitive_types::H160;
 use serde::{Deserialize, Serialize};
 
 /// Represents an account in the NEP-6 format.
-#[derive(Clone, Debug, Serialize, Deserialize, Getters, Setters)]
+#[derive(Clone, Serialize, Deserialize, Getters, Setters)]
 pub struct NEP6Account {
 	/// The address of the account.
 	#[getset(get = "pub")]
@@ -52,6 +54,20 @@ pub struct NEP6Account {
 	#[serde(skip_serializing_if = "Option::is_none")]
 	#[serde(rename = "extra")]
 	pub extra: Option<HashMap<String, String>>,
+}
+
+impl fmt::Debug for NEP6Account {
+	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+		f.debug_struct("NEP6Account")
+			.field("address", &self.address)
+			.field("label", &self.label)
+			.field("is_default", &self.is_default)
+			.field("lock", &self.lock)
+			.field("has_key", &self.key.is_some())
+			.field("contract", &self.contract)
+			.field("extra", &self.extra.as_ref().map(|m| m.len()))
+			.finish()
+	}
 }
 
 impl NEP6Account {
@@ -207,11 +223,27 @@ impl NEP6Account {
 			}
 		}
 
+		let script_hash = if self.address.is_empty() {
+			if let Some(script) = verification_script.as_ref() {
+				H160::from_script(script.script())
+			} else {
+				tracing::warn!(
+					"NEP6Account has empty address and no verification script; using zero script hash"
+				);
+				H160::zero()
+			}
+		} else {
+			let address = self.address.clone();
+			H160::from_address(&address).map_err(|e| {
+				WalletError::AccountState(format!("Invalid address '{address}': {e}"))
+			})?
+		};
+
 		Ok(Account {
-			address_or_scripthash: AddressOrScriptHash::Address(self.clone().address),
-			label: self.clone().label,
+			address_or_scripthash: AddressOrScriptHash::ScriptHash(script_hash),
+			label: self.label.clone(),
 			verification_script,
-			is_locked: self.clone().lock,
+			is_locked: self.lock,
 			encrypted_private_key: self.clone().key,
 			signing_threshold: signing_threshold.map(|s| s as u32),
 			nr_of_participants: nr_of_participants.map(|s| s as u32),

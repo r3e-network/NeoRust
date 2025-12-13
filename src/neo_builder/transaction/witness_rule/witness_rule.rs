@@ -32,9 +32,11 @@ impl NeoSerializable for WitnessRule {
 	}
 
 	fn decode(reader: &mut Decoder) -> Result<Self, Self::Error> {
-		let action = reader.read_u8();
+		let action = reader.read_u8_safe()?;
+		let action =
+			WitnessAction::try_from(action).map_err(|_| TransactionError::InvalidTransaction)?;
 		let condition = WitnessCondition::decode(reader)?;
-		Ok(Self { action: WitnessAction::try_from(action).unwrap(), condition })
+		Ok(Self { action, condition })
 	}
 	fn to_array(&self) -> Vec<u8> {
 		let mut writer = Encoder::new();
@@ -120,6 +122,20 @@ mod tests {
 	}
 
 	#[test]
+	fn test_not_condition_serialize_deserialize() {
+		let condition = WitnessCondition::Not(Box::new(WitnessCondition::CalledByEntry));
+
+		let bytes = hex::decode("0120").unwrap();
+
+		let deserialized = WitnessCondition::from_bytes(&bytes).unwrap();
+		assert_eq!(condition, deserialized);
+
+		let mut writer = Encoder::new();
+		condition.encode(&mut writer);
+		assert_eq!(bytes, writer.to_bytes());
+	}
+
+	#[test]
 	fn test_boolean_nil_values() {
 		let json = r#"{
         "action": "Deny",
@@ -133,6 +149,20 @@ mod tests {
 
 		assert!(rule.condition.boolean_expression().is_none());
 		assert!(rule.condition.expression().is_none());
+	}
+
+	#[test]
+	fn test_group_condition_invalid_key_rejected() {
+		let json = r#"{
+        "action": "Allow",
+        "condition": {
+            "type": "Group",
+            "group": "deadbeef"
+        }
+    }"#;
+
+		let result: Result<WitnessRule, _> = serde_json::from_str(json);
+		assert!(result.is_err());
 	}
 
 	#[test]

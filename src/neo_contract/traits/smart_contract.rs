@@ -25,12 +25,12 @@ pub trait SmartContractTrait<'a>: Send + Sync {
 	type P: JsonRpcProvider;
 
 	async fn name(&self) -> String {
-		self.get_manifest().await.name.clone().unwrap()
+		self.get_manifest().await.name.clone().unwrap_or_default()
 	}
 	fn set_name(&mut self, _name: String) {
 		// NNS contracts don't support setting names
 		// This is intentionally a no-op as it's not supported
-		eprintln!("Warning: Cannot set name for NNS contract - operation not supported");
+		tracing::warn!("Cannot set name for NNS contract - operation not supported");
 	}
 
 	fn script_hash(&self) -> H160;
@@ -38,7 +38,7 @@ pub trait SmartContractTrait<'a>: Send + Sync {
 	fn set_script_hash(&mut self, _script_hash: H160) {
 		// NNS contracts don't support setting script hash
 		// This is intentionally a no-op as it's not supported
-		eprintln!("Warning: Cannot set script hash for NNS contract - operation not supported");
+		tracing::warn!("Cannot set script hash for NNS contract - operation not supported");
 	}
 
 	fn provider(&self) -> Option<&RpcClient<Self::P>>;
@@ -48,7 +48,7 @@ pub trait SmartContractTrait<'a>: Send + Sync {
 		function: &str,
 		params: Vec<ContractParameter>,
 	) -> Result<TransactionBuilder<Self::P>, ContractError> {
-		let script = self.build_invoke_function_script(function, params).await.unwrap();
+		let script = self.build_invoke_function_script(function, params).await?;
 		let mut builder = TransactionBuilder::new();
 		builder.set_script(Some(script));
 		Ok(builder)
@@ -65,7 +65,9 @@ pub trait SmartContractTrait<'a>: Send + Sync {
 
 		let script = ScriptBuilder::new()
 			.contract_call(&self.script_hash(), function, params.as_slice(), Some(CallFlags::None))
-			.unwrap()
+			.map_err(|e| {
+				ContractError::RuntimeError(format!("Failed to build contract call: {e}"))
+			})?
 			.to_bytes();
 
 		Ok(script)
@@ -76,10 +78,12 @@ pub trait SmartContractTrait<'a>: Send + Sync {
 		function: &str,
 		params: Vec<ContractParameter>,
 	) -> Result<String, ContractError> {
-		let output = self.call_invoke_function(function, params, vec![]).await.unwrap();
-		self.throw_if_fault_state(&output).unwrap();
+		let output = self.call_invoke_function(function, params, vec![]).await?;
+		self.throw_if_fault_state(&output)?;
 
-		let item = output.stack[0].clone();
+		let item = output
+			.get_first_stack_item()
+			.map_err(|e| ContractError::InvalidResponse(e.to_string()))?;
 		match item.as_string() {
 			Some(s) => Ok(s),
 			None => Err(ContractError::UnexpectedReturnType("String".to_string())),
@@ -91,10 +95,12 @@ pub trait SmartContractTrait<'a>: Send + Sync {
 		function: &str,
 		params: Vec<ContractParameter>,
 	) -> Result<i32, ContractError> {
-		let output = self.call_invoke_function(function, params, vec![]).await.unwrap();
-		self.throw_if_fault_state(&output).unwrap();
+		let output = self.call_invoke_function(function, params, vec![]).await?;
+		self.throw_if_fault_state(&output)?;
 
-		let item = output.stack[0].clone();
+		let item = output
+			.get_first_stack_item()
+			.map_err(|e| ContractError::InvalidResponse(e.to_string()))?;
 		match item.as_int() {
 			Some(i) => Ok(i as i32),
 			None => Err(ContractError::UnexpectedReturnType("Int".to_string())),
@@ -106,10 +112,12 @@ pub trait SmartContractTrait<'a>: Send + Sync {
 		function: &str,
 		params: Vec<ContractParameter>,
 	) -> Result<bool, ContractError> {
-		let output = self.call_invoke_function(function, params, vec![]).await.unwrap();
-		self.throw_if_fault_state(&output).unwrap();
+		let output = self.call_invoke_function(function, params, vec![]).await?;
+		self.throw_if_fault_state(&output)?;
 
-		let item = output.stack[0].clone();
+		let item = output
+			.get_first_stack_item()
+			.map_err(|e| ContractError::InvalidResponse(e.to_string()))?;
 		match item.as_bool() {
 			Some(b) => Ok(b),
 			None => Err(ContractError::UnexpectedReturnType("Bool".to_string())),
@@ -128,19 +136,23 @@ pub trait SmartContractTrait<'a>: Send + Sync {
 			return Err(ContractError::InvalidNeoName("Function cannot be empty".to_string()));
 		}
 
-		let res = self
-			.provider()
-			.unwrap()
-			.invoke_function(&self.script_hash(), function.into(), params, Some(signers))
-			.await?
-			.clone();
+		let provider = self.provider().ok_or_else(|| {
+			ContractError::ProviderNotSet(
+				"Provider is required for contract invocations".to_string(),
+			)
+		})?;
 
-		Ok(res)
+		provider
+			.invoke_function(&self.script_hash(), function.into(), params, Some(signers))
+			.await
+			.map_err(ContractError::from)
 	}
 
 	fn throw_if_fault_state(&self, output: &InvocationResult) -> Result<(), ContractError> {
 		if output.has_state_fault() {
-			Err(ContractError::UnexpectedReturnType(output.exception.clone().unwrap()))
+			let message =
+				output.exception.clone().unwrap_or_else(|| "Invocation faulted".to_string());
+			Err(ContractError::InvocationFailed(message))
 		} else {
 			Ok(())
 		}
@@ -152,14 +164,25 @@ pub trait SmartContractTrait<'a>: Send + Sync {
 		function: &str,
 		params: Vec<ContractParameter>,
 	) -> Result<H160, ContractError> {
-		let output = self.call_invoke_function(function, params, vec![]).await.unwrap();
-		self.throw_if_fault_state(&output).unwrap();
+		let output = self.call_invoke_function(function, params, vec![]).await?;
+		self.throw_if_fault_state(&output)?;
 
-		let item = &output.stack[0];
-		item.as_bytes()
-			.as_deref()
-			.map(ScriptHash::from_script)
-			.ok_or_else(|| ContractError::UnexpectedReturnType("Script hash".to_string()))
+		let item = output
+			.get_first_stack_item()
+			.map_err(|e| ContractError::InvalidResponse(e.to_string()))?;
+
+		let bytes = item
+			.as_bytes()
+			.ok_or_else(|| ContractError::UnexpectedReturnType("ByteString".to_string()))?;
+
+		if bytes.len() != 20 {
+			return Err(ContractError::InvalidResponse(format!(
+				"Expected 20 bytes for ScriptHash, got {}",
+				bytes.len()
+			)));
+		}
+
+		Ok(H160::from_slice(&bytes))
 	}
 
 	async fn call_function_returning_iterator<U>(
@@ -171,10 +194,18 @@ pub trait SmartContractTrait<'a>: Send + Sync {
 	where
 		U: Send + Sync, // Adding this bound if necessary
 	{
-		let output = self.call_invoke_function(function, params, vec![]).await.unwrap();
-		self.throw_if_fault_state(&output).unwrap();
+		let output = self.call_invoke_function(function, params, vec![]).await?;
+		self.throw_if_fault_state(&output)?;
 
-		let item = &output.stack[0];
+		let session_id = output.session_id.clone().ok_or_else(|| {
+			ContractError::InvalidResponse(
+				"No session ID returned from iterator invocation".to_string(),
+			)
+		})?;
+
+		let item = output
+			.get_first_stack_item()
+			.map_err(|e| ContractError::InvalidResponse(e.to_string()))?;
 		let StackItem::InteropInterface { id, interface: _ } = item else {
 			return Err(ContractError::UnexpectedReturnType(format!(
 				"Expected InteropInterface, got {:?}",
@@ -182,11 +213,11 @@ pub trait SmartContractTrait<'a>: Send + Sync {
 			)));
 		};
 
-		let session_id = output
-			.session_id
-			.ok_or(ContractError::InvalidNeoNameServiceRoot("No session ID".to_string()))?;
+		let provider = self.provider().ok_or_else(|| {
+			ContractError::ProviderNotSet("Provider is required for iterator traversal".to_string())
+		})?;
 
-		Ok(NeoIterator::new(session_id, id.clone(), mapper, None))
+		Ok(NeoIterator::new(session_id, id.clone(), mapper, Some(provider)))
 	}
 
 	async fn call_function_and_unwrap_iterator<U>(
@@ -203,15 +234,29 @@ pub trait SmartContractTrait<'a>: Send + Sync {
 			_max_items as u32, // Use the max_items parameter provided to the function
 			Some(CallFlags::All),
 		)
-		.unwrap();
+		.map_err(|e| {
+			ContractError::RuntimeError(format!("Failed to build iterator script: {e}"))
+		})?;
 
-		let output = { self.provider().unwrap().invoke_script(script.to_hex_string(), vec![]) };
+		let provider = self.provider().ok_or_else(|| {
+			ContractError::ProviderNotSet(
+				"Provider is required for contract invocations".to_string(),
+			)
+		})?;
 
-		let output = output.await.unwrap();
+		let output = provider.invoke_script(script.to_hex_string(), vec![]).await?;
 
-		self.throw_if_fault_state(&output).unwrap();
+		self.throw_if_fault_state(&output)?;
 
-		let items = output.stack[0].as_array().unwrap().into_iter().map(mapper).collect();
+		let stack_item = output
+			.get_first_stack_item()
+			.map_err(|e| ContractError::InvalidResponse(e.to_string()))?;
+
+		let array = stack_item
+			.as_array()
+			.ok_or_else(|| ContractError::UnexpectedReturnType("Array".to_string()))?;
+
+		let items = array.into_iter().map(mapper).collect();
 
 		Ok(items)
 	}
@@ -220,11 +265,33 @@ pub trait SmartContractTrait<'a>: Send + Sync {
 		Self::calc_contract_hash(H160::zero(), 0, contract_name)
 	}
 
+	/// Calculates a native contract hash, but never panics.
+	///
+	/// This is intended for use with known-good constants like `NeoToken`, `GasToken`, etc.,
+	/// where the only failure mode would be an empty name (a programming error).
+	fn calc_native_contract_hash_unchecked(contract_name: &str) -> H160 {
+		match Self::calc_native_contract_hash(contract_name) {
+			Ok(hash) => hash,
+			Err(e) => {
+				tracing::warn!(
+					error = %e,
+					contract_name,
+					"Failed to calculate native contract hash; using zero hash"
+				);
+				H160::zero()
+			},
+		}
+	}
+
 	fn calc_contract_hash(
 		sender: H160,
 		nef_checksum: u32,
 		contract_name: &str,
 	) -> Result<H160, ContractError> {
+		if contract_name.is_empty() {
+			return Err(ContractError::InvalidNeoName("Contract name cannot be empty".to_string()));
+		}
+
 		let mut script = ScriptBuilder::new();
 		script
 			.op_code(&[OpCode::Abort])
@@ -232,13 +299,21 @@ pub trait SmartContractTrait<'a>: Send + Sync {
 			.push_integer(BigInt::from(nef_checksum))
 			.push_data(contract_name.as_bytes().to_vec());
 
-		Ok(H160::from_slice(&script.to_bytes()))
+		Ok(ScriptHash::from_script(&script.to_bytes()))
 	}
 
 	async fn get_manifest(&self) -> ContractManifest {
-		let req =
-			{ self.provider().unwrap().get_contract_state(self.script_hash()).await.unwrap() };
+		let Some(provider) = self.provider() else {
+			tracing::warn!("Provider not set; returning default contract manifest");
+			return ContractManifest::default();
+		};
 
-		req.manifest.clone()
+		match provider.get_contract_state(self.script_hash()).await {
+			Ok(state) => state.manifest,
+			Err(err) => {
+				tracing::warn!(error = %err, "Failed to fetch contract manifest; returning default");
+				ContractManifest::default()
+			},
+		}
 	}
 }

@@ -94,19 +94,28 @@ impl VerificationScript {
 			Ok(n) => n,
 			Err(_) => return false,
 		};
-		if !(1..=NeoConstants::MAX_PUBLIC_KEYS_PER_MULTI_SIG)
-			.contains(&(threshold.to_u32().unwrap()))
-		{
+		let threshold_u32 = match threshold.to_u32() {
+			Some(value) => value,
+			None => return false,
+		};
+		if !(1..=NeoConstants::MAX_PUBLIC_KEYS_PER_MULTI_SIG).contains(&threshold_u32) {
 			return false;
 		}
 
 		let mut m: BigInt = BigInt::zero();
-		while reader.by_ref().read_u8() == OpCode::PushData1.opcode() {
+		while reader.available() > 0 && reader.by_ref().read_u8() == OpCode::PushData1.opcode() {
+			if reader.available() == 0 {
+				return false;
+			}
 			let len = reader.by_ref().read_u8();
 			if len != 33 {
 				return false;
 			}
-			if reader.by_ref().read_encoded_ec_point().is_err() {
+			let public_key_bytes = match reader.by_ref().read_bytes(33) {
+				Ok(bytes) => bytes,
+				Err(_) => return false,
+			};
+			if Secp256r1PublicKey::from_bytes(&public_key_bytes).is_err() {
 				return false;
 			}
 			m += 1;
@@ -119,13 +128,20 @@ impl VerificationScript {
 
 		reader.reset();
 
-		if reader.read_push_int().unwrap() != m || reader.read_u8() != OpCode::Syscall.opcode() {
+		match reader.by_ref().read_push_int() {
+			Ok(count) if count == m => {},
+			_ => return false,
+		};
+		if reader.available() == 0 || reader.by_ref().read_u8() != OpCode::Syscall.opcode() {
 			return false;
 		}
 
-		let service_bytes = &reader.read_bytes(4).unwrap().to_hex_string();
-		let hash = &InteropService::SystemCryptoCheckMultiSig.hash(); //.from_hex().unwrap();
-																//assert_eq!(service_bytes, hash);
+		let service_bytes = match reader.by_ref().read_bytes(4) {
+			Ok(bytes) => bytes.to_hex_string(),
+			Err(_) => return false,
+		};
+		let hash = InteropService::SystemCryptoCheckMultiSig.hash(); //.from_hex().unwrap();
+															   //assert_eq!(service_bytes, hash);
 		if service_bytes != hash {
 			return false;
 		}
@@ -156,12 +172,24 @@ impl VerificationScript {
 		let mut reader = Decoder::new(&self.script);
 		let mut signatures = vec![];
 
-		while reader.by_ref().read_u8() == OpCode::PushData1 as u8 {
-			let len = reader.by_ref().read_u8();
-			let sig =
-				Secp256r1Signature::from_bytes(&reader.by_ref().read_bytes(len as usize).unwrap())
-					.unwrap();
-			signatures.push(sig);
+		while reader.available() > 0 {
+			let opcode = reader.read_u8();
+			if opcode != OpCode::PushData1.opcode() {
+				break;
+			}
+			if reader.available() == 0 {
+				break;
+			}
+			let len = reader.read_u8() as usize;
+			let bytes = match reader.read_bytes(len) {
+				Ok(bytes) => bytes,
+				Err(_) => break,
+			};
+			let signature = match Secp256r1Signature::from_bytes(&bytes) {
+				Ok(sig) => sig,
+				Err(_) => break,
+			};
+			signatures.push(signature);
 		}
 
 		signatures
@@ -171,25 +199,38 @@ impl VerificationScript {
 		if self.is_single_sig() {
 			let mut reader = Decoder::new(&self.script);
 			reader.by_ref().read_u8(); // skip pushdata1
-			reader.by_ref().read_u8(); // skip length
+			let len = reader.by_ref().read_u8(); // skip length
+			if len != 33 {
+				return Err(BuilderError::InvalidScript(
+					"Invalid single-sig verification script".to_string(),
+				));
+			}
 
-			let mut point = [0; 33];
-			point.copy_from_slice(&reader.by_ref().read_bytes(33).unwrap());
-
-			let key = Secp256r1PublicKey::from_bytes(&point).unwrap();
+			let point = reader.by_ref().read_bytes(33)?;
+			let key = Secp256r1PublicKey::from_bytes(&point)?;
 			return Ok(vec![key]);
 		}
 
 		if self.is_multi_sig() {
 			let mut reader = Decoder::new(&self.script);
-			reader.by_ref().read_var_int().unwrap(); // skip threshold
+			reader.by_ref().read_push_int()?; // skip threshold
 
 			let mut keys = vec![];
-			while reader.by_ref().read_u8() == OpCode::PushData1 as u8 {
-				reader.by_ref().read_u8(); // skip length
-				let mut point = [0; 33];
-				point.copy_from_slice(&reader.by_ref().read_bytes(33).unwrap());
-				keys.push(Secp256r1PublicKey::from_bytes(&point).unwrap());
+			while reader.available() > 0 && reader.by_ref().read_u8() == OpCode::PushData1.opcode()
+			{
+				if reader.available() == 0 {
+					return Err(BuilderError::InvalidScript(
+						"Invalid multi-sig verification script".to_string(),
+					));
+				}
+				let len = reader.by_ref().read_u8();
+				if len != 33 {
+					return Err(BuilderError::InvalidScript(
+						"Invalid multi-sig verification script".to_string(),
+					));
+				}
+				let point = reader.by_ref().read_bytes(33)?;
+				keys.push(Secp256r1PublicKey::from_bytes(&point)?);
 			}
 
 			return Ok(keys);
@@ -203,7 +244,11 @@ impl VerificationScript {
 			Ok(1)
 		} else if self.is_multi_sig() {
 			let reader = &mut Decoder::new(&self.script);
-			Ok(reader.by_ref().read_push_int()?.to_usize().unwrap())
+			reader
+				.by_ref()
+				.read_push_int()?
+				.to_usize()
+				.ok_or_else(|| BuilderError::InvalidScript("Invalid signing threshold".to_string()))
 		//Ok(reader.by_ref().read_bigint()?.to_usize().unwrap())
 		} else {
 			Err(BuilderError::InvalidScript("Invalid verification script".to_string()))
@@ -226,13 +271,13 @@ impl NeoSerializable for VerificationScript {
 	}
 
 	fn encode(&self, writer: &mut Encoder) {
-		writer
-			.write_var_bytes(&self.script)
-			.expect("Failed to encode verification script");
+		if let Err(e) = writer.write_var_bytes(&self.script) {
+			tracing::warn!(error = %e, "Failed to encode verification script");
+		}
 	}
 
 	fn decode(reader: &mut Decoder) -> Result<Self, Self::Error> {
-		let script = reader.read_var_bytes()?;
+		let script = reader.read_var_bytes_bounded(NeoConstants::MAX_TRANSACTION_SIZE as usize)?;
 		Ok(Self { script })
 	}
 	fn to_array(&self) -> Vec<u8> {
@@ -586,6 +631,25 @@ mod tests {
 			"02028a99826edc0c97d18e22b6932373d908d323aa7f92656a77ec26e8861699ef"
 		);
 
+		Ok(())
+	}
+
+	#[test]
+	fn test_get_signatures_returns_empty_for_verification_script() -> Result<(), BuilderError> {
+		let script = format!(
+			"{}{}{}{}",
+			OpCode::PushData1.to_hex_string(),
+			"2102028a99826edc0c97d18e22b6932373d908d323aa7f92656a77ec26e8861699ef",
+			OpCode::Syscall.to_hex_string(),
+			InteropService::SystemCryptoCheckSig.hash()
+		);
+
+		let verification =
+			VerificationScript::from(hex::decode(&script).map_err(|e| {
+				BuilderError::InvalidScript(format!("Failed to decode hex: {}", e))
+			})?);
+
+		assert!(verification.get_signatures().is_empty());
 		Ok(())
 	}
 

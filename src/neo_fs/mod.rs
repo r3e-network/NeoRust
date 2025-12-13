@@ -11,7 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//! # Neo File Storage (NeoFS) Module (v0.4.1)
+//! # Neo File Storage (NeoFS)
 //!
 //! NeoFS is a decentralized distributed object storage network integrated with
 //! the Neo Blockchain. It provides a robust platform for storing, retrieving,
@@ -26,67 +26,34 @@
 //! - **Access Control**: Manage permissions and generate access tokens
 //! - **Extended Features**: Support for multipart uploads and specialized storage operations
 //!
-//! ## Example
+//! ## Status
 //!
-//! ```ignore
-//! use neo3::neo_fs::{NeoFSClient, NeoFSConfig};
-//! use neo3::neo_fs::container::Container;
-//! use neo3::neo_fs::object::{Object, ObjectId};
-//! use neo3::neo_protocol::Account;
-//! use std::path::Path;
+//! NeoFS support in this SDK is currently **experimental** and focuses on a REST-style client
+//! scaffold. Authentication and token signing/verification are not implemented yet; providing
+//! `NeoFSAuth.private_key` is intentionally rejected to avoid a false sense of security.
 //!
-//! async fn example() -> Result<(), Box<dyn std::error::Error>> {
-//!     // Create an account from a WIF for authentication
-//!     let account = Account::from_wif("KwVEKk78X65fDrJ3VgqHLcpPpbQVfJLjXrkFUCozHQBJ5nT2xwP8")?;
-//!     
-//!     // Configure NeoFS client
+//! ## Example (TestNet)
+//!
+//! ```no_run
+//! use neo3::neo_fs::client::{NeoFSClient, NeoFSConfig, DEFAULT_TESTNET_REST_API};
+//! use neo3::neo_fs::{NeoFSAuth, NeoFSService};
+//! use std::env;
+//!
+//! #[tokio::main]
+//! async fn main() -> Result<(), Box<dyn std::error::Error>> {
+//!     // Set this to the owner identifier used by the NeoFS gateway you're targeting.
+//!     let wallet_address = env::var("NEOFS_WALLET")?;
+//!
 //!     let config = NeoFSConfig {
-//!         endpoint: "grpc+tls://st01.testnet.fs.neo.org:8082".to_string(),
-//!         auth: Some(neo3::neo_fs::NeoFSAuth {
-//!             wallet_address: account.get_address(),
-//!             private_key: account.key_pair().as_ref().map(|kp| kp.private_key().to_string()),
-//!         }),
-//!         timeout_sec: 30,
+//!         endpoint: DEFAULT_TESTNET_REST_API.to_string(),
+//!         auth: Some(NeoFSAuth { wallet_address, private_key: None }),
+//!         timeout_sec: 10,
 //!         insecure: false,
 //!     };
-//!     
-//!     // Initialize the NeoFS client
-//!     let client = NeoFSClient::new(config).await?;
-//!     
-//!     // List available containers
+//!
+//!     let client = NeoFSClient::new(config);
 //!     let containers = client.list_containers().await?;
 //!     println!("Found {} containers", containers.len());
-//!     
-//!     // Create a new container with basic attributes
-//!     let mut new_container = Container::new();
-//!     new_container.set_name("my-documents");
-//!     new_container.set_basic_acl(true, false); // Public read, private write
-//!     
-//!     // Create the container in NeoFS
-//!     let container_id = client.create_container(&new_container).await?;
-//!     println!("Created container with ID: {}", container_id);
-//!     
-//!     // Upload a file to the container
-//!     let file_path = Path::new("./example.txt");
-//!     let file_data = std::fs::read(file_path)?;
-//!     
-//!     let mut object = Object::new();
-//!     object.set_file_name("example.txt");
-//!     object.set_data(file_data);
-//!     
-//!     let object_id = client.put_object(&container_id, &object).await?;
-//!     println!("Uploaded object with ID: {}", object_id);
-//!     
-//!     // Download the object
-//!     let retrieved_object = client.get_object(&container_id, &object_id).await?;
-//!     println!("Downloaded object: {} ({} bytes)",
-//!              retrieved_object.file_name(),
-//!              retrieved_object.data().len());
-//!     
-//!     // Clean up - delete the object and container
-//!     client.delete_object(&container_id, &object_id).await?;
-//!     client.delete_container(&container_id).await?;
-//!     
 //!     Ok(())
 //! }
 //! ```
@@ -111,20 +78,37 @@ pub use types::{
 
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
+use std::fmt;
 
-/// The default mainnet NeoFS endpoint
-pub const DEFAULT_MAINNET_ENDPOINT: &str = "grpc+tls://st01.testnet.fs.neo.org:8082";
+/// Default mainnet NeoFS gRPC endpoint.
+pub const DEFAULT_MAINNET_ENDPOINT: &str = "grpc.mainnet.fs.neo.org:8082";
 
-/// The default testnet NeoFS endpoint
-pub const DEFAULT_TESTNET_ENDPOINT: &str = "grpc+tls://st01.testnet.fs.neo.org:8082";
+/// Default testnet NeoFS gRPC endpoint.
+pub const DEFAULT_TESTNET_ENDPOINT: &str = "grpc.testnet.fs.neo.org:8082";
 
-/// Default NeoFS endpoint
-pub const DEFAULT_ENDPOINT: &str = "grpc.main.fs.neo.org:8082";
+/// Default NeoFS endpoint (alias for mainnet gRPC endpoint).
+pub const DEFAULT_ENDPOINT: &str = DEFAULT_MAINNET_ENDPOINT;
+
+/// Default mainnet NeoFS HTTP gateway (typically used for object download/public access).
+pub const DEFAULT_MAINNET_HTTP_GATEWAY: &str = "https://http.mainnet.fs.neo.org";
+
+/// Default testnet NeoFS HTTP gateway (typically used for object download/public access).
+pub const DEFAULT_TESTNET_HTTP_GATEWAY: &str = "https://http.testnet.fs.neo.org";
+
+/// Default mainnet NeoFS REST API base URL.
+pub const DEFAULT_MAINNET_REST_API: &str = "https://rest.mainnet.fs.neo.org";
+
+/// Default testnet NeoFS REST API base URL.
+pub const DEFAULT_TESTNET_REST_API: &str = "https://rest.testnet.fs.neo.org";
 
 /// Represents a NeoFS service provider configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct NeoFSConfig {
-	/// The NeoFS service endpoint URL
+	/// The NeoFS service endpoint URL.
+	///
+	/// Prefer a REST API base URL (e.g. `DEFAULT_TESTNET_REST_API`). If a gRPC host:port string is
+	/// provided (e.g. `grpc.testnet.fs.neo.org:8082`), `NeoFSClient::new` will map it to a default
+	/// REST base URL.
 	pub endpoint: String,
 	/// Authentication information, typically from a Neo wallet
 	pub auth: Option<NeoFSAuth>,
@@ -137,7 +121,7 @@ pub struct NeoFSConfig {
 impl Default for NeoFSConfig {
 	fn default() -> Self {
 		Self {
-			endpoint: DEFAULT_TESTNET_ENDPOINT.to_string(),
+			endpoint: DEFAULT_TESTNET_REST_API.to_string(),
 			auth: None,
 			timeout_sec: 60,
 			insecure: false,
@@ -146,12 +130,21 @@ impl Default for NeoFSConfig {
 }
 
 /// Authentication information for NeoFS
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct NeoFSAuth {
 	/// The wallet account used for authentication
 	pub wallet_address: String,
 	/// The private key to sign NeoFS requests
 	pub private_key: Option<String>,
+}
+
+impl fmt::Debug for NeoFSAuth {
+	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+		f.debug_struct("NeoFSAuth")
+			.field("wallet_address", &self.wallet_address)
+			.field("private_key", &self.private_key.as_ref().map(|_| "<redacted>"))
+			.finish()
+	}
 }
 
 /// Service trait for interacting with NeoFS

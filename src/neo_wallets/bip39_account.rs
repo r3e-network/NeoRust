@@ -3,6 +3,7 @@ use crate::{
 	neo_protocol::{Account, AccountTrait},
 };
 use bip39::{Language, Mnemonic};
+use p256::elliptic_curve::zeroize::Zeroize;
 use sha2::{Digest, Sha256};
 
 /// A BIP-39 compatible neo account that uses mnemonic phrases for key generation and recovery.
@@ -22,7 +23,8 @@ use sha2::{Digest, Sha256};
 /// let account = Bip39Account::create(password).unwrap();
 ///
 /// // The account will have a randomly generated 24-word mnemonic
-/// println!("Mnemonic: {}", account.mnemonic());
+/// let _mnemonic = account.mnemonic().to_string();
+/// // SECURITY: Store the mnemonic securely offline. Avoid logging it.
 /// ```
 ///
 /// ## Recovering an existing account
@@ -34,13 +36,28 @@ use sha2::{Digest, Sha256};
 /// let password = "your_secure_password";
 /// let recovered = Bip39Account::from_bip39_mnemonic(password, mnemonic).unwrap();
 /// ```
-#[derive(Debug)]
 pub struct Bip39Account {
 	/// The underlying neo account
 	account: Account,
 
 	/// Generated BIP-39 mnemonic for the account
 	mnemonic: String,
+}
+
+impl std::fmt::Debug for Bip39Account {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		f.debug_struct("Bip39Account")
+			.field("account", &self.account)
+			.field("mnemonic_words", &self.mnemonic.split_whitespace().count())
+			.field("mnemonic", &"<redacted>")
+			.finish()
+	}
+}
+
+impl Drop for Bip39Account {
+	fn drop(&mut self) {
+		self.mnemonic.zeroize();
+	}
 }
 
 impl Bip39Account {

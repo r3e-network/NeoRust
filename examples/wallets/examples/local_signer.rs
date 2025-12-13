@@ -14,9 +14,17 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
 	// 1. Create an account from a WIF (Wallet Import Format)
 	println!("\n1. Creating account from WIF:");
-	let wif = "L1WMhxazScMhUrdv34JqQb1HFSQmWeN2Kpc1R9JGKwL7CDNP21uR";
-	let account = Account::from_wif(wif)?;
-	println!("   ✅ Account created successfully");
+	let account = match std::env::var("NEO_WIF") {
+		Ok(wif) => {
+			let account = Account::from_wif(&wif)?;
+			println!("   ✅ Account loaded from NEO_WIF");
+			account
+		},
+		Err(_) => {
+			println!("   ⚠️  NEO_WIF not set; generating a random account for demo");
+			Account::create()?
+		},
+	};
 	println!("   📍 Address: {}", account.get_address());
 	println!("   🔑 Script Hash: {:?}", account.get_script_hash());
 
@@ -27,7 +35,13 @@ async fn main() -> Result<(), Box<dyn Error>> {
 	println!("   📍 Address: {}", random_account.get_address());
 	// Get the WIF from the key pair
 	if let Some(key_pair) = random_account.key_pair() {
-		println!("   🔐 WIF: {}", key_pair.export_as_wif());
+		let wif = key_pair.export_as_wif();
+		let wif_preview = if wif.len() > 16 {
+			format!("{}...{}", &wif[..10], &wif[wif.len() - 6..])
+		} else {
+			"<redacted>".to_string()
+		};
+		println!("   🔐 WIF: {} (truncated)", wif_preview);
 	}
 
 	// 3. Connect to Neo testnet

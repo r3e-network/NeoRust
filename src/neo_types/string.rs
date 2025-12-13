@@ -3,6 +3,7 @@ use bs58;
 use hex;
 use sha2::{Digest, Sha256};
 
+use crate::config::DEFAULT_ADDRESS_VERSION;
 use neo3::prelude::ScriptHash;
 
 pub trait StringExt {
@@ -70,7 +71,7 @@ impl StringExt for String {
 
 	fn is_valid_address(&self) -> bool {
 		if let Some(data) = self.base58_decoded() {
-			if data.len() == 25 && data[0] == 0x17 {
+			if data.len() == 25 && data[0] == DEFAULT_ADDRESS_VERSION {
 				let checksum = &Sha256::digest(Sha256::digest(&data[..21]))[..4];
 				checksum == &data[21..]
 			} else {
@@ -86,19 +87,31 @@ impl StringExt for String {
 	}
 
 	fn address_to_scripthash(&self) -> Result<ScriptHash, &'static str> {
-		if self.is_valid_address() {
-			let data = self.base58_decoded().ok_or("Invalid address").unwrap();
-			let mut scripthash = data[1..21].to_vec();
-			scripthash.reverse();
-			Ok(ScriptHash::from_slice(&scripthash))
-		} else {
-			Err("Not a valid address")
+		let data = self.base58_decoded().ok_or("Not a valid address")?;
+		if data.len() != 25 || data[0] != DEFAULT_ADDRESS_VERSION {
+			return Err("Not a valid address");
 		}
+
+		let checksum = &Sha256::digest(Sha256::digest(&data[..21]))[..4];
+		if checksum != &data[21..] {
+			return Err("Not a valid address");
+		}
+
+		let mut scripthash = data[1..21].to_vec();
+		scripthash.reverse();
+		Ok(ScriptHash::from_slice(&scripthash))
 	}
 
 	fn reversed_hex(&self) -> String {
-		let mut bytes = self.bytes_from_hex().unwrap();
-		bytes.reverse();
-		hex::encode(bytes)
+		match self.bytes_from_hex() {
+			Ok(mut bytes) => {
+				bytes.reverse();
+				hex::encode(bytes)
+			},
+			Err(e) => {
+				tracing::warn!(error = %e, hex = %self, "Invalid hex string; cannot reverse");
+				String::new()
+			},
+		}
 	}
 }

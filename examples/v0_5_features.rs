@@ -1,4 +1,4 @@
-//! Example demonstrating new features in NeoRust v0.5.2
+//! Example demonstrating new features in NeoRust v0.5.3
 //!
 //! This example showcases the major features introduced in v0.5.x:
 //! - WebSocket real-time events
@@ -10,18 +10,14 @@ use bip39::Language;
 use neo3::neo_builder::ScriptBuilder;
 use neo3::neo_clients::{HttpProvider, RpcClient};
 use neo3::neo_error::unified::NeoError as UnifiedNeoError;
-use neo3::sdk::{
-	hd_wallet::*,
-	transaction_simulator::*,
-	websocket::{SubscriptionType, WebSocketClient},
-	Neo,
-};
+#[cfg(feature = "ws")]
+use neo3::sdk::websocket::{SubscriptionType, WebSocketClient};
+use neo3::sdk::{hd_wallet::*, transaction_simulator::*, Neo};
 use std::sync::Arc;
-use tokio;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-	println!("🚀 NeoRust v0.5.2 Feature Demonstration\n");
+	println!("🚀 NeoRust v0.5.3 Feature Demonstration\n");
 
 	// ========================================
 	// 1. High-Level SDK API
@@ -52,7 +48,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 	// Generate new HD wallet
 	let mut hd_wallet = HDWallet::generate(12, None)?;
-	println!("   Mnemonic: {}", hd_wallet.mnemonic_phrase());
+	let _mnemonic = hd_wallet.mnemonic_phrase();
+	println!("   Mnemonic: <redacted>");
 
 	// Derive multiple accounts from single seed
 	println!("\n   Deriving accounts:");
@@ -72,47 +69,56 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 	// ========================================
 	// 3. WebSocket Real-time Events
 	// ========================================
-	println!("🌐 WebSocket Real-time Events");
-	println!("   Note: Requires a Neo node with WebSocket support");
-	// Keep types referenced even when the sample connection block is commented out.
-	let _ = SubscriptionType::NewBlocks;
-	let _ = std::any::type_name::<WebSocketClient>();
+	#[cfg(feature = "ws")]
+	{
+		println!("🌐 WebSocket Real-time Events");
+		println!("   Note: Requires a Neo node with WebSocket support");
+		// Keep types referenced even when the sample connection block is commented out.
+		let _ = SubscriptionType::NewBlocks;
+		let _ = std::any::type_name::<WebSocketClient>();
 
-	// Example WebSocket connection (commented out - requires running node)
-	/*
-	let mut ws_client = WebSocketClient::new("ws://localhost:10332/ws").await?;
-	ws_client.connect().await?;
+		// Example WebSocket connection (commented out - requires running node)
+		/*
+		let mut ws_client = WebSocketClient::new("ws://localhost:10332/ws").await?;
+		ws_client.connect().await?;
 
-	// Subscribe to new blocks
-	let block_handle = ws_client.subscribe(SubscriptionType::NewBlocks).await?;
-	println!("   ✅ Subscribed to new blocks");
+		// Subscribe to new blocks
+		let block_handle = ws_client.subscribe(SubscriptionType::NewBlocks).await?;
+		println!("   ✅ Subscribed to new blocks");
 
-	// Subscribe to contract events
-	let contract = ScriptHash::from_address("NbTiM6h8r99kpRtb428XcsUk1TzKed2gTc")?;
-	let event_handle = ws_client.subscribe(
-		SubscriptionType::ContractEvents(contract)
-	).await?;
-	println!("   ✅ Subscribed to contract events");
+		// Subscribe to contract events
+		let contract = ScriptHash::from_address("NbTiM6h8r99kpRtb428XcsUk1TzKed2gTc")?;
+		let event_handle = ws_client.subscribe(
+			SubscriptionType::ContractEvents(contract)
+		).await?;
+		println!("   ✅ Subscribed to contract events");
 
-	// Process events (in real app, this would be in a separate task)
-	if let Some(mut receiver) = ws_client.take_event_receiver() {
-		tokio::spawn(async move {
-			while let Some((sub_type, event)) = receiver.recv().await {
-				match event {
-					EventData::NewBlock { height, hash, .. } => {
-						println!("   📦 New block #{} ({})", height, hash);
+		// Process events (in real app, this would be in a separate task)
+		if let Some(mut receiver) = ws_client.take_event_receiver() {
+			tokio::spawn(async move {
+				while let Some((sub_type, event)) = receiver.recv().await {
+					match event {
+						EventData::NewBlock { height, hash, .. } => {
+							println!("   📦 New block #{} ({})", height, hash);
+						}
+						EventData::ContractEvent { event_name, .. } => {
+							println!("   📨 Contract event: {}", event_name);
+						}
+						_ => {}
 					}
-					EventData::ContractEvent { event_name, .. } => {
-						println!("   📨 Contract event: {}", event_name);
-					}
-					_ => {}
 				}
-			}
-		});
+			});
+		}
+		*/
+		println!("   (WebSocket example code available - see source)");
+		println!();
 	}
-	*/
-	println!("   (WebSocket example code available - see source)");
-	println!();
+	#[cfg(not(feature = "ws"))]
+	{
+		println!("🌐 WebSocket Real-time Events (disabled)");
+		println!("   Enable with: neo3 = {{ version = \"0.5.3\", features = [\"ws\"] }}");
+		println!();
+	}
 
 	// ========================================
 	// 4. Transaction Simulation
@@ -212,7 +218,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 	// Summary
 	// ========================================
 	println!("✨ Summary");
-	println!("   NeoRust v0.5.2 provides:");
+	println!("   NeoRust v0.5.3 provides:");
 	println!("   ✅ 50-70% code reduction with high-level API");
 	println!("   ✅ Real-time events via WebSocket");
 	println!("   ✅ HD wallets with BIP-39/44 support");

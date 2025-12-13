@@ -54,35 +54,63 @@ impl<'a, P: JsonRpcProvider + 'static> NeoURI<'a, P> {
 		Self { uri: None, recipient: None, token: None, amount: None, provider }
 	}
 
-	pub fn from_uri(uri_string: &str) -> Result<Self, ContractError> {
-		let parts: Vec<&str> = uri_string.split(".unwrap()").collect();
-		let base = parts[0];
-		let query = if parts.len() > 1 { Some(parts[1]) } else { None };
+	fn parse_token(token_str: &str) -> Option<ScriptHash> {
+		match token_str {
+			Self::NEO_TOKEN_STRING => Some(NeoToken::<P>::new(None).script_hash()),
+			Self::GAS_TOKEN_STRING => Some(GasToken::<P>::new(None).script_hash()),
+			_ => {
+				if let Ok(hash) = H160::from_str(token_str) {
+					return Some(hash);
+				}
 
-		let base_parts: Vec<&str> = base.split(":").collect();
-		if base_parts.len() != 2
-			|| base_parts[0] != Self::NEO_SCHEME
-			|| uri_string.len() < Self::MIN_NEP9_URI_LENGTH
-		{
+				// Support ScriptHashExtension::to_bs58_string() encoding (20 raw bytes in base58)
+				match bs58::decode(token_str).into_vec() {
+					Ok(bytes) if bytes.len() == 20 => Some(H160::from_slice(&bytes)),
+					_ => None,
+				}
+			},
+		}
+	}
+
+	pub fn from_uri(uri_string: &str) -> Result<Self, ContractError> {
+		let (base, query) = uri_string.split_once('?').unwrap_or((uri_string, ""));
+
+		let (scheme, address) = base.split_once(':').ok_or_else(|| {
+			ContractError::InvalidNeoName("Invalid NEP-9 URI: missing scheme separator".to_string())
+		})?;
+
+		if scheme != Self::NEO_SCHEME || uri_string.len() < Self::MIN_NEP9_URI_LENGTH {
 			return Err(ContractError::InvalidNeoName("Invalid NEP-9 URI".to_string()));
 		}
 
 		let mut neo_uri = Self::new(None);
-		neo_uri.set_recipient(ScriptHash::from_address(base_parts[1]).ok());
+		neo_uri.recipient = Some(ScriptHash::from_address(address).map_err(|_| {
+			ContractError::InvalidArgError("Invalid recipient address".to_string())
+		})?);
+		neo_uri.uri = uri_string.parse().ok();
 
-		if let Some(query_str) = query {
+		if !query.is_empty() {
+			let query_str = query;
 			for part in query_str.split("&") {
-				let kv: Vec<&str> = part.split("=").collect();
-				if kv.len() != 2 {
+				let (key, value) = part
+					.split_once('=')
+					.ok_or_else(|| ContractError::InvalidNeoName("Invalid query".to_string()))?;
+
+				if key.is_empty() || value.is_empty() {
 					return Err(ContractError::InvalidNeoName("Invalid query".to_string()));
 				}
 
-				match kv[0] {
+				match key {
 					"asset" if neo_uri.token().is_none() => {
-						let _ = neo_uri.set_token(H160::from_str(kv[1]).ok());
+						let token = Self::parse_token(value).ok_or_else(|| {
+							ContractError::InvalidArgError("Invalid asset".to_string())
+						})?;
+						neo_uri.token = Some(token);
 					},
 					"amount" if neo_uri.amount.is_none() => {
-						neo_uri.amount = Some(kv[1].parse().unwrap());
+						neo_uri.amount = Some(value.parse().map_err(|_| {
+							ContractError::InvalidArgError("Invalid amount".to_string())
+						})?);
 					},
 					_ => {},
 				}
@@ -130,33 +158,10 @@ impl<'a, P: JsonRpcProvider + 'static> NeoURI<'a, P> {
 			.token
 			.ok_or_else(|| ContractError::InvalidStateError("Token not set".to_string()))?;
 
-		// Validate amount precision
-		let amount_scale = (amount as f64).log10().floor() as u32 + 1;
-
-		if Self::is_neo_token(&token_hash) && amount_scale > 0 {
-			return Err(ContractError::InvalidArgError(
-				"NEO does not support decimals".to_string(),
-			));
-		}
-
-		if Self::is_gas_token(&token_hash)
-			&& amount_scale > GasToken::<P>::new(None).decimals().unwrap() as u32
-		{
-			return Err(ContractError::InvalidArgError(
-				"Too many decimal places for GAS".to_string(),
-			));
-		}
-
 		let mut token = FungibleTokenContract::new(&token_hash, self.provider);
 
 		let decimals = token.get_decimals().await?;
-		if amount_scale > decimals as u32 {
-			return Err(ContractError::InvalidArgError(
-				"Too many decimal places for token".to_string(),
-			));
-		}
-
-		let amt = token.to_fractions(amount, 0)?;
+		let amt = token.to_fractions(amount, decimals as u32)?;
 
 		// Create a new TransactionBuilder
 		let mut tx_builder = TransactionBuilder::new();
@@ -179,31 +184,22 @@ impl<'a, P: JsonRpcProvider + 'static> NeoURI<'a, P> {
 
 		// Set up the TransactionBuilder
 		tx_builder.set_script(Some(script));
+		let signer = AccountSigner::called_by_entry(sender)
+			.map_err(|err| ContractError::RuntimeError(err.to_string()))?;
 		tx_builder
-			.set_signers(vec![AccountSigner::called_by_entry(sender).unwrap().into()])
+			.set_signers(vec![signer.into()])
 			.map_err(|err| ContractError::RuntimeError(err.to_string()))?;
 
 		Ok(tx_builder)
 	}
 
-	// Helpers
-
-	fn is_neo_token(token: &H160) -> bool {
-		token == &NeoToken::<P>::new(None).script_hash()
-	}
-
-	fn is_gas_token(token: &H160) -> bool {
-		token == &GasToken::<P>::new(None).script_hash()
-	}
-
 	// Setters
 
 	pub fn token_str(&mut self, token_str: &str) {
-		self.token = match token_str {
-			Self::NEO_TOKEN_STRING => Some(NeoToken::new(self.provider).script_hash()),
-			Self::GAS_TOKEN_STRING => Some(GasToken::new(self.provider).script_hash()),
-			_ => Some(token_str.parse().unwrap()),
-		};
+		self.token = Self::parse_token(token_str);
+		if self.token.is_none() {
+			tracing::warn!(token = %token_str, "Invalid asset string; ignoring");
+		}
 	}
 
 	// URI builder
@@ -235,15 +231,17 @@ impl<'a, P: JsonRpcProvider + 'static> NeoURI<'a, P> {
 	pub fn build_uri(&mut self) -> Result<Url, ContractError> {
 		let recipient = self
 			.recipient
-			.ok_or(ContractError::InvalidStateError("No recipient set".to_string()))
-			.unwrap();
+			.ok_or(ContractError::InvalidStateError("No recipient set".to_string()))?;
 
 		let base = format!("{}:{}", Self::NEO_SCHEME, recipient.to_address());
 		let query = self.build_query();
-		let uri_str = if query.is_empty() { base } else { format!("{}.unwrap(){}", base, query) };
+		let uri_str = if query.is_empty() { base } else { format!("{}?{}", base, query) };
 
-		self.uri = Some(uri_str.parse().unwrap());
+		let uri: Url = uri_str
+			.parse()
+			.map_err(|e| ContractError::InvalidArgError(format!("Invalid NEP-9 URI: {e}")))?;
+		self.uri = Some(uri.clone());
 
-		Ok(self.uri.clone().unwrap())
+		Ok(uri)
 	}
 }

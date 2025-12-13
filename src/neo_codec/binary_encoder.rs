@@ -1,6 +1,7 @@
 use std::hash::Hasher;
 
 use crate::codec::{CodecError, NeoSerializable};
+use serde::Deserialize;
 /// A binary encoder that can write various primitive types and serializable objects to a byte vector.
 ///
 /// # Examples
@@ -17,7 +18,6 @@ use crate::codec::{CodecError, NeoSerializable};
 /// assert_eq!(bytes.len(), 11); // Just verify length instead of exact bytes
 /// ```
 use serde::Serialize;
-use serde_derive::Deserialize;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct Encoder {
@@ -100,7 +100,10 @@ impl Encoder {
 	}
 
 	pub fn write_var_string(&mut self, v: &str) {
-		self.write_var_bytes(v.as_bytes()).expect("Failed to serialize string");
+		if let Err(e) = self.write_var_bytes(v.as_bytes()) {
+			tracing::warn!(error = %e, "Failed to serialize string; encoding as empty");
+			let _ = self.write_var_bytes(&[]);
+		}
 	}
 
 	pub fn write_fixed_string(

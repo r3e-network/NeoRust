@@ -2,7 +2,7 @@ use std::fmt;
 
 use p256::ecdsa::Signature;
 use primitive_types::H256;
-use serde_derive::{Deserialize, Serialize};
+use serde::{Deserialize, Serialize};
 use signature::hazmat::{PrehashSigner, PrehashVerifier};
 
 use crate::{

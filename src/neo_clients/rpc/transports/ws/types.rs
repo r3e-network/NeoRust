@@ -5,15 +5,17 @@ use primitive_types::U256;
 use serde::{de, Deserialize};
 use serde_json::value::{to_raw_value, RawValue};
 
-pub use aliases::*;
+pub(crate) use aliases::*;
 
-use crate::{common::Request, JsonRpcError};
+#[cfg(not(target_arch = "wasm32"))]
+use super::super::Authorization;
+use super::super::{JsonRpcError, Request};
 
 // Normal JSON-RPC response
-pub type Response = Result<Box<RawValue>, JsonRpcError>;
+pub(super) type Response = Result<Box<RawValue>, JsonRpcError>;
 
 #[derive(serde::Deserialize, serde::Serialize)]
-pub struct SubId(pub U256);
+pub(super) struct SubId(pub(super) U256);
 
 impl SubId {
 	pub(super) fn serialize_raw(&self) -> Result<Box<RawValue>, serde_json::Error> {
@@ -22,13 +24,13 @@ impl SubId {
 }
 
 #[derive(Deserialize, Debug, Clone)]
-pub struct Notification {
-	pub subscription: U256,
-	pub result: Box<RawValue>,
+pub(super) struct Notification {
+	pub(super) subscription: U256,
+	pub(super) result: Box<RawValue>,
 }
 
 #[derive(Debug, Clone)]
-pub enum PubSubItem {
+pub(super) enum PubSubItem {
 	Success { id: u64, result: Box<RawValue> },
 	Error { id: u64, error: JsonRpcError },
 	Notification { params: Notification },
@@ -176,12 +178,12 @@ impl std::fmt::Display for PubSubItem {
 pub struct ConnectionDetails {
 	pub url: String,
 	#[cfg(not(target_arch = "wasm32"))]
-	pub auth: Option<crate::Authorization>,
+	pub auth: Option<Authorization>,
 }
 
 impl ConnectionDetails {
 	#[cfg(not(target_arch = "wasm32"))]
-	pub fn new(url: impl AsRef<str>, auth: Option<crate::Authorization>) -> Self {
+	pub fn new(url: impl AsRef<str>, auth: Option<Authorization>) -> Self {
 		Self { url: url.as_ref().to_string(), auth }
 	}
 	#[cfg(target_arch = "wasm32")]
@@ -209,6 +211,8 @@ pub(super) struct InFlight {
 	pub method: String,
 	pub params: Box<RawValue>,
 	pub channel: oneshot::Sender<Response>,
+	#[cfg(not(target_arch = "wasm32"))]
+	pub deadline: Option<std::time::Instant>,
 }
 
 impl InFlight {
@@ -239,7 +243,7 @@ impl ActiveSub {
 }
 
 /// Instructions for the `WsServer`.
-pub enum Instruction {
+pub(super) enum Instruction {
 	/// JSON-RPC request
 	Request { method: String, params: Box<RawValue>, sender: oneshot::Sender<Response> },
 	/// Cancel an existing subscription
@@ -248,35 +252,31 @@ pub enum Instruction {
 
 #[cfg(target_arch = "wasm32")]
 mod aliases {
-	pub use wasm_bindgen::prelude::*;
-	pub use wasm_bindgen_futures::spawn_local;
-	pub use ws_stream_wasm::*;
+	pub(crate) use wasm_bindgen::prelude::*;
+	pub(crate) use wasm_bindgen_futures::spawn_local;
+	pub(crate) use ws_stream_wasm::*;
 
-	pub type Message = WsMessage;
-	pub type WsError = ws_stream_wasm::WsErr;
-	pub type WsStreamItem = Message;
+	pub(crate) type Message = WsMessage;
+	pub(crate) type WsError = ws_stream_wasm::WsErr;
+	pub(crate) type WsStreamItem = Message;
 
-	pub type InternalStream = futures_util::stream::Fuse<WsStream>;
+	pub(crate) type InternalStream = futures_util::stream::Fuse<WsStream>;
 }
 
 #[cfg(not(target_arch = "wasm32"))]
 mod aliases {
-	pub use tokio::time::sleep;
-	pub use tokio_tungstenite::{
-		connect_async, connect_async_with_config,
-		tungstenite::{self, protocol::CloseFrame},
-	};
+	pub(crate) use tokio_tungstenite::connect_async_with_config;
+	use tokio_tungstenite::tungstenite;
 	use tokio_tungstenite::{MaybeTlsStream, WebSocketStream};
-	pub use tracing::{debug, error, trace, warn};
 
-	pub use tungstenite::client::IntoClientRequest;
+	pub(crate) use tungstenite::client::IntoClientRequest;
 
-	pub type WebSocketConfig = tungstenite::protocol::WebSocketConfig;
-	pub type Message = tungstenite::protocol::Message;
-	pub type WsError = tungstenite::Error;
-	pub type WsStreamItem = Result<Message, WsError>;
+	pub(crate) type WebSocketConfig = tungstenite::protocol::WebSocketConfig;
+	pub(crate) type Message = tungstenite::protocol::Message;
+	pub(crate) type WsError = tungstenite::Error;
+	pub(crate) type WsStreamItem = Result<Message, WsError>;
 
-	pub type InternalStream =
+	pub(crate) type InternalStream =
 		futures_util::stream::Fuse<WebSocketStream<MaybeTlsStream<tokio::net::TcpStream>>>;
 
 	impl IntoClientRequest for super::ConnectionDetails {

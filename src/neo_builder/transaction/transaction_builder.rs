@@ -53,6 +53,7 @@ use std::{
 
 use crate::builder::SignerTrait;
 use getset::{CopyGetters, Getters, MutGetters, Setters};
+use hex_literal::hex;
 use once_cell::sync::Lazy;
 use primitive_types::H160;
 // Import from neo_types
@@ -170,8 +171,8 @@ impl<'a, P: JsonRpcProvider + 'static> Hash for TransactionBuilder<'a, P> {
 }
 
 pub static GAS_TOKEN_HASH: Lazy<ScriptHash> = Lazy::new(|| {
-	ScriptHash::from_str("d2a4cff31913016155e38e474a2c06d08be276cf")
-		.expect("GAS token hash is a valid script hash")
+	// Compile-time validated hex string (avoids runtime parsing and panics).
+	ScriptHash::from(hex!("d2a4cff31913016155e38e474a2c06d08be276cf"))
 });
 
 impl<'a, P: JsonRpcProvider + 'static> TransactionBuilder<'a, P> {
@@ -379,14 +380,18 @@ impl<'a, P: JsonRpcProvider + 'static> TransactionBuilder<'a, P> {
 	}
 
 	pub async fn call_invoke_script(&self) -> Result<InvocationResult, TransactionError> {
-		if self.script.is_none() || self.script.as_ref().unwrap().is_empty() {
-			return Err(TransactionError::NoScript);
+		let script = self.script.as_ref().ok_or(TransactionError::NoScript)?;
+		if script.is_empty() {
+			return Err(TransactionError::EmptyScript);
 		}
-		let result = self
+
+		let client = self
 			.client
-			.unwrap()
+			.ok_or_else(|| TransactionError::IllegalState("Client is not set".to_string()))?;
+
+		let result = client
 			.rpc_client()
-			.invoke_script(self.script.clone().unwrap().to_hex_string(), self.signers.clone())
+			.invoke_script(script.to_hex_string(), self.signers.clone())
 			.await
 			.map_err(TransactionError::ProviderError)?;
 		Ok(result)
@@ -424,21 +429,52 @@ impl<'a, P: JsonRpcProvider + 'static> TransactionBuilder<'a, P> {
 	}
 
 	// Get unsigned transaction
-	pub async fn get_unsigned_tx(&mut self) -> Result<Transaction<'_, P>, TransactionError> {
-		// Validate configuration
+	/// Validates the transaction builder configuration before building.
+	///
+	/// This method performs pre-flight validation to catch configuration errors
+	/// early, before attempting to build or sign the transaction.
+	///
+	/// # Validation Checks
+	///
+	/// - At least one signer is present
+	/// - Script is set and non-empty
+	/// - No duplicate signers
+	/// - Signer count does not exceed maximum
+	/// - Client is set (required for network operations)
+	///
+	/// # Returns
+	///
+	/// `Ok(())` if validation passes, or a `TransactionError` describing the issue.
+	///
+	/// # Examples
+	///
+	/// ```rust,no_run
+	/// use neo3::neo_builder::TransactionBuilder;
+	/// use neo3::neo_clients::{HttpProvider, RpcClient};
+	///
+	/// let provider = HttpProvider::new("https://testnet1.neo.org:443").unwrap();
+	/// let client = RpcClient::new(provider);
+	/// let mut tx_builder = TransactionBuilder::with_client(&client);
+	///
+	/// // Validate before building
+	/// match tx_builder.validate() {
+	///     Ok(()) => println!("Configuration is valid"),
+	///     Err(e) => println!("Validation failed: {}", e),
+	/// }
+	/// ```
+	pub fn validate(&self) -> Result<(), TransactionError> {
+		// Check signers
 		if self.signers.is_empty() {
 			return Err(TransactionError::NoSigners);
 		}
 
-		if self.script.is_none() {
-			return Err(TransactionError::NoScript);
-		}
-		let len = self.signers.len();
-		self.signers.dedup();
-
-		// Validate no duplicate signers
-		if len != self.signers.len() {
-			return Err(TransactionError::DuplicateSigner);
+		// Check for duplicate signers
+		let mut seen_signers = std::collections::HashSet::new();
+		for signer in &self.signers {
+			let signer_hash = signer.get_signer_hash();
+			if !seen_signers.insert(signer_hash) {
+				return Err(TransactionError::DuplicateSigner);
+			}
 		}
 
 		// Check signer limits
@@ -446,19 +482,58 @@ impl<'a, P: JsonRpcProvider + 'static> TransactionBuilder<'a, P> {
 			return Err(TransactionError::TooManySigners);
 		}
 
-		// Validate script
-		if let Some(script) = &self.script {
-			if script.is_empty() {
-				return Err(TransactionError::EmptyScript);
-			}
-		} else {
-			return Err(TransactionError::NoScript);
+		// Check script
+		match &self.script {
+			None => return Err(TransactionError::NoScript),
+			Some(script) if script.is_empty() => return Err(TransactionError::EmptyScript),
+			Some(_) => {},
 		}
+
+		// Check client is set
+		if self.client.is_none() {
+			return Err(TransactionError::IllegalState(
+				"Client is not set. Use with_client() to set an RPC client.".to_string(),
+			));
+		}
+
+		Ok(())
+	}
+
+	/// Checks if the transaction builder is ready to build a transaction.
+	///
+	/// This is a convenience method that returns `true` if `validate()` would succeed.
+	///
+	/// # Examples
+	///
+	/// ```rust,no_run
+	/// use neo3::neo_builder::TransactionBuilder;
+	/// use neo3::neo_clients::{HttpProvider, RpcClient};
+	///
+	/// let provider = HttpProvider::new("https://testnet1.neo.org:443").unwrap();
+	/// let client = RpcClient::new(provider);
+	/// let tx_builder = TransactionBuilder::with_client(&client);
+	///
+	/// if tx_builder.is_ready() {
+	///     println!("Ready to build transaction");
+	/// }
+	/// ```
+	pub fn is_ready(&self) -> bool {
+		self.validate().is_ok()
+	}
+
+	pub async fn get_unsigned_tx(&mut self) -> Result<Transaction<'_, P>, TransactionError> {
+		// Perform pre-flight validation (checks signers, script, client, etc.)
+		self.validate()?;
+
+		// Dedup signers (validate() already checked for duplicates via HashSet)
+		self.signers.dedup();
+
+		// Client is guaranteed to be Some after validate()
+		let client = self.client.expect("Client validated in validate()");
 
 		if self.valid_until_block.is_none() {
 			self.valid_until_block = Some(
-				self.fetch_current_block_count().await?
-					+ self.client.unwrap().max_valid_until_block_increment()
+				self.fetch_current_block_count().await? + client.max_valid_until_block_increment()
 					- 1,
 			)
 		}
@@ -487,7 +562,7 @@ impl<'a, P: JsonRpcProvider + 'static> TransactionBuilder<'a, P> {
 
 		// Check sender balance if needed
 		let tx = Transaction {
-			network: Some(self.client.unwrap()),
+			network: Some(client),
 			version: self.version,
 			nonce: self.nonce,
 			valid_until_block: self.valid_until_block.unwrap_or(100),
@@ -496,7 +571,10 @@ impl<'a, P: JsonRpcProvider + 'static> TransactionBuilder<'a, P> {
 			net_fee: network_fee,
 			signers: self.signers.clone(),
 			attributes: self.attributes.clone(),
-			script: self.script.clone().unwrap(), // We've already checked for None case above
+			script: self
+				.script
+				.clone()
+				.ok_or_else(|| TransactionError::IllegalState("Script is not set".to_string()))?,
 			witnesses: vec![],
 			// block_time: None,
 			block_count_when_sent: None,
@@ -511,9 +589,17 @@ impl<'a, P: JsonRpcProvider + 'static> TransactionBuilder<'a, P> {
 				return Err(supplier.clone());
 			}
 		} else if let Some(fee_consumer) = &self.fee_consumer {
-			let sender_balance = self.get_sender_balance().await?.try_into().unwrap(); // self.get_sender_balance().await.unwrap();
-			if network_fee + system_fee > sender_balance {
-				fee_consumer(network_fee + system_fee, sender_balance);
+			let sender_balance_u64 = self.get_sender_balance().await?;
+			let sender_balance = i64::try_from(sender_balance_u64).unwrap_or_else(|_| {
+				tracing::warn!(
+					balance = sender_balance_u64,
+					"Sender balance exceeds i64::MAX; saturating for fee checks"
+				);
+				i64::MAX
+			});
+			let total_fee = network_fee + system_fee;
+			if total_fee > sender_balance {
+				fee_consumer(total_fee, sender_balance);
 			}
 		}
 		// tx.set_net_fee(network_fee);

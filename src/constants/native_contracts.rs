@@ -1,5 +1,5 @@
 //! Definitions of Native Contract script hashes for Neo N3.
-//! 
+//!
 //! This module provides constants for all native contracts available on the Neo N3 blockchain.
 //! These script hashes are the same across both Mainnet and Testnet.
 
@@ -35,20 +35,20 @@ pub const NAME_SERVICE: &str = "0x7a8fcf0392cd625647907afa8e45cc66872b596b";
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+	use super::*;
 
-    #[test]
-    fn test_native_contract_addresses() {
-        // This test doesn't validate the addresses, just ensures they're defined
-        assert!(!CONTRACT_MANAGEMENT.is_empty());
-        assert!(!STD_LIB.is_empty());
-        assert!(!CRYPTO_LIB.is_empty());
-        assert!(!LEDGER.is_empty());
-        assert!(!NEO_TOKEN.is_empty());
-        assert!(!GAS_TOKEN.is_empty());
-        assert!(!POLICY.is_empty());
-        assert!(!ROLE_MANAGEMENT.is_empty());
-        assert!(!ORACLE.is_empty());
-        assert!(!NAME_SERVICE.is_empty());
-    }
+	#[test]
+	fn test_native_contract_addresses() {
+		// This test doesn't validate the addresses, just ensures they're defined
+		assert!(!CONTRACT_MANAGEMENT.is_empty());
+		assert!(!STD_LIB.is_empty());
+		assert!(!CRYPTO_LIB.is_empty());
+		assert!(!LEDGER.is_empty());
+		assert!(!NEO_TOKEN.is_empty());
+		assert!(!GAS_TOKEN.is_empty());
+		assert!(!POLICY.is_empty());
+		assert!(!ROLE_MANAGEMENT.is_empty());
+		assert!(!ORACLE.is_empty());
+		assert!(!NAME_SERVICE.is_empty());
+	}
 }

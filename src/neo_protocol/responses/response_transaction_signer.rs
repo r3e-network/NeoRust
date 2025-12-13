@@ -3,8 +3,9 @@
 use crate::{
 	builder::{SignerTrait, SignerType, WitnessRule, WitnessScope},
 	crypto::Secp256r1PublicKey,
-	deserialize_scopes, deserialize_script_hash, deserialize_vec_script_hash, serialize_scopes,
-	serialize_script_hash, serialize_vec_script_hash,
+	deserialize_scopes, deserialize_script_hash, deserialize_vec_script_hash,
+	neo_types::{deserialize_vec_public_key, serialize_vec_public_key},
+	serialize_scopes, serialize_script_hash, serialize_vec_script_hash,
 };
 use neo3::TypeError;
 use primitive_types::H160;
@@ -29,11 +30,9 @@ pub struct RTransactionSigner {
 	pub allowed_contracts: Vec<H160>,
 
 	#[serde(rename = "allowedgroups", default)]
-	// #[serde(serialize_with = "serialize_vec_public_key_option")]
-	// #[serde(deserialize_with = "deserialize_vec_public_key_option")]
-	// #[serde(skip_serializing_if = "Option::is_none")]
-	// #[serde(default)]
-	pub allowed_groups: Vec<String>,
+	#[serde(serialize_with = "serialize_vec_public_key")]
+	#[serde(deserialize_with = "deserialize_vec_public_key")]
+	pub allowed_groups: Vec<Secp256r1PublicKey>,
 
 	#[serde(rename = "rules", default)]
 	// #[serde(default)]
@@ -59,7 +58,7 @@ impl RTransactionSigner {
 		account: H160,
 		scopes: Vec<WitnessScope>,
 		allowed_contracts: Vec<H160>,
-		allowed_groups: Vec<String>,
+		allowed_groups: Vec<Secp256r1PublicKey>,
 		rules: Vec<WitnessRule>,
 	) -> Self {
 		Self { account, scopes, allowed_contracts, allowed_groups, rules }
@@ -105,7 +104,7 @@ impl RTransactionSigner {
 		Ok(&self.allowed_contracts[index])
 	}
 
-	pub fn get_first_allowed_group(&self) -> Result<&String, TypeError> {
+	pub fn get_first_allowed_group(&self) -> Result<&Secp256r1PublicKey, TypeError> {
 		if self.allowed_groups.is_empty() {
 			return Err(TypeError::IndexOutOfBounds(
 				"This transaction signer does not allow any specific group.".to_string(),
@@ -114,7 +113,7 @@ impl RTransactionSigner {
 		self.get_allowed_group(0)
 	}
 
-	pub fn get_allowed_group(&self, index: usize) -> Result<&String, TypeError> {
+	pub fn get_allowed_group(&self, index: usize) -> Result<&Secp256r1PublicKey, TypeError> {
 		if index >= self.allowed_groups.len() {
 			return Err(TypeError::IndexOutOfBounds(format!(
 				"This transaction signer only allows {} groups. Tried to access index {}.",
@@ -180,11 +179,11 @@ impl SignerTrait for RTransactionSigner {
 	}
 
 	fn get_allowed_groups(&self) -> &Vec<Secp256r1PublicKey> {
-		unimplemented!("RTransactionSigner uses String for groups, conversion needed")
+		&self.allowed_groups
 	}
 
 	fn get_allowed_groups_mut(&mut self) -> &mut Vec<Secp256r1PublicKey> {
-		unimplemented!("RTransactionSigner uses String for groups, conversion needed")
+		&mut self.allowed_groups
 	}
 
 	fn get_rules(&self) -> &Vec<WitnessRule> {

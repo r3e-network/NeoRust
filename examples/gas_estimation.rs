@@ -24,9 +24,23 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 	println!("Current block height: {}\n", block_count);
 
 	// Create test account
-	// This is a TestNet test account - replace with your own WIF for actual use
-	let account = Account::from_wif("L1eV34wPoj9weqhGijdDLtVQzUpWGHszXXpdU9dPuh2nRFFzFa7E")
-		.unwrap_or_else(|_| Account::create().expect("Failed to create account"));
+	// Prefer loading from an environment variable to avoid hardcoding secrets.
+	// If `NEO_WIF` is not set (or invalid), fall back to a new random account.
+	let account = match std::env::var("NEO_WIF") {
+		Ok(wif) => match Account::from_wif(&wif) {
+			Ok(account) => account,
+			Err(e) => {
+				println!("Invalid NEO_WIF ({e}); using a new random account instead.");
+				Account::create()?
+			},
+		},
+		Err(_) => {
+			println!(
+				"NEO_WIF not set; using a new random account (results may fail without funds)."
+			);
+			Account::create()?
+		},
+	};
 
 	println!("Using account: {}", account.get_address());
 
@@ -124,7 +138,7 @@ async fn example_batch_estimation(
 	println!("--- Example 3: Batch Gas Estimation ---");
 
 	// Prepare multiple scripts for batch estimation
-	let scripts = vec![
+	let scripts = [
 		(
 			ScriptBuilder::new()
 				.push_integer(BigInt::from(100))

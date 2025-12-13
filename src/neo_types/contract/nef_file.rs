@@ -139,16 +139,18 @@ impl NeoSerializable for NefFile {
 
 	fn encode(&self, writer: &mut Encoder) {
 		writer.write_u32(Self::MAGIC);
-		writer
-			.write_fixed_string(&self.compiler, Self::COMPILER_SIZE)
-			.expect("Failed to serialize compiler");
+		if let Err(e) = writer.write_fixed_string(&self.compiler, Self::COMPILER_SIZE) {
+			tracing::warn!(error = %e, "Failed to serialize NEF compiler");
+		}
 		writer.write_var_string(&self.source_url);
 		writer.write_u8(0);
-		writer
-			.write_serializable_variable_list(&self.method_tokens)
-			.expect("Failed to serialize method tokens");
+		if let Err(e) = writer.write_serializable_variable_list(&self.method_tokens) {
+			tracing::warn!(error = %e, "Failed to serialize NEF method tokens");
+		}
 		writer.write_u16(0);
-		writer.write_var_bytes(&self.script).expect("Failed to serialize script");
+		if let Err(e) = writer.write_var_bytes(&self.script) {
+			tracing::warn!(error = %e, "Failed to serialize NEF script");
+		}
 		writer.write_bytes(&self.checksum);
 	}
 
@@ -165,16 +167,18 @@ impl NeoSerializable for NefFile {
 		let compiler = String::from_utf8(compiler_bytes.to_vec())
 			.map_err(|_| CodecError::InvalidEncoding("Invalid compiler".to_string()))?;
 
-		let source_url = reader.read_var_string()?;
-		if source_url.len() > Self::MAX_SOURCE_URL_SIZE {
-			return Err(TypeError::InvalidEncoding("Invalid source url".to_string()));
-		}
+		let source_url = reader.read_var_string_bounded(Self::MAX_SOURCE_URL_SIZE)?;
 
-		if reader.read_u8() != 0 {
+		if reader.read_u8_safe()? != 0 {
 			return Err(TypeError::InvalidEncoding("Invalid reserve bytes".to_string()));
 		}
 
-		let method_tokens = reader.read_serializable_list()?;
+		// Avoid pathological `tokens` lengths by bounding based on the remaining buffer and the
+		// minimum possible serialized size of a `MethodToken`.
+		let min_trailing_bytes = 2 + 1 + 1 + Self::CHECKSUM_SIZE;
+		let max_tokens = reader.available().saturating_sub(min_trailing_bytes)
+			/ MethodToken::MIN_SERIALIZED_SIZE;
+		let method_tokens = reader.read_serializable_list_bounded::<MethodToken>(max_tokens)?;
 
 		if reader.read_u16().map_err(|e| {
 			TypeError::InvalidEncoding(format!("Failed to read reserve bytes: {}", e))
@@ -183,7 +187,7 @@ impl NeoSerializable for NefFile {
 			return Err(TypeError::InvalidEncoding("Invalid reserve bytes".to_string()));
 		}
 
-		let script = reader.read_var_bytes()?;
+		let script = reader.read_var_bytes_bounded(Self::MAX_SCRIPT_LENGTH)?;
 		if script.is_empty() {
 			return Err(TypeError::InvalidEncoding("Invalid script".to_string()));
 		}
@@ -220,6 +224,9 @@ impl MethodToken {
 	const PARAMS_COUNT_SIZE: usize = 2;
 	const HAS_RETURN_VALUE_SIZE: usize = 1;
 	const CALL_FLAGS_SIZE: usize = 1;
+	const MAX_METHOD_NAME_SIZE: usize = 256;
+	const MIN_SERIALIZED_SIZE: usize =
+		20 + 1 + Self::PARAMS_COUNT_SIZE + Self::HAS_RETURN_VALUE_SIZE + Self::CALL_FLAGS_SIZE;
 }
 
 impl NeoSerializable for MethodToken {
@@ -248,12 +255,12 @@ impl NeoSerializable for MethodToken {
 		Self: Sized,
 	{
 		let hash = reader.read_serializable()?;
-		let method = reader.read_var_string()?;
+		let method = reader.read_var_string_bounded(Self::MAX_METHOD_NAME_SIZE)?;
 		let params_count = reader.read_u16().map_err(|e| {
 			TypeError::InvalidEncoding(format!("Failed to read params_count: {}", e))
 		})?;
-		let has_return_value = reader.read_bool();
-		let call_flags = reader.read_u8();
+		let has_return_value = reader.read_bool_safe()?;
+		let call_flags = reader.read_u8_safe()?;
 
 		Ok(Self { hash, method, params_count, has_return_value, call_flags })
 	}

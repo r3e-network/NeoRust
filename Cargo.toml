@@ -2,6 +2,7 @@
 name = "neo3"
 version = "0.5.4"
 edition = "2021"
+rust-version = "1.70"
 authors = ["R3E Network <jimmy@r3e.network> (c) 2020-2025"]
 license = "MIT OR Apache-2.0"
 description = "Production-ready Rust SDK for Neo N3 blockchain with high-level API, unified error handling, and enterprise features"
@@ -49,7 +50,7 @@ exclude = [
 ]
 
 [lib]
-doctest = false
+doctest = true
 
 # https://docs.rs/about/metadata
 [package.metadata.docs.rs]
@@ -106,7 +107,6 @@ exclude = [
 eframe = { path = "vendor/eframe-0.27.2" }
 
 [dependencies]
-tokio = { version = "1.45", features = ["full"] }
 tungstenite = { version = "0.23.0", optional = true }
 tokio-tungstenite = { version = "0.23.1", features = ["native-tls", "connect"], optional = true }
 futures = { version = "0.3.28", default-features = false, features = ["std"] }
@@ -116,14 +116,13 @@ futures-timer = { version = "3.0.2", default-features = false, features = ["wasm
 pin-project = "1.1"
 reqwest = { version = "0.12.5", default-features = false, features = ["json", "blocking", "rustls-tls", "stream"] }
 url = { version = "2.4", default-features = false }
-wiremock = { version = "0.6", optional = true }
 
 # crypto
 elliptic-curve = { version = "0.13.5", default-features = false }
 k256 = { version = "0.13.1", default-features = false, features = ["ecdsa", "std"] }
 sha2 = { version = "0.10.7", default-features = false }
 hmac = "0.12.1"
-base64 = "0.21.7"
+base64 = "0.22.1"
 
 # serde
 serde = { version = "1.0", features = ["derive"] }
@@ -139,9 +138,8 @@ hex-literal = "0.4"
 once_cell = "1.18"
 rand = "0.8"
 rayon = "1.7"
-regex = "1.9"
 tempfile = "3.8"
-thiserror = "1.0"
+thiserror = "2.0.17"
 
 # tracing
 tracing = "0.1.37"
@@ -200,6 +198,13 @@ bip39 = { version = "2.1.0", features = ["rand"] }
 
 # SGX dependencies (optional) - only available when building for SGX target
 # These are commented out by default as they require special SGX environment
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+tokio = { version = "1.45", features = ["full"] }
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+# Tokio restricts supported features on wasm targets (including WASI).
+tokio = { version = "1.45", default-features = false, features = ["sync", "macros", "io-util", "rt", "time"] }
 # Uncomment when building for SGX:
 # sgx_tstd = { git = "https://github.com/apache/teaclave-sgx-sdk.git", rev = "v2.0.0", optional = true }
 # sgx_types = { git = "https://github.com/apache/teaclave-sgx-sdk.git", rev = "v2.0.0", optional = true }
@@ -211,7 +216,6 @@ bip39 = { version = "2.1.0", features = ["rand"] }
 mockall = "0.13.0"
 tracing = "0.1"
 tracing-subscriber = "0.3.18"
-wiremock = "0.6"
 criterion = { version = "0.5", features = ["html_reports"] }
 tempfile = "3.0"
 serial_test = "3.2.0"
@@ -235,8 +239,8 @@ futures = []
 ledger = ["coins-ledger"]
 # aws = ["rusoto_core", "rusoto_kms"]  # DISABLED: Security vulnerabilities in rusoto dependencies
 default = []
-# Mock client + wiremock helpers for offline tests/CI
-mock = ["dep:wiremock"]
+# Mock client + in-memory provider for offline tests/CI
+mock = []
 # YubiHSM features - only for development/testing
 yubi = ["dep:yubihsm"]
 mock-hsm = ["dep:yubihsm", "yubihsm/mockhsm"]

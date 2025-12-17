@@ -10,7 +10,7 @@ author = "NeoRust Team"
 [files]
 # Main application file
 "src/main.rs" = '''
-//! Basic Neo dApp using NeoRust SDK v0.5.3
+//! Basic Neo dApp using NeoRust SDK v{{neo3_version}}
 //! 
 //! This template demonstrates:
 //! - Connection to Neo network
@@ -18,7 +18,7 @@ author = "NeoRust Team"
 //! - Smart contract interaction
 //! - Token transfers
 
-use neo3::sdk::{Neo, Network};
+use neo3::sdk::Neo;
 use neo3::neo_wallets::wallet::Wallet;
 use std::error::Error;
 
@@ -36,7 +36,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     println!("📊 Current block height: {}", height);
     
     // Create or load wallet
-    let wallet = create_or_load_wallet()?;
+    let _wallet = create_or_load_wallet()?;
     println!("💼 Wallet ready!");
     
     // Example: Check balance
@@ -44,7 +44,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let balance = neo.get_balance(address).await?;
     println!("💰 Balance for {}:", address);
     println!("   NEO: {}", balance.neo);
-    println!("   GAS: {:.8}", balance.gas);
+    println!("   GAS: {}", balance.gas);
     
     Ok(())
 }
@@ -71,7 +71,6 @@ fn create_or_load_wallet() -> Result<Wallet, Box<dyn Error>> {
 
 use serde::{Deserialize, Serialize};
 use std::fs;
-use std::path::Path;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Config {
@@ -146,7 +145,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-neo3 = "0.5.3"
+neo3 = "{{neo3_version}}"
 tokio = { version = "1.45", features = ["full"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
@@ -212,7 +211,7 @@ Thumbs.db
 "README.md" = '''
 # {{project_name}}
 
-A Neo N3 dApp built with NeoRust SDK v0.5.3
+A Neo N3 dApp built with NeoRust SDK v{{neo3_version}}
 
 ## Features
 

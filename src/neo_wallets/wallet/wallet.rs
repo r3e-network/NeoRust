@@ -815,8 +815,7 @@ impl Wallet {
 
 		let account = self.default_account().ok_or(WalletError::NoDefaultAccount)?;
 		let key_pair = account.key_pair.clone().ok_or(WalletError::NoKeyPair)?;
-		Witness::create(tx.get_hash_data().await?, &key_pair)
-			.map_err(|_e| WalletError::NoKeyPair)
+		Witness::create(tx.get_hash_data().await?, &key_pair).map_err(|_e| WalletError::NoKeyPair)
 	}
 
 	/// Signs a transaction using the specified account.

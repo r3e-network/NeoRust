@@ -22,7 +22,7 @@ mod tests {
 		config::{NeoConstants, TestConstants},
 		crypto::{KeyPair, Secp256r1PrivateKey},
 		neo_builder::GAS_TOKEN_HASH,
-		neo_clients::{APITrait, HttpProvider, MockClient, RpcClient},
+		neo_clients::{APITrait, MockClient, MockProvider, RpcClient},
 		neo_crypto::utils::ToHexString,
 		neo_protocol::{
 			Account, AccountTrait, ApplicationLog, NeoProtocol, NeoVersion, RawTransaction,
@@ -74,7 +74,7 @@ mod tests {
 		.expect("Failed to create ACCOUNT2 from valid key pair");
 	}
 
-	static CLIENT: OnceCell<RpcClient<HttpProvider>> = OnceCell::const_new();
+	static CLIENT: OnceCell<RpcClient<MockProvider>> = OnceCell::const_new();
 
 	#[tokio::test]
 	async fn test_build_transaction_with_correct_nonce() {
@@ -1066,7 +1066,6 @@ mod tests {
 
 	#[tokio::test]
 	async fn test_fail_trying_to_sign_transaction_with_account_missing_a_private_key() {
-		NEOCONFIG.lock().unwrap().network = Some(769);
 		let mock_provider = Arc::new(Mutex::new(MockClient::new().await));
 		{
 			let mut mock_provider_guard = mock_provider.lock().await; // Lock the mock_provider once
@@ -1209,6 +1208,8 @@ mod tests {
 					"calculatenetworkfee.json",
 				)
 				.await;
+			let mut mock_provider_guard =
+				mock_provider_guard.mock_response_ignore_param("getversion", json!({})).await;
 			mock_provider_guard.mount_mocks().await;
 		}
 		let client = {
@@ -1249,6 +1250,8 @@ mod tests {
 					"calculatenetworkfee.json",
 				)
 				.await;
+			let mut mock_provider_guard =
+				mock_provider_guard.mock_response_ignore_param("getversion", json!({})).await;
 			mock_provider_guard.mount_mocks().await;
 		}
 		let client = {
@@ -1334,6 +1337,8 @@ mod tests {
 					"calculatenetworkfee.json",
 				)
 				.await;
+			let mut mock_provider_guard =
+				mock_provider_guard.mock_response_ignore_param("getversion", json!({})).await;
 			mock_provider_guard.mount_mocks().await;
 		}
 		let client = {
@@ -2021,33 +2026,30 @@ mod tests {
 			.contains("Could not find a signer with script hash "));
 	}
 
-	#[ignore] // Ignoring this test until track_tx implementation is complete
 	#[tokio::test]
 	async fn test_tracking_transaction_should_return_correct_block() {
 		init_logger();
 		let mock_provider = Arc::new(Mutex::new(MockClient::new().await));
-		let client = {
+		{
 			let mut mock_provider = mock_provider.lock().await;
 			mock_provider
-				.mock_response_with_file_ignore_param("getblockcount", "getblockcount_1000.json")
+				.mock_response_with_file_ignore_param(
+					"invokescript",
+					"invokescript_transfer_with_fixed_sysfee.json",
+				)
 				.await
 				.mock_response_with_file_ignore_param(
 					"calculatenetworkfee",
 					"calculatenetworkfee.json",
 				)
 				.await
-				.mock_response_with_file_ignore_param(
-					"sendrawtransaction",
-					"sendrawtransaction.json",
-				)
-				.await
-				.mock_response_with_file_ignore_param(
-					"invokescript",
-					"invokescript_transfer_with_fixed_sysfee.json",
-				)
+				.mock_response_ignore_param("getversion", json!({}))
 				.await
 				.mount_mocks()
 				.await;
+		}
+		let client = {
+			let mock_provider = mock_provider.lock().await;
 			Arc::new(mock_provider.into_client())
 		};
 
@@ -2076,22 +2078,61 @@ mod tests {
 			.nonce(0)
 			.unwrap()
 			.set_signers(vec![AccountSigner::called_by_entry(&account1).unwrap().into()])
-			.expect("Failed to set signers in test - this should never fail with valid test data");
+			.expect("Failed to set signers in test - this should never fail with valid test data")
+			.valid_until_block(1000)
+			.unwrap();
 
 		let mut tx = tx_builder.sign().await.unwrap();
-		let _ = tx.send_tx().await.map_err(TransactionError::from).unwrap();
+		// Simulate the transaction having been sent at block height 999.
+		tx.block_count_when_sent = Some(999);
 
-		// Note: Transaction tracking functionality is not yet implemented
-		// When implemented, it should allow tracking transaction confirmation status
-		// Example usage (future implementation):
-		// let mut subscription = tx.track_tx(&client).await.unwrap();
-		// while let Some(result) = subscription.next(&client).await {
-		//     block_num = result.unwrap();
-		//     if block_num == 1002 {
-		//         break;
-		//     }
-		// }
-		// assert_eq!(block_num, 1002);
+		let tx_id = tx.tx_id().unwrap();
+		let tx_id_str = format!("{:?}", tx_id);
+		let block_hash_str = "0x1111111111111111111111111111111111111111111111111111111111111111";
+
+		{
+			let mut mock_provider = mock_provider.lock().await;
+			mock_provider
+				.mock_response_with_file_ignore_param("getblockcount", "getblockcount_1000.json")
+				.await
+				.mock_response_ignore_param("getblockhash", json!(block_hash_str))
+				.await
+				.mock_response_ignore_param(
+					"getblock",
+					json!({
+						"hash": block_hash_str,
+						"size": 1,
+						"version": 0,
+						"previousblockhash": block_hash_str,
+						"merkleroot": block_hash_str,
+						"time": 0,
+						"nonce": "0",
+						"index": 999,
+						"primary": 0,
+						"nextconsensus": "0",
+						"tx": [
+							{
+								"hash": tx_id_str,
+								"size": 0,
+								"version": 0,
+								"nonce": 0,
+								"sender": "0",
+								"sysfee": "0",
+								"netfee": "0",
+								"validuntilblock": 0,
+								"script": "",
+							}
+						],
+						"confirmations": 1,
+						"nextblockhash": null,
+					}),
+				)
+				.await
+				.mount_mocks()
+				.await;
+		}
+
+		tx.track_tx(1).await.unwrap();
 	}
 
 	#[tokio::test]
@@ -2109,6 +2150,8 @@ mod tests {
 					"calculatenetworkfee",
 					"calculatenetworkfee.json",
 				)
+				.await
+				.mock_response_ignore_param("getversion", json!({}))
 				.await
 				.mount_mocks()
 				.await;
@@ -2144,9 +2187,10 @@ mod tests {
 
 		let tx = tx_builder.sign().await.unwrap();
 
-		// Note: Transaction tracking functionality is not yet implemented
-		// When implemented, it should verify that tracking fails for unsent transactions
-		// assert!(tx.track_tx(&client).await.is_err());
+		let result = tx.track_tx(1).await;
+		assert!(
+			matches!(result, Err(TransactionError::IllegalState(msg)) if msg.contains("Cannot track transaction before it has been sent"))
+		);
 	}
 
 	#[tokio::test]
@@ -2164,6 +2208,8 @@ mod tests {
 					"calculatenetworkfee",
 					"calculatenetworkfee.json",
 				)
+				.await
+				.mock_response_ignore_param("getversion", json!({}))
 				.await
 				.mock_send_raw_transaction(RawTransaction { hash: H256::zero() })
 				.await
@@ -2237,6 +2283,8 @@ mod tests {
 					"calculatenetworkfee.json",
 				)
 				.await
+				.mock_response_ignore_param("getversion", json!({}))
+				.await
 				.mount_mocks()
 				.await;
 			Arc::new(mock_provider.into_client())
@@ -2285,6 +2333,8 @@ mod tests {
 					"calculatenetworkfee",
 					"calculatenetworkfee.json",
 				)
+				.await
+				.mock_response_ignore_param("getversion", json!({}))
 				.await
 				.mock_send_raw_transaction(RawTransaction { hash: H256::zero() })
 				.await
@@ -2337,14 +2387,12 @@ mod tests {
 					"calculatenetworkfee.json",
 				)
 				.await
+				.mock_response_ignore_param("getversion", json!({}))
+				.await
 				.mount_mocks()
 				.await;
 			Arc::new(mock_provider.into_client())
 		};
-
-		NEOCONFIG.lock().unwrap().allows_transmission_on_fault = true;
-
-		assert!(NEOCONFIG.lock().unwrap().allows_transmission_on_fault);
 
 		let account = Account::create().unwrap();
 
@@ -2353,7 +2401,7 @@ mod tests {
 			.set_script(Some(vec![1, 2, 3]))
 			.set_signers(vec![AccountSigner::none(&account).unwrap().into()])
 			.expect("Failed to set signers in test - this should never fail with valid test data");
-		// .allow_transmission_on_fault();
+		tx_builder.allow_transmission_on_fault();
 
 		let result = tx_builder.call_invoke_script().await.unwrap();
 		assert!(result.has_state_fault());
@@ -2365,13 +2413,9 @@ mod tests {
 			Err(e) => panic!("Error: {}", e),
 		};
 		assert_eq!(tx.sys_fee, gas_comsumed);
-
-		NEOCONFIG.lock().unwrap().allows_transmission_on_fault = false;
-		assert!(!NEOCONFIG.lock().unwrap().allows_transmission_on_fault);
 	}
 
 	#[tokio::test]
-	#[ignore = "transmission-on-fault enforcement not deterministic in current test harness"]
 	async fn test_prevent_transmission_on_fault() {
 		// init_logger();
 		let mock_provider = Arc::new(Mutex::new(MockClient::new().await));
@@ -2387,6 +2431,8 @@ mod tests {
 					"calculatenetworkfee.json",
 				)
 				.await
+				.mock_response_ignore_param("getversion", json!({}))
+				.await
 				.mount_mocks()
 				.await;
 			Arc::new(mock_provider.into_client())
@@ -2399,8 +2445,7 @@ mod tests {
 			.set_script(Some(vec![1, 2, 3]))
 			.set_signers(vec![AccountSigner::none(&account).unwrap().into()])
 			.expect("Failed to set signers in test - this should never fail with valid test data");
-
-		assert!(!NEOCONFIG.lock().unwrap().allows_transmission_on_fault);
+		tx_builder.disallow_transmission_on_fault();
 
 		let result = tx_builder.call_invoke_script().await.unwrap();
 		assert!(result.has_state_fault());

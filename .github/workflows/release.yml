@@ -82,7 +82,7 @@ jobs:
     - name: Build release binary
       run: |
         cargo build --release --target ${{ matrix.target }} --no-default-features --workspace
-        cargo build --release --target ${{ matrix.target }} -p neo-cli --bin neo-cli || true
+        cargo build --release --target ${{ matrix.target }} -p neo-cli --bin neo-cli
 
     - name: Package artifacts (Unix)
       if: runner.os != 'Windows'
@@ -132,8 +132,7 @@ jobs:
 
     - name: Publish to crates.io
       run: |
-        cargo publish --no-verify
-      continue-on-error: true
+        cargo publish
 
   # Create GitHub release
   release:

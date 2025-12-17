@@ -1,4 +1,4 @@
-//! # Neo RPC Client Module (v0.1.8)
+//! # Neo RPC Client Module
 //!
 //! The RPC module provides client implementations for interacting with Neo nodes
 //! through JSON-RPC API calls.

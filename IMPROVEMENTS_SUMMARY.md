@@ -53,7 +53,7 @@ Features:
 - Project generation
 
 ### 4. Project Templates & Code Generation ✅
-**Location**: `templates/` and `neo-cli/src/generator.rs`
+**Location**: `neo-cli/templates/` and `neo-cli/src/generator.rs`
 
 Created professional templates:
 - **Basic dApp**: Complete starter application
@@ -105,9 +105,9 @@ neo-cli/
 ├── src/
 │   ├── wizard.rs              # Interactive CLI wizard
 │   └── generator.rs           # Code generation tools
-templates/
-├── basic_dapp.toml            # Basic dApp template
-└── nep17_token.toml           # NEP-17 token template
+├── templates/
+│   ├── basic_dapp.toml        # Basic dApp template
+│   └── nep17_token.toml       # NEP-17 token template
 tests/
 └── sdk_integration_tests.rs   # Integration tests
 ```

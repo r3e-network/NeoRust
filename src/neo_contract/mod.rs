@@ -1,4 +1,4 @@
-//! # Neo Contract Module (v0.1.8)
+//! # Neo Contract Module
 //!
 //! Comprehensive interfaces for interacting with Neo N3 smart contracts and tokens.
 //!

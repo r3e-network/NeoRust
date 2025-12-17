@@ -34,9 +34,9 @@ impl<Read, Write> RwClient<Read, Write> {
 	///
 	/// # #[cfg(feature = "ws")]
 	/// async fn t() -> Result<(), Box<dyn std::error::Error>> {
-	///     let http = HttpProvider::new(Url::parse("http://localhost:8545").unwrap())?;
+	///     let http = HttpProvider::new(Url::parse("http://localhost:10332").unwrap())?;
 	///     # #[cfg(feature = "ws")]
-	///     let ws = neo3::neo_clients::Ws::connect("ws://localhost:8545").await?;
+	///     let ws = neo3::neo_clients::Ws::connect("ws://localhost:10334/ws").await?;
 	///     # #[cfg(feature = "ws")]
 	///     let rw = RwClient::new(http, ws);
 	///     Ok(())

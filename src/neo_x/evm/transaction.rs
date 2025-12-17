@@ -39,7 +39,7 @@ impl NeoXTransaction {
 	///
 	/// # Returns
 	///
-	/// The recipient address as an Option<H160>
+	/// The recipient address as an `Option<H160>`
 	pub fn to(&self) -> Option<H160> {
 		self.to
 	}
@@ -48,7 +48,7 @@ impl NeoXTransaction {
 	///
 	/// # Returns
 	///
-	/// The transaction data as a Vec<u8>
+	/// The transaction data as a `Vec<u8>`
 	pub fn data(&self) -> &Vec<u8> {
 		&self.data
 	}

@@ -41,19 +41,12 @@ run_check() {
 run_check "Format Check" "cargo fmt --all -- --check"
 
 # 2. Clippy
-run_check "Clippy" "cargo clippy --workspace --all-targets --all-features --exclude neo-gui -- -D warnings"
+run_check "Clippy" "cargo clippy --workspace --all-targets --all-features -- -D warnings"
 
-# 3. Tests (excluding neo-gui)
-echo "Preparing for tests (excluding neo-gui)..."
-cp Cargo.toml Cargo.toml.backup
-sed -i.bak 's/"neo-gui",//g; s/, "neo-gui"//g; s/"neo-gui"//g' Cargo.toml
-rm -rf neo-gui
-
-run_check "Rust Tests" "NEORUST_SKIP_NETWORK_TESTS=1 cargo test --package neo3 --all-features"
-
-# Restore workspace
-mv Cargo.toml.backup Cargo.toml
-git checkout -- neo-gui 2>/dev/null || true
+# 3. Tests
+run_check "neo3 Tests" "NEORUST_SKIP_NETWORK_TESTS=1 cargo test -p neo3 --all-features"
+run_check "neo3 Doc Tests" "cargo test -p neo3 --doc --all-features"
+run_check "neo-cli Tests" "cargo test -p neo-cli"
 
 # Summary
 echo ""

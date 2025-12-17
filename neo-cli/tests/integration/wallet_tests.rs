@@ -32,7 +32,7 @@ fn test_wallet_open_and_close() {
 	let open_output =
 		cli.run(&["wallet", "open", "--path", &wallet_path, "--password", TEST_WALLET_PASSWORD]);
 	assert_success(&open_output);
-	assert_output_contains(&open_output, "Wallet opened successfully");
+	assert_output_contains(&open_output, "Opened Successfully");
 
 	// Test close wallet (Note: wallet state doesn't persist between CLI invocations)
 	let close_output = cli.run(&["wallet", "close"]);

@@ -10,4 +10,9 @@ node_modules/
 .hive-mind/sessions/
 *.bak
 scripts/
+.claude/
 .claude-flow/
+
+# Local wallet artifacts (examples/tests)
+/my_wallet.json
+/wallet.json

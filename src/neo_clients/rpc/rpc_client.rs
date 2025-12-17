@@ -165,7 +165,8 @@ impl<P: JsonRpcProvider> APITrait for RpcClient<P> {
 	async fn network(&self) -> Result<u32, ProviderError> {
 		// trace!("network = {:?}", self.get_version().await.unwrap());
 		if NEOCONFIG.lock().map_err(|_| ProviderError::LockError)?.network.is_none() {
-			let version = self.get_version().await?;
+			// Use the cached node version when available to avoid redundant getversion calls.
+			let version = self.node_client().await?;
 			let protocol = version.protocol.ok_or(ProviderError::ProtocolNotFound)?;
 			return Ok(protocol.network);
 		}

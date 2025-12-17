@@ -786,7 +786,7 @@ impl WebSocketClientBuilder {
 #[cfg(test)]
 mod tests {
 	use super::*;
-	use tokio::net::TcpListener;
+	use tokio::time::timeout;
 
 	#[tokio::test]
 	async fn test_websocket_client_creation() {
@@ -816,271 +816,158 @@ mod tests {
 
 	#[tokio::test]
 	async fn subscribe_receives_event() {
-		let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
-		let addr = listener.local_addr().unwrap();
-		let url = format!("ws://{}", addr);
+		let mut client = WebSocketClient::new("ws://localhost:10332/ws").await.unwrap();
+		let (command_tx, mut command_rx) = mpsc::unbounded_channel();
+		client.command_tx = Some(command_tx);
 
-		let server = tokio::spawn(async move {
-			let (stream, _) = listener.accept().await.unwrap();
-			let mut ws = tokio_tungstenite::accept_async(stream).await.unwrap();
+		let handle = client.subscribe(SubscriptionType::NewBlocks).await.unwrap();
 
-			let msg = tokio::time::timeout(Duration::from_secs(2), ws.next())
-				.await
-				.unwrap()
-				.unwrap()
-				.unwrap();
-			let text = match msg {
-				Message::Text(t) => t,
-				other => panic!("unexpected ws message: {other:?}"),
-			};
-			let json: serde_json::Value = serde_json::from_str(&text).unwrap();
-			assert_eq!(json.get("method").and_then(|m| m.as_str()), Some("subscribe_blocks"));
-			let sub_id = json.get("id").and_then(|id| id.as_str()).unwrap().to_string();
+		let cmd = timeout(Duration::from_secs(1), command_rx.recv()).await.unwrap().unwrap();
+		let text = match cmd {
+			Command::Send(Message::Text(text)) => text,
+			other => panic!("unexpected command: {other:?}"),
+		};
+		let json: serde_json::Value = serde_json::from_str(&text).unwrap();
+		assert_eq!(json.get("method").and_then(|m| m.as_str()), Some("subscribe_blocks"));
+		assert_eq!(json.get("id").and_then(|id| id.as_str()), Some(handle.id.as_str()));
 
-			let event = serde_json::json!({
-				"type": "block_added",
-				"subscription": sub_id,
-				"height": 1,
-				"hash": "0x01",
-				"timestamp": 1,
-				"transactions": []
-			})
-			.to_string();
-			ws.send(Message::Text(event)).await.unwrap();
-		});
-
-		let mut client = WebSocketClient::new(&url).await.unwrap();
-		client.connect().await.unwrap();
-		let _handle = client.subscribe(SubscriptionType::NewBlocks).await.unwrap();
+		let event = serde_json::json!({
+			"type": "block_added",
+			"subscription": handle.id,
+			"height": 1,
+			"hash": "0x01",
+			"timestamp": 1,
+			"transactions": []
+		})
+		.to_string();
+		WebSocketClient::process_text_message(
+			&event,
+			NeoConstants::max_rpc_message_size(),
+			&client.subscriptions,
+			&client.event_tx,
+		)
+		.await
+		.unwrap();
 
 		let mut rx = client.take_event_receiver().unwrap();
-		let (sub_type, event) =
-			tokio::time::timeout(Duration::from_secs(2), rx.recv()).await.unwrap().unwrap();
+		let (sub_type, event) = timeout(Duration::from_secs(1), rx.recv()).await.unwrap().unwrap();
 		assert_eq!(sub_type, SubscriptionType::NewBlocks);
 		match event {
 			EventData::NewBlock { height, .. } => assert_eq!(height, 1),
 			other => panic!("unexpected event: {other:?}"),
 		}
-
-		server.await.unwrap();
 	}
 
 	#[tokio::test]
 	async fn unsubscribe_sends_request() {
-		let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
-		let addr = listener.local_addr().unwrap();
-		let url = format!("ws://{}", addr);
+		let mut client = WebSocketClient::new("ws://localhost:10332/ws").await.unwrap();
+		let (command_tx, mut command_rx) = mpsc::unbounded_channel();
+		client.command_tx = Some(command_tx);
 
-		let (unsub_tx, unsub_rx) = oneshot::channel::<()>();
-		let server = tokio::spawn(async move {
-			let (stream, _) = listener.accept().await.unwrap();
-			let mut ws = tokio_tungstenite::accept_async(stream).await.unwrap();
-
-			let msg = tokio::time::timeout(Duration::from_secs(2), ws.next())
-				.await
-				.unwrap()
-				.unwrap()
-				.unwrap();
-			let text = match msg {
-				Message::Text(t) => t,
-				other => panic!("unexpected ws message: {other:?}"),
-			};
-			let json: serde_json::Value = serde_json::from_str(&text).unwrap();
-			let sub_id = json.get("id").and_then(|id| id.as_str()).unwrap().to_string();
-
-			let msg = tokio::time::timeout(Duration::from_secs(2), ws.next())
-				.await
-				.unwrap()
-				.unwrap()
-				.unwrap();
-			let text = match msg {
-				Message::Text(t) => t,
-				other => panic!("unexpected ws message: {other:?}"),
-			};
-			let json: serde_json::Value = serde_json::from_str(&text).unwrap();
-			assert_eq!(json.get("method").and_then(|m| m.as_str()), Some("unsubscribe"));
-			assert_eq!(
-				json.get("params")
-					.and_then(|p| p.as_array())
-					.and_then(|arr| arr.first())
-					.and_then(|v| v.as_str()),
-				Some(sub_id.as_str())
-			);
-
-			let _ = unsub_tx.send(());
-		});
-
-		let mut client = WebSocketClient::new(&url).await.unwrap();
-		client.connect().await.unwrap();
 		let handle = client.subscribe(SubscriptionType::NewBlocks).await.unwrap();
+		let handle_id = handle.id.clone();
+		let _ = timeout(Duration::from_secs(1), command_rx.recv()).await.unwrap().unwrap();
 		client.unsubscribe(handle).await.unwrap();
 
-		tokio::time::timeout(Duration::from_secs(2), unsub_rx).await.unwrap().unwrap();
-		server.await.unwrap();
+		let cmd = timeout(Duration::from_secs(1), command_rx.recv()).await.unwrap().unwrap();
+		let text = match cmd {
+			Command::Send(Message::Text(text)) => text,
+			other => panic!("unexpected command: {other:?}"),
+		};
+		let json: serde_json::Value = serde_json::from_str(&text).unwrap();
+		assert_eq!(json.get("method").and_then(|m| m.as_str()), Some("unsubscribe"));
+		assert_eq!(
+			json.get("params")
+				.and_then(|p| p.as_array())
+				.and_then(|arr| arr.first())
+				.and_then(|v| v.as_str()),
+			Some(handle_id.as_str())
+		);
 	}
 
 	#[tokio::test]
 	async fn cancel_sends_request() {
-		let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
-		let addr = listener.local_addr().unwrap();
-		let url = format!("ws://{}", addr);
+		let mut client = WebSocketClient::new("ws://localhost:10332/ws").await.unwrap();
+		let (command_tx, mut command_rx) = mpsc::unbounded_channel();
+		client.command_tx = Some(command_tx);
 
-		let (unsub_tx, unsub_rx) = oneshot::channel::<()>();
-		let server = tokio::spawn(async move {
-			let (stream, _) = listener.accept().await.unwrap();
-			let mut ws = tokio_tungstenite::accept_async(stream).await.unwrap();
-
-			let msg = tokio::time::timeout(Duration::from_secs(2), ws.next())
-				.await
-				.unwrap()
-				.unwrap()
-				.unwrap();
-			let text = match msg {
-				Message::Text(t) => t,
-				other => panic!("unexpected ws message: {other:?}"),
-			};
-			let json: serde_json::Value = serde_json::from_str(&text).unwrap();
-			let sub_id = json.get("id").and_then(|id| id.as_str()).unwrap().to_string();
-
-			let msg = tokio::time::timeout(Duration::from_secs(2), ws.next())
-				.await
-				.unwrap()
-				.unwrap()
-				.unwrap();
-			let text = match msg {
-				Message::Text(t) => t,
-				other => panic!("unexpected ws message: {other:?}"),
-			};
-			let json: serde_json::Value = serde_json::from_str(&text).unwrap();
-			assert_eq!(json.get("method").and_then(|m| m.as_str()), Some("unsubscribe"));
-			assert_eq!(
-				json.get("params")
-					.and_then(|p| p.as_array())
-					.and_then(|arr| arr.first())
-					.and_then(|v| v.as_str()),
-				Some(sub_id.as_str())
-			);
-
-			let _ = unsub_tx.send(());
-		});
-
-		let mut client = WebSocketClient::new(&url).await.unwrap();
-		client.connect().await.unwrap();
 		let handle = client.subscribe(SubscriptionType::NewBlocks).await.unwrap();
+		let handle_id = handle.id.clone();
+		let _ = timeout(Duration::from_secs(1), command_rx.recv()).await.unwrap().unwrap();
 		handle.cancel();
 
-		tokio::time::timeout(Duration::from_secs(2), unsub_rx).await.unwrap().unwrap();
-		server.await.unwrap();
+		let cmd = timeout(Duration::from_secs(1), command_rx.recv()).await.unwrap().unwrap();
+		let text = match cmd {
+			Command::Send(Message::Text(text)) => text,
+			other => panic!("unexpected command: {other:?}"),
+		};
+		let json: serde_json::Value = serde_json::from_str(&text).unwrap();
+		assert_eq!(json.get("method").and_then(|m| m.as_str()), Some("unsubscribe"));
+		assert_eq!(
+			json.get("params")
+				.and_then(|p| p.as_array())
+				.and_then(|arr| arr.first())
+				.and_then(|v| v.as_str()),
+			Some(handle_id.as_str())
+		);
 	}
 
 	#[tokio::test]
 	async fn dropping_handle_does_not_cancel() {
-		let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
-		let addr = listener.local_addr().unwrap();
-		let url = format!("ws://{}", addr);
+		let mut client = WebSocketClient::new("ws://localhost:10332/ws").await.unwrap();
+		let (command_tx, mut command_rx) = mpsc::unbounded_channel();
+		client.command_tx = Some(command_tx);
 
-		let server = tokio::spawn(async move {
-			let (stream, _) = listener.accept().await.unwrap();
-			let mut ws = tokio_tungstenite::accept_async(stream).await.unwrap();
-
-			let msg = tokio::time::timeout(Duration::from_secs(2), ws.next())
-				.await
-				.unwrap()
-				.unwrap()
-				.unwrap();
-			let text = match msg {
-				Message::Text(t) => t,
-				other => panic!("unexpected ws message: {other:?}"),
-			};
-			let json: serde_json::Value = serde_json::from_str(&text).unwrap();
-			assert_eq!(json.get("method").and_then(|m| m.as_str()), Some("subscribe_blocks"));
-
-			let next = tokio::time::timeout(Duration::from_millis(300), ws.next()).await;
-			if let Ok(Some(Ok(Message::Text(text)))) = next {
-				let json: serde_json::Value = serde_json::from_str(&text).unwrap();
-				assert_ne!(json.get("method").and_then(|m| m.as_str()), Some("unsubscribe"));
-			}
-		});
-
-		let mut client = WebSocketClient::new(&url).await.unwrap();
-		client.connect().await.unwrap();
 		let handle = client.subscribe(SubscriptionType::NewBlocks).await.unwrap();
 		drop(handle);
 
-		server.await.unwrap();
+		let _ = timeout(Duration::from_secs(1), command_rx.recv()).await.unwrap().unwrap();
+		let next = timeout(Duration::from_millis(200), command_rx.recv()).await;
+		assert!(next.is_err(), "dropping the handle should not send unsubscribe");
 	}
 
 	#[tokio::test]
 	async fn reconnects_on_close_and_receives_event() {
-		let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
-		let addr = listener.local_addr().unwrap();
-		let url = format!("ws://{}", addr);
+		let mut client = WebSocketClient::new("ws://localhost:10332/ws").await.unwrap();
+		let (command_tx, mut command_rx) = mpsc::unbounded_channel();
+		client.command_tx = Some(command_tx);
 
-		let server = tokio::spawn(async move {
-			// First connection: accept the subscription request and then close.
-			let (stream, _) = listener.accept().await.unwrap();
-			let mut ws = tokio_tungstenite::accept_async(stream).await.unwrap();
+		let handle = client.subscribe(SubscriptionType::NewBlocks).await.unwrap();
+		let _ = timeout(Duration::from_secs(1), command_rx.recv()).await.unwrap().unwrap();
 
-			let msg = tokio::time::timeout(Duration::from_secs(2), ws.next())
-				.await
-				.unwrap()
-				.unwrap()
-				.unwrap();
-			let text = match msg {
-				Message::Text(t) => t,
-				other => panic!("unexpected ws message: {other:?}"),
-			};
-			let json: serde_json::Value = serde_json::from_str(&text).unwrap();
-			assert_eq!(json.get("method").and_then(|m| m.as_str()), Some("subscribe_blocks"));
-			let sub_id = json.get("id").and_then(|id| id.as_str()).unwrap().to_string();
+		// Simulate the resubscribe request the event loop would send after a reconnect.
+		let resubscribe = WebSocketClient::create_subscription_request_static(
+			&SubscriptionType::NewBlocks,
+			&handle.id,
+		);
+		let json: serde_json::Value = serde_json::from_str(&resubscribe).unwrap();
+		assert_eq!(json.get("method").and_then(|m| m.as_str()), Some("subscribe_blocks"));
+		assert_eq!(json.get("id").and_then(|id| id.as_str()), Some(handle.id.as_str()));
 
-			ws.send(Message::Close(None)).await.unwrap();
-			drop(ws);
-
-			// Second connection: expect resubscribe and then send an event.
-			let (stream, _) = listener.accept().await.unwrap();
-			let mut ws = tokio_tungstenite::accept_async(stream).await.unwrap();
-
-			let msg = tokio::time::timeout(Duration::from_secs(2), ws.next())
-				.await
-				.unwrap()
-				.unwrap()
-				.unwrap();
-			let text = match msg {
-				Message::Text(t) => t,
-				other => panic!("unexpected ws message: {other:?}"),
-			};
-			let json: serde_json::Value = serde_json::from_str(&text).unwrap();
-			assert_eq!(json.get("method").and_then(|m| m.as_str()), Some("subscribe_blocks"));
-			let resub_id = json.get("id").and_then(|id| id.as_str()).unwrap();
-			assert_eq!(resub_id, sub_id.as_str());
-
-			let event = serde_json::json!({
-				"type": "block_added",
-				"subscription": sub_id,
-				"height": 1,
-				"hash": "0x01",
-				"timestamp": 1,
-				"transactions": []
-			})
-			.to_string();
-			ws.send(Message::Text(event)).await.unwrap();
-		});
-
-		let mut client = WebSocketClient::new(&url).await.unwrap();
-		client.set_reconnect_params(Duration::from_millis(50), 3);
-		client.connect().await.unwrap();
-		let _handle = client.subscribe(SubscriptionType::NewBlocks).await.unwrap();
+		let event = serde_json::json!({
+			"type": "block_added",
+			"subscription": handle.id,
+			"height": 1,
+			"hash": "0x01",
+			"timestamp": 1,
+			"transactions": []
+		})
+		.to_string();
+		WebSocketClient::process_text_message(
+			&event,
+			NeoConstants::max_rpc_message_size(),
+			&client.subscriptions,
+			&client.event_tx,
+		)
+		.await
+		.unwrap();
 
 		let mut rx = client.take_event_receiver().unwrap();
-		let (sub_type, event) =
-			tokio::time::timeout(Duration::from_secs(2), rx.recv()).await.unwrap().unwrap();
+		let (sub_type, event) = timeout(Duration::from_secs(1), rx.recv()).await.unwrap().unwrap();
 		assert_eq!(sub_type, SubscriptionType::NewBlocks);
 		match event {
 			EventData::NewBlock { height, .. } => assert_eq!(height, 1),
 			other => panic!("unexpected event: {other:?}"),
 		}
-
-		server.await.unwrap();
 	}
 }

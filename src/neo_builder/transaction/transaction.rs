@@ -251,6 +251,13 @@ impl<'a, T: JsonRpcProvider + 'static> Transaction<'a, T> {
 		Ok(primitive_types::H256::from_slice(&reversed_data))
 	}
 
+	/// Returns the transaction identifier (hash) as used by Neo nodes.
+	///
+	/// This is derived from the unsigned transaction payload (witnesses are not included).
+	pub fn tx_id(&self) -> Result<primitive_types::H256, TransactionError> {
+		self.get_tx_id()
+	}
+
 	fn serialize_without_witnesses(&self, writer: &mut Encoder) {
 		writer.write_u8(self.version);
 		writer.write_u32(self.nonce);
@@ -451,6 +458,12 @@ impl<'a, T: JsonRpcProvider + 'static> Transaction<'a, T> {
 	/// }
 	/// ```
 	pub async fn track_tx(&self, max_blocks: u32) -> Result<(), TransactionError> {
+		if max_blocks == 0 {
+			return Err(TransactionError::IllegalState(
+				"max_blocks must be greater than 0".to_string(),
+			));
+		}
+
 		let network = self.network.ok_or_else(|| {
 			TransactionError::IllegalState("Transaction network is not set".to_string())
 		})?;
@@ -461,29 +474,28 @@ impl<'a, T: JsonRpcProvider + 'static> Transaction<'a, T> {
 			))?;
 
 		let tx_id = self.get_tx_id()?;
-		let mut current_block = block_count_when_sent;
-		let max_block = block_count_when_sent + max_blocks;
+		let mut next_block = block_count_when_sent;
+		let end_block = block_count_when_sent.saturating_add(max_blocks);
 
-		while current_block <= max_block {
-			// Get the current block count
+		while next_block < end_block {
 			let latest_block = network.get_block_count().await?;
+			let scan_up_to = std::cmp::min(latest_block, end_block);
 
-			// If there are new blocks, check them for our transaction
-			if latest_block > current_block {
-				while current_block < latest_block {
-					let block_hash = network.get_block_hash(current_block).await?;
-					let block = network.get_block(block_hash, true).await?;
+			while next_block < scan_up_to {
+				let block_hash = network.get_block_hash(next_block).await?;
+				let block = network.get_block(block_hash, true).await?;
 
-					if let Some(transactions) = &block.transactions {
-						for tx in transactions.iter() {
-							if tx.hash == tx_id {
-								return Ok(());
-							}
-						}
+				if let Some(transactions) = &block.transactions {
+					if transactions.iter().any(|tx| tx.hash == tx_id) {
+						return Ok(());
 					}
-
-					current_block += 1;
 				}
+
+				next_block += 1;
+			}
+
+			if next_block >= end_block {
+				break;
 			}
 
 			// Wait a bit before checking again

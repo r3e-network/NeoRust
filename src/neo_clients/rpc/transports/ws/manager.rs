@@ -205,7 +205,7 @@ mod tests {
 
 	fn make_manager(timeout: core::time::Duration) -> RequestManager {
 		let backend = BackendDriver::new_for_test();
-		let conn = ConnectionDetails::new("ws://localhost:8545", None);
+		let conn = ConnectionDetails::new("ws://localhost:10334/ws", None);
 		let (_instructions_tx, instructions) = mpsc::unbounded();
 
 		RequestManager {

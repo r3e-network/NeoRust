@@ -93,7 +93,7 @@ async fn export_blockchain(
 		.get_block_count()
 		.await
 		.map_err(|e| CliError::Network(format!("Failed to get block count: {}", e)))?;
-	let end_block = end.unwrap_or(latest_block - 1);
+	let end_block = end.unwrap_or(if latest_block > 0 { latest_block - 1 } else { 0 });
 
 	if start > end_block {
 		print_error("Start block index is greater than end block index");

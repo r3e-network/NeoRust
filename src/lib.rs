@@ -7,7 +7,7 @@
 )]
 #![allow(unexpected_cfgs)]
 //! ![Neo Logo](https://neo.org/images/neo-logo/NEO-logo.svg)
-//! # NeoRust SDK v0.5.3
+//! # NeoRust SDK v0.5.4
 //!
 //! A production-ready Rust SDK for the Neo N3 blockchain with enterprise-grade features.
 //!
@@ -42,13 +42,13 @@
 //!
 //! ```toml
 //! [dependencies]
-//! neo3 = { version = "0.5.3", features = ["futures", "ledger"] }
+//! neo3 = { version = "0.5.4", features = ["futures", "ledger"] }
 //! ```
 //!
 //! You can disable default features with:
 //!
 //! ```toml
-//! neo3 = { version = "0.5.3", default-features = false, features = ["futures"] }
+//! neo3 = { version = "0.5.4", default-features = false, features = ["futures"] }
 //! ```
 //!
 //! ## Overview
@@ -215,7 +215,7 @@
 //!
 //! ```no_run
 //! use neo3::neo_clients::{HttpProvider, RpcClient, APITrait};
-//! use neo3::neo_types::{ScriptHash, ContractParameter, StackItem};
+//! use neo3::neo_types::ScriptHash;
 //! use std::str::FromStr;
 //!
 //! #[tokio::main]
@@ -228,27 +228,19 @@
 //!     let neo_token = ScriptHash::from_str("ef4073a0f2b305a38ec4050e4d3d28bc40ea63f5")?;
 //!     
 //!     // Call a read-only method (doesn't require signing)
-//!     let result = client.invoke_function(
-//!         &neo_token,
-//!         "symbol",
-//!         &[],
-//!         vec![]
-//!     ).await?;
+//!     let result = client
+//!         .invoke_function(&neo_token, "symbol".to_string(), vec![], None)
+//!         .await?;
 //!     
 //!     // Parse the result
-//!     if let Some(stack) = result.stack {
-//!         if let Some(item) = stack.first() {
-//!             println!("NEO Token Symbol: {:?}", item);
-//!         }
+//!     if let Some(item) = result.stack.first() {
+//!         println!("NEO Token Symbol: {:?}", item);
 //!     }
 //!     
 //!     // Get the total supply
-//!     let supply_result = client.invoke_function(
-//!         &neo_token,
-//!         "totalSupply",
-//!         &[],
-//!         vec![]
-//!     ).await?;
+//!     let supply_result = client
+//!         .invoke_function(&neo_token, "totalSupply".to_string(), vec![], None)
+//!         .await?;
 //!     
 //!     println!("Total Supply Result: {:?}", supply_result);
 //!     
@@ -281,18 +273,18 @@
 //!     // Get GAS token balance for the account
 //!     let gas_token = ScriptHash::from_str("d2a4cff31913016155e38e474a2c06d08be276cf")?;
 //!     
-//!     let balance_result = client.invoke_function(
-//!         &gas_token,
-//!         "balanceOf",
-//!         &[ContractParameter::h160(&account.get_script_hash())],
-//!         vec![]
-//!     ).await?;
+//!     let balance_result = client
+//!         .invoke_function(
+//!             &gas_token,
+//!             "balanceOf".to_string(),
+//!             vec![ContractParameter::h160(&account.get_script_hash())],
+//!             None,
+//!         )
+//!         .await?;
 //!     
 //!     // Parse the balance result
-//!     if let Some(stack) = balance_result.stack {
-//!         if let Some(item) = stack.first() {
-//!             println!("GAS Balance: {:?}", item);
-//!         }
+//!     if let Some(item) = balance_result.stack.first() {
+//!         println!("GAS Balance: {:?}", item);
 //!     }
 //!     
 //!     Ok(())
@@ -303,7 +295,7 @@
 //!
 //! ```no_run
 //! use neo3::neo_clients::{HttpProvider, RpcClient, APITrait};
-//! use neo3::neo_types::{ScriptHash, ContractParameter, NNSName};
+//! use neo3::neo_types::{ContractParameter, ScriptHash};
 //! use std::str::FromStr;
 //!
 //! #[tokio::main]
@@ -316,17 +308,17 @@
 //!     let nns_contract = ScriptHash::from_str("50ac1c37690cc2cfc594472833cf57505d5f46de")?;
 //!     
 //!     // Check if a name is available
-//!     let available_result = client.invoke_function(
-//!         &nns_contract,
-//!         "isAvailable",
-//!         &[ContractParameter::string("myname.neo")],
-//!         vec![]
-//!     ).await?;
+//!     let available_result = client
+//!         .invoke_function(
+//!             &nns_contract,
+//!             "isAvailable".to_string(),
+//!             vec![ContractParameter::string("myname.neo".to_string())],
+//!             None,
+//!         )
+//!         .await?;
 //!     
-//!     if let Some(stack) = available_result.stack {
-//!         if let Some(item) = stack.first() {
-//!             println!("Is 'myname.neo' available: {:?}", item);
-//!         }
+//!     if let Some(item) = available_result.stack.first() {
+//!         println!("Is 'myname.neo' available: {:?}", item);
 //!     }
 //!     
 //!     Ok(())
@@ -427,6 +419,9 @@ extern crate alloc;
 #[doc(hidden)]
 #[allow(unused_extern_crates)]
 extern crate self as neo3;
+
+/// Current version of the `neo3` crate.
+pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 
 // Core modules - always available
 pub mod constants;
@@ -559,7 +554,7 @@ mod tests {
 
 	use crate::{
 		builder::{AccountSigner, ScriptBuilder, TransactionBuilder},
-		neo_clients::{APITrait, HttpProvider, MockClient, RpcClient},
+		neo_clients::{MockClient, MockProvider, RpcClient},
 		neo_config::TestConstants,
 		neo_protocol::{Account, AccountTrait},
 	};
@@ -567,7 +562,7 @@ mod tests {
 	#[cfg(test)]
 	#[tokio::test]
 	async fn test_create_and_send_transaction() -> Result<(), Box<dyn std::error::Error>> {
-		let (use_live_network, rpc_client, _mock_server) = setup_test_client().await?;
+		let (rpc_client, _mock_server) = setup_test_client().await?;
 
 		// Create accounts for the sender and recipient
 		let sender = Account::create()?;
@@ -598,32 +593,20 @@ mod tests {
 			))
 			.set_signers(vec![AccountSigner::called_by_entry(&sender)?.into()])
 			.map_err(|e| Box::new(e) as Box<dyn std::error::Error>)?
-			.valid_until_block(if use_live_network {
-				rpc_client.get_block_count().await? + 5760
-			} else {
-				100
-			})?; // Valid for ~1 day or a small mock block window
+			.valid_until_block(100)?; // Small mock block window
 
 		// Sign the transaction
 		let signed_tx = tx_builder.sign().await?;
 
-		if !use_live_network {
-			assert_eq!(signed_tx.sys_fee, 30);
-			assert_eq!(signed_tx.net_fee, 1_230_610);
-		}
+		assert_eq!(signed_tx.sys_fee, 30);
+		assert_eq!(signed_tx.net_fee, 1_230_610);
 
 		Ok(())
 	}
 
-	async fn setup_test_client() -> Result<
-		(bool, RpcClient<HttpProvider>, Option<Arc<Mutex<MockClient>>>),
-		Box<dyn std::error::Error>,
-	> {
-		if let Ok(url) = std::env::var("NEO_LIVE_RPC_URL") {
-			let http_provider = HttpProvider::new(url.as_str())?;
-			return Ok((true, RpcClient::new(http_provider), None));
-		}
-
+	async fn setup_test_client(
+	) -> Result<(RpcClient<MockProvider>, Option<Arc<Mutex<MockClient>>>), Box<dyn std::error::Error>>
+	{
 		let mock_server = Arc::new(Mutex::new(MockClient::new().await));
 		{
 			let mut mock = mock_server.lock().await;
@@ -637,6 +620,7 @@ mod tests {
 				"calculatenetworkfee.json",
 			)
 			.await;
+			mock.mock_response_ignore_param("getversion", serde_json::json!({})).await;
 			mock.mock_response_with_file_ignore_param(
 				"sendrawtransaction",
 				"sendrawtransaction.json",
@@ -650,7 +634,7 @@ mod tests {
 			mock.into_client()
 		};
 
-		Ok((false, rpc_client, Some(mock_server)))
+		Ok((rpc_client, Some(mock_server)))
 	}
 }
 

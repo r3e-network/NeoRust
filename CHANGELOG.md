@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### ⚠️ Breaking Changes
+
+- High-level SDK balances are now represented exactly (no floating point rounding):
+  - `sdk::Balance.gas` changed from `f64` to `DecimalAmount` (8 decimals)
+  - `sdk::TokenBalance.amount` changed from `f64` to `DecimalAmount` (uses token decimals)
+  - `sdk::TokenBalance.decimals` removed (use `token.amount.decimals()`)
+
+### 🐛 Fixes
+
+- Fixed `Transaction::track_tx` to stop at the configured block boundary instead of potentially hanging.
+- Added `Transaction::tx_id()` to expose the Neo transaction hash derived from the unsigned payload.
+- Added per-`TransactionBuilder` `allow_transmission_on_fault()` / `disallow_transmission_on_fault()` overrides to avoid mutating global `NEOCONFIG`.
+- Reduced redundant `getversion` calls in `RpcClient::network()` by reusing the cached node version.
+
+### 🧪 Testing
+
+- Enabled crate doctests and stabilized mock-based unit tests by ensuring `getversion` is mocked when required.
+
+### 📦 Dependencies
+
+- Updated `base64` to `0.22.1` and `thiserror` to `2.0.17` to reduce duplicate transitive versions.
+
 ## [0.5.4] - 2025-12-13
 
 ### 🔧 Refactoring

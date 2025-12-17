@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import {
   WalletIcon,
@@ -8,6 +8,7 @@ import {
   ArrowTrendingDownIcon,
   EyeIcon,
   EyeSlashIcon,
+  PlusIcon,
 } from '@heroicons/react/24/outline';
 import {
   LineChart,
@@ -22,8 +23,10 @@ import {
   Cell,
 } from 'recharts';
 import { useAppStore } from '../stores/appStore';
+import { invoke } from '@tauri-apps/api/core';
+import CreateWalletModal from '../components/modals/CreateWalletModal';
 
-// Mock data for charts
+// Mock data for charts (keep for visualization until backend provides history)
 const priceData = [
   { name: 'Jan', neo: 12, gas: 0.5 },
   { name: 'Feb', neo: 15, gas: 0.6 },
@@ -39,38 +42,23 @@ const portfolioData = [
   { name: 'Other Tokens', value: 10, color: '#8B5CF6' },
 ];
 
-const recentTransactions = [
-  {
-    id: '1',
-    type: 'send',
-    asset: 'NEO',
-    amount: '10',
-    to: 'NX8GreRFGFK5wpGMWetpX93HmtrezGogzk',
-    timestamp: Date.now() - 3600000,
-    status: 'confirmed',
-  },
-  {
-    id: '2',
-    type: 'receive',
-    asset: 'GAS',
-    amount: '5.5',
-    from: 'NX8GreRFGFK5wpGMWetpX93HmtrezGogzk',
-    timestamp: Date.now() - 7200000,
-    status: 'confirmed',
-  },
-  {
-    id: '3',
-    type: 'nft_mint',
-    asset: 'CryptoKitty #42',
-    contract: '0x1234...abcd',
-    timestamp: Date.now() - 10800000,
-    status: 'pending',
-  },
-];
+interface Transaction {
+  id: string;
+  type: 'send' | 'receive';
+  asset: string;
+  amount: string;
+  address: string;
+  timestamp: number;
+  status: 'confirmed' | 'pending' | 'failed';
+  txHash: string;
+}
 
 export default function Dashboard() {
-  const { currentWallet, networkType } = useAppStore();
+  const { currentWallet, wallets, networkType, addWallet, addNotification } = useAppStore();
   const [balanceVisible, setBalanceVisible] = useState(true);
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [stats, setStats] = useState({
     totalValue: 0,
     neoBalance: 0,
@@ -79,18 +67,83 @@ export default function Dashboard() {
     change24h: 0,
   });
 
-  useEffect(() => {
-    // Simulate fetching wallet data
-    if (currentWallet) {
-      setStats({
-        totalValue: 1250.75,
-        neoBalance: 45.5,
-        gasBalance: 125.25,
-        nftCount: 12,
-        change24h: 5.2,
+  const loadTransactions = useCallback(async () => {
+    if (!currentWallet) return;
+
+    try {
+      const result = await invoke('get_transaction_history', {
+        walletId: currentWallet.id,
       });
+      setTransactions(result as Transaction[]);
+    } catch (error) {
+      console.error('Failed to load transactions:', error);
     }
   }, [currentWallet]);
+
+  useEffect(() => {
+    if (currentWallet) {
+      // In a real app, we would fetch prices here to calculate total value
+      // For now, we simulate values based on balance
+      const neo = parseFloat(currentWallet.balance.neo);
+      const gas = parseFloat(currentWallet.balance.gas);
+      const total = neo * 15 + gas * 5; // Mock prices
+
+      setStats({
+        totalValue: total,
+        neoBalance: neo,
+        gasBalance: gas,
+        nftCount: 12, // Mock NFT count
+        change24h: 5.2,
+      });
+      loadTransactions();
+    }
+  }, [currentWallet, loadTransactions]);
+
+  const handleCreateWallet = async (name: string, password: string) => {
+    setLoading(true);
+    try {
+      const result = (await invoke('create_wallet', {
+        request: { name, password },
+      })) as any;
+
+      if (result.success && result.data) {
+        const walletData = result.data;
+        const defaultAddress =
+          walletData.accounts && walletData.accounts.length > 0
+            ? walletData.accounts[0].address
+            : 'NX8GreRFGFK5wpGMWetpX93HmtrezGogzk';
+
+        addWallet({
+          id: walletData.id,
+          name: walletData.name,
+          address: defaultAddress,
+          balance: { neo: '0', gas: '0', tokens: {} },
+          isDefault: wallets.length === 0,
+        });
+
+        addNotification({
+          type: 'success',
+          title: 'Wallet Created',
+          message: `Wallet "${name}" created successfully`,
+        });
+
+        setShowCreateModal(false);
+      } else {
+        throw new Error(result.error || 'Failed to create wallet');
+      }
+    } catch (error) {
+      console.error('Failed to create wallet:', error);
+      addNotification({
+        type: 'error',
+        title: 'Error',
+        message:
+          error instanceof Error ? error.message : 'Failed to create wallet',
+      });
+      throw error;
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-US', {
@@ -120,13 +173,20 @@ export default function Dashboard() {
           <div className='mt-6'>
             <button
               type='button'
+              onClick={() => setShowCreateModal(true)}
               className='inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500'
             >
-              <WalletIcon className='-ml-1 mr-2 h-5 w-5' />
+              <PlusIcon className='-ml-1 mr-2 h-5 w-5' />
               Create Wallet
             </button>
           </div>
         </div>
+        <CreateWalletModal
+          isOpen={showCreateModal}
+          onClose={() => setShowCreateModal(false)}
+          onSubmit={handleCreateWallet}
+          loading={loading}
+        />
       </div>
     );
   }
@@ -398,7 +458,7 @@ export default function Dashboard() {
           <h3 className='text-lg font-medium text-gray-900'>Recent Activity</h3>
         </div>
         <div className='divide-y divide-gray-200'>
-          {recentTransactions.map(tx => (
+          {transactions.map(tx => (
             <div key={tx.id} className='px-6 py-4 hover:bg-gray-50'>
               <div className='flex items-center justify-between'>
                 <div className='flex items-center'>
@@ -432,7 +492,6 @@ export default function Dashboard() {
                       {tx.type === 'send' && `Sent ${tx.amount} ${tx.asset}`}
                       {tx.type === 'receive' &&
                         `Received ${tx.amount} ${tx.asset}`}
-                      {tx.type === 'nft_mint' && `Minted ${tx.asset}`}
                     </div>
                     <div className='text-sm text-gray-500'>
                       {formatTime(tx.timestamp)}
@@ -460,6 +519,13 @@ export default function Dashboard() {
           </button>
         </div>
       </motion.div>
+
+      <CreateWalletModal
+        isOpen={showCreateModal}
+        onClose={() => setShowCreateModal(false)}
+        onSubmit={handleCreateWallet}
+        loading={loading}
+      />
     </div>
   );
 }

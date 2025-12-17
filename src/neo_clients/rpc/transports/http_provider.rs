@@ -15,6 +15,8 @@ use super::common::{JsonRpcError, Request, Response};
 use crate::neo_clients::{Authorization, JsonRpcProvider, ProviderError};
 use neo3::config::NeoConstants;
 
+const MAX_ERROR_TEXT_BYTES: usize = 4 * 1024;
+
 /// A low-level JSON-RPC Client over HTTP.
 ///
 /// # Example
@@ -96,8 +98,6 @@ impl JsonRpcProvider for HttpProvider {
 		method: &str,
 		params: T,
 	) -> Result<R, ClientError> {
-		const MAX_ERROR_TEXT_BYTES: usize = 4 * 1024;
-
 		let next_id = self.id.fetch_add(1, Ordering::SeqCst);
 		let payload = Request::new(next_id, method, params);
 
@@ -107,35 +107,9 @@ impl JsonRpcProvider for HttpProvider {
 		}
 		let res = request.send().await?;
 		let max_response_size = NeoConstants::max_rpc_message_size();
-		if let Some(len) = res.content_length() {
-			let max = max_response_size as u64;
-			if len > max {
-				return Err(ClientError::SerdeJson {
-					err: serde::de::Error::custom(format!(
-						"HTTP response too large ({} bytes), max is {} bytes",
-						len, max
-					)),
-					text: format!("<response Content-Length {} exceeds max {} bytes>", len, max),
-				});
-			}
-		}
-
-		let mut body: Vec<u8> = Vec::new();
-		let mut stream = res.bytes_stream();
-		while let Some(chunk) = stream.next().await {
-			let chunk = chunk?;
-			if body.len().saturating_add(chunk.len()) > max_response_size {
-				let preview_len = body.len().min(MAX_ERROR_TEXT_BYTES);
-				return Err(ClientError::SerdeJson {
-					err: serde::de::Error::custom(format!(
-						"HTTP response exceeded max size ({} bytes)",
-						max_response_size
-					)),
-					text: String::from_utf8_lossy(&body[..preview_len]).to_string(),
-				});
-			}
-			body.extend_from_slice(&chunk);
-		}
+		let body =
+			collect_body_with_limit(res.content_length(), res.bytes_stream(), max_response_size)
+				.await?;
 
 		let raw = match serde_json::from_slice(&body) {
 			Ok(Response::Success { result, .. }) => result.to_owned(),
@@ -170,19 +144,59 @@ impl JsonRpcProvider for HttpProvider {
 	}
 }
 
+async fn collect_body_with_limit<S>(
+	content_length: Option<u64>,
+	mut stream: S,
+	max_response_size: usize,
+) -> Result<Vec<u8>, ClientError>
+where
+	S: futures_util::stream::Stream<Item = Result<bytes::Bytes, ReqwestError>> + Unpin,
+{
+	if let Some(len) = content_length {
+		let max = max_response_size as u64;
+		if len > max {
+			return Err(ClientError::SerdeJson {
+				err: serde::de::Error::custom(format!(
+					"HTTP response too large ({} bytes), max is {} bytes",
+					len, max
+				)),
+				text: format!("<response Content-Length {} exceeds max {} bytes>", len, max),
+			});
+		}
+	}
+
+	let mut body: Vec<u8> = Vec::new();
+	while let Some(chunk) = stream.next().await {
+		let chunk = chunk.map_err(ClientError::ReqwestError)?;
+		if body.len().saturating_add(chunk.len()) > max_response_size {
+			let preview_len = body.len().min(MAX_ERROR_TEXT_BYTES);
+			return Err(ClientError::SerdeJson {
+				err: serde::de::Error::custom(format!(
+					"HTTP response exceeded max size ({} bytes)",
+					max_response_size
+				)),
+				text: String::from_utf8_lossy(&body[..preview_len]).to_string(),
+			});
+		}
+		body.extend_from_slice(&chunk);
+	}
+
+	Ok(body)
+}
+
 impl Default for HttpProvider {
 	/// Default HTTP Provider from SEED_1
 	fn default() -> Self {
 		let url = Url::parse(NeoConstants::SEED_1).unwrap_or_else(|e| {
 			warn!("NeoConstants::SEED_1 is not a valid URL ({}); falling back to localhost", e);
 
-			Url::parse("http://localhost:8545")
+			Url::parse("http://localhost:10332")
 				.or_else(|_| Url::parse("http://localhost"))
-				.or_else(|_| Url::parse("http://127.0.0.1"))
+				.or_else(|_| Url::parse("http://127.0.0.1:10332"))
 				.or_else(|_| Url::parse("http://example.com"))
 				.unwrap_or_else(|e| {
 					error!("Failed to parse fallback URL: {}", e);
-					Url::parse("http://localhost:8545")
+					Url::parse("http://localhost:10332")
 						.expect("hard-coded fallback URLs should be valid")
 				})
 		});
@@ -201,13 +215,13 @@ impl HttpProvider {
 	/// use url::Url;
 	///
 	/// // Using a string
-	/// let provider = HttpProvider::new("http://localhost:8545")?;
+	/// let provider = HttpProvider::new("http://localhost:10332")?;
 	///
 	/// // Using a &str
-	/// let provider = HttpProvider::new("http://localhost:8545")?;
+	/// let provider = HttpProvider::new("http://localhost:10332")?;
 	///
 	/// // Using a Url
-	/// let url = Url::parse("http://localhost:8545").unwrap();
+	/// let url = Url::parse("http://localhost:10332").unwrap();
 	/// let provider = HttpProvider::new(url)?;
 	/// # Ok::<(), Box<dyn std::error::Error>>(())
 	/// ```
@@ -234,7 +248,7 @@ impl HttpProvider {
 	/// use neo3::neo_clients::{HttpProvider, Authorization};
 	/// use url::Url;
 	///
-	/// let url = Url::parse("http://localhost:8545").unwrap();
+	/// let url = Url::parse("http://localhost:10332").unwrap();
 	/// let provider = HttpProvider::new_with_auth(url, Authorization::basic("admin", "good_password"))?;
 	/// # Ok::<(), Box<dyn std::error::Error>>(())
 	/// ```
@@ -261,7 +275,7 @@ impl HttpProvider {
 	/// use neo3::neo_clients::HttpProvider;
 	/// use url::Url;
 	///
-	/// let url = Url::parse("http://localhost:8545").unwrap();
+	/// let url = Url::parse("http://localhost:10332").unwrap();
 	/// let client = reqwest::Client::builder().build().unwrap();
 	/// let provider = HttpProvider::new_with_client(url, client);
 	/// ```
@@ -279,27 +293,28 @@ impl Clone for HttpProvider {
 #[cfg(test)]
 mod tests {
 	use super::*;
-	use wiremock::{
-		matchers::{method, path},
-		Mock, MockServer, ResponseTemplate,
+	use futures_util::stream::Stream;
+	use std::{
+		pin::Pin,
+		task::{Context, Poll},
 	};
 
 	#[tokio::test]
 	async fn rejects_oversized_content_length_without_reading_body() {
-		let server = MockServer::start().await;
+		struct PanicsIfPolled;
 
-		let oversized_body = vec![b'a'; NeoConstants::max_rpc_message_size() + 1];
-		let response = ResponseTemplate::new(200).set_body_bytes(oversized_body);
+		impl Stream for PanicsIfPolled {
+			type Item = Result<bytes::Bytes, ReqwestError>;
 
-		Mock::given(method("POST"))
-			.and(path("/"))
-			.respond_with(response)
-			.mount(&server)
-			.await;
+			fn poll_next(self: Pin<&mut Self>, _cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
+				panic!("body stream should not be polled when Content-Length exceeds max size");
+			}
+		}
 
-		let url = server.uri();
-		let provider = HttpProvider::new(url.as_str()).unwrap();
-		let err = provider.fetch::<(), u64>("neo_blockNumber", ()).await.unwrap_err();
+		let max = NeoConstants::max_rpc_message_size();
+		let err = collect_body_with_limit(Some((max as u64) + 1), PanicsIfPolled, max)
+			.await
+			.unwrap_err();
 		assert!(matches!(err, ClientError::SerdeJson { .. }));
 	}
 }

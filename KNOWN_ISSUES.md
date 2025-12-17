@@ -2,25 +2,25 @@
 
 ## Documentation Tests
 
-Currently, many documentation tests are failing due to import path issues. The doc tests were written before the module structure was finalized and use incorrect import paths.
+Most documentation examples compile under `cargo test -p neo3`. Remaining `ignore`/`no_run` blocks are intentional for examples that require external resources (live RPC endpoints, hardware wallets, etc.).
 
 ### Issue Details
 
-The main issues are:
-1. Many doc tests use `use neo3::prelude::*` but then try to use types like `HttpProvider` and `RpcClient` directly, when they should be accessed through module aliases like `providers::HttpProvider`.
-2. Some doc tests have incorrect crate names (e.g., `NeoRust` instead of `neo3`).
-3. Missing imports for types like `OpCode`, `ContractParameter`, etc.
+The main reasons examples are not executed in CI are:
+1. Some examples require a live Neo RPC endpoint (network access and stable endpoints are not guaranteed in all CI environments).
+2. Some examples require optional hardware integrations (e.g., Ledger) or OS-specific features.
+3. Some examples are intended as illustrative snippets rather than deterministic tests.
 
 ### Temporary Solution
 
-Doc tests have been marked with `no_run` or `ignore` where appropriate to prevent CI failures while maintaining the documentation value.
+Examples are marked with `no_run` or `ignore` where appropriate to prevent flakiness while maintaining documentation value.
 
 ### Long-term Solution
 
-A comprehensive review and update of all documentation examples is needed to:
-1. Use the correct import paths
-2. Ensure all required types are imported
-3. Test that examples actually compile and run
+A targeted review is still useful to:
+1. Prefer `compile`/`no_run` for networked examples and keep them minimal.
+2. Add clearly-documented env vars for opt-in live tests where applicable.
+3. Periodically validate that examples still compile with current module paths.
 
 ### Affected Files
 

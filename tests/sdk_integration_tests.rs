@@ -9,30 +9,8 @@ mod sdk_tests {
 	use std::env;
 	use std::time::Duration;
 
-	#[cfg(feature = "mock")]
-	use neo3::neo_clients::MockClient;
 	use neo3::neo_error::unified::{ErrorRecovery, NeoError};
-	#[cfg(feature = "mock")]
-	use neo3::sdk::NeoBuilder;
-	use neo3::sdk::{Balance, Neo, Network, Token};
-
-	// Helper that uses live RPC if provided, otherwise spins up a mock server that serves getblockcount
-	#[cfg(feature = "mock")]
-	async fn build_neo_with_fallback(env_var: &str) -> (Option<MockClient>, Result<Neo, NeoError>) {
-		if let Ok(url) = env::var(env_var) {
-			let builder = Neo::builder().network(Network::Custom(url));
-			return (None, builder.build().await);
-		}
-
-		let mut mock = MockClient::new().await;
-		// serve a deterministic height
-		mock.mock_get_block_count(1_000).await;
-		mock.mount_mocks().await;
-
-		let builder = NeoBuilder::default().network(Network::Custom(mock.url().to_string()));
-		let neo = builder.build().await;
-		(Some(mock), neo)
-	}
+	use neo3::sdk::{Balance, DecimalAmount, Neo, Network, Token};
 
 	#[tokio::test]
 	async fn test_builder_pattern() {
@@ -70,18 +48,17 @@ mod sdk_tests {
 		// Test Balance struct creation
 		let balance = Balance {
 			neo: 100,
-			gas: 50.5,
+			gas: DecimalAmount::parse("50.5", 8).expect("valid decimal amount"),
 			tokens: vec![neo3::sdk::TokenBalance {
 				contract: ScriptHash::from_str("0x0000000000000000000000000000000000000000")
 					.unwrap(),
 				symbol: "TEST".to_string(),
-				amount: 1000.0,
-				decimals: 8,
+				amount: DecimalAmount::parse("1000", 8).expect("valid decimal amount"),
 			}],
 		};
 
 		assert_eq!(balance.neo, 100);
-		assert_eq!(balance.gas, 50.5);
+		assert_eq!(balance.gas.to_string(), "50.50000000");
 		assert_eq!(balance.tokens.len(), 1);
 		assert_eq!(balance.tokens[0].symbol, "TEST");
 	}
@@ -106,7 +83,19 @@ mod sdk_tests {
 	#[tokio::test]
 	#[cfg(feature = "mock")]
 	async fn test_testnet_connection() {
-		let (_mock, result) = build_neo_with_fallback("NEO_TESTNET_RPC_URL").await;
+		if std::env::var("NEORUST_SKIP_NETWORK_TESTS").is_ok() {
+			eprintln!("Skipping network test 'test_testnet_connection'");
+			return;
+		}
+
+		let builder = if let Ok(url) =
+			env::var("NEO_TESTNET_RPC_URL").or_else(|_| env::var("NEO_TESTNET_URL"))
+		{
+			Neo::builder().network(Network::Custom(url))
+		} else {
+			Neo::builder().network(Network::TestNet)
+		};
+		let result = builder.build().await;
 
 		match result {
 			Ok(neo) => {
@@ -136,7 +125,19 @@ mod sdk_tests {
 	#[tokio::test]
 	#[cfg(feature = "mock")]
 	async fn test_mainnet_connection() {
-		let (_mock, result) = build_neo_with_fallback("NEO_MAINNET_RPC_URL").await;
+		if std::env::var("NEORUST_SKIP_NETWORK_TESTS").is_ok() {
+			eprintln!("Skipping network test 'test_mainnet_connection'");
+			return;
+		}
+
+		let builder = if let Ok(url) =
+			env::var("NEO_MAINNET_RPC_URL").or_else(|_| env::var("NEO_MAINNET_URL"))
+		{
+			Neo::builder().network(Network::Custom(url))
+		} else {
+			Neo::builder().network(Network::MainNet)
+		};
+		let result = builder.build().await;
 
 		match result {
 			Ok(neo) => {
@@ -202,8 +203,6 @@ mod sdk_tests {
 		let _ = _transfer;
 	}
 }
-
-// Helper that uses live RPC if provided, otherwise spins up a mock server that serves getblockcount
 
 #[cfg(test)]
 mod error_handling_tests {

@@ -19,7 +19,7 @@
 //!    ```
 //!
 //! 2. Create a signer based on your needs:
-//!    ```rust
+//!    ```rust,no_run
 //!    use neo3::neo_protocol::{Account, AccountTrait};
 //!    use neo3::neo_builder::{AccountSigner, ContractSigner, TransactionSigner, WitnessScope};
 //!    use neo3::prelude::H160;
@@ -38,7 +38,7 @@
 //!    ```
 //!
 //! 3. Use the signer in your transaction:
-//!    ```rust
+//!    ```rust,no_run
 //!    # use neo3::neo_builder::{TransactionBuilder, AccountSigner};
 //!    # use neo3::neo_protocol::{Account, AccountTrait};
 //!    # let account = Account::from_wif("YOUR_WIF_HERE").unwrap();
@@ -53,7 +53,7 @@
 //!    ```
 //!
 //! 4. You can also convert between signer types using the `Signer` enum:
-//!    ```rust
+//!    ```rust,no_run
 //!    # use neo3::neo_builder::{Signer, AccountSigner};
 //!    # use neo3::neo_protocol::{Account, AccountTrait};
 //!    # let account = Account::from_wif("YOUR_WIF_HERE").unwrap();

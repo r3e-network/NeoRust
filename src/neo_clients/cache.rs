@@ -64,6 +64,7 @@ impl<V> CacheEntry<V> {
 }
 
 /// High-performance cache with TTL and LRU eviction
+#[derive(Debug)]
 pub struct Cache<K, V> {
 	config: CacheConfig,
 	entries: Arc<RwLock<HashMap<K, CacheEntry<V>>>>,

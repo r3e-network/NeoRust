@@ -88,8 +88,7 @@ pub trait WalletTrait {
 	///
 	/// Returns `WalletError::NoDefaultAccount` if no default account is set.
 	fn default_account_or_err(&self) -> Result<&Self::Account, crate::neo_wallets::WalletError> {
-		self.default_account()
-			.ok_or(crate::neo_wallets::WalletError::NoDefaultAccount)
+		self.default_account().ok_or(crate::neo_wallets::WalletError::NoDefaultAccount)
 	}
 
 	/// Sets the name of the wallet.

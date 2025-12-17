@@ -1,4 +1,4 @@
-//! # Neo Account Module (v0.1.8)
+//! # Neo Account Module
 //!
 //! The Account module provides functionality for managing Neo accounts, including
 //! key management, signature operations, and interaction with the Neo blockchain.
@@ -753,10 +753,7 @@ mod tests {
 	#![allow(unused_imports)]
 
 	use super::*;
-	use crate::{
-		neo_clients::{BodyRegexMatcher, HttpProvider, MockClient},
-		neo_config::TestConstants,
-	};
+	use crate::neo_config::TestConstants;
 
 	// ... rest of test module
 }

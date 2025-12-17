@@ -15,17 +15,24 @@ use tokio::runtime::Runtime;
 use tokio::sync::mpsc::{unbounded_channel, UnboundedSender};
 use tokio::time::{sleep, Duration};
 
-static VERSION: Lazy<String> = Lazy::new(|| "0.5.3".to_string());
+static VERSION: Lazy<String> = Lazy::new(|| neo3::VERSION.to_string());
 const GAS_HASH: &str = "d2a4cff31913016155e38e474a2c06d08be276cf";
 const NEO_HASH: &str = "c56f33fc6ecfcd0c225c4ab356fee59390af8560";
 
 fn main() -> eframe::Result<()> {
-	let native_options = eframe::NativeOptions { follow_system_theme: true, ..Default::default() };
+	let native_options = eframe::NativeOptions {
+		viewport: eframe::egui::ViewportBuilder::default()
+			.with_inner_size([1024.0, 768.0])
+			.with_min_inner_size([800.0, 600.0]),
+		follow_system_theme: true,
+		..Default::default()
+	};
 
 	eframe::run_native(
 		"NeoRust GUI (Native)",
 		native_options,
 		Box::new(|_cc| {
+			// Customize fonts or style here if needed
 			let rt = Runtime::new().expect("Failed to build tokio runtime");
 			let state = Arc::new(Mutex::new(AppState::default()));
 			let (tx, rx) = unbounded_channel();
@@ -35,7 +42,7 @@ fn main() -> eframe::Result<()> {
 	)
 }
 
-#[derive(Copy, Clone, Default)]
+#[derive(Copy, Clone, Default, PartialEq)]
 enum Tab {
 	#[default]
 	Dashboard,
@@ -179,384 +186,197 @@ impl Default for NetworkInfo {
 
 impl NeoGuiApp {
 	fn render_sidebar(&mut self, ui: &mut egui::Ui) {
-		ui.heading(RichText::new("NeoRust SDK").strong());
-		ui.label(format!("Native GUI · v{}", *VERSION));
-		ui.separator();
-		ui.label("Network endpoint");
-		{
-			let mut state = self.state.lock();
-			ui.text_edit_singleline(&mut state.network.endpoint);
-			ui.horizontal(|ui| {
-				ui.label("Type");
-				egui::ComboBox::from_label("")
-					.selected_text(state.network.network_type.clone())
-					.show_ui(ui, |ui| {
-						ui.selectable_value(
-							&mut state.network.network_type,
-							"mainnet".to_string(),
-							"mainnet",
-						);
-						ui.selectable_value(
-							&mut state.network.network_type,
-							"testnet".to_string(),
-							"testnet",
-						);
-						ui.selectable_value(
-							&mut state.network.network_type,
-							"custom".to_string(),
-							"custom",
-						);
-					});
-			});
-		}
+		ui.add_space(10.0);
+		ui.heading(RichText::new("NeoRust SDK").size(20.0).strong().color(egui::Color32::from_rgb(0, 229, 153)));
+		ui.label(RichText::new("Native GUI · Beta").size(12.0).weak());
+		ui.add_space(20.0);
 
-		self.tab_button(ui, Tab::Dashboard, "Dashboard");
-		self.tab_button(ui, Tab::Wallet, "Wallet");
-		self.tab_button(ui, Tab::HdWallet, "HD Wallet");
-		self.tab_button(ui, Tab::Simulator, "Simulator");
-		self.tab_button(ui, Tab::WebSocket, "WebSocket Monitor");
-		self.tab_button(ui, Tab::Analytics, "Analytics");
-		self.tab_button(ui, Tab::Settings, "Settings");
+		// Navigation
+		self.tab_button(ui, Tab::Dashboard, "📊 Dashboard");
+		self.tab_button(ui, Tab::Wallet, "👛 Wallet");
+		self.tab_button(ui, Tab::HdWallet, "🔐 HD Wallet");
+		self.tab_button(ui, Tab::Simulator, "⚡ Simulator");
+		self.tab_button(ui, Tab::WebSocket, "🔌 WebSocket");
+		self.tab_button(ui, Tab::Analytics, "📈 Analytics");
+		self.tab_button(ui, Tab::Settings, "⚙ Settings");
 
-		ui.separator();
-		ui.label("Status");
-		let (net, wal, ver, peers) = {
-			let state = self.state.lock();
-			(
-				format!(
-					"{} ({}), {}",
-					state.network.endpoint, state.network.network_type, state.network.status
-				),
-				state.wallet_status.clone(),
-				state.version.clone().unwrap_or_else(|| "unknown".to_string()),
-				state.peer_count,
-			)
-		};
-		ui.small(format!("Network: {}", net));
-		ui.small(format!("Version: {}", ver));
-		if let Some(p) = peers {
-			ui.small(format!("Peers: {}", p));
-		}
-		let ws_line = {
-			let s = self.state.lock();
-			format!("WebSocket: {}", s.ws_status)
-		};
-		ui.small(ws_line);
-		ui.small(format!("Wallet: {}", wal));
+		ui.with_layout(egui::Layout::bottom_up(egui::Align::Min), |ui| {
+			ui.add_space(10.0);
+			let v = format!("v{}", *VERSION);
+			ui.label(RichText::new(v).weak().size(10.0));
+			ui.separator();
+			let status = {
+				let s = self.state.lock();
+				if s.network.connected { "🟢 Online" } else { "🔴 Offline" }
+			};
+			ui.label(status);
+		});
 	}
 
 	fn tab_button(&mut self, ui: &mut egui::Ui, tab: Tab, label: &str) {
 		let selected = {
 			let state = self.state.lock();
-			matches!(state.current_tab, t if t as u8 == tab as u8)
+			state.current_tab == tab
 		};
-		if ui.selectable_label(selected, label).clicked() {
+		
+		let color = if selected {
+			ui.visuals().widgets.active.bg_fill
+		} else {
+			egui::Color32::TRANSPARENT
+		};
+
+		let text_color = if selected {
+			egui::Color32::WHITE
+		} else {
+			ui.visuals().text_color()
+		};
+
+		let btn = egui::Button::new(RichText::new(label).color(text_color).size(14.0))
+			.fill(color)
+			.frame(false)
+			.rounding(4.0)
+			.min_size(egui::vec2(ui.available_width(), 32.0));
+
+		if ui.add(btn).clicked() {
 			self.state.lock().current_tab = tab;
 		}
+		ui.add_space(4.0);
 	}
 
 	fn render_content(&mut self, ui: &mut egui::Ui) {
 		let tab = self.state.lock().current_tab;
-		match tab {
-			Tab::Dashboard => self.render_dashboard(ui),
-			Tab::Wallet => self.render_wallet(ui),
-			Tab::HdWallet => {
-				self.render_hd_wallet(ui);
-			},
-			Tab::Simulator => {
-				self.render_simulator(ui);
-			},
-			Tab::WebSocket => {
-				self.render_websocket(ui);
-			},
-			Tab::Analytics => self.render_analytics(ui),
-			Tab::Settings => self.render_settings(ui),
-		}
+		egui::ScrollArea::vertical().show(ui, |ui| {
+			ui.add_space(20.0);
+			match tab {
+				Tab::Dashboard => self.render_dashboard(ui),
+				Tab::Wallet => self.render_wallet(ui),
+				Tab::HdWallet => self.render_hd_wallet(ui),
+				Tab::Simulator => self.render_simulator(ui),
+				Tab::WebSocket => self.render_websocket(ui),
+				Tab::Analytics => self.render_analytics(ui),
+				Tab::Settings => self.render_settings(ui),
+			}
+			ui.add_space(20.0);
+		});
 	}
 
 	fn render_dashboard(&mut self, ui: &mut egui::Ui) {
 		ui.heading("Dashboard");
-		ui.label("Connect to a Neo N3 node to get status and balances.");
-		ui.separator();
+		ui.add_space(10.0);
 
-		let (endpoint, network_type, connected, status) = {
-			let state = self.state.lock();
+		// Network Connection Card
+		egui::Frame::group(ui.style()).rounding(8.0).show(ui, |ui| {
+			ui.set_width(ui.available_width());
+			ui.heading("Network Connection");
+			ui.add_space(10.0);
+			
+			let (mut endpoint, mut network_type, connected, status) = {
+				let state = self.state.lock();
+				(
+					state.network.endpoint.clone(),
+					state.network.network_type.clone(),
+					state.network.connected,
+					state.network.status.clone(),
+				)
+			};
+
+			ui.horizontal(|ui| {
+				ui.label("Endpoint:");
+				ui.add(egui::TextEdit::singleline(&mut endpoint).desired_width(250.0));
+			});
+			
+			ui.horizontal(|ui| {
+				ui.label("Network:");
+				egui::ComboBox::from_id_source("net_type")
+					.selected_text(&network_type)
+					.show_ui(ui, |ui| {
+						ui.selectable_value(&mut network_type, "mainnet".to_string(), "MainNet");
+						ui.selectable_value(&mut network_type, "testnet".to_string(), "TestNet");
+						ui.selectable_value(&mut network_type, "custom".to_string(), "Custom");
+					});
+			});
+
+			ui.add_space(10.0);
+			ui.horizontal(|ui| {
+				if ui.button(if connected { "Reconnect" } else { "Connect" }).clicked() {
+					// Update state locally first so UI reflects change
+					{
+						let mut s = self.state.lock();
+						s.network.endpoint = endpoint.clone();
+						s.network.network_type = network_type.clone();
+					}
+					self.queue_action(Action::Connect {
+						endpoint: endpoint.clone(),
+						network_type: network_type.clone(),
+					});
+				}
+				if connected && ui.button("Disconnect").clicked() {
+					self.queue_action(Action::Disconnect);
+				}
+			});
+			ui.add_space(5.0);
+			ui.label(RichText::new(status).italics());
+		});
+
+		ui.add_space(20.0);
+
+		// Stats Grid
+		let (height, peers, version) = {
+			let s = self.state.lock();
 			(
-				state.network.endpoint.clone(),
-				state.network.network_type.clone(),
-				state.network.connected,
-				state.network.status.clone(),
+				s.last_height.map(|h| h.to_string()).unwrap_or_else(|| "-".into()),
+				s.peer_count.map(|p| p.to_string()).unwrap_or_else(|| "-".into()),
+				s.version.clone().unwrap_or_else(|| "-".into()),
 			)
 		};
 
-		ui.horizontal(|ui| {
-			ui.label("Endpoint:");
-			ui.monospace(&endpoint);
-		});
-		ui.horizontal(|ui| {
-			ui.label("Network:");
-			ui.monospace(&network_type);
+		egui::Grid::new("dash_stats").spacing([20.0, 20.0]).show(ui, |ui| {
+			self.stat_card(ui, "Block Height", &height, "🧱");
+			self.stat_card(ui, "Connected Peers", &peers, "🔗");
+			self.stat_card(ui, "Node Version", &version, "ℹ");
+			ui.end_row();
 		});
 
-		ui.add_space(8.0);
-		let connect_endpoint = endpoint.clone();
-		let connect_network_type = network_type.clone();
-		ui.horizontal(|ui| {
-			if ui.button("Connect").clicked() {
-				self.queue_action(Action::Connect {
-					endpoint: connect_endpoint.clone(),
-					network_type: connect_network_type.clone(),
-				});
-			}
-			if ui.button("Disconnect").clicked() {
-				self.queue_action(Action::Disconnect);
-			}
-			ui.label(status);
-			if connected {
-				ui.colored_label(egui::Color32::from_rgb(34, 197, 94), "connected");
-			} else {
-				ui.colored_label(egui::Color32::from_rgb(239, 68, 68), "disconnected");
-			}
-		});
-
-		ui.separator();
-		ui.horizontal(|ui| {
-			if ui.button("Refresh balances").clicked() {
-				self.queue_action(Action::RefreshBalances);
-			}
-			if ui.button("Fetch NEP-17 balances").clicked() {
-				self.queue_action(Action::FetchBalances);
-			}
-			ui.label("Refreshes unclaimed GAS for local accounts (requires connection).");
-		});
-
-		ui.separator();
-		ui.label("Activity");
-		egui::ScrollArea::vertical().max_height(200.0).show(ui, |ui| {
-			let logs = self.state.lock().logs.clone();
-			for entry in logs.iter().rev() {
-				ui.label(entry);
-			}
+		ui.add_space(20.0);
+		
+		// Activity Log
+		ui.heading("Recent Activity");
+		egui::Frame::window(ui.style()).fill(egui::Color32::from_rgb(10, 10, 15)).show(ui, |ui| {
+			egui::ScrollArea::vertical().max_height(200.0).show(ui, |ui| {
+				ui.set_min_width(ui.available_width());
+				let logs = self.state.lock().logs.clone();
+				for entry in logs.iter().rev() {
+					ui.monospace(entry);
+				}
+			});
 		});
 	}
 
-	fn queue_action(&self, action: Action) {
-		let _ = self.tx.send(action);
+	fn stat_card(&self, ui: &mut egui::Ui, title: &str, value: &str, icon: &str) {
+		egui::Frame::group(ui.style()).rounding(8.0).show(ui, |ui| {
+			ui.set_min_width(150.0);
+			ui.set_min_height(80.0);
+			ui.vertical_centered(|ui| {
+				ui.add_space(10.0);
+				ui.label(RichText::new(icon).size(24.0));
+				ui.add_space(5.0);
+				ui.label(RichText::new(value).size(20.0).strong());
+				ui.label(RichText::new(title).size(12.0).weak());
+				ui.add_space(10.0);
+			});
+		});
 	}
 
 	fn render_wallet(&mut self, ui: &mut egui::Ui) {
-		ui.heading("Wallet");
-		ui.label("Local account management (offline key generation).");
-		ui.add_space(6.0);
+		ui.heading("Wallet Management");
+		ui.label("Manage your Neo N3 accounts.");
+		ui.add_space(20.0);
 
-		ui.horizontal(|ui| {
-			ui.label("Import WIF:");
-			let mut state = self.state.lock();
-			ui.text_edit_singleline(&mut state.wif_input);
-			if ui.button("Import").clicked() {
-				let wif = state.wif_input.trim().to_string();
-				drop(state);
-				if wif.is_empty() {
-					self.state.lock().push_log("WIF import: input is empty".to_string());
-				} else {
-					match Account::from_wif(&wif) {
-						Ok(acc) => {
-							let info = AccountInfo {
-								address: acc.get_address(),
-								scripthash: format!("{}", acc.get_script_hash()),
-								wif: Some(wif.clone()),
-								unclaimed_gas: None,
-								neo_balance: None,
-								gas_balance: None,
-							};
-							let mut s = self.state.lock();
-							s.accounts.push(info.clone());
-							s.push_log(format!("Imported account {}", info.address));
-							s.wif_input.clear();
-						},
-						Err(e) => {
-							self.state.lock().push_log(format!("WIF import failed: {}", e));
-						},
-					}
-				}
-			}
-		});
-
-		ui.add_space(4.0);
-		if ui.button("Create new account").clicked() {
-			match Account::create() {
-				Ok(acc) => {
-					let info = AccountInfo {
-						address: acc.get_address(),
-						scripthash: format!("{}", acc.get_script_hash()),
-						wif: acc.key_pair().as_ref().map(|kp| kp.export_as_wif()),
-						unclaimed_gas: None,
-						neo_balance: None,
-						gas_balance: None,
-					};
-					let mut s = self.state.lock();
-					s.accounts.push(info.clone());
-					s.push_log(format!("Created account {}", info.address));
-				},
-				Err(e) => {
-					let mut s = self.state.lock();
-					s.push_log(format!("Account creation failed: {}", e));
-				},
-			}
-		}
-
-		ui.separator();
-		ui.label("Accounts");
-		egui::ScrollArea::vertical().max_height(220.0).show(ui, |ui| {
-			let accounts = self.state.lock().accounts.clone();
-			if accounts.is_empty() {
-				ui.label("No accounts created yet.");
-			} else {
-				for acc in accounts {
-					ui.group(|ui| {
-						ui.label(RichText::new(&acc.address).strong());
-						ui.monospace(acc.scripthash.clone());
-						if let Some(wif) = &acc.wif {
-							ui.label("WIF:");
-							ui.monospace(wif);
-						}
-						if let Some(gas) = &acc.unclaimed_gas {
-							ui.label(format!("Unclaimed GAS: {}", gas));
-						}
-						if let Some(neo) = &acc.neo_balance {
-							ui.label(format!("NEO: {}", neo));
-						}
-						if let Some(gas) = &acc.gas_balance {
-							ui.label(format!("GAS: {}", gas));
-						}
-					});
-				}
-			}
-		});
-
-		ui.separator();
-		ui.label("Transfer (NEP-17) — demo flow");
-		{
-			let mut state = self.state.lock();
+		// Actions Toolbar
+		egui::Frame::none().show(ui, |ui| {
 			ui.horizontal(|ui| {
-				ui.label("Recipient:");
-				ui.text_edit_singleline(&mut state.transfer_to);
-			});
-			ui.horizontal(|ui| {
-				ui.label("Amount:");
-				ui.text_edit_singleline(&mut state.transfer_amount);
-			});
-			if ui.button("Draft").clicked() {
-				self.queue_action(Action::DraftTransfer {
-					to: state.transfer_to.clone(),
-					amount: state.transfer_amount.clone(),
-				});
-			}
-		}
-		ui.small("GAS transfers: draft validates addresses/amounts; signing/send coming soon.");
-	}
-
-	fn render_hd_wallet(&mut self, ui: &mut egui::Ui) {
-		ui.heading("HD Wallet");
-		ui.label("Generate or import a mnemonic, then derive accounts with BIP-44 paths.");
-		ui.add_space(6.0);
-
-		// Generation/import controls
-		let mut generate = false;
-		let mut import = false;
-		{
-			let mut state = self.state.lock();
-			ui.horizontal(|ui| {
-				ui.label("Word count:");
-				egui::ComboBox::from_id_source("hd_word_count")
-					.selected_text(state.hd_word_count.to_string())
-					.show_ui(ui, |ui| {
-						ui.selectable_value(&mut state.hd_word_count, 12, "12");
-						ui.selectable_value(&mut state.hd_word_count, 24, "24");
-					});
-				ui.label("Passphrase (optional):");
-				ui.text_edit_singleline(&mut state.hd_passphrase);
-			});
-
-			if ui.button("Generate new mnemonic").clicked() {
-				generate = true;
-			}
-
-			ui.separator();
-			ui.label("Import existing mnemonic:");
-			ui.text_edit_multiline(&mut state.hd_mnemonic_input);
-			if ui.button("Import").clicked() {
-				import = true;
-			}
-		}
-
-		if generate {
-			let (word_count, passphrase) = {
-				let s = self.state.lock();
-				(s.hd_word_count, s.hd_passphrase.clone())
-			};
-			let passphrase_opt =
-				if passphrase.is_empty() { None } else { Some(passphrase.as_str()) };
-			match HDWallet::generate(word_count, passphrase_opt) {
-				Ok(wallet) => {
-					let phrase = wallet.mnemonic_phrase().to_string();
-					let mut s = self.state.lock();
-					s.hd_wallet = Some(wallet);
-					s.hd_mnemonic = phrase.clone();
-					s.hd_accounts.clear();
-					s.push_log(format!("Generated HD wallet ({} words)", word_count));
-				},
-				Err(e) => {
-					self.state.lock().push_log(format!("HD wallet generation failed: {}", e));
-				},
-			}
-		}
-
-		if import {
-			let (mnemonic, passphrase) = {
-				let s = self.state.lock();
-				(s.hd_mnemonic_input.trim().to_string(), s.hd_passphrase.clone())
-			};
-			if mnemonic.is_empty() {
-				self.state.lock().push_log("HD import failed: mnemonic is empty".to_string());
-			} else {
-				let mut builder = HDWalletBuilder::new().mnemonic(mnemonic.clone());
-				if !passphrase.is_empty() {
-					builder = builder.passphrase(passphrase.clone());
-				}
-				match builder.build() {
-					Ok(wallet) => {
-						let phrase = wallet.mnemonic_phrase().to_string();
-						let mut s = self.state.lock();
-						s.hd_wallet = Some(wallet);
-						s.hd_mnemonic = phrase.clone();
-						s.hd_accounts.clear();
-						s.push_log("Imported HD wallet mnemonic".to_string());
-					},
-					Err(e) => {
-						self.state.lock().push_log(format!("HD wallet import failed: {}", e));
-					},
-				}
-			}
-		}
-
-		ui.separator();
-		{
-			let mut state = self.state.lock();
-			ui.label("Active mnemonic:");
-			if state.hd_mnemonic.is_empty() {
-				ui.label("None loaded.");
-			} else {
-				ui.code(state.hd_mnemonic.clone());
-			}
-
-			ui.add_space(6.0);
-			ui.label("Derivation path (e.g., m/44'/888'/0'/0/0):");
-			ui.text_edit_singleline(&mut state.hd_derivation_path);
-			if ui.button("Derive account").clicked() {
-				let path = state.hd_derivation_path.clone();
-				if let Some(wallet) = state.hd_wallet.as_mut() {
-					match wallet.derive_account(&path) {
+				if ui.button("➕ Create New").clicked() {
+					match Account::create() {
 						Ok(acc) => {
 							let info = AccountInfo {
 								address: acc.get_address(),
@@ -566,288 +386,447 @@ impl NeoGuiApp {
 								neo_balance: None,
 								gas_balance: None,
 							};
-							// Add to HD list
-							if !state.hd_accounts.iter().any(|a| a.address == info.address) {
-								state.hd_accounts.push(info.clone());
-							}
-							// Deduplicate in main wallet list
-							if !state.accounts.iter().any(|a| a.address == info.address) {
-								state.accounts.push(info.clone());
-							}
-							state
-								.logs
-								.push(format!("Derived account {} from {}", info.address, path));
+							let mut s = self.state.lock();
+							s.accounts.push(info.clone());
+							s.push_log(format!("Created account {}", info.address));
 						},
 						Err(e) => {
-							state.push_log(format!("Derivation failed: {}", e));
+							let mut s = self.state.lock();
+							s.push_log(format!("Account creation failed: {}", e));
 						},
 					}
-				} else {
-					state.push_log("No HD wallet loaded; generate/import first.".to_string());
 				}
+				
+				ui.separator();
+				
+				let mut wif_input = self.state.lock().wif_input.clone();
+				ui.add(egui::TextEdit::singleline(&mut wif_input).hint_text("Import WIF...").desired_width(300.0));
+				if ui.button("📥 Import").clicked() {
+					let wif = wif_input.trim().to_string();
+					if !wif.is_empty() {
+						match Account::from_wif(&wif) {
+							Ok(acc) => {
+								let info = AccountInfo {
+									address: acc.get_address(),
+									scripthash: format!("{}", acc.get_script_hash()),
+									wif: Some(wif.clone()),
+									unclaimed_gas: None,
+									neo_balance: None,
+									gas_balance: None,
+								};
+								let mut s = self.state.lock();
+								s.accounts.push(info.clone());
+								s.push_log(format!("Imported account {}", info.address));
+								wif_input.clear();
+							},
+							Err(e) => {
+								self.state.lock().push_log(format!("WIF import failed: {}", e));
+							},
+						}
+					}
+				}
+				self.state.lock().wif_input = wif_input;
+
+				ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+					if ui.button("🔄 Refresh Balances").clicked() {
+						self.queue_action(Action::RefreshBalances);
+						self.queue_action(Action::FetchBalances);
+					}
+				});
+			});
+		});
+
+		ui.add_space(20.0);
+
+		// Accounts Table
+		egui::ScrollArea::vertical().max_height(300.0).show(ui, |ui| {
+			egui::Grid::new("accounts_grid")
+				.striped(true)
+				.spacing([20.0, 10.0])
+				.min_col_width(100.0)
+				.show(ui, |ui| {
+					ui.label(RichText::new("Address").strong());
+					ui.label(RichText::new("NEO").strong());
+					ui.label(RichText::new("GAS").strong());
+					ui.label(RichText::new("Unclaimed GAS").strong());
+					ui.end_row();
+
+					let accounts = self.state.lock().accounts.clone();
+					if accounts.is_empty() {
+						ui.label("No accounts");
+						ui.end_row();
+					} else {
+						for acc in accounts {
+							ui.monospace(&acc.address);
+							ui.label(acc.neo_balance.as_deref().unwrap_or("-"));
+							ui.label(acc.gas_balance.as_deref().unwrap_or("-"));
+							ui.label(acc.unclaimed_gas.as_deref().unwrap_or("-"));
+							ui.end_row();
+						}
+					}
+				});
+		});
+
+		ui.add_space(30.0);
+		ui.separator();
+		ui.add_space(10.0);
+
+		// Transfer Section
+		ui.heading("Quick Transfer (GAS)");
+		egui::Frame::group(ui.style()).rounding(8.0).show(ui, |ui| {
+			ui.set_width(ui.available_width());
+			let (mut to, mut amount) = {
+				let s = self.state.lock();
+				(s.transfer_to.clone(), s.transfer_amount.clone())
+			};
+
+			ui.horizontal(|ui| {
+				ui.label("Recipient:");
+				ui.add(egui::TextEdit::singleline(&mut to).desired_width(300.0));
+			});
+			ui.add_space(5.0);
+			ui.horizontal(|ui| {
+				ui.label("Amount:");
+				ui.add(egui::TextEdit::singleline(&mut amount).desired_width(100.0));
+				ui.label("GAS");
+			});
+			ui.add_space(10.0);
+			if ui.button("📝 Draft & Simulate Transfer").clicked() {
+				self.queue_action(Action::DraftTransfer {
+					to: to.clone(),
+					amount: amount.clone(),
+				});
+			}
+
+			// Sync back
+			{
+				let mut s = self.state.lock();
+				s.transfer_to = to;
+				s.transfer_amount = amount;
+			}
+		});
+	}
+
+	fn render_hd_wallet(&mut self, ui: &mut egui::Ui) {
+		ui.heading("HD Wallet Generator");
+		ui.label("BIP-39/BIP-44 compliant hierarchical deterministic wallet.");
+		ui.add_space(20.0);
+
+		egui::Grid::new("hd_setup_grid").spacing([20.0, 10.0]).show(ui, |ui| {
+			ui.label("Mnemonic Setup");
+			ui.horizontal(|ui| {
+				let mut s = self.state.lock();
+				egui::ComboBox::from_id_source("hd_words")
+					.selected_text(format!("{} Words", s.hd_word_count))
+					.show_ui(ui, |ui| {
+						ui.selectable_value(&mut s.hd_word_count, 12, "12 Words");
+						ui.selectable_value(&mut s.hd_word_count, 24, "24 Words");
+					});
+				
+				if ui.button("🎲 Generate New").clicked() {
+					drop(s); // release lock
+					self.generate_hd_wallet();
+				}
+			});
+			ui.end_row();
+
+			ui.label("Passphrase");
+			let mut s = self.state.lock();
+			ui.add(egui::TextEdit::singleline(&mut s.hd_passphrase).password(true));
+			ui.end_row();
+
+			ui.label("Import Existing");
+			ui.horizontal(|ui| {
+				ui.add(egui::TextEdit::multiline(&mut s.hd_mnemonic_input).desired_rows(2).desired_width(400.0));
+				if ui.button("📥 Import").clicked() {
+					drop(s);
+					self.import_hd_wallet();
+				}
+			});
+			ui.end_row();
+		});
+
+		ui.add_space(20.0);
+
+		// Active Wallet Display
+		let mnemonic = self.state.lock().hd_mnemonic.clone();
+		if !mnemonic.is_empty() {
+			egui::Frame::group(ui.style()).rounding(8.0).fill(egui::Color32::from_rgb(20, 20, 25)).show(ui, |ui| {
+				ui.set_width(ui.available_width());
+				ui.label(RichText::new("Active Mnemonic Phrase").strong().color(egui::Color32::YELLOW));
+				ui.add_space(5.0);
+				ui.monospace(&mnemonic);
+			});
+
+			ui.add_space(20.0);
+			ui.heading("Derive Accounts");
+			ui.horizontal(|ui| {
+				let mut s = self.state.lock();
+				ui.label("Path:");
+				ui.add(egui::TextEdit::singleline(&mut s.hd_derivation_path).desired_width(200.0));
+				if ui.button("⚡ Derive").clicked() {
+					drop(s);
+					self.derive_hd_account();
+				}
+			});
+
+			ui.add_space(10.0);
+			// Derived List
+			let derived = self.state.lock().hd_accounts.clone();
+			if !derived.is_empty() {
+				egui::Grid::new("derived_grid").striped(true).spacing([20.0, 5.0]).show(ui, |ui| {
+					ui.label(RichText::new("Address").strong());
+					ui.label(RichText::new("WIF").strong());
+					ui.end_row();
+					for acc in derived {
+						ui.monospace(acc.address);
+						ui.monospace(acc.wif.unwrap_or_default());
+						ui.end_row();
+					}
+				});
 			}
 		}
+	}
 
-		ui.separator();
-		ui.label("Derived accounts");
-		egui::ScrollArea::vertical().max_height(220.0).show(ui, |ui| {
-			let accounts = self.state.lock().hd_accounts.clone();
-			if accounts.is_empty() {
-				ui.label("No derived accounts yet.");
-			} else {
-				for acc in accounts {
-					ui.group(|ui| {
-						ui.label(RichText::new(&acc.address).strong());
-						ui.monospace(acc.scripthash.clone());
-						if let Some(wif) = &acc.wif {
-							ui.label("WIF:");
-							ui.monospace(wif);
-						}
-						if let Some(gas) = &acc.unclaimed_gas {
-							ui.label(format!("Unclaimed GAS: {}", gas));
-						}
-						if let Some(neo) = &acc.neo_balance {
-							ui.label(format!("NEO: {}", neo));
-						}
-						if let Some(gas) = &acc.gas_balance {
-							ui.label(format!("GAS: {}", gas));
-						}
-					});
-				}
+	fn generate_hd_wallet(&self) {
+		let (word_count, passphrase) = {
+			let s = self.state.lock();
+			(s.hd_word_count, s.hd_passphrase.clone())
+		};
+		let passphrase_opt = if passphrase.is_empty() { None } else { Some(passphrase.as_str()) };
+		
+		match HDWallet::generate(word_count, passphrase_opt) {
+			Ok(wallet) => {
+				let phrase = wallet.mnemonic_phrase().to_string();
+				let mut s = self.state.lock();
+				s.hd_wallet = Some(wallet);
+				s.hd_mnemonic = phrase.clone();
+				s.hd_accounts.clear();
+				s.push_log(format!("Generated HD wallet ({} words)", word_count));
+			},
+			Err(e) => {
+				self.state.lock().push_log(format!("HD wallet generation failed: {}", e));
+			},
+		}
+	}
+
+	fn import_hd_wallet(&self) {
+		let (mnemonic, passphrase) = {
+			let s = self.state.lock();
+			(s.hd_mnemonic_input.trim().to_string(), s.hd_passphrase.clone())
+		};
+		
+		if mnemonic.is_empty() { return; }
+		
+		let mut builder = HDWalletBuilder::new().mnemonic(mnemonic.clone());
+		if !passphrase.is_empty() {
+			builder = builder.passphrase(passphrase);
+		}
+		
+		match builder.build() {
+			Ok(wallet) => {
+				let phrase = wallet.mnemonic_phrase().to_string();
+				let mut s = self.state.lock();
+				s.hd_wallet = Some(wallet);
+				s.hd_mnemonic = phrase.clone();
+				s.hd_accounts.clear();
+				s.push_log("Imported HD wallet mnemonic".to_string());
+			},
+			Err(e) => {
+				self.state.lock().push_log(format!("HD wallet import failed: {}", e));
+			},
+		}
+	}
+
+	fn derive_hd_account(&self) {
+		let path = { self.state.lock().hd_derivation_path.clone() };
+		let mut s = self.state.lock();
+		
+		if let Some(wallet) = s.hd_wallet.as_mut() {
+			match wallet.derive_account(&path) {
+				Ok(acc) => {
+					let info = AccountInfo {
+						address: acc.get_address(),
+						scripthash: format!("{}", acc.get_script_hash()),
+						wif: acc.key_pair().as_ref().map(|kp| kp.export_as_wif()),
+						unclaimed_gas: None,
+						neo_balance: None,
+						gas_balance: None,
+					};
+					// Add to HD list if unique
+					if !s.hd_accounts.iter().any(|a| a.address == info.address) {
+						s.hd_accounts.push(info.clone());
+					}
+					// Add to main list if unique
+					if !s.accounts.iter().any(|a| a.address == info.address) {
+						s.accounts.push(info.clone());
+					}
+					s.push_log(format!("Derived account {} from {}", info.address, path));
+				},
+				Err(e) => {
+					s.push_log(format!("Derivation failed: {}", e));
+				},
 			}
+		}
+	}
+
+	fn render_simulator(&mut self, ui: &mut egui::Ui) {
+		ui.heading("Transaction Simulator");
+		ui.label("Run dry-run simulations of arbitrary scripts.");
+		ui.add_space(20.0);
+
+		ui.label(RichText::new("Script (Hex)").strong());
+		ui.add(
+			egui::TextEdit::multiline(&mut self.simulator_script)
+				.code_editor()
+				.desired_rows(6)
+				.desired_width(f32::INFINITY),
+		);
+
+		ui.add_space(10.0);
+		if ui.button("▶ Run Simulation").clicked() {
+			let script_hex = self.simulator_script.trim().to_string();
+			self.queue_action(Action::Simulate { script_hex });
+		}
+
+		ui.add_space(20.0);
+		ui.label(RichText::new("Simulation Result").strong());
+		let result = self.state.lock().simulator_result.clone();
+		egui::Frame::window(ui.style()).fill(egui::Color32::from_rgb(10, 10, 15)).show(ui, |ui| {
+			ui.set_width(ui.available_width());
+			ui.set_min_height(100.0);
+			ui.monospace(result);
 		});
 	}
 
 	fn render_websocket(&mut self, ui: &mut egui::Ui) {
 		ui.heading("WebSocket Monitor");
-		ui.label("Subscribe to real-time events (NewBlocks).");
-		ui.add_space(6.0);
+		ui.add_space(20.0);
 
-		let (mut url, status, connected) = {
+		let (mut url, mut subscription, connected, status) = {
 			let s = self.state.lock();
-			(s.ws_url.clone(), s.ws_status.clone(), s.ws_connected)
+			(s.ws_url.clone(), s.ws_subscription.clone(), s.ws_connected, s.ws_status.clone())
 		};
 
-		let mut subscription = {
-			let s = self.state.lock();
-			s.ws_subscription.clone()
-		};
+		egui::Grid::new("ws_grid").spacing([10.0, 10.0]).show(ui, |ui| {
+			ui.label("URL");
+			ui.add(egui::TextEdit::singleline(&mut url).desired_width(300.0));
+			ui.end_row();
 
-		ui.horizontal(|ui| {
-			ui.label("WebSocket URL:");
-			ui.text_edit_singleline(&mut url);
-		});
-
-		ui.horizontal(|ui| {
-			ui.label("Subscription:");
-			egui::ComboBox::from_id_source("ws_subscription")
-				.selected_text(subscription.clone())
+			ui.label("Subscription");
+			egui::ComboBox::from_id_source("ws_sub")
+				.selected_text(&subscription)
 				.show_ui(ui, |ui| {
 					ui.selectable_value(&mut subscription, "NewBlocks".to_string(), "NewBlocks");
-					ui.selectable_value(
-						&mut subscription,
-						"NewTransactions".to_string(),
-						"NewTransactions",
-					);
-					ui.selectable_value(
-						&mut subscription,
-						"ExecutionResults".to_string(),
-						"ExecutionResults",
-					);
+					ui.selectable_value(&mut subscription, "NewTransactions".to_string(), "NewTransactions");
+					ui.selectable_value(&mut subscription, "ExecutionResults".to_string(), "ExecutionResults");
 				});
+			ui.end_row();
 		});
 
-		let mut should_connect = false;
-		{
-			let mut state = self.state.lock();
-			state.ws_url = url.clone();
-			state.ws_subscription = subscription.clone();
-			ui.horizontal(|ui| {
-				if ui.button("Connect").clicked() {
-					should_connect = true;
-				}
-				if ui.button("Disconnect").clicked() {
-					self.queue_action(Action::WsDisconnect);
-				}
-				ui.label(status);
+		ui.add_space(10.0);
+		ui.horizontal(|ui| {
+			if ui.button(if connected { "Disconnect" } else { "Connect" }).clicked() {
 				if connected {
-					ui.colored_label(egui::Color32::from_rgb(34, 197, 94), "connected");
+					self.queue_action(Action::WsDisconnect);
 				} else {
-					ui.colored_label(egui::Color32::from_rgb(239, 68, 68), "disconnected");
+					self.queue_action(Action::WsConnect { url: url.clone(), subscription: subscription.clone() });
+				}
+			}
+			ui.label(if connected { "🟢 Connected" } else { "🔴 Disconnected" });
+			ui.label(RichText::new(status).italics().weak());
+		});
+
+		// Sync back inputs
+		{
+			let mut s = self.state.lock();
+			s.ws_url = url;
+			s.ws_subscription = subscription;
+		}
+
+		ui.add_space(20.0);
+		ui.label(RichText::new("Event Stream").strong());
+		egui::Frame::window(ui.style()).fill(egui::Color32::from_rgb(10, 10, 15)).show(ui, |ui| {
+			egui::ScrollArea::vertical().max_height(300.0).stick_to_bottom(true).show(ui, |ui| {
+				ui.set_width(ui.available_width());
+				ui.set_min_height(200.0);
+				let events = self.state.lock().ws_events.clone();
+				if events.is_empty() {
+					ui.label(RichText::new("No events received yet.").weak());
+				} else {
+					for evt in events {
+						ui.monospace(evt);
+					}
 				}
 			});
-		}
-
-		if should_connect {
-			self.queue_action(Action::WsConnect { url, subscription });
-		}
-
-		ui.separator();
-		ui.label("Events");
-		egui::ScrollArea::vertical().max_height(240.0).show(ui, |ui| {
-			let events = self.state.lock().ws_events.clone();
-			if events.is_empty() {
-				ui.label("No events yet.");
-			} else {
-				for evt in events.iter().rev() {
-					ui.monospace(evt);
-				}
-			}
 		});
-	}
-
-	fn render_simulator(&mut self, ui: &mut egui::Ui) {
-		ui.heading("Transaction Simulator");
-		ui.label(
-			"Enter a hex-encoded script to run a dry-run simulation (uses current RPC connection).",
-		);
-		ui.add_space(6.0);
-
-		ui.label("Script (hex):");
-		ui.add(
-			egui::TextEdit::multiline(&mut self.simulator_script)
-				.desired_rows(4)
-				.font(egui::TextStyle::Monospace),
-		);
-
-		let (connected, status) = {
-			let s = self.state.lock();
-			(s.network.connected, s.network.status.clone())
-		};
-
-		ui.horizontal(|ui| {
-			if ui.button("Simulate").clicked() {
-				let script_hex = self.simulator_script.trim().to_string();
-				self.queue_action(Action::Simulate { script_hex });
-			}
-			ui.label(format!("RPC: {}", status));
-			if connected {
-				ui.colored_label(egui::Color32::from_rgb(34, 197, 94), "connected");
-			} else {
-				ui.colored_label(egui::Color32::from_rgb(239, 68, 68), "disconnected");
-			}
-		});
-
-		ui.separator();
-		let result = {
-			let s = self.state.lock();
-			s.simulator_result.clone()
-		};
-		ui.label("Result");
-		ui.code(result);
 	}
 
 	fn render_analytics(&mut self, ui: &mut egui::Ui) {
 		ui.heading("Analytics");
-		ui.label("Live telemetry from the connected node.");
-		ui.add_space(6.0);
+		ui.label("Real-time blockchain metrics.");
+		ui.add_space(20.0);
 
-		let (history, last_height, peer_count, endpoint, ws_status, account_count, logs) = {
-			let s = self.state.lock();
-			(
-				s.height_history.clone(),
-				s.last_height,
-				s.peer_count,
-				format!("{} ({})", s.network.endpoint, s.network.network_type),
-				s.ws_status.clone(),
-				s.accounts.len(),
-				s.logs.clone(),
-			)
-		};
+		let history = self.state.lock().height_history.clone();
 
 		if history.is_empty() {
-			ui.label("Connect to a node to start collecting heights and peers.");
+			ui.centered_and_justified(|ui| {
+				ui.label("Connect to a node to visualize data.");
+			});
 		} else {
 			let points = PlotPoints::from_iter(history.iter().map(|(x, y)| [*x, *y]));
-			Plot::new("height_plot").height(220.0).allow_zoom(false).allow_drag(false).show(
-				ui,
-				|plot_ui| {
-					plot_ui.line(
-						Line::new(points)
-							.color(egui::Color32::from_rgb(34, 197, 94))
-							.name("Block height"),
-					);
-				},
-			);
+			Plot::new("height_plot")
+				.height(300.0)
+				.show_axes([false, true])
+				.show_grid([false, true])
+				.allow_zoom(false)
+				.allow_drag(false)
+				.show(ui, |plot_ui| {
+					plot_ui.line(Line::new(points).color(egui::Color32::from_rgb(0, 229, 153)).width(2.0).name("Block Height"));
+				});
 		}
-
-		ui.separator();
-		egui::Grid::new("analytics_grid")
-			.num_columns(2)
-			.spacing([12.0, 8.0])
-			.show(ui, |ui| {
-				ui.label("Endpoint");
-				ui.label(endpoint);
-				ui.end_row();
-
-				ui.label("Height / Peers");
-				let peers = peer_count.map(|p| p.to_string()).unwrap_or_else(|| "-".into());
-				let height_text =
-					last_height.map(|h| h.to_string()).unwrap_or_else(|| "N/A".into());
-				ui.label(format!("{} / {}", height_text, peers));
-				ui.end_row();
-
-				ui.label("Accounts loaded");
-				ui.label(format!("{}", account_count));
-				ui.end_row();
-
-				ui.label("WebSocket");
-				ui.label(ws_status);
-				ui.end_row();
-			});
-
-		ui.separator();
-		ui.label("Recent activity");
-		egui::ScrollArea::vertical().max_height(180.0).show(ui, |ui| {
-			if logs.is_empty() {
-				ui.label("No recent activity.");
-			} else {
-				for entry in logs.iter().rev().take(50) {
-					ui.label(entry);
-				}
-			}
-		});
 	}
 
 	fn render_settings(&mut self, ui: &mut egui::Ui) {
 		ui.heading("Settings");
-		ui.label("Theme, polling cadence, and log controls.");
-		ui.add_space(6.0);
+		ui.add_space(20.0);
 
 		let mut state = self.state.lock();
-		ui.checkbox(&mut state.dark_mode, "Use dark theme");
-		ui.add(
-			egui::Slider::new(&mut state.poll_interval_secs, 2..=30)
-				.text("Status poll interval (seconds)"),
-		);
-		ui.add(egui::Slider::new(&mut state.max_logs, 50..=500).text("Max activity log entries"));
-
-		ui.horizontal(|ui| {
-			if ui.button("Clear activity log").clicked() {
-				state.logs.clear();
-			}
-			if ui.button("Reset telemetry").clicked() {
-				state.height_history.clear();
-				state.last_height = None;
-			}
+		
+		egui::Frame::group(ui.style()).show(ui, |ui| {
+			ui.set_width(ui.available_width());
+			ui.heading("Appearance");
+			ui.checkbox(&mut state.dark_mode, "Use Dark Mode");
 		});
 
-		ui.separator();
-		ui.label("Endpoint presets");
-		ui.horizontal(|ui| {
-			if ui.button("TestNet preset").clicked() {
-				state.network.endpoint = "https://testnet1.neo.org:443".to_string();
-				state.network.network_type = "testnet".to_string();
-			}
-			if ui.button("MainNet preset").clicked() {
-				state.network.endpoint = "https://mainnet1.neo.org:443".to_string();
-				state.network.network_type = "mainnet".to_string();
-			}
-			if ui.button("Local node").clicked() {
-				state.network.endpoint = "http://localhost:10332".to_string();
-				state.network.network_type = "custom".to_string();
-			}
+		ui.add_space(10.0);
+
+		egui::Frame::group(ui.style()).show(ui, |ui| {
+			ui.set_width(ui.available_width());
+			ui.heading("Performance");
+			ui.add(egui::Slider::new(&mut state.poll_interval_secs, 1..=60).text("Poll Interval (s)"));
+			ui.add(egui::Slider::new(&mut state.max_logs, 100..=1000).text("Max Log Entries"));
 		});
+
+		ui.add_space(10.0);
+
+		egui::Frame::group(ui.style()).show(ui, |ui| {
+			ui.set_width(ui.available_width());
+			ui.heading("Data Management");
+			ui.horizontal(|ui| {
+				if ui.button("🗑 Clear Logs").clicked() {
+					state.logs.clear();
+				}
+				if ui.button("📊 Reset Analytics").clicked() {
+					state.height_history.clear();
+					state.last_height = None;
+				}
+			});
+		});
+	}
+
+	fn queue_action(&self, action: Action) {
+		let _ = self.tx.send(action);
 	}
 }
 
@@ -1333,18 +1312,16 @@ impl eframe::App for NeoGuiApp {
 		} else {
 			ctx.set_visuals(egui::Visuals::light());
 		}
-
-		egui::TopBottomPanel::top("top_bar").show(ctx, |ui| {
-			ui.horizontal(|ui| {
-				ui.heading(RichText::new("NeoRust Native GUI").strong());
-				ui.separator();
-				ui.label(format!("Version {}", *VERSION));
-			});
-		});
+		
+		// Apply a global style tweak
+		let mut style = (*ctx.style()).clone();
+		style.spacing.button_padding = egui::vec2(10.0, 6.0);
+		style.visuals.widgets.active.fg_stroke.color = egui::Color32::WHITE;
+		ctx.set_style(style);
 
 		egui::SidePanel::left("sidebar")
 			.resizable(false)
-			.default_width(180.0)
+			.default_width(200.0)
 			.show(ctx, |ui| {
 				self.render_sidebar(ui);
 			});

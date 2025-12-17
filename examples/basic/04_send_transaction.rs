@@ -210,7 +210,7 @@ mod tests {
 	async fn test_client_connection() {
 		// Test that we can create a client (doesn't require network)
 		let provider = HttpProvider::new("https://testnet1.neo.org:443").unwrap();
-		let client = RpcClient::new(provider);
+		let _client = RpcClient::new(provider);
 
 		// Client should be created successfully
 		// Actual network tests would require live connection

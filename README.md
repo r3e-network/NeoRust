@@ -15,7 +15,7 @@ A comprehensive, production-ready Rust SDK for the Neo N3 blockchain platform. N
 
 ## 📊 Project Status
 
-- **Version**: 0.5.3 (Production Ready - Security Hardened)
+- **Version**: 0.5.4 (Production Ready - Security Hardened)
 - **Rust Version**: 1.70.0+
 - **Platform Support**: Windows, macOS, Linux
 - **Security**: Dependencies audited; no known CVEs, with tracked unmaintained transitive crates only
@@ -53,7 +53,7 @@ Add NeoRust to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-neo3 = "0.5.3"
+neo3 = "0.5.4"
 ```
 
 ## Basic Usage
@@ -61,7 +61,8 @@ neo3 = "0.5.3"
 ### New Simplified API (v0.5.x+)
 
 ```rust
-use neo3::sdk::Neo;
+use neo3::sdk::{Neo, Network};
+use std::time::Duration;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -104,11 +105,11 @@ let client = RpcClient::new(http);
 
 // 3) IPC (enable the `ipc` feature)
 #[cfg(feature = "ipc")]
-{
-    use neo3::neo_clients::rpc::transports::Ipc;
-    let ipc = Ipc::connect("/tmp/neo.ipc").await?;
-    let client = RpcClient::new(ipc);
-}
+	{
+	    use neo3::neo_clients::rpc::transports::Ipc;
+	    let ipc = Ipc::connect("/tmp/neo.ipc").await?;
+	    let client = RpcClient::new(ipc);
+	}
 
 // 4) Offline-friendly mock (enable the `mock` feature; great for tests/CI)
 #[cfg(feature = "mock")]
@@ -117,7 +118,7 @@ let client = RpcClient::new(http);
     let mut mock = MockClient::new().await;
     mock.mock_get_block_count(1_000).await;
     mock.mount_mocks().await;
-    let client = RpcClient::new(HttpProvider::new(mock.url())?);
+    let client = mock.into_client();
 }
 ```
 
@@ -126,7 +127,7 @@ let client = RpcClient::new(http);
 - `ws`: enable the modern WebSocket transport
 - `ipc`: enable IPC (Unix domain sockets / Windows named pipes)
 - `legacy-ws`: legacy WebSocket compatibility layer (fallback)
-- `mock`: enable `MockClient`/wiremock helpers
+- `mock`: enable `MockClient` and in-memory mocking helpers
 - `ledger`, `yubi`: opt into hardware wallet support
 - `no_std`, `sgx`: specialized environments
 
@@ -135,7 +136,7 @@ let client = RpcClient::new(http);
 Requires the `ws` feature:
 
 ```toml
-neo3 = { version = "0.5.3", features = ["ws"] }
+neo3 = { version = "0.5.4", features = ["ws"] }
 ```
 
 ```rust
@@ -210,17 +211,20 @@ if result.success {
 ### Traditional API (still supported)
 
 ```rust
-use neo3::prelude::*;
+use neo3::neo_clients::{APITrait, HttpProvider, RpcClient};
 
-// Create a new wallet
-let wallet = Wallet::new().unwrap();
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // Connect to Neo TestNet
+    let provider = HttpProvider::new("https://testnet1.neo.coz.io:443")?;
+    let client = RpcClient::new(provider);
 
-// Connect to Neo testnet
-let client = RpcClient::new("https://testnet1.neo.coz.io:443").unwrap();
+    // Query basic chain state (works without a wallet)
+    let block_count = client.get_block_count().await?;
+    println!("Block height: {}", block_count.saturating_sub(1));
 
-// Get account balance
-let balance = client.get_balance(&wallet.address()).await?;
-println!("Balance: {} NEO", balance.neo);
+    Ok(())
+}
 ```
 
 ## Components
@@ -238,10 +242,11 @@ neo-cli wizard
 # Generate a new project from template
 neo-cli generate --template nep17-token my-token
 
-# Traditional commands
-neo-cli wallet create
-neo-cli wallet balance <address>
-neo-cli transaction send --to <address> --amount 10 --token NEO
+# Common commands
+neo-cli wallet create --path my-wallet.json
+neo-cli network connect --network testnet
+neo-cli network status
+neo-cli de-fi token NEO
 ```
 
 ### GUI Applications
@@ -275,8 +280,8 @@ cd neo-gui && npm install && cargo build
 
 ## Documentation
 
-- [Getting Started Guide](docs/guides/getting-started.md)
-- [API Documentation](https://docs.rs/neo3/0.5.3)
+- [Installation Guide](docs/guides/installation.md)
+- [API Documentation](https://docs.rs/neo3)
 - [WebSocket Guide](docs/guides/websocket.md)
 - [HD Wallet Guide](docs/guides/hd-wallet.md)
 - [Transaction Simulation Guide](docs/guides/transaction-simulation.md)

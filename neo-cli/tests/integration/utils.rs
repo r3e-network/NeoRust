@@ -26,11 +26,13 @@ impl CliTest {
 		let mut cmd = Command::new("cargo");
 		cmd.arg("run").arg("--").args(args).current_dir(&self.binary_path);
 
-		// Set HOME environment variable for Windows compatibility
+		// Ensure a writable and test-isolated HOME directory.
+		//
+		// This prevents integration tests from touching a developer's real config and avoids
+		// failures in sandboxed CI environments where $HOME may be read-only.
+		cmd.env("HOME", self.temp_dir.path());
 		if cfg!(target_os = "windows") {
-			if let Ok(userprofile) = std::env::var("USERPROFILE") {
-				cmd.env("HOME", userprofile);
-			}
+			cmd.env("USERPROFILE", self.temp_dir.path());
 		}
 
 		cmd.output().expect("Failed to execute command")

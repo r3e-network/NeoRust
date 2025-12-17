@@ -1,0 +1,58 @@
+# Oracle Consumer Template
+# Scaffold for a dApp that consumes oracle data on Neo.
+
+[template]
+name = "oracle-consumer"
+description = "Oracle consumer scaffold (fetch/read oracle-fed state)"
+version = "1.0.0"
+author = "NeoRust Team"
+
+[files]
+"src/main.rs" = '''
+//! Oracle consumer scaffold
+//!
+//! This template demonstrates:
+//! - Connecting to Neo TestNet
+//! - A starting point for reading oracle-fed state from a contract
+
+use neo3::sdk::Neo;
+use std::error::Error;
+
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn Error>> {
+    println!("🔮 Oracle Consumer Scaffold");
+
+    let neo = Neo::testnet().await?;
+    let height = neo.get_block_height().await?;
+    println!("✅ Connected (height = {})", height);
+
+    // TODO: Add contract hash + view method that returns oracle-fed data.
+    println!("ℹ️  Next: call `neo.invoke_read(...)` for your contract’s getter method.");
+
+    Ok(())
+}
+'''
+
+"Cargo.toml" = '''
+[package]
+name = "{{project_name}}"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+neo3 = "{{neo3_version}}"
+tokio = { version = "1.45", features = ["full"] }
+anyhow = "1.0"
+'''
+
+"README.md" = '''
+# {{project_name}} - Oracle Consumer Scaffold
+
+Oracle consumer scaffold built with NeoRust SDK v{{neo3_version}}.
+
+## Next Steps
+
+- Deploy or connect to a contract that stores oracle-fed data
+- Add read-only RPC calls to verify oracle updates
+- Add transactions to request oracle updates (if applicable)
+'''

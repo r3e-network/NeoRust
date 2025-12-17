@@ -52,8 +52,12 @@ pub async fn run_wizard() -> Result<()> {
 fn print_banner() {
 	println!();
 	println!("{}", "╔══════════════════════════════════════╗".cyan());
-	println!("{}", "║       NeoRust Interactive Wizard     ║".cyan().bold());
-	println!("{}", "║           Version 0.5.0              ║".cyan());
+	println!("{}", format!("║{:^width$}║", "NeoRust Interactive Wizard", width = 38).cyan().bold());
+	println!(
+		"{}",
+		format!("║{:^width$}║", format!("Version {}", env!("CARGO_PKG_VERSION")), width = 38)
+			.cyan()
+	);
 	println!("{}", "╚══════════════════════════════════════╝".cyan());
 	println!();
 	println!("{}", "Welcome to the NeoRust Interactive Wizard!".green());
@@ -257,7 +261,7 @@ async fn check_balance() -> Result<()> {
 			println!("\n{}", "Balance Information:".cyan().bold());
 			println!("  📍 Address: {}", address.white());
 			println!("  💎 NEO: {} tokens", balance.neo.to_string().green());
-			println!("  ⛽ GAS: {} tokens", format!("{:.8}", balance.gas).green());
+			println!("  ⛽ GAS: {} tokens", balance.gas.to_string().green());
 
 			if !balance.tokens.is_empty() {
 				println!("\n  📜 Other Tokens:");

@@ -1,0 +1,58 @@
+# DeFi Protocol Template
+# Scaffold for building a DeFi-focused Neo dApp.
+
+[template]
+name = "defi-protocol"
+description = "DeFi-focused dApp scaffold (swap/pools/positions)"
+version = "1.0.0"
+author = "NeoRust Team"
+
+[files]
+"src/main.rs" = '''
+//! DeFi dApp scaffold
+//!
+//! This template demonstrates:
+//! - Connecting to Neo TestNet
+//! - A starting point for integrating with DeFi contracts/protocols
+
+use neo3::sdk::Neo;
+use std::error::Error;
+
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn Error>> {
+    println!("🧩 DeFi Protocol Scaffold");
+
+    let neo = Neo::testnet().await?;
+    let height = neo.get_block_height().await?;
+    println!("✅ Connected (height = {})", height);
+
+    // TODO: Replace with calls into your DeFi contracts / routers.
+    println!("ℹ️  Next: add contract hashes + invoke_read/invoke_write flows.");
+
+    Ok(())
+}
+'''
+
+"Cargo.toml" = '''
+[package]
+name = "{{project_name}}"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+neo3 = "{{neo3_version}}"
+tokio = { version = "1.45", features = ["full"] }
+anyhow = "1.0"
+'''
+
+"README.md" = '''
+# {{project_name}} - DeFi Scaffold
+
+DeFi scaffold built with NeoRust SDK v{{neo3_version}}.
+
+## Ideas to Implement
+
+- Query pools and token metadata
+- Fetch user balances/positions
+- Build + sign swap/add-liquidity/remove-liquidity transactions
+'''

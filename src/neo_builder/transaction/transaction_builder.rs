@@ -104,6 +104,7 @@ pub struct TransactionBuilder<'a, P: JsonRpcProvider + 'static> {
 	script: Option<Bytes>,
 	fee_consumer: Option<Box<dyn Fn(i64, i64)>>,
 	fee_error: Option<TransactionError>,
+	allows_transmission_on_fault: Option<bool>,
 }
 
 impl<'a, P: JsonRpcProvider + 'static> Debug for TransactionBuilder<'a, P> {
@@ -119,6 +120,7 @@ impl<'a, P: JsonRpcProvider + 'static> Debug for TransactionBuilder<'a, P> {
 			.field("script", &self.script)
 			// .field("fee_consumer", &self.fee_consumer)
 			.field("fee_error", &self.fee_error)
+			.field("allows_transmission_on_fault", &self.allows_transmission_on_fault)
 			.finish()
 	}
 }
@@ -138,6 +140,7 @@ impl<'a, P: JsonRpcProvider + 'static> Clone for TransactionBuilder<'a, P> {
 			// fee_consumer: self.fee_consumer.clone(),
 			fee_consumer: None,
 			fee_error: None,
+			allows_transmission_on_fault: self.allows_transmission_on_fault,
 		}
 	}
 }
@@ -154,6 +157,7 @@ impl<'a, P: JsonRpcProvider + 'static> PartialEq for TransactionBuilder<'a, P> {
 			&& self.additional_system_fee == other.additional_system_fee
 			&& self.attributes == other.attributes
 			&& self.script == other.script
+			&& self.allows_transmission_on_fault == other.allows_transmission_on_fault
 	}
 }
 
@@ -167,6 +171,7 @@ impl<'a, P: JsonRpcProvider + 'static> Hash for TransactionBuilder<'a, P> {
 		self.additional_system_fee.hash(state);
 		self.attributes.hash(state);
 		self.script.hash(state);
+		self.allows_transmission_on_fault.hash(state);
 	}
 }
 
@@ -208,6 +213,7 @@ impl<'a, P: JsonRpcProvider + 'static> TransactionBuilder<'a, P> {
 			script: None,
 			fee_consumer: None,
 			fee_error: None,
+			allows_transmission_on_fault: None,
 		}
 	}
 
@@ -244,7 +250,25 @@ impl<'a, P: JsonRpcProvider + 'static> TransactionBuilder<'a, P> {
 			script: None,
 			fee_consumer: None,
 			fee_error: None,
+			allows_transmission_on_fault: None,
 		}
+	}
+
+	/// Allows building transactions even when script invocation ends in `FAULT`.
+	///
+	/// By default, the SDK refuses to build a transaction if `invokescript` returns a fault state.
+	/// This method overrides that behavior for this builder instance.
+	pub fn allow_transmission_on_fault(&mut self) -> &mut Self {
+		self.allows_transmission_on_fault = Some(true);
+		self
+	}
+
+	/// Forces the builder to reject `FAULT` results from script invocation.
+	///
+	/// This overrides any global `NEOCONFIG` setting for this builder instance.
+	pub fn disallow_transmission_on_fault(&mut self) -> &mut Self {
+		self.allows_transmission_on_fault = Some(false);
+		self
 	}
 
 	/// Sets the version of the transaction.
@@ -621,13 +645,20 @@ impl<'a, P: JsonRpcProvider + 'static> TransactionBuilder<'a, P> {
 
 		// Check if the VM execution resulted in a fault
 		if response.has_state_fault() {
-			// Get the current configuration for allowing transmission on fault
-			let allows_fault = NEOCONFIG
-				.lock()
-				.map_err(|_| {
-					TransactionError::IllegalState("Failed to lock NEOCONFIG".to_string())
-				})?
-				.allows_transmission_on_fault;
+			// Get the current configuration for allowing transmission on fault.
+			//
+			// Prefer a per-builder override when set; otherwise fall back to the global `NEOCONFIG`.
+			let allows_fault = match self.allows_transmission_on_fault {
+				Some(allows_fault) => allows_fault,
+				None => {
+					NEOCONFIG
+						.lock()
+						.map_err(|_| {
+							TransactionError::IllegalState("Failed to lock NEOCONFIG".to_string())
+						})?
+						.allows_transmission_on_fault
+				},
+			};
 
 			// If transmission on fault is not allowed, return an error
 			if !allows_fault {

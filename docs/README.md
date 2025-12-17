@@ -1,4 +1,4 @@
-# NeoRust v0.5.3 - Complete Neo N3 Development Suite
+# NeoRust v0.5.4 - Complete Neo N3 Development Suite
 
 <div align="center">
   <h1>🚀 NeoRust - Production-Ready Neo N3 SDK</h1>
@@ -10,7 +10,8 @@
   </p>
 </div>
 
-[![Rust](https://github.com/R3E-Network/NeoRust/actions/workflows/rust.yml/badge.svg)](https://github.com/R3E-Network/NeoRust/actions/workflows/rust.yml)
+[![Build & Test](https://github.com/r3e-network/NeoRust/actions/workflows/build-test.yml/badge.svg)](https://github.com/r3e-network/NeoRust/actions/workflows/build-test.yml)
+[![Release](https://github.com/r3e-network/NeoRust/actions/workflows/release.yml/badge.svg)](https://github.com/r3e-network/NeoRust/actions/workflows/release.yml)
 [![Crates.io](https://img.shields.io/crates/v/neo3.svg)](https://crates.io/crates/neo3)
 [![Documentation](https://docs.rs/neo3/badge.svg)](https://docs.rs/neo3)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
@@ -79,7 +80,7 @@ cargo build --release
 
 ```toml
 [dependencies]
-neo3 = "0.5.3"
+neo3 = "0.5.4"
 ```
 
 ```rust,no_run
@@ -136,7 +137,7 @@ let client = RpcClient::new(http);
     let mut mock = MockClient::new().await;
     mock.mock_get_block_count(1_000).await;
     mock.mount_mocks().await;
-    let client = RpcClient::new(HttpProvider::new(mock.url())?);
+    let client = mock.into_client();
 }
 ```
 
@@ -149,7 +150,7 @@ let client = RpcClient::new(http);
 - **Memory Safety**: Rust's ownership system prevents common bugs
 
 ### 🧪 **Comprehensive Testing**
-- **378/378 Tests Passing**: 100% test success rate
+- **CI Green**: Unit, integration, and doc tests run on every PR
 - **Integration Tests**: Real blockchain interaction testing
 - **Performance Tests**: Optimized for high-throughput applications
 - **Security Audits**: Cryptographic operations thoroughly tested
@@ -251,7 +252,7 @@ cargo build --release
 #### For Integration (SDK)
 ```toml
 [dependencies]
-neo3 = "0.5.3"
+neo3 = "0.5.4"
 ```
 
 ### Step 2: Create Your First Wallet

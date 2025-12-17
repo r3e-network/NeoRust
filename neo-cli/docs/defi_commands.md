@@ -4,7 +4,7 @@ This guide explains how to use the Neo CLI to interact with various DeFi platfor
 
 ## Overview
 
-The Neo blockchain ecosystem has several DeFi protocols that provide various financial services. The `neo-cli` tool provides direct access to these protocols through the `defi` command group, allowing you to:
+The Neo blockchain ecosystem has several DeFi protocols that provide various financial services. The `neo-cli` tool provides direct access to these protocols through the `de-fi` command group, allowing you to:
 
 1. Interact with famous DeFi contracts
 2. Get token information
@@ -22,9 +22,9 @@ The Neo blockchain ecosystem has several DeFi protocols that provide various fin
 To see detailed information about a token:
 
 ```bash
-neo-cli defi token NEO
-neo-cli defi token GAS
-neo-cli defi token 0xf970f4cddcd087ab5d8a5697a32b3cfd32c8b465  # Using script hash
+neo-cli de-fi token NEO
+neo-cli de-fi token GAS
+neo-cli de-fi token 0xf970f4cddcd087ab5d8a5697a32b3cfd32c8b465  # Using script hash
 ```
 
 ### Check Token Balance
@@ -32,23 +32,20 @@ neo-cli defi token 0xf970f4cddcd087ab5d8a5697a32b3cfd32c8b465  # Using script ha
 To check your balance of a specific token:
 
 ```bash
-# Check balance for the currently loaded wallet
-neo-cli defi balance NEO
-
 # Check balance for a specific address
-neo-cli defi balance GAS --address NZKvXidwBhnV8rNXh2eXtpm5bH1rkofaDz
+neo-cli de-fi balance GAS NZKvXidwBhnV8rNXh2eXtpm5bH1rkofaDz
 ```
 
 ### Transfer Tokens
 
-To transfer tokens to another address:
+To transfer tokens to another address (requires a signing account; some flows may still be under active development):
 
 ```bash
 # Transfer 10 GAS
-neo-cli defi transfer GAS NZKvXidwBhnV8rNXh2eXtpm5bH1rkofaDz 10
+neo-cli de-fi transfer GAS NZKvXidwBhnV8rNXh2eXtpm5bH1rkofaDz 10
 
 # Transfer with additional data
-neo-cli defi transfer NEO NZKvXidwBhnV8rNXh2eXtpm5bH1rkofaDz 100 --data "Payment for services"
+neo-cli de-fi transfer NEO NZKvXidwBhnV8rNXh2eXtpm5bH1rkofaDz 100 "Payment for services"
 ```
 
 ## Flamingo Finance Commands
@@ -61,10 +58,10 @@ To swap one token for another:
 
 ```bash
 # Swap 10 GAS for NEO with default slippage (10%)
-neo-cli defi flamingo swap GAS NEO 10
+neo-cli de-fi flamingo swap GAS NEO 10
 
 # Swap with custom minimum return amount
-neo-cli defi flamingo swap FLM GAS 100 --min-return 5
+neo-cli de-fi flamingo swap FLM GAS 100 5
 ```
 
 ### Add Liquidity
@@ -72,7 +69,7 @@ neo-cli defi flamingo swap FLM GAS 100 --min-return 5
 To add liquidity to a trading pair:
 
 ```bash
-neo-cli defi flamingo add-liquidity NEO GAS 10 5
+neo-cli de-fi flamingo add-liquidity NEO GAS 10 5
 ```
 
 ### Remove Liquidity
@@ -80,7 +77,7 @@ neo-cli defi flamingo add-liquidity NEO GAS 10 5
 To remove liquidity from a trading pair:
 
 ```bash
-neo-cli defi flamingo remove-liquidity NEO GAS 10
+neo-cli de-fi flamingo remove-liquidity NEO GAS 10
 ```
 
 ### Stake Tokens
@@ -88,7 +85,7 @@ neo-cli defi flamingo remove-liquidity NEO GAS 10
 To stake tokens and earn rewards:
 
 ```bash
-neo-cli defi flamingo stake FLM 100
+neo-cli de-fi flamingo stake FLM 100
 ```
 
 ### Claim Rewards
@@ -96,7 +93,7 @@ neo-cli defi flamingo stake FLM 100
 To claim rewards from staking:
 
 ```bash
-neo-cli defi flamingo claim-rewards
+neo-cli de-fi flamingo claim-rewards
 ```
 
 ## NeoBurger Commands
@@ -108,7 +105,7 @@ NeoBurger (bNEO) is a wrapped NEO token that allows users to earn GAS while usin
 To wrap your NEO to bNEO:
 
 ```bash
-neo-cli defi neoburger wrap 100
+neo-cli de-fi neo-burger wrap 100
 ```
 
 ### Unwrap bNEO to NEO
@@ -116,7 +113,7 @@ neo-cli defi neoburger wrap 100
 To unwrap your bNEO back to NEO:
 
 ```bash
-neo-cli defi neoburger unwrap 100
+neo-cli de-fi neo-burger unwrap 100
 ```
 
 ### Claim GAS
@@ -124,7 +121,7 @@ neo-cli defi neoburger unwrap 100
 To claim GAS rewards from your bNEO:
 
 ```bash
-neo-cli defi neoburger claim-gas
+neo-cli de-fi neo-burger claim-gas
 ```
 
 ### Get Exchange Rate
@@ -132,7 +129,7 @@ neo-cli defi neoburger claim-gas
 To check the current exchange rate between bNEO and NEO:
 
 ```bash
-neo-cli defi neoburger get-rate
+neo-cli de-fi neo-burger get-rate
 ```
 
 ## NeoCompound Commands
@@ -144,7 +141,7 @@ NeoCompound is an automated interest compounding service for Neo ecosystem token
 To deposit tokens into NeoCompound:
 
 ```bash
-neo-cli defi neocompound deposit GAS 50
+neo-cli de-fi neo-compound deposit GAS 50
 ```
 
 ### Withdraw Tokens
@@ -152,7 +149,7 @@ neo-cli defi neocompound deposit GAS 50
 To withdraw tokens from NeoCompound:
 
 ```bash
-neo-cli defi neocompound withdraw GAS 25
+neo-cli de-fi neo-compound withdraw GAS 25
 ```
 
 ### Compound Interest
@@ -160,7 +157,7 @@ neo-cli defi neocompound withdraw GAS 25
 To manually compound your interest:
 
 ```bash
-neo-cli defi neocompound compound GAS
+neo-cli de-fi neo-compound compound GAS
 ```
 
 ### Get APY
@@ -168,7 +165,7 @@ neo-cli defi neocompound compound GAS
 To check the current APY for a token:
 
 ```bash
-neo-cli defi neocompound get-apy GAS
+neo-cli de-fi neo-compound get-apy GAS
 ```
 
 ## GrandShare Commands
@@ -180,7 +177,7 @@ GrandShare is a governance and funding platform for Neo ecosystem projects.
 To submit a new proposal:
 
 ```bash
-neo-cli defi grandshare submit-proposal "My Project Title" "Project description and details" 1000
+neo-cli de-fi grand-share submit-proposal "My Project Title" "Project description and details" 1000
 ```
 
 ### Vote on a Proposal
@@ -189,10 +186,10 @@ To vote on an existing proposal:
 
 ```bash
 # Approve a proposal
-neo-cli defi grandshare vote 123 --approve
+neo-cli de-fi grand-share vote 123 --approve
 
 # Reject a proposal
-neo-cli defi grandshare vote 123
+neo-cli de-fi grand-share vote 123
 ```
 
 ### Fund a Project
@@ -200,7 +197,7 @@ neo-cli defi grandshare vote 123
 To fund an approved project:
 
 ```bash
-neo-cli defi grandshare fund-project 456 500
+neo-cli de-fi grand-share fund-project 456 500
 ```
 
 ### Claim Funds
@@ -208,7 +205,7 @@ neo-cli defi grandshare fund-project 456 500
 To claim funds for your project (if you're the project owner):
 
 ```bash
-neo-cli defi grandshare claim-funds 456
+neo-cli de-fi grand-share claim-funds 456
 ```
 
 ## Common Options
@@ -217,12 +214,11 @@ Most DeFi commands support the following options:
 
 - `--wallet`: Path to your wallet file
 - `--password`: Wallet password
-- `--network`: Network to use (mainnet or testnet, defaults to mainnet)
 
 Example:
 
 ```bash
-neo-cli defi --wallet path/to/wallet.json --password mypassword flamingo swap NEO GAS 10
+neo-cli de-fi --wallet path/to/wallet.json --password mypassword flamingo swap NEO GAS 10
 ```
 
 ## Notes

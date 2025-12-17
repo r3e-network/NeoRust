@@ -58,7 +58,7 @@
 //! #[tokio::main]
 //! async fn main() -> Result<(), Box<dyn std::error::Error>> {
 //!     // Connect to a Neo N3 node using WebSocket
-//!     let ws = Ws::connect("wss://testnet1.neo.org:4443/ws").await?;
+//!     let ws = Ws::connect("wss://testnet1.neo.org:443/ws").await?;
 //!     let client = RpcClient::new(ws);
 //!     
 //!     // Get basic blockchain information over WebSocket
@@ -101,7 +101,10 @@ pub use mock_client::MockClient;
 pub use production_client::{ProductionClientConfig, ProductionClientStats, ProductionRpcClient};
 pub use rate_limiter::{RateLimitPermit, RateLimiter, RateLimiterBuilder, RateLimiterPresets};
 pub use rpc::*;
-#[allow(deprecated)]
+#[deprecated(
+	note = "Use `HttpProvider::new(...)`/`RpcClient::new(...)` or the high-level `sdk::Neo` builder instead.",
+	since = "0.5.4"
+)]
 pub use test_provider::{MAINNET, TESTNET};
 pub use utils::*;
 
@@ -148,8 +151,10 @@ lazy_static! {
 }
 
 #[allow(missing_docs)]
-/// Pre-instantiated Infura HTTP clients which rotate through multiple API keys
-/// to prevent rate limits
+/// Deprecated pre-instantiated providers for quick-start/testing.
+///
+/// Prefer explicit configuration via `HttpProvider::new(...)`, `RpcClient::new(...)`,
+/// or the high-level `sdk::Neo` builder.
 mod test_provider {
 	use std::{iter::Cycle, slice::Iter, sync::Mutex};
 
@@ -157,35 +162,45 @@ mod test_provider {
 
 	use super::*;
 
-	// List of infura keys to rotate through so we don't get rate limited
-	const INFURA_KEYS: &[&str] = &["REDACTED_INFURA_PROJECT_ID"];
+	// Public endpoints to rotate through to reduce rate limit pressure.
+	//
+	// These are best-effort defaults intended for local development and examples.
+	const MAINNET_ENDPOINTS: &[&str] = &[
+		NeoConstants::SEED_1,
+		NeoConstants::SEED_2,
+		NeoConstants::SEED_3,
+		NeoConstants::SEED_4,
+		NeoConstants::SEED_5,
+	];
+	const TESTNET_ENDPOINTS: &[&str] =
+		&["https://testnet1.neo.org:443", "https://testnet2.neo.org:443"];
 
 	pub static MAINNET: Lazy<TestProvider> =
-		Lazy::new(|| TestProvider::new(INFURA_KEYS, "mainnet"));
+		Lazy::new(|| TestProvider::new(MAINNET_ENDPOINTS, "mainnet"));
 
 	pub static TESTNET: Lazy<TestProvider> =
-		Lazy::new(|| TestProvider::new(INFURA_KEYS, "testnet"));
+		Lazy::new(|| TestProvider::new(TESTNET_ENDPOINTS, "testnet"));
 
 	#[derive(Debug)]
 	pub struct TestProvider {
 		network: String,
-		keys: Mutex<Cycle<Iter<'static, &'static str>>>,
+		endpoints: Mutex<Cycle<Iter<'static, &'static str>>>,
 	}
 
 	impl TestProvider {
-		pub fn new(keys: &'static [&'static str], network: impl Into<String>) -> Self {
-			Self { keys: keys.iter().cycle().into(), network: network.into() }
+		pub fn new(endpoints: &'static [&'static str], network: impl Into<String>) -> Self {
+			Self { endpoints: endpoints.iter().cycle().into(), network: network.into() }
 		}
 
 		pub fn url(&self) -> String {
-			let Self { network, keys } = self;
-			let key = keys.lock().unwrap_or_else(|e| e.into_inner()).next().copied();
-			match key {
-				Some(key) => format!("https://{network}.infura.io/v3/{key}"),
+			let Self { network, endpoints } = self;
+			let endpoint = endpoints.lock().unwrap_or_else(|e| e.into_inner()).next().copied();
+			match endpoint {
+				Some(endpoint) => endpoint.to_string(),
 				None => {
 					tracing::warn!(
 						network = %network,
-						"Infura keys list is empty; falling back to default seed URL"
+						"Endpoint list is empty; falling back to default seed URL"
 					);
 					NeoConstants::SEED_1.to_string()
 				},
@@ -198,7 +213,7 @@ mod test_provider {
 				tracing::warn!(
 					error = %e,
 					endpoint = %url_str,
-					"Failed to parse Infura URL; falling back to default seed URL"
+					"Failed to parse endpoint URL; falling back to default seed URL"
 				);
 				url::Url::parse(NeoConstants::SEED_1)
 					.expect("NeoConstants::SEED_1 must be a valid URL")
@@ -206,7 +221,7 @@ mod test_provider {
 			let http_provider = Http::new(url).unwrap_or_else(|e| {
 				tracing::warn!(
 					error = %e,
-					"Failed to create Infura HTTP provider; falling back to default seed URL"
+					"Failed to create HTTP provider; falling back to default seed URL"
 				);
 				let url = url::Url::parse(NeoConstants::SEED_1)
 					.expect("NeoConstants::SEED_1 must be a valid URL");
@@ -217,11 +232,34 @@ mod test_provider {
 
 		#[cfg(feature = "ws")]
 		pub async fn ws(&self) -> Result<RpcClient<Ws>, ProviderError> {
-			let key =
-				self.keys.lock().unwrap_or_else(|e| e.into_inner()).next().copied().ok_or_else(
-					|| ProviderError::CustomError("Infura keys list is empty".into()),
-				)?;
-			let url = format!("wss://{}.infura.neo.io/ws/v3/{}", self.network, key);
+			let url_str = self.url();
+			let mut url = url::Url::parse(&url_str).unwrap_or_else(|e| {
+				tracing::warn!(
+					error = %e,
+					endpoint = %url_str,
+					"Failed to parse endpoint URL; falling back to default seed URL"
+				);
+				url::Url::parse(NeoConstants::SEED_1)
+					.expect("NeoConstants::SEED_1 must be a valid URL")
+			});
+
+			let scheme = match url.scheme() {
+				"https" => "wss",
+				"http" => "ws",
+				"wss" => "wss",
+				"ws" => "ws",
+				_ => "ws",
+			};
+			url.set_scheme(scheme).map_err(|_| {
+				ProviderError::ParseError(format!(
+					"Unsupported URL scheme in endpoint: {}",
+					url_str
+				))
+			})?;
+			if url.path() == "/" {
+				url.set_path("/ws");
+			}
+
 			RpcClient::connect(url.as_str()).await
 		}
 	}

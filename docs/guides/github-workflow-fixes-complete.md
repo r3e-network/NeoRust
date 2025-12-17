@@ -2,7 +2,7 @@
 
 ## 🎉 **STATUS: FULLY RESOLVED**
 
-All major GitHub workflow issues have been successfully resolved. This document captured the v0.4.1 state; the current SDK release is v0.5.3 (see main README).
+All major GitHub workflow issues have been successfully resolved. This document captured the v0.4.1 state; the current SDK release is v0.5.4 (see main README).
 
 ## ✅ **What We Fixed**
 
@@ -50,17 +50,16 @@ All major GitHub workflow issues have been successfully resolved. This document 
 ### Local CI Scripts
 We created comprehensive local CI scripts to catch issues before pushing:
 
-- **`scripts/ci-check.sh`**: Complete CI pipeline replication
-- **`scripts/ci-quick-fix.sh`**: Automatic issue fixing
-- **`scripts/ci-check.bat`**: Windows version
+- **`check-ci.sh`**: Quick pre-push checks (fmt/clippy + core tests)
+- **`run-ci-checks.sh`**: More thorough local CI runner
 
 ### Usage
 ```bash
 # Run complete CI check locally
-./scripts/ci-check.sh
+./check-ci.sh
 
-# Quick fix common issues
-./scripts/ci-quick-fix.sh
+# Run a more thorough CI check
+./run-ci-checks.sh
 ```
 
 ## 📊 **Current Status: PRODUCTION READY**

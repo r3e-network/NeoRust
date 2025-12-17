@@ -40,7 +40,7 @@ pub trait RetryPolicy<E>: Send + Sync + Debug {
 /// use url::Url;
 ///
 /// async fn demo() {
-///     let http = HttpProvider::new(Url::parse("http://localhost:8545").unwrap()).unwrap();
+///     let http = HttpProvider::new(Url::parse("http://localhost:10332").unwrap()).unwrap();
 ///     let client = RetryClientBuilder::default()
 ///         .rate_limit_retries(10)
 ///         .timeout_retries(3)
@@ -83,7 +83,7 @@ where
 	/// use url::Url;
 	///
 	/// async fn demo() {
-	///     let http = HttpProvider::new(Url::parse("http://localhost:8545").unwrap()).unwrap();
+	///     let http = HttpProvider::new(Url::parse("http://localhost:10332").unwrap()).unwrap();
 	///     let backoff_timeout = 3000; // in ms
 	///     let max_retries = 10;
 	///     let client = RetryClient::new(http, Box::new(HttpRateLimitRetryPolicy::default()), max_retries, backoff_timeout);
@@ -341,8 +341,8 @@ where
 /// Implements [RetryPolicy] that will retry requests that errored with
 /// status code 429 i.e. TOO_MANY_REQUESTS
 ///
-/// Infura often fails with a `"header not found"` rpc error which is apparently linked to load
-/// balancing, which are retried as well.
+/// Some upstream JSON-RPC gateways also return transient errors like `"header not found"` during
+/// load balancing; those are treated as retryable as well.
 #[derive(Debug, Default)]
 pub struct HttpRateLimitRetryPolicy;
 
@@ -350,25 +350,25 @@ impl RetryPolicy<ClientError> for HttpRateLimitRetryPolicy {
 	fn should_retry(&self, error: &ClientError) -> bool {
 		fn should_retry_json_rpc_error(err: &JsonRpcError) -> bool {
 			let JsonRpcError { code, message, .. } = err;
-			// alchemy throws it this way
+			// Some gateways surface rate limits as JSON-RPC code 429.
 			if *code == 429 {
 				return true;
 			}
 
-			// This is an infura error code for `exceeded project rate limit`
+			// Some gateways use -32005 for "exceeded project rate limit".
 			if *code == -32005 {
 				return true;
 			}
 
-			// alternative alchemy error for specific IPs
+			// Some gateways use -32016 + "rate limit" in the message (e.g., per-IP throttling).
 			if *code == -32016 && message.contains("rate limit") {
 				return true;
 			}
 
 			match message.as_str() {
-				// this is commonly thrown by infura and is apparently a load balancer issue, see also <https://github.com/MetaMask/metamask-extension/issues/7234>
+				// Transient gateway/load-balancer error observed in the wild.
 				"header not found" => true,
-				// also thrown by infura if out of budget for the day and ratelimited
+				// Daily quota/rate limit message observed in the wild.
 				"daily request count exceeded, request rate limited" => true,
 				_ => false,
 			}
@@ -397,10 +397,8 @@ impl RetryPolicy<ClientError> for HttpRateLimitRetryPolicy {
 		if let ClientError::JsonRpcError(JsonRpcError { data, .. }) = error {
 			let data = data.as_ref()?;
 
-			// if daily rate limit exceeded, infura returns the requested backoff in the error
-			// response
+			// Some gateways include a recommended backoff in the error payload.
 			let backoff_seconds = &data["rate"]["backoff_seconds"];
-			// infura rate limit error
 			if let Some(seconds) = backoff_seconds.as_u64() {
 				return Some(Duration::from_secs(seconds));
 			}
@@ -520,7 +518,7 @@ mod tests {
 
 	#[test]
 	fn can_extract_backoff() {
-		let resp = r#"{"rate": {"allowed_rps": 1, "backoff_seconds": 30, "current_rps": 1.1}, "see": "https://infura.io/dashboard"}"#;
+		let resp = r#"{"rate": {"allowed_rps": 1, "backoff_seconds": 30, "current_rps": 1.1}, "see": "https://example.com/dashboard"}"#;
 
 		let err = ClientError::JsonRpcError(JsonRpcError {
 			code: 0,

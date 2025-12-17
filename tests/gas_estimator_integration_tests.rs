@@ -1,21 +1,15 @@
 #[cfg(all(test, feature = "mock"))]
 mod gas_estimator_integration_tests {
 	use neo3::neo_builder::{AccountSigner, GasEstimator, ScriptBuilder, Signer, WitnessScope};
-	use neo3::neo_clients::{HttpProvider, MockClient, RpcClient};
+	use neo3::neo_clients::{MockClient, MockProvider, RpcClient};
 	use neo3::neo_protocol::{Account, AccountTrait};
 	use neo3::neo_types::{ContractParameter, OpCode, ScriptHash};
 	use num_bigint::BigInt;
 	use serde_json::json;
-	use std::env;
 	use std::str::FromStr;
 
-	// Helper function to create a test client (mock by default, live if env provided)
-	async fn create_test_client(mock_gas: i64) -> (Option<MockClient>, RpcClient<HttpProvider>) {
-		if let Ok(url) = env::var("NEO_LIVE_RPC_URL") {
-			let provider = HttpProvider::new(url.as_str()).expect("Failed to create provider");
-			return (None, RpcClient::new(provider));
-		}
-
+	// Helper function to create a deterministic in-memory test client.
+	async fn create_test_client(mock_gas: i64) -> RpcClient<MockProvider> {
 		let mut mock = MockClient::new().await;
 		let invoke_result = json!({
 			"script": "",
@@ -31,13 +25,12 @@ mod gas_estimator_integration_tests {
 		});
 		mock.mock_response_ignore_param("invokescript", invoke_result).await;
 		mock.mount_mocks().await;
-		let client = mock.into_client();
-		(Some(mock), client)
+		mock.into_client()
 	}
 
 	#[tokio::test]
 	async fn test_gas_estimation_for_simple_transfer() {
-		let (_mock, client) = create_test_client(750_000).await;
+		let client = create_test_client(750_000).await;
 
 		// Create a simple NEO transfer script
 		let neo_token = ScriptHash::from_str("ef4073a0f2b305a38ec4050e4d3d28bc40ea63f5")
@@ -90,7 +83,7 @@ mod gas_estimator_integration_tests {
 
 	#[tokio::test]
 	async fn test_gas_estimation_with_margin() {
-		let (_mock, client) = create_test_client(500_000).await;
+		let client = create_test_client(500_000).await;
 
 		// Create a simple script
 		let script = ScriptBuilder::new()
@@ -120,7 +113,7 @@ mod gas_estimator_integration_tests {
 
 	#[tokio::test]
 	async fn test_batch_gas_estimation() {
-		let (_mock, client) = create_test_client(250_000).await;
+		let client = create_test_client(250_000).await;
 
 		// Create multiple scripts
 		let scripts = [

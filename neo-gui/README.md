@@ -4,13 +4,17 @@ A modern React-based GUI frontend for the NeoRust blockchain toolkit, built with
 
 ## Features
 
-- 🚀 Built with React 18 and TypeScript
-- ⚡ Powered by Vite for fast development
-- 🎨 Styled with Tailwind CSS and Headless UI
-- 📱 Responsive design with modern UI components
-- 🔧 Tauri integration for desktop app functionality
-- 📊 Data visualization with Recharts
-- 🎭 Smooth animations with Framer Motion
+- 🚀 **Modern Tech Stack**: Built with React 18, TypeScript, and Vite for blazing fast performance.
+- 🎨 **Beautiful UI/UX**: Polished design with Tailwind CSS, featuring consistent "Neo Green" theming and "beautifully aligned" layouts.
+- ⚡ **Desktop Integration**: Powered by Tauri for native desktop app functionality with Rust backend integration.
+- 🔐 **Secure Wallet Management**:
+  - Create and import wallets (WIF/Hex support).
+  - Secure password handling and validation.
+  - Real-time balance and transaction history tracking.
+- 📊 **Rich Data Visualization**: Interactive charts for price history and portfolio distribution using Recharts.
+- 🎭 **Smooth Animations**: Enhanced user experience with fluid page transitions and component animations via Framer Motion.
+- 📱 **Responsive Design**: Fully responsive layouts adaptable to different screen sizes.
+- 🧩 **Modular Architecture**: Reusable component system with dedicated modals and optimized state management using Zustand.
 
 ## Prerequisites
 

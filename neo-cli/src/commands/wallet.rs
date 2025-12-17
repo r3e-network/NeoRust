@@ -12,76 +12,19 @@ use clap::{Args, Subcommand};
 use comfy_table::{Cell, Color};
 use hex;
 use neo3::{
-	neo_clients::{HttpProvider, RpcClient},
-	neo_protocol::Account,
-	neo_wallets::WalletTrait,
+	neo_clients::{APITrait, HttpProvider, RpcClient},
+	neo_protocol::{Account, AccountTrait},
+	neo_types::AddressExtension,
+	neo_wallets::{Wallet, WalletBackup, WalletTrait},
 	NeoVMStateType,
 };
-use std::{collections::HashMap, io::Write, path::PathBuf};
-
-// Create a wrapper for neo3's Wallet for CLI operations
-#[derive(Clone, serde::Serialize, serde::Deserialize)]
-pub struct Wallet {
-	pub extra: Option<HashMap<String, String>>,
-	pub accounts: Vec<Account>,
-	path: Option<PathBuf>,
-	password: Option<String>,
-}
-
-impl Wallet {
-	pub fn new() -> Self {
-		Self { extra: None, accounts: Vec::new(), path: None, password: None }
-	}
-
-	pub fn save_to_file(&self, path: PathBuf) -> Result<(), String> {
-		// Basic wallet serialization for testing
-		let json = serde_json::to_string_pretty(self).map_err(|e| e.to_string())?;
-		std::fs::write(&path, json).map_err(|e| e.to_string())?;
-		print_success("💾 Wallet saved successfully");
-		Ok(())
-	}
-
-	pub fn open_wallet(_path: &PathBuf, _password: &str) -> Result<Self, String> {
-		// Professional wallet loading with decryption and validation
-		print_success("🔓 Wallet opened successfully");
-		Ok(Self::new())
-	}
-
-	pub fn accounts(&self) -> &Vec<Account> {
-		&self.accounts
-	}
-
-	pub fn get_accounts(&self) -> &Vec<Account> {
-		&self.accounts
-	}
-
-	pub fn add_account(&mut self, account: Account) {
-		let address = account.get_address();
-		self.accounts.push(account);
-		print_success(&format!("➕ Account added: {}", address));
-	}
-
-	pub fn verify_password(&self, password: &str) -> bool {
-		self.password.as_ref().map_or(false, |p| p == password)
-	}
-
-	pub fn change_password(
-		&mut self,
-		old_password: &str,
-		new_password: &str,
-	) -> Result<(), String> {
-		if self.verify_password(old_password) {
-			self.password = Some(new_password.to_string());
-			print_success("🔐 Password changed successfully");
-			Ok(())
-		} else {
-			Err("Invalid password".to_string())
-		}
-	}
-}
+use std::path::PathBuf;
 
 pub struct CliState {
 	pub wallet: Option<Wallet>,
+	pub wallet_path: Option<PathBuf>,
+	// Cached password for the current CLI session only.
+	pub wallet_password: Option<String>,
 	pub rpc_client: Option<RpcClient<HttpProvider>>,
 	pub network_type: Option<String>,
 	pub current_network: Option<crate::commands::network::NetworkConfig>,
@@ -92,6 +35,8 @@ impl Default for CliState {
 	fn default() -> Self {
 		Self {
 			wallet: None,
+			wallet_path: None,
+			wallet_password: None,
 			rpc_client: None,
 			network_type: None,
 			current_network: None,
@@ -121,13 +66,15 @@ impl CliState {
 			.as_ref()
 			.ok_or_else(|| CliError::Wallet("No wallet open. Open a wallet first.".to_string()))?;
 
-		if wallet.accounts.is_empty() {
-			return Err(CliError::Wallet(
-				"Wallet has no accounts. Create an account first.".to_string(),
-			));
+		if let Some(default_account) = wallet.default_account() {
+			return Ok(default_account.clone());
 		}
 
-		Ok(wallet.accounts[0].clone())
+		wallet
+			.accounts()
+			.into_iter()
+			.next()
+			.ok_or_else(|| CliError::Wallet("Wallet has no accounts.".to_string()))
 	}
 }
 
@@ -432,15 +379,18 @@ async fn handle_create_wallet(
 
 	let wallet = with_loading("Creating wallet...", async {
 		let mut wallet = Wallet::new();
-		wallet.password = Some(password);
-		wallet.path = Some(wallet_path.clone());
+		wallet.name = wallet_name.clone();
+		wallet.encrypt_accounts(&password);
 		wallet
+			.save_to_file(wallet_path.clone())
+			.map_err(|e| CliError::Wallet(format!("Failed to save wallet: {e}")))?;
+		Ok::<Wallet, CliError>(wallet)
 	})
-	.await;
-
-	wallet.save_to_file(wallet_path.clone()).map_err(|e| CliError::Wallet(e))?;
+	.await?;
 
 	state.wallet = Some(wallet);
+	state.wallet_path = Some(wallet_path.clone());
+	state.wallet_password = Some(password);
 
 	let mut table = create_table();
 	table.add_row(vec![
@@ -479,16 +429,21 @@ async fn handle_open_wallet(
 		None => prompt_password("Enter wallet password").map_err(|e| CliError::Io(e))?,
 	};
 
-	let wallet = with_loading("Opening wallet...", async { Wallet::open_wallet(&path, &password) })
-		.await
-		.map_err(|e| CliError::Wallet(e))?;
+	let wallet = with_loading("Opening wallet...", async {
+		Wallet::open_wallet(path.as_path(), &password)
+			.map_err(|e| CliError::Wallet(format!("Failed to open wallet: {e}")))
+	})
+	.await?;
 
 	state.wallet = Some(wallet);
+	state.wallet_path = Some(path.clone());
+	state.wallet_password = Some(password);
 
 	display_key_value("Wallet Path", &path.display().to_string());
 	display_key_value("Status", "Opened Successfully");
 
 	if let Some(wallet) = &state.wallet {
+		display_key_value("Wallet Name", wallet.name());
 		display_key_value("Accounts", &wallet.accounts.len().to_string());
 	}
 
@@ -503,6 +458,8 @@ async fn handle_close_wallet(state: &mut CliState) -> Result<(), CliError> {
 	}
 
 	state.wallet = None;
+	state.wallet_path = None;
+	state.wallet_password = None;
 	print_success("🔒 Wallet closed successfully");
 	Ok(())
 }
@@ -527,15 +484,27 @@ async fn handle_list_addresses(state: &CliState) -> Result<(), CliError> {
 		Cell::new("#").fg(Color::Cyan),
 		Cell::new("Address").fg(Color::Cyan),
 		Cell::new("Label").fg(Color::Cyan),
+		Cell::new("Default").fg(Color::Cyan),
 		Cell::new("Status").fg(Color::Cyan),
 	]);
 
-	for (index, account) in wallet.accounts.iter().enumerate() {
+	let mut accounts: Vec<Account> = wallet.accounts();
+	accounts.sort_by_key(|a| a.get_address());
+
+	for (index, account) in accounts.iter().enumerate() {
+		let label = account.label.clone().unwrap_or_else(|| "-".to_string());
+		let default_mark = if account.is_default { "Yes" } else { "" };
+		let status = if account.encrypted_private_key().is_some() {
+			format!("{} Encrypted", status_indicator("success"))
+		} else {
+			format!("{} Unencrypted", status_indicator("warning"))
+		};
 		table.add_row(vec![
 			Cell::new((index + 1).to_string()).fg(Color::Yellow),
 			Cell::new(account.get_address()).fg(Color::Green),
-			Cell::new("Default").fg(Color::Blue), // Will be enhanced with actual labels
-			Cell::new(format!("{} Active", status_indicator("success"))).fg(Color::Green),
+			Cell::new(label).fg(Color::Blue),
+			Cell::new(default_mark).fg(Color::Cyan),
+			Cell::new(status).fg(Color::Green),
 		]);
 	}
 
@@ -558,8 +527,8 @@ async fn handle_wallet_info(state: &CliState) -> Result<(), CliError> {
 	table.add_row(vec![
 		Cell::new("File Path").fg(Color::Cyan),
 		Cell::new(
-			wallet
-				.path
+			state
+				.wallet_path
 				.as_ref()
 				.map(|p| p.display().to_string())
 				.unwrap_or_else(|| "Not saved".to_string()),
@@ -569,6 +538,14 @@ async fn handle_wallet_info(state: &CliState) -> Result<(), CliError> {
 	table.add_row(vec![
 		Cell::new("Total Accounts").fg(Color::Cyan),
 		Cell::new(wallet.accounts.len().to_string()).fg(Color::Green),
+	]);
+	table.add_row(vec![
+		Cell::new("Wallet Name").fg(Color::Cyan),
+		Cell::new(wallet.name()).fg(Color::Green),
+	]);
+	table.add_row(vec![
+		Cell::new("Version").fg(Color::Cyan),
+		Cell::new(wallet.version()).fg(Color::Green),
 	]);
 	table.add_row(vec![
 		Cell::new("Network").fg(Color::Cyan),
@@ -584,157 +561,517 @@ async fn handle_wallet_info(state: &CliState) -> Result<(), CliError> {
 	Ok(())
 }
 
-// Professional implementation functions with comprehensive error handling and user guidance
 async fn handle_create_address(
-	_count: u16,
-	_label: Option<String>,
-	_state: &mut CliState,
+	count: u16,
+	label: Option<String>,
+	state: &mut CliState,
 ) -> Result<(), CliError> {
-	Err(CliError::NotImplemented(
-		"Address creation requires comprehensive wallet integration. \
-		Professional implementation includes:\n\n\
-		1. Advanced HD key derivation from master seed\n\
-		2. Comprehensive account encryption and secure storage\n\
-		3. Professional address label management\n\
-		4. Secure wallet file serialization updates\n\
-		5. Advanced duplicate address prevention\n\n\
-		For address creation, use external wallet tools or create accounts programmatically."
-			.to_string(),
-	))
+	let wallet = state.wallet.as_mut().ok_or_else(|| {
+		CliError::WalletNotLoaded("No wallet open. Use 'wallet open' first.".into())
+	})?;
+	let wallet_path = state.wallet_path.clone().ok_or_else(|| {
+		CliError::Config("Wallet path unknown. Re-open the wallet with 'wallet open'.".into())
+	})?;
+
+	let password = match state.wallet_password.clone() {
+		Some(pwd) => pwd,
+		None => prompt_password("Enter wallet password")?,
+	};
+
+	print_section_header("Creating Address");
+
+	let mut created_addresses = Vec::new();
+	for _ in 0..count {
+		let (script_hash, address) = {
+			let account = wallet
+				.create_new_account()
+				.map_err(|e| CliError::WalletOperation(format!("Failed to create account: {e}")))?;
+			(account.get_script_hash(), account.get_address())
+		};
+
+		if let Some(label) = label.as_ref() {
+			if let Some(acc) = wallet.accounts.get_mut(&script_hash) {
+				acc.label = Some(label.clone());
+			}
+		}
+
+		created_addresses.push(address);
+	}
+
+	// Ensure all private keys are encrypted before saving.
+	wallet.encrypt_accounts(&password);
+	wallet
+		.save_to_file(wallet_path)
+		.map_err(|e| CliError::WalletOperation(format!("Failed to save wallet: {e}")))?;
+
+	state.wallet_password = Some(password);
+
+	let mut table = create_table();
+	table.set_header(vec![Cell::new("#").fg(Color::Cyan), Cell::new("Address").fg(Color::Cyan)]);
+	for (i, addr) in created_addresses.iter().enumerate() {
+		table.add_row(vec![Cell::new((i + 1).to_string()).fg(Color::Yellow), Cell::new(addr)]);
+	}
+	println!("{table}");
+
+	print_success(&format!("✅ Created {} address(es)", created_addresses.len()));
+	Ok(())
 }
 
 async fn handle_import_key(
-	_wif_or_file: String,
-	_label: Option<String>,
-	_state: &mut CliState,
+	wif_or_file: String,
+	label: Option<String>,
+	state: &mut CliState,
 ) -> Result<(), CliError> {
-	Err(CliError::NotImplemented(
-		"Private key import requires comprehensive security integration. \
-		Professional implementation includes:\n\n\
-		1. Advanced WIF format validation and decoding\n\
-		2. Professional private key to address conversion\n\
-		3. Comprehensive secure key storage and encryption\n\
-		4. Advanced duplicate account detection\n\
-		5. Professional file batch import support\n\n\
-		For key import, use external wallet tools or SDK functions directly."
-			.to_string(),
-	))
+	let wallet = state.wallet.as_mut().ok_or_else(|| {
+		CliError::WalletNotLoaded("No wallet open. Use 'wallet open' first.".into())
+	})?;
+	let wallet_path = state.wallet_path.clone().ok_or_else(|| {
+		CliError::Config("Wallet path unknown. Re-open the wallet with 'wallet open'.".into())
+	})?;
+
+	let password = match state.wallet_password.clone() {
+		Some(pwd) => pwd,
+		None => prompt_password("Enter wallet password")?,
+	};
+
+	print_section_header("Import Private Key");
+
+	let candidate_path = PathBuf::from(&wif_or_file);
+	let wifs: Vec<String> = if candidate_path.exists() {
+		let content = std::fs::read_to_string(&candidate_path)
+			.map_err(|e| CliError::FileSystem(format!("Failed to read file: {e}")))?;
+		content
+			.lines()
+			.map(|l| l.trim())
+			.filter(|l| !l.is_empty() && !l.starts_with('#'))
+			.map(|l| l.to_string())
+			.collect()
+	} else {
+		vec![wif_or_file]
+	};
+
+	if wifs.is_empty() {
+		return Err(CliError::InvalidInput("No WIF keys provided".to_string()));
+	}
+
+	let mut imported = Vec::new();
+	for wif in wifs {
+		let mut account =
+			Account::from_wif(&wif).map_err(|e| CliError::Wallet(format!("Invalid WIF: {e}")))?;
+		if let Some(label) = label.as_ref() {
+			account.label = Some(label.clone());
+		}
+
+		let script_hash = account.get_script_hash();
+		if wallet.accounts.contains_key(&script_hash) {
+			print_warning(&format!("Account already exists: {}", account.get_address()));
+			continue;
+		}
+
+		let address = account.get_address();
+		wallet.add_account(account);
+		imported.push(address);
+	}
+
+	if imported.is_empty() {
+		print_warning("No new accounts imported");
+		return Ok(());
+	}
+
+	// Encrypt imported private keys and persist the wallet.
+	wallet.encrypt_accounts(&password);
+	wallet
+		.save_to_file(wallet_path)
+		.map_err(|e| CliError::WalletOperation(format!("Failed to save wallet: {e}")))?;
+
+	state.wallet_password = Some(password);
+
+	let mut table = create_table();
+	table.set_header(vec![Cell::new("#").fg(Color::Cyan), Cell::new("Address").fg(Color::Cyan)]);
+	for (i, addr) in imported.iter().enumerate() {
+		table.add_row(vec![Cell::new((i + 1).to_string()).fg(Color::Yellow), Cell::new(addr)]);
+	}
+	println!("{table}");
+	print_success(&format!("✅ Imported {} account(s)", imported.len()));
+	Ok(())
 }
 
 async fn handle_export_key(
-	_path: Option<PathBuf>,
-	_address: Option<String>,
-	_format: String,
-	_state: &CliState,
+	path: Option<PathBuf>,
+	address: Option<String>,
+	format: String,
+	state: &CliState,
 ) -> Result<(), CliError> {
-	Err(CliError::NotImplemented(
-		"Private key export requires comprehensive security verification. \
-		Professional implementation includes:\n\n\
-		1. Advanced account password verification\n\
-		2. Professional WIF format encoding\n\
-		3. Comprehensive multiple export format support\n\
-		4. Secure file writing and permissions\n\
-		5. Advanced export confirmation and warnings\n\n\
-		For key export, use external wallet tools or SDK functions directly."
-			.to_string(),
-	))
+	let wallet = state.wallet.as_ref().ok_or_else(|| {
+		CliError::WalletNotLoaded("No wallet open. Use 'wallet open' first.".into())
+	})?;
+
+	let format = format.to_lowercase();
+	if !matches!(format.as_str(), "wif" | "json" | "csv") {
+		return Err(CliError::InvalidArgument(
+			"format".to_string(),
+			"Supported formats: wif, json, csv".to_string(),
+		));
+	}
+
+	let mut accounts: Vec<Account> = wallet.accounts();
+	if let Some(target) = address.as_deref() {
+		accounts.retain(|a| a.get_address() == target);
+		if accounts.is_empty() {
+			return Err(CliError::Wallet(format!("Account not found in wallet: {target}")));
+		}
+	}
+
+	if accounts.is_empty() {
+		return Err(CliError::Wallet("Wallet has no accounts.".to_string()));
+	}
+
+	print_warning("⚠️  Exporting private keys is sensitive and unsafe if mishandled.");
+	print_warning("   Do not share exported files. Store them securely and offline.");
+	if !prompt_yes_no("Proceed with exporting private keys?")? {
+		return Err(CliError::UserCancelled("Export cancelled by user".to_string()));
+	}
+
+	let password = match state.wallet_password.clone() {
+		Some(pwd) => pwd,
+		None => prompt_password("Enter wallet password")?,
+	};
+
+	let mut exported: Vec<(String, String)> = Vec::new();
+	for account in accounts {
+		let mut account_clone = account.clone();
+		if account_clone.key_pair().is_none() {
+			if account_clone.encrypted_private_key().is_none() {
+				print_warning(&format!(
+					"Skipping watch-only account (no private key): {}",
+					account_clone.get_address()
+				));
+				continue;
+			}
+			account_clone.decrypt_private_key(&password).map_err(|e| {
+				CliError::WalletOperation(format!(
+					"Failed to decrypt account {}: {e}",
+					account_clone.get_address()
+				))
+			})?;
+		}
+
+		let key_pair = account_clone
+			.key_pair()
+			.as_ref()
+			.ok_or_else(|| CliError::Wallet("No key pair available after decryption".to_string()))?
+			.clone();
+		let wif = key_pair.export_as_wif();
+		exported.push((account_clone.get_address(), wif));
+	}
+
+	if exported.is_empty() {
+		return Err(CliError::Wallet("No private keys available to export.".to_string()));
+	}
+
+	// Determine destination
+	let output = match format.as_str() {
+		"json" => serde_json::to_string_pretty(
+			&exported
+				.iter()
+				.map(|(address, wif)| serde_json::json!({ "address": address, "wif": wif }))
+				.collect::<Vec<_>>(),
+		)?,
+		"csv" => {
+			let mut out = String::from("address,wif\n");
+			for (address, wif) in &exported {
+				out.push_str(&format!("{address},{wif}\n"));
+			}
+			out
+		},
+		_ => {
+			// wif
+			let mut out = String::new();
+			for (address, wif) in &exported {
+				out.push_str(&format!("{address}\t{wif}\n"));
+			}
+			out
+		},
+	};
+
+	if let Some(path) = path {
+		use std::fs::OpenOptions;
+		use std::io::Write;
+
+		let mut file = OpenOptions::new()
+			.create(true)
+			.truncate(true)
+			.write(true)
+			.open(&path)
+			.map_err(|e| CliError::FileSystem(format!("Failed to create export file: {e}")))?;
+
+		file.write_all(output.as_bytes())
+			.map_err(|e| CliError::FileSystem(format!("Failed to write export file: {e}")))?;
+
+		#[cfg(unix)]
+		{
+			use std::os::unix::fs::PermissionsExt;
+			let perm = std::fs::Permissions::from_mode(0o600);
+			let _ = std::fs::set_permissions(&path, perm);
+		}
+
+		print_success(&format!("✅ Exported {} key(s) to {}", exported.len(), path.display()));
+		return Ok(());
+	}
+
+	// No file path provided: only allow printing when exporting a single account.
+	if exported.len() != 1 {
+		return Err(CliError::InvalidArgument(
+			"path".to_string(),
+			"Refusing to print multiple private keys to stdout. Use --path to export to a file."
+				.to_string(),
+		));
+	}
+
+	print_warning(
+		"⚠️  Printing private keys to the terminal can leak secrets via shell history/logs.",
+	);
+	if !prompt_yes_no("Print the private key to stdout?")? {
+		return Err(CliError::UserCancelled("Export cancelled by user".to_string()));
+	}
+
+	let (addr, wif) = &exported[0];
+	println!("Address: {addr}");
+	println!("WIF: {wif}");
+	Ok(())
 }
 
-async fn handle_show_gas(_address: Option<String>, _state: &CliState) -> Result<(), CliError> {
-	Err(CliError::NotImplemented(
-		"GAS claim information requires comprehensive blockchain integration. \
-		Professional implementation includes:\n\n\
-		1. Advanced NEO balance and staking verification\n\
-		2. Professional unclaimed GAS calculation\n\
-		3. Complete real-time blockchain queries\n\
-		4. Comprehensive historical claim tracking\n\
-		5. Advanced Gas price optimization\n\n\
-		For GAS information, use external wallet tools or blockchain explorers."
-			.to_string(),
-	))
+async fn handle_show_gas(address: Option<String>, state: &CliState) -> Result<(), CliError> {
+	let wallet = state.wallet.as_ref().ok_or_else(|| {
+		CliError::WalletNotLoaded("No wallet open. Use 'wallet open' first.".into())
+	})?;
+	let rpc_client = state.get_rpc_client()?;
+
+	print_section_header("Unclaimed GAS");
+
+	let mut accounts: Vec<Account> = wallet.accounts();
+	if let Some(addr) = address.as_deref() {
+		accounts.retain(|a| a.get_address() == addr);
+		if accounts.is_empty() {
+			return Err(CliError::Wallet(format!("Account not found in wallet: {addr}")));
+		}
+	}
+
+	let mut table = create_table();
+	table.set_header(vec![
+		Cell::new("Address").fg(Color::Cyan),
+		Cell::new("Unclaimed GAS").fg(Color::Cyan),
+	]);
+
+	for account in accounts {
+		let script_hash = account.get_script_hash();
+		let gas = rpc_client
+			.get_unclaimed_gas(script_hash)
+			.await
+			.map_err(|e| CliError::Network(format!("Failed to query unclaimed GAS: {e}")))?;
+
+		table.add_row(vec![Cell::new(account.get_address()), Cell::new(gas.unclaimed)]);
+	}
+
+	println!("{table}");
+	Ok(())
 }
 
-async fn handle_change_password(_state: &mut CliState) -> Result<(), CliError> {
-	Err(CliError::NotImplemented(
-		"Password change requires comprehensive security verification. \
-		Professional implementation includes:\n\n\
-		1. Advanced current password verification\n\
-		2. Professional new password strength validation\n\
-		3. Secure account re-encryption with new password\n\
-		4. Comprehensive secure wallet file updates\n\
-		5. Advanced backup verification before changes\n\n\
-		For password changes, recreate the wallet or use external tools."
-			.to_string(),
-	))
+async fn handle_change_password(state: &mut CliState) -> Result<(), CliError> {
+	let wallet = state.wallet.as_mut().ok_or_else(|| {
+		CliError::WalletNotLoaded("No wallet open. Use 'wallet open' first.".into())
+	})?;
+	let wallet_path = state.wallet_path.clone().ok_or_else(|| {
+		CliError::Config("Wallet path unknown. Re-open the wallet with 'wallet open'.".into())
+	})?;
+
+	print_section_header("Change Wallet Password");
+
+	let current_password = prompt_password("Enter current wallet password")?;
+	if !wallet.verify_password(&current_password) {
+		return Err(CliError::Authentication("Invalid current password".to_string()));
+	}
+
+	let new_password = prompt_password("Enter new wallet password")?;
+	let confirm_password = prompt_password("Confirm new wallet password")?;
+	if new_password != confirm_password {
+		return Err(CliError::Wallet("Passwords do not match".to_string()));
+	}
+
+	wallet
+		.change_password(&current_password, &new_password)
+		.map_err(|e| CliError::WalletOperation(format!("Failed to change password: {e}")))?;
+	wallet
+		.save_to_file(wallet_path)
+		.map_err(|e| CliError::WalletOperation(format!("Failed to save wallet: {e}")))?;
+
+	state.wallet_password = Some(new_password);
+	print_success("🔐 Password changed successfully");
+	Ok(())
 }
 
 async fn handle_transfer(
-	_asset: String,
-	_to: String,
-	_amount: String,
-	_from: Option<String>,
-	_fee: Option<String>,
-	_state: &mut CliState,
+	asset: String,
+	to: String,
+	amount: String,
+	from: Option<String>,
+	fee: Option<String>,
+	state: &mut CliState,
 ) -> Result<(), CliError> {
-	Err(CliError::NotImplemented(
-		"Asset transfer requires comprehensive transaction integration. \
-		Professional implementation includes:\n\n\
-		1. Advanced asset balance verification and validation\n\
-		2. Professional transaction construction and fee calculation\n\
-		3. Secure private key signing and witness generation\n\
-		4. Complete network broadcasting and confirmation tracking\n\
-		5. Comprehensive multi-asset and batch transfer support\n\n\
-		For transfers, use the 'neo-cli defi transfer' command or external wallets."
-			.to_string(),
-	))
+	if fee.is_some() {
+		return Err(CliError::NotImplemented(
+			"Custom fees are not supported by this command yet.".to_string(),
+		));
+	}
+
+	let original_default = state
+		.wallet
+		.as_ref()
+		.and_then(|w| w.default_account().map(|a| a.get_script_hash()));
+
+	if let Some(from_address) = from.as_deref() {
+		let from_hash = from_address.address_to_script_hash().map_err(|e| {
+			CliError::InvalidInput(format!("Invalid sender address '{from_address}': {e}"))
+		})?;
+
+		let wallet = state.wallet.as_mut().ok_or_else(|| {
+			CliError::WalletNotLoaded("No wallet open. Use 'wallet open' first.".into())
+		})?;
+		if !wallet.accounts.contains_key(&from_hash) {
+			return Err(CliError::Wallet(format!(
+				"Sender address not found in wallet: {from_address}"
+			)));
+		}
+
+		wallet.set_default_account(from_hash);
+	}
+
+	let result = crate::commands::defi::tokens::transfer_token(&asset, &to, &amount, state).await;
+
+	if let Some(hash) = original_default {
+		if let Some(wallet) = state.wallet.as_mut() {
+			wallet.set_default_account(hash);
+		}
+	}
+
+	result
 }
 
 async fn handle_balance(
-	_address: Option<String>,
-	_token: Option<String>,
-	_detailed: bool,
-	_state: &CliState,
+	address: Option<String>,
+	token: Option<String>,
+	detailed: bool,
+	state: &CliState,
 ) -> Result<(), CliError> {
-	Err(CliError::NotImplemented(
-		"Balance query requires comprehensive blockchain integration. \
-		Professional implementation includes:\n\n\
-		1. Advanced NEP-17 token balance enumeration\n\
-		2. Complete real-time blockchain state queries\n\
-		3. Professional multi-address aggregation\n\
-		4. Comprehensive token metadata and price information\n\
-		5. Advanced historical balance tracking\n\n\
-		For balance information, use the 'neo-cli defi balance' command or blockchain explorers."
-			.to_string(),
-	))
+	let rpc_client = state.get_rpc_client()?;
+
+	print_section_header("Wallet Balances");
+
+	let mut addresses: Vec<String> = if let Some(addr) = address {
+		vec![addr]
+	} else {
+		let wallet = state.wallet.as_ref().ok_or_else(|| {
+			CliError::WalletNotLoaded("No wallet open. Use 'wallet open' first.".into())
+		})?;
+		wallet.accounts().into_iter().map(|a| a.get_address()).collect()
+	};
+
+	if addresses.is_empty() {
+		return Err(CliError::Wallet("Wallet has no accounts.".to_string()));
+	}
+
+	addresses.sort();
+	addresses.dedup();
+
+	for address in addresses {
+		let script_hash = address
+			.address_to_script_hash()
+			.map_err(|e| CliError::InvalidInput(format!("Invalid address '{address}': {e}")))?;
+
+		let balances = rpc_client
+			.get_nep17_balances(script_hash)
+			.await
+			.map_err(|e| CliError::Network(format!("Failed to query balances: {e}")))?;
+
+		println!();
+		print_info(&format!("Address: {}", balances.address));
+
+		let token_filter = token.as_deref().map(|t| t.trim().to_string());
+		let token_filter_upper = token_filter.as_deref().map(|t| t.to_uppercase());
+		let token_filter_hex =
+			token_filter.as_deref().map(|t| t.trim_start_matches("0x").to_lowercase());
+
+		let mut table = create_table();
+		if detailed {
+			table.set_header(vec![
+				Cell::new("Symbol").fg(Color::Cyan),
+				Cell::new("Amount").fg(Color::Cyan),
+				Cell::new("Decimals").fg(Color::Cyan),
+				Cell::new("Asset Hash").fg(Color::Cyan),
+				Cell::new("Updated").fg(Color::Cyan),
+			]);
+		} else {
+			table.set_header(vec![
+				Cell::new("Symbol").fg(Color::Cyan),
+				Cell::new("Amount").fg(Color::Cyan),
+			]);
+		}
+
+		let mut rows = 0usize;
+		for bal in balances.balances {
+			let symbol = bal.symbol.clone().unwrap_or_else(|| "<unknown>".to_string());
+			let decimals_str = bal.decimals.clone().unwrap_or_else(|| "0".to_string());
+			let decimals = decimals_str.parse::<u8>().unwrap_or(0);
+			let amount =
+				neo3::sdk::DecimalAmount::from_raw(bal.amount.clone(), decimals).to_fixed_string();
+
+			if let Some(filter_upper) = token_filter_upper.as_deref() {
+				let asset_hex = format!("{:x}", bal.asset_hash);
+				let filter_hex = token_filter_hex.as_deref().unwrap_or("");
+				let matches = symbol.eq_ignore_ascii_case(filter_upper)
+					|| asset_hex.eq_ignore_ascii_case(filter_hex);
+				if !matches {
+					continue;
+				}
+			}
+
+			rows += 1;
+			if detailed {
+				table.add_row(vec![
+					Cell::new(symbol),
+					Cell::new(amount),
+					Cell::new(decimals_str),
+					Cell::new(format!("{:x}", bal.asset_hash)),
+					Cell::new(bal.last_updated_block.to_string()),
+				]);
+			} else {
+				table.add_row(vec![Cell::new(symbol), Cell::new(amount)]);
+			}
+		}
+
+		if rows == 0 {
+			print_warning("No balances found (or filtered out).");
+		} else {
+			println!("{table}");
+		}
+	}
+
+	Ok(())
 }
 
 async fn handle_backup_wallet(path: PathBuf, state: &CliState) -> Result<(), CliError> {
-	let cli_wallet = state.wallet.as_ref().ok_or_else(|| {
+	let wallet = state.wallet.as_ref().ok_or_else(|| {
 		CliError::WalletNotLoaded(
 			"No wallet is currently loaded. Use 'wallet open' first.".to_string(),
 		)
 	})?;
 
-	// Convert CLI wallet to main Wallet for backup
-	let mut main_wallet = neo3::neo_wallets::Wallet::default();
-	main_wallet.set_name("CLI Wallet".to_string());
-
-	// Add accounts to main wallet
-	for account in &cli_wallet.accounts {
-		main_wallet.add_account(account.clone());
-	}
-
-	// Encrypt accounts if they have private keys
-	if let Some(password) = &cli_wallet.password {
-		main_wallet.encrypt_accounts(password);
-	}
-
 	// Create backup using WalletBackup
-	match neo3::neo_wallets::WalletBackup::backup(&main_wallet, path.clone()) {
+	match WalletBackup::backup(wallet, path.clone()) {
 		Ok(_) => {
 			println!("✅ Wallet backup created successfully!");
 			println!("📁 Backup saved to: {}", path.display());
-			println!("🔐 Backup contains {} accounts", cli_wallet.accounts().len());
+			println!("🔐 Backup contains {} accounts", wallet.accounts.len());
 			println!("\n⚠️  Security reminders:");
 			println!("   • Store this backup in a secure location");
 			println!("   • Keep multiple copies in different locations");
@@ -761,10 +1098,11 @@ async fn handle_restore_wallet(path: PathBuf, state: &mut CliState) -> Result<()
 			"⚠️  Warning: A wallet is already loaded. Restoring will replace the current wallet."
 		);
 		print!("Continue? (y/N): ");
-		std::io::stdout().flush().map_err(|e| CliError::IoError(e))?;
+		use std::io::Write;
+		std::io::stdout().flush().map_err(CliError::IoError)?;
 
 		let mut input = String::new();
-		std::io::stdin().read_line(&mut input).map_err(|e| CliError::IoError(e))?;
+		std::io::stdin().read_line(&mut input).map_err(CliError::IoError)?;
 
 		if !input.trim().to_lowercase().starts_with('y') {
 			println!("Restore cancelled.");
@@ -772,46 +1110,29 @@ async fn handle_restore_wallet(path: PathBuf, state: &mut CliState) -> Result<()
 		}
 	}
 
-	// Restore wallet from backup
-	match neo3::neo_wallets::WalletBackup::recover(path.clone()) {
-		Ok(main_wallet) => {
-			println!("✅ Wallet restored successfully!");
-			println!("📁 Restored from: {}", path.display());
-			println!("🏷️  Wallet name: {}", main_wallet.name());
-			println!("🔐 Accounts restored: {}", main_wallet.accounts().len());
+	// Backups are valid NEP-6 wallets; restore by opening the backup file with a password.
+	let password = prompt_password("Enter wallet password")?;
+	let wallet = Wallet::open_wallet(path.as_path(), &password)
+		.map_err(|e| CliError::WalletOperation(format!("Failed to open backup wallet: {e}")))?;
 
-			// Convert main wallet to CLI wallet
-			let mut cli_wallet = Wallet::new();
-			cli_wallet.accounts = main_wallet.accounts();
+	println!("✅ Wallet restored successfully!");
+	println!("📁 Loaded from: {}", path.display());
+	println!("🏷️  Wallet name: {}", wallet.name());
+	println!("🔐 Accounts loaded: {}", wallet.accounts.len());
 
-			// Display account addresses
-			println!("\n📋 Restored accounts:");
-			for (i, account) in cli_wallet.accounts.iter().enumerate() {
-				println!("   {}. {}", i + 1, account.get_address());
-			}
-
-			// Set the restored wallet as current
-			state.wallet = Some(cli_wallet);
-
-			println!("\n⚠️  Security reminders:");
-			println!("   • Verify all account addresses are correct");
-			println!("   • Test with small amounts before large transactions");
-			println!("   • Keep your backup file secure");
-			println!("   • Consider creating a new backup after verification");
-
-			Ok(())
-		},
-		Err(e) => Err(CliError::WalletOperation(format!("Failed to restore wallet: {}", e))),
+	// Display account addresses
+	println!("\n📋 Accounts:");
+	let mut accounts: Vec<Account> = wallet.accounts();
+	accounts.sort_by_key(|a| a.get_address());
+	for (i, account) in accounts.iter().enumerate() {
+		println!("   {}. {}", i + 1, account.get_address());
 	}
-}
 
-// Helper functions
-pub fn get_wallet_path(wallet: &Wallet) -> PathBuf {
-	wallet.path.clone().unwrap_or_else(|| PathBuf::from("wallet.json"))
-}
+	state.wallet = Some(wallet);
+	state.wallet_path = Some(path);
+	state.wallet_password = Some(password);
 
-pub fn set_wallet_path(wallet: &mut Wallet, path: &PathBuf) {
-	wallet.path = Some(path.clone());
+	Ok(())
 }
 
 // HD Wallet implementation

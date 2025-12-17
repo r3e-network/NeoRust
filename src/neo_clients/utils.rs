@@ -1,5 +1,3 @@
-#[cfg(any(test, feature = "mock"))]
-use std::sync::Arc;
 use std::{future::Future, pin::Pin, str::FromStr, time::Duration};
 
 use crate::{
@@ -12,10 +10,6 @@ use crate::{
 use futures_timer::Delay;
 use futures_util::{stream, FutureExt, StreamExt};
 use primitive_types::{H160, U256};
-#[cfg(any(test, feature = "mock"))]
-use regex::Regex;
-#[cfg(any(test, feature = "mock"))]
-use wiremock::{Match, Request};
 
 /// A simple gas escalation policy
 pub type EscalationPolicy = Box<dyn Fn(U256, usize) -> U256 + Send + Sync>;
@@ -60,8 +54,7 @@ pub type ProviderResult<T> = Result<T, ProviderError>;
 
 /// Type alias for async provider results (pinned boxed future).
 #[cfg(not(target_arch = "wasm32"))]
-pub type AsyncProviderResult<'a, T> =
-	Pin<Box<dyn Future<Output = ProviderResult<T>> + Send + 'a>>;
+pub type AsyncProviderResult<'a, T> = Pin<Box<dyn Future<Output = ProviderResult<T>> + Send + 'a>>;
 
 #[cfg(target_arch = "wasm32")]
 pub type AsyncProviderResult<'a, T> = Pin<Box<dyn Future<Output = ProviderResult<T>> + 'a>>;
@@ -191,34 +184,4 @@ pub fn address_to_hex(address: &str) -> Result<String, ProviderError> {
 pub fn hex_to_address(hex: &str) -> Result<String, ProviderError> {
 	let script_hash = H160::from_str(hex).map_err(|_| ProviderError::InvalidAddress)?;
 	Ok(script_hash.to_address())
-}
-
-#[cfg(any(test, feature = "mock"))]
-pub struct BodyRegexMatcher {
-	pattern: Arc<Regex>,
-}
-
-#[cfg(any(test, feature = "mock"))]
-impl BodyRegexMatcher {
-	pub fn new(pattern: &str) -> Self {
-		let regex = Regex::new(pattern).unwrap_or_else(|e| {
-			tracing::warn!(
-				error = %e,
-				pattern,
-				"Invalid regex pattern; using match-nothing regex"
-			);
-			Regex::new("$^").expect("match-nothing regex should be valid")
-		});
-
-		BodyRegexMatcher { pattern: Arc::new(regex) }
-	}
-}
-
-#[cfg(any(test, feature = "mock"))]
-impl Match for BodyRegexMatcher {
-	fn matches(&self, request: &Request) -> bool {
-		std::str::from_utf8(&request.body)
-			.map(|body_str| self.pattern.is_match(body_str))
-			.unwrap_or(false)
-	}
 }

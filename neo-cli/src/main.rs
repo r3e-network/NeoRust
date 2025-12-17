@@ -14,7 +14,7 @@
 #![allow(clippy::ptr_arg)]
 #![allow(clippy::unnecessary_map_or)]
 #![allow(clippy::derivable_impls)]
-use clap::{Parser, Subcommand};
+use clap::{Parser, Subcommand, ValueEnum};
 use colored::*;
 use commands::{
 	contract::{handle_contract_command, ContractArgs},
@@ -27,6 +27,7 @@ use commands::{
 	wallet::{handle_wallet_command, CliState, WalletArgs},
 };
 use errors::CliError;
+use neo3::neo_clients::{HttpProvider, RpcClient};
 use std::path::PathBuf;
 
 // Import the utils_core module
@@ -42,7 +43,6 @@ pub use utils_core::{
 use utils::config::{get_config_path, save_config, Config};
 
 mod commands;
-mod config;
 mod errors;
 mod generator;
 mod monitoring;
@@ -74,9 +74,9 @@ pub struct Cli {
 	#[arg(short, long, help = "Enable verbose logging")]
 	verbose: bool,
 
-	/// Output format (json, yaml, table)
-	#[arg(long, default_value = "table", help = "Output format")]
-	format: String,
+	/// Output format for supported commands (table, json)
+	#[arg(long, value_enum, default_value_t = OutputFormat::Table, help = "Output format (table, json)")]
+	format: OutputFormat,
 
 	/// Network to use (mainnet, testnet, local)
 	#[arg(short, long, help = "Network to connect to")]
@@ -84,6 +84,12 @@ pub struct Cli {
 
 	#[command(subcommand)]
 	command: Commands,
+}
+
+#[derive(Copy, Clone, Debug, ValueEnum)]
+enum OutputFormat {
+	Table,
+	Json,
 }
 
 /// Available commands organized by functionality
@@ -161,8 +167,8 @@ enum Commands {
 		template: Option<String>,
 
 		/// Project name
-		#[arg(help = "Name of the new project")]
-		name: String,
+		#[arg(help = "Name of the new project", required_unless_present = "list")]
+		name: Option<String>,
 
 		/// Target directory (defaults to current directory)
 		#[arg(short = 'd', long, help = "Target directory for the project")]
@@ -234,36 +240,60 @@ async fn handle_init_command(
 }
 
 /// Handle version command with detailed information
-fn handle_version_command() -> Result<(), CliError> {
-	println!("{}", "Neo CLI".bright_green().bold());
-	println!("Version: {}", env!("CARGO_PKG_VERSION").bright_cyan());
-	println!("Build: {}", "production".bright_yellow());
-	println!("Built: {}", "2024-01-15");
-	println!("Rust: {}", "1.75.0");
-	println!("Target: {}", std::env::consts::ARCH);
-	println!();
-	println!("Neo N3 SDK: {}", "Production Ready".bright_green());
-	println!("License: {}", "MIT".bright_blue());
-	println!("Repository: {}", "https://github.com/R3E-Network/NeoRust".bright_blue());
+fn handle_version_command(format: OutputFormat) -> Result<(), CliError> {
+	match format {
+		OutputFormat::Json => {
+			let payload = serde_json::json!({
+				"name": "neo-cli",
+				"version": env!("CARGO_PKG_VERSION"),
+				"target_arch": std::env::consts::ARCH,
+				"target_os": std::env::consts::OS,
+			});
+			println!("{}", serde_json::to_string_pretty(&payload)?);
+		},
+		OutputFormat::Table => {
+			println!("{}", "Neo CLI".bright_green().bold());
+			println!("Version: {}", env!("CARGO_PKG_VERSION").bright_cyan());
+			println!("Target: {}-{}", std::env::consts::OS, std::env::consts::ARCH);
+			println!("License: {}", "MIT".bright_blue());
+			println!("Repository: {}", "https://github.com/R3E-Network/NeoRust".bright_blue());
+		},
+	}
 	Ok(())
 }
 
 /// Handle config command
-async fn handle_config_command(show_path: bool) -> Result<(), CliError> {
+async fn handle_config_command(
+	show_path: bool,
+	config_path: &PathBuf,
+	format: OutputFormat,
+) -> Result<(), CliError> {
 	if show_path {
-		let config_path = get_config_path()?;
 		println!("{}", config_path.display());
 		return Ok(());
 	}
 
-	let config_path = get_config_path()?;
 	print_info(&format!("📁 Configuration file: {}", config_path.display()));
 
 	if config_path.exists() {
 		let config_content = std::fs::read_to_string(&config_path).map_err(|e| CliError::Io(e))?;
-
-		println!("\n{}", "Current Configuration:".bright_green().bold());
-		println!("{config_content}");
+		match format {
+			OutputFormat::Json => {
+				let parsed: serde_json::Value =
+					serde_json::from_str(&config_content).map_err(|e| {
+						CliError::Config(format!(
+							"Failed to parse config file '{}': {}",
+							config_path.display(),
+							e
+						))
+					})?;
+				println!("{}", serde_json::to_string_pretty(&parsed)?);
+			},
+			OutputFormat::Table => {
+				println!("\n{}", "Current Configuration:".bright_green().bold());
+				println!("{config_content}");
+			},
+		}
 	} else {
 		print_warning("No configuration file found. Run 'neo-cli init' to create one.");
 	}
@@ -275,17 +305,42 @@ async fn handle_config_command(show_path: bool) -> Result<(), CliError> {
 async fn main() -> Result<(), CliError> {
 	// Parse command line arguments
 	let cli = Cli::parse();
+	let output_format = cli.format;
 
 	// Initialize logger based on verbosity
 	let log_level = if cli.verbose { "debug" } else { "info" };
 	env_logger::init_from_env(env_logger::Env::default().default_filter_or(log_level));
 
+	// Handle non-network commands early to avoid unnecessary side effects (like creating config dirs).
+	if matches!(&cli.command, Commands::Version) {
+		return handle_version_command(output_format);
+	}
+	if let Commands::Config { path: show_path } = &cli.command {
+		let config_path = cli.config.clone().unwrap_or(get_config_path()?);
+		return handle_config_command(*show_path, &config_path, output_format).await;
+	}
+
 	// Print banner for interactive commands
 	if !matches!(cli.command, Commands::Version | Commands::Config { .. }) {
 		println!("{}", "🔷 Neo CLI".bright_green().bold());
-		println!("{}", "Production-Ready Neo N3 Blockchain Interface".bright_blue());
+		println!("{}", "Neo N3 Blockchain Interface".bright_blue());
 		println!();
 	}
+
+	// Resolve config path (for init + network defaults).
+	let config_path = cli.config.clone().unwrap_or(get_config_path()?);
+	let loaded_config: Option<Config> = if config_path.exists() {
+		let config_content = std::fs::read_to_string(&config_path).map_err(CliError::Io)?;
+		Some(serde_json::from_str(&config_content).map_err(|e| {
+			CliError::Config(format!(
+				"Failed to parse config file '{}': {}",
+				config_path.display(),
+				e
+			))
+		})?)
+	} else {
+		None
+	};
 
 	// Initialize default networks
 	let default_networks = vec![
@@ -305,23 +360,113 @@ async fn main() -> Result<(), CliError> {
 		},
 	];
 
+	// If a config file is present, derive network settings from it.
+	let (networks, current_network) = if let Some(cfg) = &loaded_config {
+		let mut networks: Vec<NetworkConfig> = cfg
+			.networks
+			.iter()
+			.map(|n| {
+				let name_lower = n.name.to_lowercase();
+				let (network_type, chain_id) = if name_lower.contains("mainnet") {
+					("mainnet".to_string(), 860833102)
+				} else if name_lower.contains("testnet") {
+					("testnet".to_string(), 894710606)
+				} else {
+					("custom".to_string(), 0)
+				};
+
+				NetworkConfig {
+					name: n.name.clone(),
+					rpc_url: n.rpc_url.clone(),
+					network_type,
+					chain_id,
+					is_default: false,
+				}
+			})
+			.collect();
+
+		if networks.is_empty() {
+			(default_networks.clone(), Some(default_networks[1].clone()))
+		} else {
+			let default_key = cfg.default_network.to_lowercase();
+			let default_index = networks
+				.iter()
+				.position(|n| n.network_type == default_key || n.name.to_lowercase() == default_key)
+				.unwrap_or(0);
+			for (i, net) in networks.iter_mut().enumerate() {
+				net.is_default = i == default_index;
+			}
+			(networks.clone(), networks.get(default_index).cloned())
+		}
+	} else {
+		(default_networks.clone(), Some(default_networks[1].clone()))
+	};
+
 	// Initialize CLI state with all necessary fields
 	let mut state = CliState {
 		wallet: None,
+		wallet_path: None,
+		wallet_password: None,
 		rpc_client: None,
-		network_type: Some("testnet".to_string()),
-		current_network: Some(default_networks[1].clone()),
-		networks: default_networks,
+		network_type: current_network.as_ref().map(|n| n.network_type.clone()),
+		current_network,
+		networks,
 	};
 
-	// Set network if specified
-	if let Some(network) = cli.network {
-		state.network_type = Some(network);
+	// Resolve network selection (optional)
+	if let Some(network) = cli.network.as_deref() {
+		let network = network.to_lowercase();
+		let find_by_type = |t: &str| state.networks.iter().find(|n| n.network_type == t).cloned();
+		let resolved = match network.as_str() {
+			"mainnet" => find_by_type("mainnet").unwrap_or_else(|| default_networks[0].clone()),
+			"testnet" => find_by_type("testnet").unwrap_or_else(|| default_networks[1].clone()),
+			"local" => NetworkConfig {
+				name: "Local".to_string(),
+				rpc_url: "http://localhost:10332".to_string(),
+				network_type: "local".to_string(),
+				chain_id: 0,
+				is_default: false,
+			},
+			_ => {
+				if network.starts_with("http://") || network.starts_with("https://") {
+					NetworkConfig {
+						name: "Custom".to_string(),
+						rpc_url: cli.network.clone().unwrap(),
+						network_type: "custom".to_string(),
+						chain_id: 0,
+						is_default: false,
+					}
+				} else {
+					return Err(CliError::Config(format!(
+						"Unknown network '{}'. Use mainnet, testnet, local, or an http(s) RPC URL.",
+						cli.network.clone().unwrap()
+					)));
+				}
+			},
+		};
+
+		state.network_type = Some(resolved.network_type.clone());
+		state.current_network = Some(resolved);
+	}
+
+	// Initialize an RPC client for one-shot command invocations.
+	// The CLI is intentionally stateless between runs, so commands that need an RPC client
+	// should have one available by default (unless the command is purely local/config-only).
+	if !matches!(cli.command, Commands::Init { .. } | Commands::Version | Commands::Config { .. }) {
+		let network = state.current_network.as_ref().ok_or_else(|| {
+			CliError::Config("No network configured. Use --network or 'network add'.".to_string())
+		})?;
+		let provider = HttpProvider::new(network.rpc_url.as_str()).map_err(|e| {
+			CliError::Config(format!("Invalid RPC URL '{}': {}", network.rpc_url, e))
+		})?;
+		state.rpc_client = Some(RpcClient::new(provider));
 	}
 
 	// Handle commands
 	match cli.command {
-		Commands::Init { path, network, force } => handle_init_command(path, network, force).await,
+		Commands::Init { path, network, force } => {
+			handle_init_command(path.or(Some(config_path.clone())), network, force).await
+		},
 		Commands::Wallet(args) => handle_wallet_command(args, &mut state).await,
 		Commands::Contract(args) => handle_contract_command(args, &mut state).await,
 		Commands::Network(args) => handle_network_command(args, &mut state).await,
@@ -329,8 +474,10 @@ async fn main() -> Result<(), CliError> {
 		Commands::Nft(args) => handle_nft_command(args, &mut state).await,
 		Commands::NeoFS(args) => handle_neofs_command(args, &mut state).await,
 		Commands::Tools(args) => handle_tools_command(args, &mut state).await,
-		Commands::Version => handle_version_command(),
-		Commands::Config { path } => handle_config_command(path).await,
+		Commands::Version => handle_version_command(output_format),
+		Commands::Config { path: show_path } => {
+			handle_config_command(show_path, &config_path, output_format).await
+		},
 		Commands::Fs(args) => handle_fs_command(args, &mut state).await,
 		Commands::Wizard => wizard::run_wizard().await.map_err(|e| CliError::Other(e.to_string())),
 		Commands::Generate { template, name, dir, list } => {
@@ -338,6 +485,8 @@ async fn main() -> Result<(), CliError> {
 				generator::list_templates();
 				Ok(())
 			} else {
+				let name =
+					name.ok_or_else(|| CliError::Other("Missing project name".to_string()))?;
 				let template_type = match template.as_deref() {
 					Some("basic-dapp") | None => generator::ProjectTemplate::BasicDapp,
 					Some("nep17-token") => generator::ProjectTemplate::Nep17Token,

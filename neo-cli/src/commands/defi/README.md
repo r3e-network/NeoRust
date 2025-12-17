@@ -38,7 +38,7 @@ This module is in **early development**. Most contract interactions are currentl
 All DeFi commands use the following format:
 
 ```
-neo-cli defi [OPTIONS] <SUBCOMMAND>
+neo-cli de-fi [OPTIONS] <COMMAND>
 ```
 
 ### Options
@@ -51,9 +51,9 @@ neo-cli defi [OPTIONS] <SUBCOMMAND>
 Currently available commands (some with limited functionality):
 
 ```
-neo-cli defi token <CONTRACT>
-neo-cli defi balance <CONTRACT> [--address <ADDRESS>]
-neo-cli defi transfer <TOKEN> <TO> <AMOUNT> [--data <DATA>]
+neo-cli de-fi token <CONTRACT>
+neo-cli de-fi balance <CONTRACT> <ADDRESS>
+neo-cli de-fi transfer <TOKEN> <TO> <AMOUNT> [DATA]
 ```
 
 ## Development Roadmap

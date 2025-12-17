@@ -160,10 +160,10 @@ async fn deploy_contract(
 	// Find account in wallet
 	let account_obj = wallet
 		.get_accounts()
-		.iter()
+		.into_iter()
 		.find(|a| a.get_address() == account_address)
-		.ok_or_else(|| CliError::Wallet(format!("Account not found: {}", account_address)))?
-		.clone();
+		.cloned()
+		.ok_or_else(|| CliError::Wallet(format!("Account not found: {}", account_address)))?;
 
 	// Get password for signing
 	let password = prompt_password("Enter wallet password")?;
@@ -357,10 +357,10 @@ async fn update_contract(
 	// Find account in wallet
 	let account_obj = wallet
 		.get_accounts()
-		.iter()
+		.into_iter()
 		.find(|a| a.get_address() == account_address)
-		.ok_or_else(|| CliError::Wallet(format!("Account not found: {}", account_address)))?
-		.clone();
+		.cloned()
+		.ok_or_else(|| CliError::Wallet(format!("Account not found: {}", account_address)))?;
 
 	// Get password for signing
 	let password = prompt_password("Enter wallet password")?;
@@ -575,10 +575,10 @@ async fn invoke_contract(
 		// Find account in wallet
 		let account_obj = wallet
 			.get_accounts()
-			.iter()
+			.into_iter()
 			.find(|a| a.get_address() == account_address)
-			.ok_or_else(|| CliError::Wallet(format!("Account not found: {}", account_address)))?
-			.clone();
+			.cloned()
+			.ok_or_else(|| CliError::Wallet(format!("Account not found: {}", account_address)))?;
 
 		// Get password for signing
 		let password = prompt_password("Enter wallet password")?;

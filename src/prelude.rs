@@ -1,4 +1,4 @@
-/// # Neo SDK Prelude (v0.1.8)
+/// # Neo SDK Prelude
 ///
 /// Convenient imports for commonly used types and traits to make working with Neo more ergonomic.
 ///
@@ -27,6 +27,9 @@
 /// For more targeted imports, you can import specific modules directly.
 // Core error type (legacy alias)
 pub use crate::neo_error::NeoError;
+
+// SDK version
+pub use crate::VERSION;
 
 // === Core Types ===
 // Basic blockchain types

@@ -419,7 +419,6 @@ pre_deploy = "audit-contract.js"
 [api]
 # External API keys
 coingecko_key = "your_api_key"
-infura_key = "your_infura_key"
 
 # API rate limiting
 rate_limit = 60  # requests per minute

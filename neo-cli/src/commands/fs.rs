@@ -726,7 +726,7 @@ async fn handle_container_command(
 			if accounts.is_empty() {
 				return Err(CliError::Wallet("No accounts in wallet".to_string()));
 			}
-			let account = &accounts[0];
+			let account = (*accounts[0]).clone();
 
 			// Create NeoFS client configuration
 			let config = NeoFSConfig {
@@ -814,7 +814,7 @@ async fn handle_container_command(
 			if accounts.is_empty() {
 				return Err(CliError::Wallet("No accounts in wallet".to_string()));
 			}
-			let account = &accounts[0];
+			let account = (*accounts[0]).clone();
 
 			// Create NeoFS client
 			let config = NeoFSConfig {
@@ -859,7 +859,7 @@ async fn handle_container_command(
 			if accounts.is_empty() {
 				return Err(CliError::Wallet("No accounts in wallet".to_string()));
 			}
-			let account = &accounts[0];
+			let account = (*accounts[0]).clone();
 
 			// Create NeoFS client
 			let config = NeoFSConfig {

@@ -4,7 +4,8 @@ pub use http_provider::{ClientError, HttpProvider};
 pub use ipc::{Ipc, IpcError};
 #[cfg(feature = "legacy-ws")]
 pub use legacy_ws::{ClientError as WsClientError, Ws};
-// pub use mock::{MockError, MockProvider, MockResponse};
+#[cfg(any(test, feature = "mock"))]
+pub use mock::{MockProvider, MockResponse};
 pub use retry::*;
 pub use rw::{RwClient, RwClientError};
 #[cfg(all(feature = "ws", not(feature = "legacy-ws")))]
@@ -22,7 +23,8 @@ mod common;
 /// archival websocket
 #[cfg(feature = "legacy-ws")]
 pub mod legacy_ws;
-// mod mock;
+#[cfg(any(test, feature = "mock"))]
+mod mock;
 mod retry;
 mod rw;
 #[cfg(all(feature = "ws", not(feature = "legacy-ws")))]

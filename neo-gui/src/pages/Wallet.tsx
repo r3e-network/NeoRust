@@ -12,6 +12,8 @@ import {
 } from '@heroicons/react/24/outline';
 import { useAppStore } from '../stores/appStore';
 import { invoke } from '@tauri-apps/api/core';
+import CreateWalletModal from '../components/modals/CreateWalletModal';
+import ImportWalletModal from '../components/modals/ImportWalletModal';
 
 interface Transaction {
   id: string;
@@ -27,7 +29,7 @@ interface Transaction {
 export default function Wallet() {
   const { currentWallet, wallets, addWallet, addNotification } = useAppStore();
   const [showCreateModal, setShowCreateModal] = useState(false);
-  // const [showImportModal, setShowImportModal] = useState(false);
+  const [showImportModal, setShowImportModal] = useState(false);
   // const [showSendModal, setShowSendModal] = useState(false);
   const [balanceVisible, setBalanceVisible] = useState(true);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
@@ -104,6 +106,61 @@ export default function Wallet() {
         message:
           error instanceof Error ? error.message : 'Failed to create wallet',
       });
+      throw error; // Re-throw for modal to handle if needed
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleImportWallet = async (privateKey: string, name: string, password: string) => {
+    setLoading(true);
+    try {
+        // In a real implementation, this would invoke an 'import_wallet' command
+        // For now, we simulate it by creating a wallet and then importing the key
+        const result = (await invoke('create_wallet', {
+          request: { name, password },
+        })) as any;
+  
+        if (result.success && result.data) {
+          const walletData = result.data;
+          
+          // Simulate importing key by creating a new address or "importing" it
+          // In a real app, this would use the private key to derive the address
+          await invoke('import_private_key', {
+             request: {
+                 wallet_id: walletData.id,
+                 private_key: privateKey,
+                 label: 'Imported Account'
+             }
+          });
+
+          addWallet({
+            id: walletData.id,
+            name: walletData.name,
+            address: 'NX8GreRFGFK5wpGMWetpX93HmtrezImported', // Mock imported address
+            balance: { neo: '0', gas: '0', tokens: {} },
+            isDefault: wallets.length === 0,
+          });
+  
+          addNotification({
+            type: 'success',
+            title: 'Wallet Imported',
+            message: `Wallet "${name}" imported successfully`,
+          });
+  
+          setShowImportModal(false);
+        } else {
+          throw new Error(result.error || 'Failed to import wallet');
+        }
+    } catch (error) {
+       console.error('Failed to import wallet:', error);
+       addNotification({
+         type: 'error',
+         title: 'Error',
+         message:
+           error instanceof Error ? error.message : 'Failed to import wallet',
+       });
+       throw error;
     } finally {
       setLoading(false);
     }
@@ -155,15 +212,25 @@ export default function Wallet() {
               Create Wallet
             </button>
             <button
-              onClick={() => {
-                /* setShowImportModal(true) */
-              }}
+              onClick={() => setShowImportModal(true)}
               className='inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50'
             >
               Import Wallet
             </button>
           </div>
         </div>
+        <CreateWalletModal
+          isOpen={showCreateModal}
+          onClose={() => setShowCreateModal(false)}
+          onSubmit={handleCreateWallet}
+          loading={loading}
+        />
+        <ImportWalletModal
+          isOpen={showImportModal}
+          onClose={() => setShowImportModal(false)}
+          onSubmit={handleImportWallet}
+          loading={loading}
+        />
       </div>
     );
   }
@@ -404,116 +471,19 @@ export default function Wallet() {
         )}
       </motion.div>
 
-      {/* Modals would be implemented here */}
-      {showCreateModal && (
-        <CreateWalletModal
-          onClose={() => setShowCreateModal(false)}
-          onSubmit={handleCreateWallet}
-          loading={loading}
-        />
-      )}
-    </div>
-  );
-}
-
-// Modal components would be implemented separately
-function CreateWalletModal({
-  onClose,
-  onSubmit,
-  loading,
-}: {
-  onClose: () => void;
-  onSubmit: (name: string, password: string) => void;
-  loading: boolean;
-}) {
-  const [name, setName] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (password !== confirmPassword) {
-      globalThis.alert('Passwords do not match');
-      return;
-    }
-    onSubmit(name, password);
-  };
-
-  return (
-    <div className='fixed inset-0 z-50 overflow-y-auto'>
-      <div className='flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0'>
-        <div className='fixed inset-0 transition-opacity' onClick={onClose}>
-          <div className='absolute inset-0 bg-gray-500 opacity-75'></div>
-        </div>
-
-        <div className='inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full'>
-          <form onSubmit={handleSubmit}>
-            <div className='bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4'>
-              <h3 className='text-lg font-medium text-gray-900 mb-4'>
-                Create New Wallet
-              </h3>
-
-              <div className='space-y-4'>
-                <div>
-                  <label className='block text-sm font-medium text-gray-700'>
-                    Wallet Name
-                  </label>
-                  <input
-                    type='text'
-                    value={name}
-                    onChange={e => setName(e.target.value)}
-                    className='mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-green-500 focus:border-green-500'
-                    required
-                  />
-                </div>
-
-                <div>
-                  <label className='block text-sm font-medium text-gray-700'>
-                    Password
-                  </label>
-                  <input
-                    type='password'
-                    value={password}
-                    onChange={e => setPassword(e.target.value)}
-                    className='mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-green-500 focus:border-green-500'
-                    required
-                  />
-                </div>
-
-                <div>
-                  <label className='block text-sm font-medium text-gray-700'>
-                    Confirm Password
-                  </label>
-                  <input
-                    type='password'
-                    value={confirmPassword}
-                    onChange={e => setConfirmPassword(e.target.value)}
-                    className='mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-green-500 focus:border-green-500'
-                    required
-                  />
-                </div>
-              </div>
-            </div>
-
-            <div className='bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse'>
-              <button
-                type='submit'
-                disabled={loading}
-                className='w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-green-600 text-base font-medium text-white hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 sm:ml-3 sm:w-auto sm:text-sm disabled:opacity-50'
-              >
-                {loading ? 'Creating...' : 'Create Wallet'}
-              </button>
-              <button
-                type='button'
-                onClick={onClose}
-                className='mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm'
-              >
-                Cancel
-              </button>
-            </div>
-          </form>
-        </div>
-      </div>
+      {/* Modals */}
+      <CreateWalletModal
+        isOpen={showCreateModal}
+        onClose={() => setShowCreateModal(false)}
+        onSubmit={handleCreateWallet}
+        loading={loading}
+      />
+      <ImportWalletModal
+        isOpen={showImportModal}
+        onClose={() => setShowImportModal(false)}
+        onSubmit={handleImportWallet}
+        loading={loading}
+      />
     </div>
   );
 }

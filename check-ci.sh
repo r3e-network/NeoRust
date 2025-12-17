@@ -22,19 +22,8 @@ ALL_PASSED=true
 
 # 1. Format check
 echo "1. Checking code formatting..."
-echo "Note: Temporarily excluding neo-gui to avoid GUI dependencies"
-
-# Backup and clean workspace
-cp Cargo.toml Cargo.toml.fmt-backup
-sed -i.bak 's/"neo-gui",//g; s/, "neo-gui"//g; s/"neo-gui"//g' Cargo.toml 2>/dev/null || true
-rm -rf neo-gui 2>/dev/null || true
-
 cargo fmt --all -- --check 2>&1
 FORMAT_RESULT=$?
-
-# Restore workspace  
-mv Cargo.toml.fmt-backup Cargo.toml 2>/dev/null || true
-git checkout -- neo-gui 2>/dev/null || true
 
 check_result $FORMAT_RESULT "Format check" || ALL_PASSED=false
 
@@ -42,19 +31,8 @@ echo ""
 
 # 2. Clippy
 echo "2. Running Clippy linter..."
-echo "Note: Temporarily excluding neo-gui to avoid GUI dependencies"
-
-# Backup and clean workspace
-cp Cargo.toml Cargo.toml.clippy-backup
-sed -i.bak 's/"neo-gui",//g; s/, "neo-gui"//g; s/"neo-gui"//g' Cargo.toml 2>/dev/null || true
-rm -rf neo-gui 2>/dev/null || true
-
 cargo clippy --workspace --all-targets --all-features -- -D warnings 2>&1
 CLIPPY_RESULT=$?
-
-# Restore workspace  
-mv Cargo.toml.clippy-backup Cargo.toml 2>/dev/null || true
-git checkout -- neo-gui 2>/dev/null || true
 
 check_result $CLIPPY_RESULT "Clippy" || ALL_PASSED=false
 
@@ -62,7 +40,15 @@ echo ""
 
 # 3. Basic test
 echo "3. Running basic tests..."
-echo "Note: Skipping neo-gui to avoid GUI dependencies"
+
+# Focus on the core library + CLI. Full workspace tests can be run separately.
+NEORUST_SKIP_NETWORK_TESTS=1 cargo test -p neo3 --all-features 2>&1
+NEO3_TEST_RESULT=$?
+check_result $NEO3_TEST_RESULT "neo3 tests" || ALL_PASSED=false
+
+cargo test -p neo-cli 2>&1
+NEOCLI_TEST_RESULT=$?
+check_result $NEOCLI_TEST_RESULT "neo-cli tests" || ALL_PASSED=false
 
 # Summary
 echo ""

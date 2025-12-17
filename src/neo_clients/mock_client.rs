@@ -1,19 +1,14 @@
 use crate::{
 	crypto::{KeyPair, Secp256r1PrivateKey},
-	neo_clients::{HttpProvider, RpcClient},
+	neo_clients::{MockProvider, RpcClient},
 	neo_config::TestConstants,
 	neo_protocol::{Account, AccountTrait, ApplicationLog, NeoVersion, RawTransaction},
+	prelude::{ContractParameter, InvocationResult},
 };
 use lazy_static::lazy_static;
-use neo3::prelude::*;
 use primitive_types::H160;
-use serde_json::json;
+use serde_json::{json, Value};
 use std::{path::PathBuf, str::FromStr};
-use url::Url;
-use wiremock::{
-	matchers::{body_json, body_partial_json, method, path},
-	Mock, MockServer, ResponseTemplate,
-};
 
 lazy_static! {
 	pub static ref ACCOUNT1: Account = Account::from_key_pair(
@@ -43,14 +38,12 @@ lazy_static! {
 }
 
 pub struct MockClient {
-	server: MockServer,
-	mocks: Vec<Mock>,
+	provider: MockProvider,
 }
 
 impl MockClient {
 	pub async fn new() -> Self {
-		let server = MockServer::start().await;
-		Self { server, mocks: Vec::new() }
+		Self { provider: MockProvider::new() }
 	}
 
 	pub async fn mock_response(
@@ -59,31 +52,17 @@ impl MockClient {
 		params: serde_json::Value,
 		result: serde_json::Value,
 	) {
-		let mock = Mock::given(method("POST"))
-			.and(path("/"))
-			.and(body_json(json!({
-				"jsonrpc": "2.0",
-				"method": method_name,
-				"params": params,
-				"id": 1
-			})))
-			.respond_with(ResponseTemplate::new(200).set_body_json(json!({
-				"jsonrpc": "2.0",
-				"id": 1,
-				"result": result
-			})));
-		self.mocks.push(mock);
+		self.provider.push_result_with_params(method_name.to_string(), params, result);
 	}
 
 	pub async fn mock_response_error(&mut self, error: serde_json::Value) {
-		let mock = Mock::given(method("POST")).and(path("/")).respond_with(
-			ResponseTemplate::new(200).set_body_json(json!({
-				"jsonrpc": "2.0",
-				"id": 1,
-				"error": error
-			})),
-		);
-		self.mocks.push(mock);
+		let json_error: crate::neo_clients::JsonRpcError =
+			serde_json::from_value(error).unwrap_or(crate::neo_clients::JsonRpcError {
+				code: -32000,
+				message: "mock error".to_string(),
+				data: None,
+			});
+		self.provider.push_error_any(json_error);
 	}
 
 	pub async fn mock_response_ignore_param(
@@ -91,18 +70,7 @@ impl MockClient {
 		method_name: &str,
 		result: serde_json::Value,
 	) -> &mut Self {
-		let mock = Mock::given(method("POST"))
-			.and(path("/"))
-			.and(body_partial_json(json!({
-				"jsonrpc": "2.0",
-				"method": method_name,
-			})))
-			.respond_with(ResponseTemplate::new(200).set_body_json(json!({
-				"jsonrpc": "2.0",
-				"id": 1,
-				"result": result
-			})));
-		self.mocks.push(mock);
+		self.provider.push_result(method_name.to_string(), result);
 		self
 	}
 
@@ -112,26 +80,19 @@ impl MockClient {
 		response_file: &str,
 		params: serde_json::Value,
 	) -> &mut Self {
-		// Construct the path to the response file relative to the project root
-		let mut response_file_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-		response_file_path.push("test_resources");
-		response_file_path.push("responses");
-		response_file_path.push(response_file);
-
-		// Load the response body from the specified file
-		let response_body = tokio::fs::read_to_string(response_file_path)
-			.await
-			.expect("Failed to read response file");
-
-		let mock = Mock::given(method("POST"))
-			.and(path("/"))
-			.and(body_partial_json(json!({
-				"jsonrpc": "2.0",
-				"method": method_name,
-				"params": params,
-			})))
-			.respond_with(ResponseTemplate::new(200).set_body_string(response_body));
-		self.mocks.push(mock);
+		let response = load_jsonrpc_response(response_file).await;
+		match response {
+			JsonRpcFixture::Result(value) => {
+				self.provider.push_result_with_partial_params(
+					method_name.to_string(),
+					params,
+					value,
+				);
+			},
+			JsonRpcFixture::Error(error) => {
+				self.provider.push_error(method_name.to_string(), error);
+			},
+		}
 		self
 	}
 
@@ -140,29 +101,15 @@ impl MockClient {
 		method_name: &str,
 		response_file: &str,
 	) -> &mut Self {
-		// Construct the path to the response file relative to the project root
-		let mut response_file_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-		response_file_path.push("test_resources");
-		response_file_path.push("responses");
-		response_file_path.push(response_file);
-
-		// Load the response body from the specified file
-		let response_body = tokio::fs::read_to_string(response_file_path)
-			.await
-			.expect("Failed to read response file");
-		// // Load the response body from the specified file
-		// let response_body = tokio::fs::read_to_string(format!("/responses/{}", response_file))
-		// .await
-		// .expect("Failed to read response file");
-
-		let mock = Mock::given(method("POST"))
-			.and(path("/"))
-			.and(body_partial_json(json!({
-				"jsonrpc": "2.0",
-				"method": method_name,
-			})))
-			.respond_with(ResponseTemplate::new(200).set_body_string(response_body));
-		self.mocks.push(mock);
+		let response = load_jsonrpc_response(response_file).await;
+		match response {
+			JsonRpcFixture::Result(value) => {
+				self.provider.push_result(method_name.to_string(), value);
+			},
+			JsonRpcFixture::Error(error) => {
+				self.provider.push_error(method_name.to_string(), error);
+			},
+		}
 		self
 	}
 
@@ -172,36 +119,30 @@ impl MockClient {
 		account_script_hash: &str,
 		response_file: &str,
 	) -> &mut Self {
-		// Construct the path to the response file relative to the project root
-		let mut response_file_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-		response_file_path.push("test_resources");
-		response_file_path.push("responses");
-		response_file_path.push(response_file);
+		let response = load_jsonrpc_response(response_file).await;
+		let expected_params = json!([
+			contract_hash,
+			"balanceOf",
+			[
+				{
+					"type": "Hash160",
+					"value": account_script_hash,
+				}
+			]
+		]);
 
-		// Load the response body from the specified file
-		let response_body = tokio::fs::read_to_string(response_file_path)
-			.await
-			.expect("Failed to read response file");
-
-		let mock = Mock::given(method("POST"))
-			.and(path("/"))
-			.and(body_partial_json(json!({
-				"jsonrpc": "2.0",
-				"method": "invokefunction",
-				"params": [
-					contract_hash,
-					"balanceOf",
-					[
-						{
-							"type": "Hash160",
-							"value": account_script_hash,
-						}
-					]
-				],
-			})))
-			.respond_with(ResponseTemplate::new(200).set_body_string(response_body));
-
-		self.mocks.push(mock);
+		match response {
+			JsonRpcFixture::Result(value) => {
+				self.provider.push_result_with_partial_params(
+					"invokefunction".to_string(),
+					expected_params,
+					value,
+				);
+			},
+			JsonRpcFixture::Error(error) => {
+				self.provider.push_error("invokefunction".to_string(), error);
+			},
+		}
 		self
 	}
 
@@ -235,11 +176,12 @@ impl MockClient {
 			"calculatenetworkfee.json",
 		)
 		.await;
+		self.mock_response_ignore_param("getversion", json!({})).await;
 		self
 	}
 
 	pub async fn mock_invoke_script(&mut self, result: InvocationResult) -> &mut Self {
-		self.mock_response_ignore_param("invokescript", json!(Ok::<InvocationResult, ()>(result)))
+		self.mock_response_ignore_param("invokescript", serde_json::to_value(result).unwrap())
 			.await;
 		self
 	}
@@ -251,29 +193,11 @@ impl MockClient {
 	// }
 
 	pub async fn mock_get_block_count(&mut self, block_count: u32) -> &mut Self {
-		// Construct the path to the response file relative to the project root
-		let mut response_file_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-		response_file_path.push("test_resources");
-		response_file_path.push("responses");
-		response_file_path.push(format!("getblockcount_{}.json", block_count));
-
-		// Load the response body from the specified file
-		let response_body = tokio::fs::read_to_string(response_file_path)
-			.await
-			.expect("Failed to read response file");
-		// // Load the response body from the specified file
-		// let response_body = tokio::fs::read_to_string(format!("/responses/{}", response_file))
-		// .await
-		// .expect("Failed to read response file");
-
-		let mock = Mock::given(method("POST"))
-			.and(path("/"))
-			.and(body_partial_json(json!({
-				"jsonrpc": "2.0",
-				"method": "getblockcount",
-			})))
-			.respond_with(ResponseTemplate::new(200).set_body_string(response_body));
-		self.mocks.push(mock);
+		let response = load_jsonrpc_response(&format!("getblockcount_{}.json", block_count)).await;
+		match response {
+			JsonRpcFixture::Result(value) => self.provider.push_result("getblockcount", value),
+			JsonRpcFixture::Error(error) => self.provider.push_error("getblockcount", error),
+		}
 		self
 	}
 
@@ -290,42 +214,64 @@ impl MockClient {
 	}
 
 	pub async fn mock_get_version(&mut self, result: NeoVersion) -> &mut Self {
-		self.mock_response_ignore_param("getversion", json!(Ok::<NeoVersion, ()>(result)))
+		self.mock_response_ignore_param("getversion", serde_json::to_value(result).unwrap())
 			.await;
 		self
 	}
 
 	pub async fn mock_invoke_function(&mut self, result: InvocationResult) -> &mut Self {
-		self.mock_response_ignore_param(
-			"invokefunction",
-			json!(Ok::<InvocationResult, ()>(result)),
-		)
-		.await;
+		self.mock_response_ignore_param("invokefunction", serde_json::to_value(result).unwrap())
+			.await;
 		self
 	}
 
 	pub async fn mock_get_application_log(&mut self, result: Option<ApplicationLog>) -> &mut Self {
-		self.mock_response_ignore_param("getapplicationlog", json!(result)).await;
+		self.mock_response_ignore_param("getapplicationlog", serde_json::to_value(result).unwrap())
+			.await;
 		self
 	}
 
 	pub async fn mount_mocks(&mut self) -> &mut Self {
-		for mock in self.mocks.drain(..) {
-			mock.mount(&self.server).await;
-		}
+		// In-memory provider does not require an explicit "mount" step.
 		self
 	}
 
-	pub fn url(&self) -> Url {
-		Url::parse(&self.server.uri()).expect("Invalid mock server URL")
+	pub fn into_client(&self) -> RpcClient<MockProvider> {
+		RpcClient::new(self.provider.clone())
+	}
+}
+
+enum JsonRpcFixture {
+	Result(Value),
+	Error(crate::neo_clients::JsonRpcError),
+}
+
+async fn load_jsonrpc_response(response_file: &str) -> JsonRpcFixture {
+	let mut response_file_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+	response_file_path.push("test_resources");
+	response_file_path.push("responses");
+	response_file_path.push(response_file);
+
+	let response_body = tokio::fs::read_to_string(response_file_path)
+		.await
+		.unwrap_or_else(|e| panic!("Failed to read response file {response_file}: {e}"));
+
+	let parsed: Value = serde_json::from_str(&response_body)
+		.unwrap_or_else(|e| panic!("Failed to parse JSON response file {response_file}: {e}"));
+
+	if let Some(error) = parsed.get("error") {
+		let json_error: crate::neo_clients::JsonRpcError = serde_json::from_value(error.clone())
+			.unwrap_or(crate::neo_clients::JsonRpcError {
+				code: -32000,
+				message: "mock error".to_string(),
+				data: None,
+			});
+		return JsonRpcFixture::Error(json_error);
 	}
 
-	pub fn into_client(&self) -> RpcClient<HttpProvider> {
-		let http_provider = HttpProvider::new(self.url()).expect("Failed to create HTTP provider");
-		RpcClient::new(http_provider)
-	}
+	let Some(result) = parsed.get("result") else {
+		panic!("Mock response file {response_file} missing 'result' or 'error' field");
+	};
 
-	pub fn server(&self) -> &MockServer {
-		&self.server
-	}
+	JsonRpcFixture::Result(result.clone())
 }

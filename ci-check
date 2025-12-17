@@ -52,7 +52,7 @@ fi
 
 echo ""
 echo -e "${YELLOW}2. Clippy Linting${NC}"
-if cargo clippy --workspace --all-targets --all-features --exclude neo-gui -- -D warnings; then
+if cargo clippy --workspace --all-targets --all-features -- -D warnings; then
     echo -e "${GREEN}✓ Clippy passed${NC}"
 else
     echo -e "${RED}✗ Clippy failed${NC}"
@@ -60,23 +60,30 @@ else
 fi
 
 echo ""
-echo -e "${YELLOW}3. Tests (neo3 package)${NC}"
-# Temporarily exclude neo-gui for tests
-cp Cargo.toml Cargo.toml.bak
-trap "mv Cargo.toml.bak Cargo.toml 2>/dev/null || true; git checkout -- neo-gui 2>/dev/null || true" EXIT
-sed -i.tmp 's/"neo-gui",//g; s/, "neo-gui"//g; s/"neo-gui"//g' Cargo.toml
-rm -rf neo-gui
+echo -e "${YELLOW}3. Tests${NC}"
 
-if NEORUST_SKIP_NETWORK_TESTS=1 cargo test --package neo3 --all-features; then
-    echo -e "${GREEN}✓ Tests passed${NC}"
+if NEORUST_SKIP_NETWORK_TESTS=1 cargo test -p neo3 --all-features; then
+    echo -e "${GREEN}✓ neo3 tests passed${NC}"
 else
-    echo -e "${RED}✗ Tests failed${NC}"
+    echo -e "${RED}✗ neo3 tests failed${NC}"
     exit 1
 fi
 
-# Restore
-mv Cargo.toml.bak Cargo.toml
-git checkout -- neo-gui 2>/dev/null || true
+echo ""
+if cargo test -p neo3 --doc --all-features; then
+    echo -e "${GREEN}✓ neo3 doc tests passed${NC}"
+else
+    echo -e "${RED}✗ neo3 doc tests failed${NC}"
+    exit 1
+fi
+
+echo ""
+if cargo test -p neo-cli; then
+    echo -e "${GREEN}✓ neo-cli tests passed${NC}"
+else
+    echo -e "${RED}✗ neo-cli tests failed${NC}"
+    exit 1
+fi
 
 echo ""
 echo -e "${GREEN}All CI checks passed! ✨${NC}"

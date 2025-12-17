@@ -171,11 +171,11 @@ mod imp {
 ///
 /// ```no_run
 /// # async fn foo() -> Result<(), Box<dyn std::error::Error>> {
-/// use neo_clients::Ipc;
+/// use neo3::neo_clients::Ipc;
 ///
 /// // the ipc's path
-#[cfg_attr(unix, doc = r#"let path = "/home/user/.local/share/reth/reth.ipc";"#)]
-#[cfg_attr(windows, doc = r#"let path = r"\\.\pipe\reth.ipc";"#)]
+#[cfg_attr(unix, doc = r#"let path = "/tmp/neo-node.ipc";"#)]
+#[cfg_attr(windows, doc = r#"let path = r"\\.\pipe\neo-node.ipc";"#)]
 /// let ipc = Ipc::connect(path).await?;
 /// # Ok(())
 /// # }

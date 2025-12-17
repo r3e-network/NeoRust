@@ -1,4 +1,4 @@
-//! # Neo Crypto (v0.1.8)
+//! # Neo Crypto
 //!
 //! Cryptographic utilities for the Neo N3 blockchain.
 //!

@@ -1,21 +1,14 @@
-# Neo Blockchain CLI
+# Neo CLI
 
-A command-line interface for interacting with the Neo blockchain, built on the NeoRust SDK.
+A command-line interface for interacting with the Neo N3 blockchain, built on the NeoRust SDK (`neo3`).
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 ## Overview
 
-Neo CLI provides a comprehensive set of tools for interacting with the Neo blockchain ecosystem. It allows developers and users to manage wallets, interact with smart contracts, monitor blockchain state, configure network connections, engage with DeFi applications and well-known contracts, and leverage NeoFS decentralized storage.
+Neo CLI wraps common SDK workflows into a single tool: network connectivity checks, contract operations, DeFi helpers, NeoFS commands, and project generation templates.
 
-## Features
-
-- **Wallet Management**: Create, open, and manage Neo wallets, including key manipulation and asset transfers
-- **Blockchain Operations**: Query blockchain state, blocks, transactions and more
-- **Network Configuration**: Connect to different Neo networks and manage node connections
-- **Smart Contract Interactions**: Deploy, invoke, and analyze smart contracts
-- **DeFi Integrations**: Interact with Neo-based DeFi platforms, protocols, and well-known contracts
-- **NeoFS Integration**: Store and retrieve data from Neo's decentralized storage
+> Note: some subcommands are still placeholders and may return “NotImplemented”. Use `neo-cli --help` for the authoritative list of available commands.
 
 ## Installation
 
@@ -23,8 +16,8 @@ Neo CLI provides a comprehensive set of tools for interacting with the Neo block
 
 ```bash
 # Clone the repository
-git clone https://github.com/r3-network/neo-rust.git
-cd neo-rust
+git clone https://github.com/R3E-Network/NeoRust.git
+cd NeoRust
 
 # Build the CLI tool
 cargo build --release -p neo-cli
@@ -36,105 +29,75 @@ cargo build --release -p neo-cli
 ### Using Cargo
 
 ```bash
+# If/when published to crates.io:
 cargo install neo-cli
 ```
 
 ## Quick Start
 
 ```bash
-# Initialize configuration
+# Show top-level help
+neo-cli --help
+
+# Initialize configuration (optional; creates a config file in your OS config dir)
 neo-cli init
 
-# Create a new wallet
-neo-cli wallet create --name my-wallet
+# Create a wallet file (prompts for password unless provided)
+neo-cli wallet create --path my-wallet.json
 
-# Check wallet balance
-neo-cli wallet balance --name my-wallet
+# Connect to a network (interactive if omitted)
+neo-cli network connect --network testnet
 
-# Get blockchain height
-neo-cli blockchain height
+# Inspect network state
+neo-cli network status
+neo-cli network block
 
-# Deploy a smart contract
-neo-cli contract deploy --path ./my-contract.nef --manifest ./my-contract.manifest.json
-
-# List famous contracts on mainnet
-neo-cli defi list --network mainnet
+# Token/DeFi helpers
+neo-cli de-fi token NEO
+neo-cli de-fi balance GAS NZKvXidwBhnV8rNXh2eXtpm5bH1rkofaDz
 
 # Check NeoFS connection status
 neo-cli fs status
+
+# Generate a new project from templates
+neo-cli generate --list
+neo-cli generate --template nep17-token my-token
 ```
 
 ## Command Reference
 
-### Wallet Commands
+Run `neo-cli --help` (and `neo-cli <command> --help`) for the full set of flags and subcommands.
 
-- `neo-cli wallet create`: Create a new wallet
-- `neo-cli wallet open`: Open an existing wallet
-- `neo-cli wallet balance`: Check wallet balance
-- `neo-cli wallet transfer`: Transfer assets between accounts
-- `neo-cli wallet export`: Export wallet keys and certificates
-- `neo-cli wallet import`: Import wallet keys
+### Network
 
-### Blockchain Commands
+- `neo-cli network connect`: connect to an RPC endpoint / named network
+- `neo-cli network status`: show basic network information
+- `neo-cli network peers`: list peers (requires a working connection)
+- `neo-cli network block`: fetch latest (or specified) block
 
-- `neo-cli blockchain info`: Display general blockchain information
-- `neo-cli blockchain height`: Get the current blockchain height
-- `neo-cli blockchain block`: Get block information
-- `neo-cli blockchain tx`: Get transaction details
-- `neo-cli blockchain asset`: Get asset information
+### Wallet
 
-### Network Commands
+- `neo-cli wallet create`, `open`, `backup`, `restore`, `hd-wallet`
+- `neo-cli wallet send` and `neo-cli wallet balance` exist, but some on-chain operations are still stubbed; for now, `neo-cli de-fi token` and `neo-cli de-fi balance <TOKEN> <ADDRESS>` are the most reliable token helpers.
 
-- `neo-cli network status`: Check network status
-- `neo-cli network nodes`: List connected nodes
-- `neo-cli network switch`: Switch between different Neo networks
+### Contracts
 
-### Contract Commands
+- `neo-cli contract deploy`, `update`, `invoke`, `list-native-contracts`
 
-- `neo-cli contract deploy`: Deploy a smart contract
-- `neo-cli contract invoke`: Invoke a smart contract method
-- `neo-cli contract info`: Display contract information
-- `neo-cli contract storage`: Query contract storage
+### DeFi
 
-### DeFi Commands
+- `neo-cli de-fi token` and `neo-cli de-fi balance` for token metadata/balance queries
+- `neo-cli de-fi transfer` exists, but signing workflows are still evolving (see subcommand `--help`)
+- Protocol helpers: `neo-cli de-fi flamingo ...`, `neo-cli de-fi neo-burger ...`, `neo-cli de-fi neo-compound ...`, `neo-cli de-fi grand-share ...`
 
-- `neo-cli defi swap`: Perform token swaps
-- `neo-cli defi stake`: Stake tokens
-- `neo-cli defi yield`: Check yield farming positions
-- `neo-cli defi pools`: List liquidity pools
-- `neo-cli defi list`: List all well-known contracts on a network
-- `neo-cli defi show`: Show details of a specific contract
-- `neo-cli defi invoke`: Invoke a method on a well-known contract
-- `neo-cli defi balance`: Query token balance from a contract
+### NeoFS
 
-```bash
-# List all well-known contracts on mainnet
-neo-cli defi list --network mainnet
-
-# Show details for Flamingo Finance contract
-neo-cli defi show "Flamingo Finance"
-
-# Invoke a method on a contract
-neo-cli defi invoke ghostmarket "balanceOf" --args '[{"type":"Address","value":"NZKvXidwBhnV8rNXh2eXtpm5bH1rkofaDz"}]'
-
-# Check token balance
-neo-cli defi balance "FLM Token" --address NZKvXidwBhnV8rNXh2eXtpm5bH1rkofaDz
-
-# Perform a token swap
-neo-cli defi swap --token-from NEO --token-to GAS --amount 1
-```
-
-### NeoFS Commands
-
-- `neo-cli fs container`: Create, list, get info, and delete containers
-- `neo-cli fs object`: Upload, download, delete objects
-- `neo-cli fs acl`: Manage access control for containers and objects
-- `neo-cli fs endpoints`: Manage and get information about NeoFS endpoints
-- `neo-cli fs status`: Show NeoFS connection status
+- `neo-cli fs ...`: endpoints, container, object, status
+- `neo-cli neo-fs ...`: advanced NeoFS commands (acl/config/status)
 
 ```bash
 # List all available NeoFS endpoints for mainnet
-neo-cli fs endpoints list --network mainnet
+neo-cli fs endpoints list
 
 # Test connection to a specific endpoint
 neo-cli fs endpoints test --endpoint grpc.mainnet.fs.neo.org:8082
@@ -168,20 +131,10 @@ The Neo CLI includes comprehensive automated tests to ensure functionality and h
 
 ### Running Tests
 
-To run all tests:
+To run CLI tests:
 
 ```bash
-cargo test
-```
-
-To run only specific test categories:
-
-```bash
-# Run only DeFi tests (including well-known contracts)
-cargo test --test integration_tests integration::defi_tests
-
-# Run only NeoFS tests
-cargo test --test integration_tests integration::fs_tests
+cargo test -p neo-cli
 ```
 
 ### Test Structure
@@ -208,12 +161,6 @@ When adding new features to the CLI, follow this pattern for testing:
 
 ```bash
 cargo build [--release]
-```
-
-### Running Tests
-
-```bash
-cargo test -p neo-cli
 ```
 
 ## License

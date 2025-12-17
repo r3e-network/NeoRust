@@ -98,6 +98,13 @@ cargo test --all-features
 # Network endpoints for testing
 export NEO_TESTNET_URL="https://testnet1.neo.org:443"
 export NEO_MAINNET_URL="https://mainnet1.neo.org:443"
+#
+# (Optional) Explicit RPC endpoint overrides (synonyms supported by some tests/tools)
+export NEO_TESTNET_RPC_URL="$NEO_TESTNET_URL"
+export NEO_MAINNET_RPC_URL="$NEO_MAINNET_URL"
+
+# Skip tests that require live RPC/network access
+export NEORUST_SKIP_NETWORK_TESTS=1
 
 # Test account configuration
 export TEST_PRIVATE_KEY="your-test-private-key"

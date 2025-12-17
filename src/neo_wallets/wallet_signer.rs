@@ -22,10 +22,7 @@ use crate::{
 /// The wallet can be used to produce ECDSA [`p256::NistP256`] objects, which can be
 /// then verified.
 ///
-/// ```ignore
-/// // WalletSigner is used for transaction signing
-/// // Example usage is demonstrated in integration tests
-/// ```
+/// See integration tests for end-to-end signing examples.
 ///
 /// [`p256::NistP256`]: p256::NistP256
 #[derive(Clone, Serialize, Deserialize)]
@@ -38,12 +35,12 @@ pub struct WalletSigner<D: PrehashSigner<Signature>> {
 }
 
 impl<D: PrehashSigner<Signature>> WalletSigner<D> {
-	/// Creates a new `WalletSigner` instance using an external `Signer` and associated Ethereum address.
+	/// Creates a new `WalletSigner` instance using an external `Signer` and associated Neo address.
 	///
 	/// # Arguments
 	///
 	/// * `signer` - An implementation of the `PrehashSigner` trait capable of signing messages.
-	/// * `address` - The Ethereum address associated with the signer's public key.
+	/// * `address` - The Neo address associated with the signer's public key.
 	///
 	/// # Returns
 	///

@@ -289,9 +289,7 @@ impl ConnectionPool {
 #[cfg(test)]
 mod tests {
 	use super::*;
-	use crate::{neo_clients::MockClient, neo_protocol::NeoVersion};
-	use std::sync::Arc;
-	use tokio::sync::Mutex;
+	use crate::neo_protocol::NeoVersion;
 
 	#[tokio::test]
 	async fn test_pool_creation() {
@@ -305,33 +303,12 @@ mod tests {
 
 	#[tokio::test]
 	async fn test_pool_stats() {
-		let mock = Arc::new(Mutex::new(MockClient::new().await));
-		{
-			let mut guard = mock.lock().await;
-			guard.mock_get_version(NeoVersion::default()).await;
-			guard.mount_mocks().await;
-		}
-
-		let endpoint = {
-			let guard = mock.lock().await;
-			guard.url().to_string()
-		};
 		let config = PoolConfig { max_connections: 2, ..Default::default() };
-		let pool = ConnectionPool::new(endpoint, config);
+		let pool = ConnectionPool::new("https://testnet.neo.org:443".to_string(), config);
 
 		// Execute a simple operation
-		let _result = pool
-			.execute(|client| {
-				Box::pin(async move {
-					client.get_version().await.map_err(|e| {
-						Neo3Error::Network(crate::neo_error::NetworkError::RpcError {
-							code: -1,
-							message: e.to_string(),
-						})
-					})
-				})
-			})
-			.await;
+		let _result =
+			pool.execute(|_client| Box::pin(async move { Ok(NeoVersion::default()) })).await;
 
 		// Check that stats were updated
 		let stats = pool.get_stats().await;

@@ -34,17 +34,6 @@ pub enum ProjectTemplate {
 }
 
 impl ProjectTemplate {
-	/// Get the template file path
-	fn template_path(&self) -> &str {
-		match self {
-			ProjectTemplate::BasicDapp => "templates/basic_dapp.toml",
-			ProjectTemplate::Nep17Token => "templates/nep17_token.toml",
-			ProjectTemplate::NftCollection => "templates/nft_collection.toml",
-			ProjectTemplate::DefiProtocol => "templates/defi_protocol.toml",
-			ProjectTemplate::OracleConsumer => "templates/oracle_consumer.toml",
-		}
-	}
-
 	/// Get template display name
 	pub fn display_name(&self) -> &str {
 		match self {
@@ -94,85 +83,27 @@ pub fn generate_project(
 
 /// Load a template from file
 fn load_template(template_type: &ProjectTemplate) -> Result<Template> {
-	let _template_path = template_type.template_path();
-
 	// For embedded templates, we'll use a match statement
 	// In production, these would be loaded from files
 	let template_content = match template_type {
 		ProjectTemplate::BasicDapp => {
-			include_str!("../../templates/basic_dapp.toml")
+			include_str!("../templates/basic_dapp.toml")
 		},
 		ProjectTemplate::Nep17Token => {
-			include_str!("../../templates/nep17_token.toml")
+			include_str!("../templates/nep17_token.toml")
 		},
-		_ => {
-			// For templates not yet created, return a default
-			return Ok(create_default_template(template_type));
+		ProjectTemplate::NftCollection => {
+			include_str!("../templates/nft_collection.toml")
+		},
+		ProjectTemplate::DefiProtocol => {
+			include_str!("../templates/defi_protocol.toml")
+		},
+		ProjectTemplate::OracleConsumer => {
+			include_str!("../templates/oracle_consumer.toml")
 		},
 	};
 
 	toml::from_str(template_content).context("Failed to parse template")
-}
-
-/// Create a default template for types not yet implemented
-fn create_default_template(template_type: &ProjectTemplate) -> Template {
-	let mut files = HashMap::new();
-
-	// Basic structure for all templates
-	files.insert(
-		"src/main.rs".to_string(),
-		format!(
-			r#"//! {} Project
-            
-use neo3::sdk::Neo;
-
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {{
-    println!("🚀 {} Project");
-    
-    // Connect to Neo TestNet
-    let neo = Neo::testnet().await?;
-    println!("✅ Connected to Neo TestNet");
-    
-    Ok(())
-}}
-"#,
-			template_type.display_name(),
-			template_type.display_name()
-		),
-	);
-
-	files.insert(
-		"Cargo.toml".to_string(),
-		r#"[package]
-name = "{{project_name}}"
-version = "0.1.0"
-edition = "2021"
-
-[dependencies]
-neo3 = "0.5.0"
-tokio = { version = "1.45", features = ["full"] }
-"#
-		.to_string(),
-	);
-
-	files.insert(
-		"README.md".to_string(),
-		format!(
-			"# {{{{project_name}}}}\n\n{} project built with NeoRust SDK.\n",
-			template_type.display_name()
-		),
-	);
-
-	Template {
-		template: TemplateMetadata {
-			name: template_type.display_name().to_string(),
-			description: format!("{} template", template_type.display_name()),
-			version: "1.0.0".to_string(),
-			author: "NeoRust Team".to_string(),
-		},
-		files,
-	}
 }
 
 /// Generate a single file from template
@@ -190,7 +121,9 @@ fn generate_file(
 	}
 
 	// Replace template variables
-	let content = content.replace("{{project_name}}", project_name);
+	let content = content
+		.replace("{{project_name}}", project_name)
+		.replace("{{neo3_version}}", neo3::VERSION);
 
 	// Write file
 	fs::write(&file_path, content)
@@ -266,6 +199,46 @@ mod tests {
 	use tempfile::TempDir;
 
 	#[test]
+	fn test_embedded_templates_parse() {
+		let basic =
+			load_template(&ProjectTemplate::BasicDapp).expect("basic_dapp.toml should parse");
+		assert!(basic.files.contains_key("Cargo.toml"), "basic template should include Cargo.toml");
+		assert!(
+			basic.files.contains_key("src/main.rs"),
+			"basic template should include src/main.rs"
+		);
+
+		let nep17 =
+			load_template(&ProjectTemplate::Nep17Token).expect("nep17_token.toml should parse");
+		assert!(nep17.files.contains_key("Cargo.toml"), "nep17 template should include Cargo.toml");
+		assert!(
+			nep17.files.contains_key("contracts/token.py"),
+			"nep17 template should include contracts/token.py"
+		);
+
+		let nft = load_template(&ProjectTemplate::NftCollection)
+			.expect("nft_collection.toml should parse");
+		assert!(nft.files.contains_key("Cargo.toml"), "nft template should include Cargo.toml");
+		assert!(nft.files.contains_key("src/main.rs"), "nft template should include src/main.rs");
+
+		let defi =
+			load_template(&ProjectTemplate::DefiProtocol).expect("defi_protocol.toml should parse");
+		assert!(defi.files.contains_key("Cargo.toml"), "defi template should include Cargo.toml");
+		assert!(defi.files.contains_key("src/main.rs"), "defi template should include src/main.rs");
+
+		let oracle = load_template(&ProjectTemplate::OracleConsumer)
+			.expect("oracle_consumer.toml should parse");
+		assert!(
+			oracle.files.contains_key("Cargo.toml"),
+			"oracle template should include Cargo.toml"
+		);
+		assert!(
+			oracle.files.contains_key("src/main.rs"),
+			"oracle template should include src/main.rs"
+		);
+	}
+
+	#[test]
 	fn test_project_generation() {
 		let temp_dir = TempDir::new().unwrap();
 		let project_name = "test_project";
@@ -289,6 +262,16 @@ mod tests {
 		// Check that Cargo.toml was created
 		let cargo_file = project_dir.join("Cargo.toml");
 		assert!(cargo_file.exists());
+
+		let cargo_contents = std::fs::read_to_string(&cargo_file).unwrap();
+		assert!(
+			!cargo_contents.contains("{{neo3_version}}"),
+			"Generated Cargo.toml should not contain unresolved placeholders"
+		);
+		assert!(
+			cargo_contents.contains(&format!("neo3 = \"{}\"", neo3::VERSION)),
+			"Generated Cargo.toml should pin neo3 dependency to the current SDK version"
+		);
 	}
 
 	#[test]

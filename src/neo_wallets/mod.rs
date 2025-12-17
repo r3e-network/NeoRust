@@ -39,6 +39,7 @@
 //!     println!("New account address: {}", account.get_address());
 //!     
 //!     // Save the wallet to a file
+//!     // SECURITY: Wallet files can contain private keys. Do not commit them to version control.
 //!     wallet.save_to_file(PathBuf::from("my_wallet.json"))?;
 //!     
 //!     Ok(())

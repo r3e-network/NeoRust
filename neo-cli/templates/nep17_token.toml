@@ -17,9 +17,8 @@ author = "NeoRust Team"
 //! - Balance checking
 //! - Token administration
 
-use neo3::sdk::{Neo, Network};
-use neo3::neo_types::{ScriptHash, ContractParameter};
-use neo3::neo_builder::{TransactionBuilder, ScriptBuilder};
+use neo3::sdk::Neo;
+use neo3::neo_types::ScriptHash;
 use std::error::Error;
 use std::str::FromStr;
 
@@ -59,7 +58,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
 //! NEP-17 Token implementation
 
 use neo3::sdk::Neo;
-use neo3::neo_types::{ScriptHash, ContractParameter};
+use neo3::neo_types::ScriptHash;
 use neo3::neo_error::unified::NeoError;
 use std::sync::Arc;
 
@@ -78,24 +77,28 @@ impl Nep17Token {
     
     /// Get token symbol
     pub async fn symbol(&self) -> Result<String, NeoError> {
+        let _ = (&self.contract_hash, &self.neo_client);
         // Implementation would call the symbol method
         Ok("TOKEN".to_string())
     }
     
     /// Get token decimals
     pub async fn decimals(&self) -> Result<u8, NeoError> {
+        let _ = (&self.contract_hash, &self.neo_client);
         // Implementation would call the decimals method
         Ok(8)
     }
     
     /// Get total supply
     pub async fn total_supply(&self) -> Result<u64, NeoError> {
+        let _ = (&self.contract_hash, &self.neo_client);
         // Implementation would call the totalSupply method
         Ok(1_000_000_000)
     }
     
     /// Get balance of an address
-    pub async fn balance_of(&self, address: &str) -> Result<u64, NeoError> {
+    pub async fn balance_of(&self, _address: &str) -> Result<u64, NeoError> {
+        let _ = (&self.contract_hash, &self.neo_client);
         // Implementation would call the balanceOf method
         Ok(0)
     }
@@ -103,11 +106,12 @@ impl Nep17Token {
     /// Transfer tokens
     pub async fn transfer(
         &self,
-        from: &str,
-        to: &str,
-        amount: u64,
-        data: Option<String>,
+        _from: &str,
+        _to: &str,
+        _amount: u64,
+        _data: Option<String>,
     ) -> Result<String, NeoError> {
+        let _ = (&self.contract_hash, &self.neo_client);
         // Implementation would build and send transfer transaction
         Ok("0x...".to_string())
     }
@@ -221,14 +225,14 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-neo3 = "0.5.3"
+neo3 = "{{neo3_version}}"
 tokio = { version = "1.45", features = ["full"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 anyhow = "1.0"
 clap = { version = "4.0", features = ["derive"] }
 hex = "0.4"
-base64 = "0.21"
+base64 = "0.22.1"
 
 [dev-dependencies]
 mockall = "0.13"
@@ -237,7 +241,7 @@ mockall = "0.13"
 "README.md" = '''
 # {{project_name}} - NEP-17 Token
 
-A NEP-17 compliant fungible token implementation using NeoRust SDK v0.5.3.
+A NEP-17 compliant fungible token implementation using NeoRust SDK v{{neo3_version}}.
 
 ## Features
 

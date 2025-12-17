@@ -8,106 +8,68 @@ This document outlines the professional organization of the NeoRust SDK project,
 NeoRust/
 ├── .github/                      # GitHub specific files
 │   ├── workflows/                # CI/CD workflows
-│   │   ├── ci.yml               # Main CI pipeline
+│   │   ├── build-test.yml       # Main CI pipeline
 │   │   ├── release.yml          # Release automation
-│   │   ├── security.yml         # Security scanning
-│   │   └── docs.yml             # Documentation building
 │   ├── ISSUE_TEMPLATE/          # Issue templates
 │   ├── PULL_REQUEST_TEMPLATE.md # PR template
 │   └── dependabot.yml           # Dependency updates
 │
-├── crates/                       # Core SDK crates (workspace members)
-│   ├── neo3/                    # Main SDK crate
-│   │   ├── src/
-│   │   ├── Cargo.toml
-│   │   └── README.md
-│   ├── neo3-builder/            # Transaction & script building
-│   │   ├── src/
-│   │   ├── Cargo.toml
-│   │   └── README.md
-│   ├── neo3-crypto/             # Cryptographic operations
-│   │   ├── src/
-│   │   ├── Cargo.toml
-│   │   └── README.md
-│   ├── neo3-types/              # Core types and primitives
-│   │   ├── src/
-│   │   ├── Cargo.toml
-│   │   └── README.md
-│   ├── neo3-rpc/                # RPC client implementation
-│   │   ├── src/
-│   │   ├── Cargo.toml
-│   │   └── README.md
-│   ├── neo3-wallets/            # Wallet management
-│   │   ├── src/
-│   │   ├── Cargo.toml
-│   │   └── README.md
-│   ├── neo3-contracts/          # Smart contract interactions
-│   │   ├── src/
-│   │   ├── Cargo.toml
-│   │   └── README.md
-│   └── neo3-macros/             # Procedural macros
-│       ├── src/
-│       ├── Cargo.toml
-│       └── README.md
+├── src/                          # Main `neo3` library crate
+│   ├── neo_builder/              # Transaction & script building
+│   ├── neo_clients/              # JSON-RPC + transports (HTTP/WS/IPC)
+│   ├── neo_codec/                # Serialization/deserialization
+│   ├── neo_config/               # Network + runtime configuration
+│   ├── neo_contract/             # Smart contract interactions
+│   ├── neo_crypto/               # Cryptographic operations
+│   ├── neo_error/                # Error types (legacy + unified)
+│   ├── neo_fs/                   # NeoFS integration
+│   ├── neo_protocol/             # Protocol/domain types
+│   ├── neo_sgx/                  # SGX support (optional)
+│   ├── neo_types/                # Core types and primitives
+│   ├── neo_utils/                # Shared utilities
+│   ├── neo_wallets/              # Wallet management
+│   ├── neo_x/                    # Neo X / EVM compatibility layer
+│   ├── sdk/                      # High-level ergonomic API (`sdk::Neo`)
+│   ├── lib.rs                    # Crate root + re-exports
+│   └── prelude.rs                # Convenience prelude exports
 │
 ├── examples/                     # Example applications
 │   ├── basic/                   # Basic usage examples
-│   │   ├── 01_connect.rs
-│   │   ├── 02_wallet.rs
-│   │   ├── 03_transfer.rs
-│   │   └── README.md
-│   ├── intermediate/            # Intermediate examples
-│   │   ├── contract_deploy.rs
-│   │   ├── token_operations.rs
-│   │   └── README.md
-│   └── advanced/                # Advanced examples
-│       ├── defi_integration.rs
-│       ├── nft_marketplace.rs
-│       └── README.md
-│
-├── apps/                        # Applications
-│   ├── neo-cli/                # Command-line interface
 │   │   ├── src/
-│   │   ├── Cargo.toml
-│   │   └── README.md
-│   └── neo-gui/                # Desktop GUI application
+│   │   └── Cargo.toml
+│   ├── intermediate/            # Intermediate examples
+│   │   ├── src/
+│   │   └── Cargo.toml
+│   └── advanced/                # Advanced examples
 │       ├── src/
-│       ├── src-tauri/
-│       ├── package.json
-│       ├── Cargo.toml
-│       └── README.md
+│       └── Cargo.toml
+│
+├── neo-cli/                      # Command-line interface (workspace member)
+│   ├── src/
+│   ├── templates/                # Project generator templates
+│   └── Cargo.toml
+├── neo-gui-rs/                   # Native Rust GUI shell (workspace member)
+│   ├── src/
+│   └── Cargo.toml
+├── neo-gui/                      # Legacy React/Tauri GUI (not a Cargo member)
 │
 ├── docs/                        # Documentation
-│   ├── book/                   # mdBook documentation
-│   │   ├── src/
-│   │   └── book.toml
-│   ├── api/                    # API documentation
-│   ├── guides/                 # User guides
-│   │   ├── getting-started.md
-│   │   ├── wallet-guide.md
-│   │   └── contract-guide.md
-│   └── architecture/           # Architecture docs
-│       ├── design.md
-│       └── security.md
+│   ├── src/                     # mdBook source content
+│   ├── book/                    # Generated mdBook output (tracked)
+│   └── guides/                  # Additional guides
 │
 ├── tests/                      # Integration tests
-│   ├── common/                # Common test utilities
-│   ├── integration/           # Integration test suites
-│   └── fixtures/              # Test fixtures
+│   └── *.rs
 │
 ├── benches/                   # Benchmarks
-│   ├── crypto.rs
-│   ├── transaction.rs
-│   └── rpc.rs
-│
-├── scripts/                   # Development scripts
-│   ├── build.sh              # Build script
-│   ├── test.sh               # Test runner
-│   ├── release.sh            # Release script
-│   └── check.sh              # Pre-commit checks
+│   └── *.rs
 │
 ├── .cargo/                    # Cargo configuration
 │   └── config.toml
+├── vendor/                    # Vendored/patched deps (see `[patch.crates-io]`)
+├── config/                    # App configuration (dev/prod)
+├── assets/                    # Branding assets
+├── website/                   # Project website sources
 │
 ├── Cargo.toml                 # Workspace manifest
 ├── Cargo.lock                 # Lock file
@@ -122,12 +84,15 @@ NeoRust/
 └── deny.toml                 # Cargo deny configuration
 ```
 
+> Note: A multi-crate split under `crates/` is planned/tracked in `WORKSPACE_REORGANIZATION.md`.
+
 ## 🎯 Design Principles
 
 ### 1. **Modular Architecture**
-- Each major component is a separate crate
+- Major components live as modules under `src/` in the `neo3` crate
+- Workspace applications (`neo-cli`, `neo-gui-rs`) are separate crates
 - Clear separation of concerns
-- Minimal inter-crate dependencies
+- Minimal cross-module coupling
 - Well-defined public APIs
 
 ### 2. **Workspace Organization**
@@ -137,8 +102,8 @@ NeoRust/
 - Unified build and test commands
 
 ### 3. **Professional Naming**
-- Crates prefixed with `neo3-` for clarity
-- Consistent naming conventions
+- Consistent naming conventions across modules and crates
+- Core SDK modules prefixed with `neo_` for clarity (e.g., `neo_clients`, `neo_builder`)
 - Clear, descriptive module names
 - No abbreviations in public APIs
 
@@ -148,54 +113,23 @@ NeoRust/
 - Example code in documentation
 - Architecture decision records
 
-## 📦 Crate Responsibilities
+## 📦 Responsibilities
 
-### `neo3` - Main SDK Crate
-- Re-exports from other crates
-- High-level convenience APIs
-- Prelude module for common imports
-- Feature flag management
+### `neo3` (library crate)
+- Contains the full SDK as internal modules under `src/`
+- Exposes a high-level ergonomic API under `src/sdk/`
+- Provides a `prelude` for convenient imports
 
-### `neo3-types` - Core Types
-- Basic primitives (Address, ScriptHash, etc.)
-- Transaction types
-- Block and header types
-- Serialization traits
+### Workspace applications
+- `neo-cli/`: CLI for common operations (wallets, contracts, NeoFS, etc.)
+- `neo-gui-rs/`: Native Rust GUI shell for the SDK
+- `neo-gui/`: Legacy React/Tauri GUI for historical parity
 
-### `neo3-crypto` - Cryptography
-- Key generation and management
-- Signing and verification
-- Hash functions
-- Encryption/decryption
-
-### `neo3-rpc` - RPC Client
-- HTTP/WebSocket providers
-- Request/response types
-- Connection pooling
-- Error handling
-
-### `neo3-builder` - Builders
-- Transaction builder
-- Script builder
-- Witness builder
-- Contract invocation builder
-
-### `neo3-wallets` - Wallet Management
-- NEP-6 wallet support
-- Account management
-- Key storage
-- Hardware wallet integration
-
-### `neo3-contracts` - Smart Contracts
-- Contract deployment
-- Method invocation
-- Event monitoring
-- Standard contracts (NEP-17, NEP-11)
-
-### `neo3-macros` - Procedural Macros
-- Derive macros for common traits
-- Attribute macros for contracts
-- Function-like macros for DSL
+### Core modules (selected)
+- `neo_clients`: JSON-RPC client + HTTP/WS/IPC transports
+- `neo_builder`: transaction/script building + gas estimation
+- `neo_wallets`: NEP-6 wallets + key management
+- `neo_contract`: contract invocation + standard contracts
 
 ## 🔧 Development Workflow
 
@@ -205,7 +139,8 @@ NeoRust/
 cargo build --workspace
 
 # Build specific crate
-cargo build -p neo3-rpc
+cargo build -p neo3
+cargo build -p neo-cli
 
 # Build with all features
 cargo build --all-features
@@ -217,10 +152,11 @@ cargo build --all-features
 cargo test --workspace
 
 # Run specific crate tests
-cargo test -p neo3-crypto
+cargo test -p neo3
+cargo test -p neo-cli
 
 # Run integration tests
-cargo test --test '*'
+cargo test --tests
 ```
 
 ### Documentation

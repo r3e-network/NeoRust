@@ -58,7 +58,8 @@ impl CliConfig {
 
 		if !config_path.exists() {
 			let default_config = Self::default();
-			fs::create_dir_all(config_path.parent().unwrap())?;
+			let parent_dir = config_path.parent().ok_or_else(|| anyhow::anyhow!("Config path has no parent directory"))?;
+			fs::create_dir_all(parent_dir)?;
 			let config_str = serde_json::to_string_pretty(&default_config)?;
 			fs::write(&config_path, config_str)?;
 			return Ok(default_config);
@@ -74,7 +75,8 @@ impl CliConfig {
 
 	pub fn save(&self) -> Result<()> {
 		let config_path = Self::config_path()?;
-		fs::create_dir_all(config_path.parent().unwrap())?;
+		let parent_dir = config_path.parent().ok_or_else(|| anyhow::anyhow!("Config path has no parent directory"))?;
+		fs::create_dir_all(parent_dir)?;
 		let config_str = serde_json::to_string_pretty(self)?;
 		fs::write(&config_path, config_str)?;
 		Ok(())

@@ -1,232 +1,273 @@
-// use std::{
-// 	borrow::Borrow,
-// 	collections::VecDeque,
-// 	sync::{Arc, Mutex},
-// };
-//
-// use async_trait::async_trait;
-// use serde::{de::DeserializeOwned, Serialize};
-// use serde_json::Value;
-// use thiserror::Error;
-//
-// use neo3::prelude::{JsonRpcClient, ProviderError, RpcError};
-//
-// /// Helper type that can be used to pass through the `params` value.
-// /// This is necessary because the wrapper provider is supposed to skip the `params` if it's of
-// /// size 0, see `crate::transports::common::Request`
-// #[derive(Debug)]
-// enum MockParams {
-// 	Value(Value),
-// 	Zst,
-// }
-//
-// /// Helper response type for `MockProvider`, allowing custom JSON-RPC errors to be provided.
-// /// `Value` for successful responses, `Error` for JSON-RPC errors.
-// #[derive(Clone, Debug)]
-// pub enum MockResponse {
-// 	/// Successful response with a `serde_json::Value`.
-// 	Value(Value),
-//
-// 	/// Error response with a `JsonRpcError`.
-// 	Error(super::JsonRpcError),
-// }
-//
-// #[derive(Clone, Debug)]
-// /// Mock transport used in test environments.
-// pub struct MockProvider {
-// 	requests: Arc<Mutex<VecDeque<(String, MockParams)>>>,
-// 	responses: Arc<Mutex<VecDeque<MockResponse>>>,
-// }
-//
-// impl Default for MockProvider {
-// 	fn default() -> Self {
-// 		Self::new()
-// 	}
-// }
-//
-// #[cfg_attr(target_arch = "wasm32", async_trait(? Send))]
-// #[cfg_attr(not(target_arch = "wasm32"), async_trait)]
-// impl JsonRpcClient for MockProvider {
-// 	type Error = MockError;
-//
-// 	/// Pushes the `(method, params)` to the back of the `requests` queue,
-// 	/// pops the responses from the back of the `responses` queue
-// 	async fn fetch<T: Serialize + Send + Sync, R: DeserializeOwned>(
-// 		&self,
-// 		method: &str,
-// 		params: T,
-// 	) -> Result<R, MockError> {
-// 		let params = if std::mem::size_of::<T>() == 0 {
-// 			MockParams::Zst
-// 		} else {
-// 			MockParams::Value(serde_json::to_value(params)?)
-// 		};
-// 		self.requests.lock().unwrap().push_back((method.to_owned(), params));
-// 		let mut data = self.responses.lock().unwrap();
-// 		let element = data.pop_back().ok_or(MockError::EmptyResponses)?;
-// 		match element {
-// 			MockResponse::Value(value) => {
-// 				let res: R = serde_json::from_value(value)?;
-// 				Ok(res)
-// 			},
-// 			MockResponse::Error(error) => Err(MockError::JsonRpcError(error)),
-// 		}
-// 	}
-// }
-//
-// impl MockProvider {
-// 	/// Checks that the provided request was submitted by the client
-// 	pub fn assert_request<T: Serialize + Send + Sync>(
-// 		&self,
-// 		method: &str,
-// 		data: T,
-// 	) -> Result<(), MockError> {
-// 		let (m, inp) = self.requests.lock().unwrap().pop_front().ok_or(MockError::EmptyRequests)?;
-// 		assert_eq!(m, method);
-// 		assert!(!matches!(inp, MockParams::Value(serde_json::Value::Null)));
-// 		if std::mem::size_of::<T>() == 0 {
-// 			assert!(matches!(inp, MockParams::Zst));
-// 		} else if let MockParams::Value(inp) = inp {
-// 			assert_eq!(serde_json::to_value(data).expect("could not serialize data"), inp);
-// 		} else {
-// 			unreachable!("Zero sized types must be denoted with MockParams::Zst")
-// 		}
-//
-// 		Ok(())
-// 	}
-//
-// 	/// Instantiates a mock transport
-// 	pub fn new() -> Self {
-// 		Self {
-// 			requests: Arc::new(Mutex::new(VecDeque::new())),
-// 			responses: Arc::new(Mutex::new(VecDeque::new())),
-// 		}
-// 	}
-//
-// 	/// Pushes the data to the responses
-// 	pub fn push<T: Serialize + Send + Sync, K: Borrow<T>>(&self, data: K) -> Result<(), MockError> {
-// 		let value = serde_json::to_value(data.borrow())?;
-// 		self.responses.lock().unwrap().push_back(MockResponse::Value(value));
-// 		Ok(())
-// 	}
-//
-// 	/// Pushes the data or error to the responses
-// 	pub fn push_response(&self, response: MockResponse) {
-// 		self.responses.lock().unwrap().push_back(response);
-// 	}
-// }
-//
-// #[derive(Error, Debug)]
-// /// Errors for the `MockProvider`
-// pub enum MockError {
-// 	/// (De)Serialization error
-// 	#[error(transparent)]
-// 	SerdeJson(#[from] serde_json::Error),
-//
-// 	/// Empty requests array
-// 	#[error("empty requests array, please push some requests")]
-// 	EmptyRequests,
-//
-// 	/// Empty responses array
-// 	#[error("empty responses array, please push some responses")]
-// 	EmptyResponses,
-//
-// 	/// Custom JsonRpcError
-// 	#[error("JSON-RPC error: {0}")]
-// 	JsonRpcError(super::JsonRpcError),
-// }
-//
-// impl RpcError for MockError {
-// 	fn as_error_response(&self) -> Option<&super::JsonRpcError> {
-// 		match self {
-// 			MockError::JsonRpcError(e) => Some(e),
-// 			_ => None,
-// 		}
-// 	}
-//
-// 	fn as_serde_error(&self) -> Option<&serde_json::Error> {
-// 		match self {
-// 			MockError::SerdeJson(e) => Some(e),
-// 			_ => None,
-// 		}
-// 	}
-// }
-//
-// impl From<MockError> for ProviderError {
-// 	fn from(src: MockError) -> Self {
-// 		ProviderError::JsonRpcClientError(Box::new(src))
-// 	}
-// }
-//
-// #[cfg(test)]
-// #[cfg(not(target_arch = "wasm32"))]
-// mod tests {
-// 	use neo3::prelude::{JsonRpcError, Provider};
-//
-// 	use crate::{config::NeoNetwork, neo_clients::middleware::Middleware};
-//
-// 	use super::*;
-//
-// 	#[tokio::test]
-// 	async fn pushes_request_and_response() {
-// 		let mock = MockProvider::new();
-// 		mock.push(12).unwrap();
-// 		let block: u64 = mock.fetch("neo_blockNumber", ()).await.unwrap();
-// 		mock.assert_request("neo_blockNumber", ()).unwrap();
-// 		assert_eq!(block, 12);
-// 	}
-//
-// 	#[tokio::test]
-// 	async fn empty_responses() {
-// 		let mock = MockProvider::new();
-// 		// tries to get a response without pushing a response
-// 		// let err = mock.fetch("neo_blockNumber", ()).await.unwrap_err();
-// 		// match err {
-// 		// 	MockError::EmptyResponses => {},
-// 		// 	_ => panic!("expected empty responses"),
-// 		// };
-// 	}
-//
-// 	#[tokio::test]
-// 	async fn pushes_error_response() {
-// 		let mock = MockProvider::new();
-// 		let error = JsonRpcError {
-// 			code: 3,
-// 			data: Some(serde_json::from_str(r#""0x556f1830...""#).unwrap()),
-// 			message: "execution reverted".to_string(),
-// 		};
-// 		mock.push_response(MockResponse::Error(error.clone()));
-//
-// 		let result: Result<u64, MockError> = mock.fetch("neo_blockNumber", ()).await;
-// 		match result {
-// 			Err(MockError::JsonRpcError(e)) => {
-// 				assert_eq!(e.code, error.code);
-// 				assert_eq!(e.message, error.message);
-// 				assert_eq!(e.data, error.data);
-// 			},
-// 			_ => panic!("Expected JsonRpcError"),
-// 		}
-// 	}
-//
-// 	#[tokio::test]
-// 	async fn empty_requests() {
-// 		let mock = MockProvider::new();
-// 		// tries to assert a request without making one
-// 		let err = mock.assert_request("neo_blockNumber", ()).unwrap_err();
-// 		match err {
-// 			MockError::EmptyRequests => {},
-// 			_ => panic!("expected empty request"),
-// 		};
-// 	}
-//
-// 	#[tokio::test]
-// 	async fn composes_with_provider() {
-// 		let (provider, mock) = Provider::mocked();
-// 		let mock_response = r#"{"tcpport": 10333, "nonce": 388190803, "useragent": "/Neo:3.7.4+44c8cd9669beffd8460a56aedf81a53b47ff5b5f/", "rpc": {"maxiteratorresultitems": 100, "sessionenabled": true}, "protocol": {"addressversion": 53, "network": 860833102, "validatorscount": 7, "msperblock": 15000, "maxtraceableblocks": 2102400, "maxvaliduntilblockincrement": 5760, "maxtransactionsperblock": 512, "memorypoolmaxtransactions": 50000, "initialgasdistribution": 5200000000000000, "hardforks": [{"name": "Aspidochelone", "blockheight": 1730000}, {"name": "Basilisk", "blockheight": 4120000}, {"name": "Cockatrice", "blockheight": 5450000}]}}"#;
-// 		mock.push_response(MockResponse::Value(
-// 			serde_json::from_str(&mock_response).expect("Invalid mock response"),
-// 		));
-// 		let version = provider.get_version().await.unwrap();
-// 		assert_eq!(version.protocol.unwrap().network, NeoNetwork::MainNet.to_magic());
-// 	}
-// }
+use std::{
+	collections::VecDeque,
+	sync::{Arc, Mutex},
+};
+
+use async_trait::async_trait;
+use serde::{de::DeserializeOwned, Serialize};
+use serde_json::Value;
+
+use super::common::JsonRpcError;
+use crate::neo_clients::{JsonRpcProvider, ProviderError};
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum MatchKind {
+	Any,
+	Partial,
+	Exact,
+}
+
+#[derive(Clone, Debug)]
+enum ParamsMatcher {
+	Any,
+	Partial(Value),
+	Exact(Value),
+}
+
+impl ParamsMatcher {
+	fn kind(&self) -> MatchKind {
+		match self {
+			ParamsMatcher::Any => MatchKind::Any,
+			ParamsMatcher::Partial(_) => MatchKind::Partial,
+			ParamsMatcher::Exact(_) => MatchKind::Exact,
+		}
+	}
+
+	fn matches(&self, actual: &Value) -> bool {
+		match self {
+			ParamsMatcher::Any => true,
+			ParamsMatcher::Exact(expected) => expected == actual,
+			ParamsMatcher::Partial(expected) => json_partial_match(expected, actual),
+		}
+	}
+}
+
+#[derive(Clone, Debug)]
+enum MethodMatcher {
+	Any,
+	Exact(String),
+}
+
+impl MethodMatcher {
+	fn matches(&self, actual: &str) -> bool {
+		match self {
+			MethodMatcher::Any => true,
+			MethodMatcher::Exact(expected) => expected == actual,
+		}
+	}
+
+	fn kind(&self) -> MatchKind {
+		match self {
+			MethodMatcher::Any => MatchKind::Any,
+			MethodMatcher::Exact(_) => MatchKind::Exact,
+		}
+	}
+}
+
+#[derive(Clone, Debug)]
+pub enum MockResponse {
+	Result(Value),
+	Error(JsonRpcError),
+}
+
+#[derive(Clone, Debug)]
+struct MockRule {
+	method: MethodMatcher,
+	params: ParamsMatcher,
+	response: MockResponse,
+}
+
+#[derive(Clone, Debug, Default)]
+pub struct MockProvider {
+	rules: Arc<Mutex<Vec<MockRule>>>,
+	requests: Arc<Mutex<VecDeque<(String, Value)>>>,
+}
+
+impl MockProvider {
+	pub fn new() -> Self {
+		Self::default()
+	}
+
+	pub fn push_result(&self, method: impl Into<String>, result: Value) {
+		self.push_rule(method.into(), ParamsMatcher::Any, MockResponse::Result(result));
+	}
+
+	pub fn push_result_with_params(&self, method: impl Into<String>, params: Value, result: Value) {
+		self.push_rule(method.into(), ParamsMatcher::Exact(params), MockResponse::Result(result));
+	}
+
+	pub fn push_result_with_partial_params(
+		&self,
+		method: impl Into<String>,
+		params: Value,
+		result: Value,
+	) {
+		self.push_rule(method.into(), ParamsMatcher::Partial(params), MockResponse::Result(result));
+	}
+
+	pub fn push_error_any(&self, error: JsonRpcError) {
+		let mut rules = self.rules.lock().unwrap_or_else(|e| e.into_inner());
+		rules.push(MockRule {
+			method: MethodMatcher::Any,
+			params: ParamsMatcher::Any,
+			response: MockResponse::Error(error),
+		});
+	}
+
+	pub fn push_error(&self, method: impl Into<String>, error: JsonRpcError) {
+		self.push_rule(method.into(), ParamsMatcher::Any, MockResponse::Error(error));
+	}
+
+	fn push_rule(&self, method: String, params: ParamsMatcher, response: MockResponse) {
+		let mut rules = self.rules.lock().unwrap_or_else(|e| e.into_inner());
+		rules.push(MockRule { method: MethodMatcher::Exact(method), params, response });
+	}
+
+	pub fn take_requests(&self) -> VecDeque<(String, Value)> {
+		self.requests.lock().unwrap_or_else(|e| e.into_inner()).drain(..).collect()
+	}
+
+	pub fn assert_request<T: Serialize>(
+		&self,
+		method: &str,
+		params: T,
+	) -> Result<(), ProviderError> {
+		let expected = serde_json::to_value(params)?;
+		let mut requests = self.requests.lock().unwrap_or_else(|e| e.into_inner());
+		let (actual_method, actual_params) = requests
+			.pop_front()
+			.ok_or_else(|| ProviderError::CustomError("No recorded mock requests".to_string()))?;
+		if actual_method != method {
+			return Err(ProviderError::CustomError(format!(
+				"Expected method {method}, got {actual_method}"
+			)));
+		}
+		if actual_params != expected {
+			return Err(ProviderError::CustomError(format!(
+				"Expected params {expected}, got {actual_params}"
+			)));
+		}
+		Ok(())
+	}
+}
+
+#[cfg_attr(target_arch = "wasm32", async_trait(? Send))]
+#[cfg_attr(not(target_arch = "wasm32"), async_trait)]
+impl JsonRpcProvider for MockProvider {
+	type Error = ProviderError;
+
+	async fn fetch<T, R>(&self, method: &str, params: T) -> Result<R, ProviderError>
+	where
+		T: std::fmt::Debug + Serialize + Send + Sync,
+		R: DeserializeOwned + Send,
+	{
+		let params_value = serde_json::to_value(params)?;
+		{
+			let mut requests = self.requests.lock().unwrap_or_else(|e| e.into_inner());
+			requests.push_back((method.to_string(), params_value.clone()));
+		}
+
+		let rule = {
+			let rules = self.rules.lock().unwrap_or_else(|e| e.into_inner());
+			select_best_rule(&rules, method, &params_value).cloned()
+		};
+
+		let Some(rule) = rule else {
+			return Err(ProviderError::CustomError(format!(
+				"No mock response configured for method {method} with params {params_value}"
+			)));
+		};
+
+		match rule.response {
+			MockResponse::Result(value) => serde_json::from_value(value).map_err(Into::into),
+			MockResponse::Error(error) => Err(ProviderError::JsonRpcError(error)),
+		}
+	}
+}
+
+fn select_best_rule<'a>(
+	rules: &'a [MockRule],
+	method: &str,
+	params: &Value,
+) -> Option<&'a MockRule> {
+	rules
+		.iter()
+		.filter(|rule| rule.method.matches(method) && rule.params.matches(params))
+		.max_by_key(|rule| (rule.method.kind() as u8, rule.params.kind() as u8))
+}
+
+fn json_partial_match(expected: &Value, actual: &Value) -> bool {
+	match (expected, actual) {
+		(Value::Object(expected), Value::Object(actual)) => expected.iter().all(|(key, value)| {
+			actual
+				.get(key)
+				.is_some_and(|actual_value| json_partial_match(value, actual_value))
+		}),
+		(Value::Array(expected), Value::Array(actual)) => {
+			expected.len() <= actual.len()
+				&& expected.iter().zip(actual.iter()).all(|(expected_item, actual_item)| {
+					json_partial_match(expected_item, actual_item)
+				})
+		},
+		_ => expected == actual,
+	}
+}
+
+#[cfg(test)]
+mod tests {
+	use super::*;
+	use crate::neo_clients::JsonRpcProvider;
+	use serde_json::json;
+
+	#[test]
+	fn test_json_partial_match_object_subset() {
+		let expected = json!({"a": 1});
+		let actual = json!({"a": 1, "b": 2});
+		assert!(json_partial_match(&expected, &actual));
+
+		let expected = json!({"a": 2});
+		assert!(!json_partial_match(&expected, &actual));
+	}
+
+	#[test]
+	fn test_json_partial_match_array_prefix() {
+		let expected = json!([1, 2]);
+		let actual = json!([1, 2, 3]);
+		assert!(json_partial_match(&expected, &actual));
+
+		let expected = json!([1, 3]);
+		assert!(!json_partial_match(&expected, &actual));
+
+		let expected = json!([1, 2, 3, 4]);
+		assert!(!json_partial_match(&expected, &actual));
+	}
+
+	#[tokio::test]
+	async fn test_mock_provider_selects_most_specific_rule() {
+		let provider = MockProvider::new();
+
+		provider.push_result("getblockcount", json!(1));
+		provider.push_result_with_partial_params("getblockcount", json!([1]), json!(2));
+		provider.push_result_with_params("getblockcount", json!([1, 2]), json!(3));
+
+		let exact: i32 = provider.fetch("getblockcount", vec![1, 2]).await.unwrap();
+		assert_eq!(exact, 3);
+
+		let partial: i32 = provider.fetch("getblockcount", vec![1, 9, 9]).await.unwrap();
+		assert_eq!(partial, 2);
+
+		let fallback: i32 = provider.fetch("getblockcount", vec![9]).await.unwrap();
+		assert_eq!(fallback, 1);
+	}
+
+	#[tokio::test]
+	async fn test_mock_provider_records_requests() {
+		let provider = MockProvider::new();
+		provider.push_result_with_params("getversion", json!([]), json!({"useragent": "test"}));
+
+		let _: Value = provider.fetch("getversion", Vec::<u32>::new()).await.unwrap();
+
+		provider.assert_request("getversion", Vec::<u32>::new()).unwrap();
+		assert!(provider.take_requests().is_empty());
+	}
+}

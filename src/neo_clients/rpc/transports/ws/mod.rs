@@ -149,23 +149,29 @@ impl RpcClient<WsClient> {
 	///
 	/// Connect to server via URL
 	///
-	/// ```
-	/// use neo_clients::{Ws, RpcClient};
-	/// # async fn t() {
-	///     let ws = RpcClient::<Ws>::connect("ws://localhost:8545").await.unwrap();
-	///     let _num = ws.get_block_number().await.unwrap();
+	/// ```no_run
+	/// use neo3::neo_clients::{APITrait, RpcClient, Ws};
+	///
+	/// # async fn t() -> Result<(), Box<dyn std::error::Error>> {
+	/// let ws = RpcClient::<Ws>::connect("ws://localhost:10334/ws").await?;
+	/// let height = ws.get_block_count().await?;
+	/// println!("Block count: {height}");
+	/// # Ok(())
 	/// # }
 	/// ```
 	///
 	/// Connect with authentication, see also [Self::connect_with_auth]
 	///
-	/// ```
-	/// use neo_clients::{Ws, RpcClient, ConnectionDetails, Authorization };
-	/// # async fn t() {
-	///     let auth = Authorization::basic("user", "pass");
-	///     let opts = ConnectionDetails::new("ws://localhost:8545", Some(auth));
-	///     let ws = RpcClient::<Ws>::connect(opts).await.unwrap();
-	///     let _num = ws.get_block_number().await.unwrap();
+	/// ```no_run
+	/// use neo3::neo_clients::{APITrait, Authorization, ConnectionDetails, RpcClient, Ws};
+	///
+	/// # async fn t() -> Result<(), Box<dyn std::error::Error>> {
+	/// let auth = Authorization::basic("user", "pass");
+	/// let opts = ConnectionDetails::new("ws://localhost:10334/ws", Some(auth));
+	/// let ws = RpcClient::<Ws>::connect(opts).await?;
+	/// let height = ws.get_block_count().await?;
+	/// println!("Block count: {height}");
+	/// # Ok(())
 	/// # }
 	/// ```
 	pub async fn connect(url: impl Into<ConnectionDetails>) -> Result<Self, ProviderError> {

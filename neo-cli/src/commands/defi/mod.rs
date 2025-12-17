@@ -18,7 +18,7 @@
 // needed for production implementation. Basic token operations are fully functional.
 
 mod famous;
-mod tokens;
+pub mod tokens;
 mod types;
 pub mod utils;
 
@@ -68,8 +68,8 @@ pub enum DefiCommands {
 		/// Token contract address or symbol
 		contract: String,
 
-		/// Optional address to check balance for (defaults to wallet's address)
-		address: Option<String>,
+		/// Address to check balance for
+		address: String,
 	},
 
 	/// Transfer tokens to an address
@@ -328,7 +328,7 @@ pub async fn handle_defi_command(args: DefiArgs, state: &mut CliState) -> Result
 	match args.command {
 		DefiCommands::Token { contract } => tokens::get_token_info(&contract, state).await,
 		DefiCommands::Balance { contract, address } => {
-			tokens::get_token_balance(&contract, address.as_deref().unwrap_or(""), state).await
+			tokens::get_token_balance(&contract, &address, state).await
 		},
 		DefiCommands::Transfer { token, to, amount, data: _ } => {
 			tokens::transfer_token(&token, &to, &amount, state).await

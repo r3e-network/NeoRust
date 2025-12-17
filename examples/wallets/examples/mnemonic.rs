@@ -20,7 +20,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 	println!("Wallet version: {}", wallet.version());
 	println!(
 		"Default account address: {}",
-		wallet.default_account().address_or_scripthash.address()
+		wallet
+			.default_account()
+			.expect("new wallets should have a default account")
+			.address_or_scripthash()
+			.address()
 	);
 
 	// Set wallet properties
@@ -47,7 +51,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 	wallet.set_default_account(new_account.get_script_hash());
 	println!(
 		"Default account is now: {}",
-		wallet.default_account().address_or_scripthash.address()
+		wallet
+			.default_account()
+			.expect("wallet should have a default account after setting one")
+			.address_or_scripthash()
+			.address()
 	);
 
 	// Encrypt accounts in the wallet

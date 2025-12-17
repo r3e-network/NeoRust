@@ -3,14 +3,13 @@
 //
 // This module contains utility functions for DeFi operations
 
-use crate::{
-	commands::wallet::{CliState, Wallet},
-	errors::CliError,
-};
+use crate::{commands::wallet::CliState, errors::CliError};
 use neo3::{
 	neo_clients::{APITrait, HttpProvider, RpcClient},
 	neo_types::AddressExtension,
+	neo_wallets::{Nep6Wallet, Wallet},
 	prelude::*,
+	sdk::DecimalAmount,
 };
 use num_traits::cast::ToPrimitive;
 use std::{path::PathBuf, str::FromStr};
@@ -98,13 +97,14 @@ pub async fn load_wallet(
 		Some(pwd) => Wallet::open_wallet(wallet_path, pwd)
 			.map_err(|e| CliError::Wallet(format!("Failed to open wallet: {}", e)))?,
 		None => {
-			// Read wallet file without password
+			// Read wallet file without password (NEP-6 wallet files can be parsed without decryption).
 			let wallet_json = std::fs::read_to_string(wallet_path)
 				.map_err(|e| CliError::Wallet(format!("Failed to read wallet file: {}", e)))?;
 
-			// Parse wallet JSON
-			serde_json::from_str(&wallet_json)
-				.map_err(|e| CliError::Wallet(format!("Failed to parse wallet file: {}", e)))?
+			let nep6: Nep6Wallet = serde_json::from_str(&wallet_json)
+				.map_err(|e| CliError::Wallet(format!("Failed to parse wallet file: {}", e)))?;
+			Wallet::from_nep6(nep6)
+				.map_err(|e| CliError::Wallet(format!("Failed to load wallet: {}", e)))?
 		},
 	};
 
@@ -119,6 +119,8 @@ pub fn prepare_state_from_existing(existing_state: &CliState) -> CliState {
 	if let Some(wallet) = &existing_state.wallet {
 		new_state.wallet = Some(wallet.clone());
 	}
+	new_state.wallet_path = existing_state.wallet_path.clone();
+	new_state.wallet_password = existing_state.wallet_password.clone();
 
 	if let Some(rpc_client) = &existing_state.rpc_client {
 		new_state.rpc_client = Some(rpc_client.clone());
@@ -170,22 +172,22 @@ pub async fn parse_amount(
 	rpc_client: &RpcClient<HttpProvider>,
 	network_type: NetworkTypeCli,
 ) -> Result<i64, CliError> {
-	// Try to parse as a simple float first
-	let amount_float = f64::from_str(amount).map_err(|_| {
-		CliError::InvalidArgument(
-			format!("Invalid amount: {}", amount),
-			"Please provide a valid number".to_string(),
-		)
-	})?;
-
 	// Get token decimals
 	let token_decimals = get_token_decimals(token_hash, rpc_client, network_type).await?;
 
-	// Calculate raw amount (amount * 10^decimals)
-	let multiplier = 10_f64.powi(token_decimals as i32);
-	let raw_amount = (amount_float * multiplier).round() as i64;
+	let amount = DecimalAmount::parse(amount, token_decimals).map_err(|e| {
+		CliError::InvalidArgument(
+			format!("Invalid amount: {}", amount),
+			format!("Please provide a valid token amount: {}", e),
+		)
+	})?;
 
-	Ok(raw_amount)
+	amount.raw_i64().ok_or_else(|| {
+		CliError::InvalidArgument(
+			"Amount is too large".to_string(),
+			"Please provide a smaller amount".to_string(),
+		)
+	})
 }
 
 /// Get decimals for a token
@@ -251,14 +253,14 @@ pub async fn get_token_decimals(
 
 /// Format token amount with proper decimal places
 pub fn format_token_amount(raw_amount: i64, decimals: u8) -> String {
-	let divisor = 10_f64.powi(decimals as i32);
-	let formatted_amount = (raw_amount as f64) / divisor;
-
-	if decimals == 0 {
-		return format!("{}", raw_amount);
+	let (sign, raw) = if raw_amount < 0 {
+		("-", raw_amount.unsigned_abs().to_string())
 	} else {
-		return format!("{:.1$}", formatted_amount, decimals as usize);
-	}
+		("", raw_amount.to_string())
+	};
+
+	let formatted = DecimalAmount::from_raw(raw, decimals).to_fixed_string();
+	format!("{}{}", sign, formatted)
 }
 
 /// Resolve token symbol or address to a script hash
@@ -273,16 +275,9 @@ pub async fn resolve_token_to_scripthash_with_network(
 	}
 
 	// Check if it's a valid address
-	match Address::from_str(token) {
-		Ok(address) => {
-			return address.address_to_script_hash().map_err(|e| {
-				CliError::InvalidArgument(
-					format!("Invalid address: {}", e),
-					"Please provide a valid NEO address".to_string(),
-				)
-			});
-		},
-		Err(_) => {},
+	let address = Address::from_str(token).unwrap();
+	if let Ok(script_hash) = address.address_to_script_hash() {
+		return Ok(script_hash);
 	}
 
 	// Check if it's a well-known token symbol
@@ -309,9 +304,7 @@ pub async fn resolve_token_hash(
 }
 
 /// Helper function to load a wallet from state
-pub fn load_wallet_from_state(
-	state: &mut CliState,
-) -> Result<&mut crate::commands::wallet::Wallet, CliError> {
+pub fn load_wallet_from_state(state: &mut CliState) -> Result<&mut Wallet, CliError> {
 	if state.wallet.is_none() {
 		return Err(CliError::NoWallet);
 	}

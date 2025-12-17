@@ -126,13 +126,16 @@ mod tests {
 	use super::*;
 
 	#[tokio::test]
+	#[ignore = "requires a live Neo RPC endpoint"]
 	async fn test_network_connection() {
 		// Test that we can connect to at least one TestNet endpoint
 		let provider = HttpProvider::new("https://testnet1.neo.org:443").unwrap();
 		let client = RpcClient::new(provider);
 
-		let block_count = client.get_block_count().await;
-		assert!(block_count.is_ok(), "Should be able to get block count");
-		assert!(block_count.unwrap() > 0, "Block count should be greater than 0");
+		let block_count = tokio::time::timeout(Duration::from_secs(10), client.get_block_count())
+			.await
+			.expect("RPC request should not time out");
+		let block_count = block_count.expect("Should be able to get block count from the network");
+		assert!(block_count > 0, "Block count should be greater than 0");
 	}
 }

@@ -74,6 +74,8 @@ exceptions = [
     # https://tldrlegal.com/license/creative-commons-cc0-1.0-universal
     { allow = ["CC0-1.0"], name = "tiny-keccak" },
     { allow = ["CC0-1.0"], name = "constant_time_eq" },
+    # root certificate bundle used by rustls/reqwest
+    { allow = ["CDLA-Permissive-2.0"], name = "webpki-roots" },
 ]
 
 [[licenses.clarify]]

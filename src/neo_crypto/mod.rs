@@ -75,6 +75,7 @@ pub use utils::*;
 pub use wif::*;
 
 mod base58_helper;
+pub mod crypto_lib;
 mod error;
 pub mod hash;
 mod key_pair;
@@ -83,7 +84,9 @@ pub mod utils;
 mod wif;
 
 // Re-export important types
+pub use crypto_lib::{blake2b_512, recover_secp256k1, sha3_512, verify_with_ed25519, CryptoLibHashable};
 pub use error::CryptoError;
 pub use hash::HashableForVec;
 pub use key_pair::KeyPair;
 pub use keys::{Secp256r1PublicKey, Secp256r1Signature};
+

@@ -187,7 +187,12 @@ impl Default for NetworkInfo {
 impl NeoGuiApp {
 	fn render_sidebar(&mut self, ui: &mut egui::Ui) {
 		ui.add_space(10.0);
-		ui.heading(RichText::new("NeoRust SDK").size(20.0).strong().color(egui::Color32::from_rgb(0, 229, 153)));
+		ui.heading(
+			RichText::new("NeoRust SDK")
+				.size(20.0)
+				.strong()
+				.color(egui::Color32::from_rgb(0, 229, 153)),
+		);
 		ui.label(RichText::new("Native GUI · Beta").size(12.0).weak());
 		ui.add_space(20.0);
 
@@ -207,7 +212,11 @@ impl NeoGuiApp {
 			ui.separator();
 			let status = {
 				let s = self.state.lock();
-				if s.network.connected { "🟢 Online" } else { "🔴 Offline" }
+				if s.network.connected {
+					"🟢 Online"
+				} else {
+					"🔴 Offline"
+				}
 			};
 			ui.label(status);
 		});
@@ -218,18 +227,11 @@ impl NeoGuiApp {
 			let state = self.state.lock();
 			state.current_tab == tab
 		};
-		
-		let color = if selected {
-			ui.visuals().widgets.active.bg_fill
-		} else {
-			egui::Color32::TRANSPARENT
-		};
 
-		let text_color = if selected {
-			egui::Color32::WHITE
-		} else {
-			ui.visuals().text_color()
-		};
+		let color =
+			if selected { ui.visuals().widgets.active.bg_fill } else { egui::Color32::TRANSPARENT };
+
+		let text_color = if selected { egui::Color32::WHITE } else { ui.visuals().text_color() };
 
 		let btn = egui::Button::new(RichText::new(label).color(text_color).size(14.0))
 			.fill(color)
@@ -269,7 +271,7 @@ impl NeoGuiApp {
 			ui.set_width(ui.available_width());
 			ui.heading("Network Connection");
 			ui.add_space(10.0);
-			
+
 			let (mut endpoint, mut network_type, connected, status) = {
 				let state = self.state.lock();
 				(
@@ -284,16 +286,17 @@ impl NeoGuiApp {
 				ui.label("Endpoint:");
 				ui.add(egui::TextEdit::singleline(&mut endpoint).desired_width(250.0));
 			});
-			
+
 			ui.horizontal(|ui| {
 				ui.label("Network:");
-				egui::ComboBox::from_id_source("net_type")
-					.selected_text(&network_type)
-					.show_ui(ui, |ui| {
+				egui::ComboBox::from_id_source("net_type").selected_text(&network_type).show_ui(
+					ui,
+					|ui| {
 						ui.selectable_value(&mut network_type, "mainnet".to_string(), "MainNet");
 						ui.selectable_value(&mut network_type, "testnet".to_string(), "TestNet");
 						ui.selectable_value(&mut network_type, "custom".to_string(), "Custom");
-					});
+					},
+				);
 			});
 
 			ui.add_space(10.0);
@@ -338,18 +341,20 @@ impl NeoGuiApp {
 		});
 
 		ui.add_space(20.0);
-		
+
 		// Activity Log
 		ui.heading("Recent Activity");
-		egui::Frame::window(ui.style()).fill(egui::Color32::from_rgb(10, 10, 15)).show(ui, |ui| {
-			egui::ScrollArea::vertical().max_height(200.0).show(ui, |ui| {
-				ui.set_min_width(ui.available_width());
-				let logs = self.state.lock().logs.clone();
-				for entry in logs.iter().rev() {
-					ui.monospace(entry);
-				}
+		egui::Frame::window(ui.style())
+			.fill(egui::Color32::from_rgb(10, 10, 15))
+			.show(ui, |ui| {
+				egui::ScrollArea::vertical().max_height(200.0).show(ui, |ui| {
+					ui.set_min_width(ui.available_width());
+					let logs = self.state.lock().logs.clone();
+					for entry in logs.iter().rev() {
+						ui.monospace(entry);
+					}
+				});
 			});
-		});
 	}
 
 	fn stat_card(&self, ui: &mut egui::Ui, title: &str, value: &str, icon: &str) {
@@ -396,11 +401,15 @@ impl NeoGuiApp {
 						},
 					}
 				}
-				
+
 				ui.separator();
-				
+
 				let mut wif_input = self.state.lock().wif_input.clone();
-				ui.add(egui::TextEdit::singleline(&mut wif_input).hint_text("Import WIF...").desired_width(300.0));
+				ui.add(
+					egui::TextEdit::singleline(&mut wif_input)
+						.hint_text("Import WIF...")
+						.desired_width(300.0),
+				);
 				if ui.button("📥 Import").clicked() {
 					let wif = wif_input.trim().to_string();
 					if !wif.is_empty() {
@@ -492,10 +501,7 @@ impl NeoGuiApp {
 			});
 			ui.add_space(10.0);
 			if ui.button("📝 Draft & Simulate Transfer").clicked() {
-				self.queue_action(Action::DraftTransfer {
-					to: to.clone(),
-					amount: amount.clone(),
-				});
+				self.queue_action(Action::DraftTransfer { to: to.clone(), amount: amount.clone() });
 			}
 
 			// Sync back
@@ -522,7 +528,7 @@ impl NeoGuiApp {
 						ui.selectable_value(&mut s.hd_word_count, 12, "12 Words");
 						ui.selectable_value(&mut s.hd_word_count, 24, "24 Words");
 					});
-				
+
 				if ui.button("🎲 Generate New").clicked() {
 					drop(s); // release lock
 					self.generate_hd_wallet();
@@ -537,7 +543,11 @@ impl NeoGuiApp {
 
 			ui.label("Import Existing");
 			ui.horizontal(|ui| {
-				ui.add(egui::TextEdit::multiline(&mut s.hd_mnemonic_input).desired_rows(2).desired_width(400.0));
+				ui.add(
+					egui::TextEdit::multiline(&mut s.hd_mnemonic_input)
+						.desired_rows(2)
+						.desired_width(400.0),
+				);
 				if ui.button("📥 Import").clicked() {
 					drop(s);
 					self.import_hd_wallet();
@@ -551,12 +561,19 @@ impl NeoGuiApp {
 		// Active Wallet Display
 		let mnemonic = self.state.lock().hd_mnemonic.clone();
 		if !mnemonic.is_empty() {
-			egui::Frame::group(ui.style()).rounding(8.0).fill(egui::Color32::from_rgb(20, 20, 25)).show(ui, |ui| {
-				ui.set_width(ui.available_width());
-				ui.label(RichText::new("Active Mnemonic Phrase").strong().color(egui::Color32::YELLOW));
-				ui.add_space(5.0);
-				ui.monospace(&mnemonic);
-			});
+			egui::Frame::group(ui.style())
+				.rounding(8.0)
+				.fill(egui::Color32::from_rgb(20, 20, 25))
+				.show(ui, |ui| {
+					ui.set_width(ui.available_width());
+					ui.label(
+						RichText::new("Active Mnemonic Phrase")
+							.strong()
+							.color(egui::Color32::YELLOW),
+					);
+					ui.add_space(5.0);
+					ui.monospace(&mnemonic);
+				});
 
 			ui.add_space(20.0);
 			ui.heading("Derive Accounts");
@@ -574,16 +591,19 @@ impl NeoGuiApp {
 			// Derived List
 			let derived = self.state.lock().hd_accounts.clone();
 			if !derived.is_empty() {
-				egui::Grid::new("derived_grid").striped(true).spacing([20.0, 5.0]).show(ui, |ui| {
-					ui.label(RichText::new("Address").strong());
-					ui.label(RichText::new("WIF").strong());
-					ui.end_row();
-					for acc in derived {
-						ui.monospace(acc.address);
-						ui.monospace(acc.wif.unwrap_or_default());
+				egui::Grid::new("derived_grid")
+					.striped(true)
+					.spacing([20.0, 5.0])
+					.show(ui, |ui| {
+						ui.label(RichText::new("Address").strong());
+						ui.label(RichText::new("WIF").strong());
 						ui.end_row();
-					}
-				});
+						for acc in derived {
+							ui.monospace(acc.address);
+							ui.monospace(acc.wif.unwrap_or_default());
+							ui.end_row();
+						}
+					});
 			}
 		}
 	}
@@ -594,7 +614,7 @@ impl NeoGuiApp {
 			(s.hd_word_count, s.hd_passphrase.clone())
 		};
 		let passphrase_opt = if passphrase.is_empty() { None } else { Some(passphrase.as_str()) };
-		
+
 		match HDWallet::generate(word_count, passphrase_opt) {
 			Ok(wallet) => {
 				let phrase = wallet.mnemonic_phrase().to_string();
@@ -615,14 +635,16 @@ impl NeoGuiApp {
 			let s = self.state.lock();
 			(s.hd_mnemonic_input.trim().to_string(), s.hd_passphrase.clone())
 		};
-		
-		if mnemonic.is_empty() { return; }
-		
+
+		if mnemonic.is_empty() {
+			return;
+		}
+
 		let mut builder = HDWalletBuilder::new().mnemonic(mnemonic.clone());
 		if !passphrase.is_empty() {
 			builder = builder.passphrase(passphrase);
 		}
-		
+
 		match builder.build() {
 			Ok(wallet) => {
 				let phrase = wallet.mnemonic_phrase().to_string();
@@ -641,7 +663,7 @@ impl NeoGuiApp {
 	fn derive_hd_account(&self) {
 		let path = { self.state.lock().hd_derivation_path.clone() };
 		let mut s = self.state.lock();
-		
+
 		if let Some(wallet) = s.hd_wallet.as_mut() {
 			match wallet.derive_account(&path) {
 				Ok(acc) => {
@@ -692,11 +714,13 @@ impl NeoGuiApp {
 		ui.add_space(20.0);
 		ui.label(RichText::new("Simulation Result").strong());
 		let result = self.state.lock().simulator_result.clone();
-		egui::Frame::window(ui.style()).fill(egui::Color32::from_rgb(10, 10, 15)).show(ui, |ui| {
-			ui.set_width(ui.available_width());
-			ui.set_min_height(100.0);
-			ui.monospace(result);
-		});
+		egui::Frame::window(ui.style())
+			.fill(egui::Color32::from_rgb(10, 10, 15))
+			.show(ui, |ui| {
+				ui.set_width(ui.available_width());
+				ui.set_min_height(100.0);
+				ui.monospace(result);
+			});
 	}
 
 	fn render_websocket(&mut self, ui: &mut egui::Ui) {
@@ -714,13 +738,22 @@ impl NeoGuiApp {
 			ui.end_row();
 
 			ui.label("Subscription");
-			egui::ComboBox::from_id_source("ws_sub")
-				.selected_text(&subscription)
-				.show_ui(ui, |ui| {
+			egui::ComboBox::from_id_source("ws_sub").selected_text(&subscription).show_ui(
+				ui,
+				|ui| {
 					ui.selectable_value(&mut subscription, "NewBlocks".to_string(), "NewBlocks");
-					ui.selectable_value(&mut subscription, "NewTransactions".to_string(), "NewTransactions");
-					ui.selectable_value(&mut subscription, "ExecutionResults".to_string(), "ExecutionResults");
-				});
+					ui.selectable_value(
+						&mut subscription,
+						"NewTransactions".to_string(),
+						"NewTransactions",
+					);
+					ui.selectable_value(
+						&mut subscription,
+						"ExecutionResults".to_string(),
+						"ExecutionResults",
+					);
+				},
+			);
 			ui.end_row();
 		});
 
@@ -730,7 +763,10 @@ impl NeoGuiApp {
 				if connected {
 					self.queue_action(Action::WsDisconnect);
 				} else {
-					self.queue_action(Action::WsConnect { url: url.clone(), subscription: subscription.clone() });
+					self.queue_action(Action::WsConnect {
+						url: url.clone(),
+						subscription: subscription.clone(),
+					});
 				}
 			}
 			ui.label(if connected { "🟢 Connected" } else { "🔴 Disconnected" });
@@ -746,20 +782,25 @@ impl NeoGuiApp {
 
 		ui.add_space(20.0);
 		ui.label(RichText::new("Event Stream").strong());
-		egui::Frame::window(ui.style()).fill(egui::Color32::from_rgb(10, 10, 15)).show(ui, |ui| {
-			egui::ScrollArea::vertical().max_height(300.0).stick_to_bottom(true).show(ui, |ui| {
-				ui.set_width(ui.available_width());
-				ui.set_min_height(200.0);
-				let events = self.state.lock().ws_events.clone();
-				if events.is_empty() {
-					ui.label(RichText::new("No events received yet.").weak());
-				} else {
-					for evt in events {
-						ui.monospace(evt);
-					}
-				}
+		egui::Frame::window(ui.style())
+			.fill(egui::Color32::from_rgb(10, 10, 15))
+			.show(ui, |ui| {
+				egui::ScrollArea::vertical().max_height(300.0).stick_to_bottom(true).show(
+					ui,
+					|ui| {
+						ui.set_width(ui.available_width());
+						ui.set_min_height(200.0);
+						let events = self.state.lock().ws_events.clone();
+						if events.is_empty() {
+							ui.label(RichText::new("No events received yet.").weak());
+						} else {
+							for evt in events {
+								ui.monospace(evt);
+							}
+						}
+					},
+				);
 			});
-		});
 	}
 
 	fn render_analytics(&mut self, ui: &mut egui::Ui) {
@@ -782,7 +823,12 @@ impl NeoGuiApp {
 				.allow_zoom(false)
 				.allow_drag(false)
 				.show(ui, |plot_ui| {
-					plot_ui.line(Line::new(points).color(egui::Color32::from_rgb(0, 229, 153)).width(2.0).name("Block Height"));
+					plot_ui.line(
+						Line::new(points)
+							.color(egui::Color32::from_rgb(0, 229, 153))
+							.width(2.0)
+							.name("Block Height"),
+					);
 				});
 		}
 	}
@@ -792,7 +838,7 @@ impl NeoGuiApp {
 		ui.add_space(20.0);
 
 		let mut state = self.state.lock();
-		
+
 		egui::Frame::group(ui.style()).show(ui, |ui| {
 			ui.set_width(ui.available_width());
 			ui.heading("Appearance");
@@ -804,7 +850,9 @@ impl NeoGuiApp {
 		egui::Frame::group(ui.style()).show(ui, |ui| {
 			ui.set_width(ui.available_width());
 			ui.heading("Performance");
-			ui.add(egui::Slider::new(&mut state.poll_interval_secs, 1..=60).text("Poll Interval (s)"));
+			ui.add(
+				egui::Slider::new(&mut state.poll_interval_secs, 1..=60).text("Poll Interval (s)"),
+			);
 			ui.add(egui::Slider::new(&mut state.max_logs, 100..=1000).text("Max Log Entries"));
 		});
 
@@ -1312,7 +1360,7 @@ impl eframe::App for NeoGuiApp {
 		} else {
 			ctx.set_visuals(egui::Visuals::light());
 		}
-		
+
 		// Apply a global style tweak
 		let mut style = (*ctx.style()).clone();
 		style.spacing.button_padding = egui::vec2(10.0, 6.0);

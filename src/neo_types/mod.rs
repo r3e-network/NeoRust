@@ -95,9 +95,13 @@ pub use syncing::*;
 pub use tx_pool::*;
 pub use url_session::*;
 pub use util::*;
+pub use hardfork::*;
+pub use whitelisted_contract::*;
 
 // Make modules public for direct access
 pub mod contract;
+pub mod hardfork;
+pub mod whitelisted_contract;
 pub mod error;
 pub mod nns;
 pub mod serde_value;

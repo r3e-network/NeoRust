@@ -185,6 +185,48 @@ impl<'a, P: JsonRpcProvider + 'static> NeoToken<'a, P> {
 		self.invoke_function("setRegisterPrice", vec![register_price.into()]).await
 	}
 
+	/// Gets the committee multi-sig address.
+	///
+	/// This method returns the script hash of the committee's multi-signature account.
+	/// Available after HF_Cockatrice.
+	///
+	/// # Returns
+	///
+	/// The script hash of the committee's multi-signature address.
+	pub async fn get_committee_address(&self) -> Result<H160, ContractError> {
+		let result = self
+			.call_invoke_function("getCommitteeAddress", vec![], vec![])
+			.await?;
+		self.throw_if_fault_state(&result)?;
+
+		let item = result
+			.get_first_stack_item()
+			.map_err(|e| ContractError::InvalidResponse(e.to_string()))?;
+
+		item.as_bytes()
+			.filter(|bytes| bytes.len() == 20)
+			.map(|bytes| H160::from_slice(&bytes))
+			.ok_or_else(|| ContractError::InvalidResponse("Invalid committee address".to_string()))
+	}
+
+	/// Gets the votes for a specific candidate.
+	///
+	/// # Arguments
+	///
+	/// * `pubkey` - The public key of the candidate.
+	///
+	/// # Returns
+	///
+	/// The number of votes for the candidate, or -1 if not found.
+	pub async fn get_candidate_vote(
+		&self,
+		pubkey: &Secp256r1PublicKey,
+	) -> Result<i64, ContractError> {
+		Ok(self
+			.call_function_returning_int("getCandidateVote", vec![pubkey.into()])
+			.await? as i64)
+	}
+
 	pub async fn get_account_state(&self, account: &H160) -> Result<AccountState, ContractError> {
 		let result = self
 			.call_invoke_function("getAccountState", vec![account.into()], vec![])
@@ -207,8 +249,16 @@ impl<'a, P: JsonRpcProvider + 'static> NeoToken<'a, P> {
 				let update_height = items[1].as_int();
 				let public_key = items[2].clone();
 
+				// Neo 3.9+ includes last_gas_per_vote as the 4th element
+				let last_gas_per_vote = if items.len() >= 4 { items[3].as_int() } else { None };
+
 				if let StackItem::Any = public_key {
-					Ok(AccountState { balance, balance_height: update_height, public_key: None })
+					Ok(AccountState {
+						balance,
+						balance_height: update_height,
+						public_key: None,
+						last_gas_per_vote,
+					})
 				} else {
 					let bytes = public_key.as_bytes().ok_or_else(|| {
 						ContractError::InvalidResponse(
@@ -224,6 +274,7 @@ impl<'a, P: JsonRpcProvider + 'static> NeoToken<'a, P> {
 						balance,
 						balance_height: update_height,
 						public_key: Some(pubkey),
+						last_gas_per_vote,
 					})
 				}
 			},
@@ -340,14 +391,24 @@ impl Candidate {
 	}
 }
 
+/// Represents the account state for NEO token holders.
+///
+/// The account state tracks the NEO balance, the block height when the balance was last updated,
+/// the voting target (if any), and the last gas per vote value for reward calculations.
 pub struct AccountState {
+	/// The NEO balance of the account.
 	pub balance: i64,
+	/// The block height when the balance was last changed.
 	pub balance_height: Option<i64>,
+	/// The public key of the candidate the account is voting for (if any).
 	pub public_key: Option<Secp256r1PublicKey>,
+	/// The last calculated gas per vote value (used for reward calculations).
+	/// This field was added in Neo 3.9 for improved voting reward tracking.
+	pub last_gas_per_vote: Option<i64>,
 }
 
 impl AccountState {
 	pub fn with_no_balance() -> Self {
-		Self { balance: 0, balance_height: None, public_key: None }
+		Self { balance: 0, balance_height: None, public_key: None, last_gas_per_vote: None }
 	}
 }

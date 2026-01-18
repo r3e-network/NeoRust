@@ -42,6 +42,7 @@ A comprehensive, production-ready Rust SDK for the Neo N3 blockchain platform. N
 - 📦 **Project Templates** - Quick-start templates for dApps, tokens, and smart contracts
 - 🔧 **Unified Error Handling** - Consistent errors with recovery suggestions
 - ⚡ **Performance Optimized** - <100ms event processing, efficient caching
+- 🆕 **Neo 3.9 Ready** - Full support for Hardfork Echidna, Faun, and upcoming Gorgon
 
 ### Applications
 - 🖥️ **CLI Tools** - Command-line interface for common blockchain operations

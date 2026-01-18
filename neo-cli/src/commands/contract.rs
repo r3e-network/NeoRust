@@ -8,6 +8,7 @@ use neo3::{
 	builder::{AccountSigner, ScriptBuilder, Signer, TransactionBuilder},
 	codec::NeoSerializable,
 	neo_clients::APITrait,
+	neo_contract::PolicyContract,
 	neo_protocol::AccountTrait,
 	neo_types::{ContractManifest, NefFile},
 	prelude::*,
@@ -82,6 +83,9 @@ pub enum ContractCommands {
 
 	/// List native contracts
 	ListNativeContracts,
+
+	/// Show current network policy values
+	Policy,
 }
 
 /// CLI state is defined in wallet.rs
@@ -100,6 +104,7 @@ pub async fn handle_contract_command(
 			invoke_contract(script_hash, method, params, account, test_invoke, state).await
 		},
 		ContractCommands::ListNativeContracts => list_native_contracts(state).await,
+		ContractCommands::Policy => show_policy(state).await,
 	}
 }
 
@@ -731,6 +736,51 @@ async fn list_native_contracts(
 	}
 
 	print_success("Native contracts retrieved successfully");
+	Ok(())
+}
+
+async fn show_policy(state: &mut crate::commands::wallet::CliState) -> Result<(), CliError> {
+	if state.rpc_client.is_none() {
+		print_error("No RPC client is connected. Please connect to a node first.");
+		return Err(CliError::Network("No RPC client is connected".to_string()));
+	}
+
+	let policy = PolicyContract::new(state.rpc_client.as_ref());
+
+	print_info("Fetching policy values...");
+
+	let fee_per_byte = policy
+		.get_fee_per_byte()
+		.await
+		.map_err(|e| CliError::Network(format!("Failed to get fee per byte: {}", e)))?;
+
+	let exec_fee_factor = policy
+		.get_exec_fee_factor()
+		.await
+		.map_err(|e| CliError::Network(format!("Failed to get exec fee factor: {}", e)))?;
+
+	let storage_price = policy
+		.get_storage_price()
+		.await
+		.map_err(|e| CliError::Network(format!("Failed to get storage price: {}", e)))?;
+
+	let pico_factor = match policy.get_exec_pico_fee_factor().await {
+		Ok(val) => val.to_string(),
+		Err(_) => "Not supported (Neo 3.9+)".to_string(),
+	};
+
+	let milliseconds_per_block = match policy.get_milliseconds_per_block().await {
+		Ok(val) => format!("{} ms", val),
+		Err(_) => "Not supported".to_string(),
+	};
+
+	println!("Policy Contract State:");
+	println!("  Fee Per Byte:         {}", fee_per_byte);
+	println!("  Exec Fee Factor:      {}", exec_fee_factor);
+	println!("  Storage Price:        {}", storage_price);
+	println!("  Exec Pico Fee Factor: {}", pico_factor);
+	println!("  Milliseconds/Block:   {}", milliseconds_per_block);
+
 	Ok(())
 }
 

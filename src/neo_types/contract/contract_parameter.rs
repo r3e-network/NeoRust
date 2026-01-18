@@ -226,6 +226,12 @@ impl From<u64> for ContractParameter {
 	}
 }
 
+impl From<i64> for ContractParameter {
+	fn from(value: i64) -> Self {
+		Self::integer(value)
+	}
+}
+
 impl From<&Role> for ContractParameter {
 	fn from(value: &Role) -> Self {
 		Self::integer(*value as i64)

@@ -189,9 +189,11 @@ pub use name_service::*;
 pub use neo_token::*;
 pub use neo_uri::*;
 pub use nft_contract::*;
+pub use notary::*;
 pub use policy_contract::*;
 pub use role_management::*;
 pub use traits::*;
+pub use treasury::*;
 
 mod contract_error;
 mod contract_management;
@@ -203,9 +205,12 @@ mod name_service;
 mod neo_token;
 mod neo_uri;
 mod nft_contract;
+mod notary;
 mod policy_contract;
 mod role_management;
 mod traits;
+mod treasury;
 
 #[cfg(test)]
 mod tests;
+

@@ -1,6 +1,6 @@
 use std::{
 	fmt::Debug,
-	hash::{Hash, Hasher},
+	hash::Hash,
 };
 
 use crate::neo_crypto::utils::FromBase64String;
@@ -29,14 +29,20 @@ pub enum TransactionAttribute {
 		height: u32,
 	},
 
+	#[serde(rename = "Conflicts")]
 	Conflicts {
 		hash: H256,
+	},
+
+	#[serde(rename = "NotaryAssisted")]
+	NotaryAssisted {
+		n: u16,
 	},
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Hash, Debug, Clone)]
 pub struct OracleResponse {
-	pub id: u32,
+	pub id: u64,
 	pub response_code: OracleResponseCode,
 	pub result: String,
 }
@@ -68,7 +74,7 @@ impl TransactionAttribute {
 		}
 	}
 
-	// Get the height for NotValidBefore attribute
+	// Get the hash for Conflicts attribute
 	pub fn get_hash(&self) -> Option<&H256> {
 		match self {
 			TransactionAttribute::Conflicts { hash } => Some(hash),
@@ -87,9 +93,22 @@ impl NeoSerializable for TransactionAttribute {
 				id: _,
 				response_code: _,
 				result,
-			}) => 1 + 9 + result.len(),
-			TransactionAttribute::NotValidBefore { height: _ } => 1 + 4, // 1 byte type + 4 bytes height
-			TransactionAttribute::Conflicts { hash: _ } => 1 + 32,       // 1 byte type + 32 bytes hash
+			}) => {
+				let len = result.len() as u64;
+				let var_int_size = if len < 0xfd {
+					1
+				} else if len <= 0xffff {
+					3
+				} else if len <= 0xffffffff {
+					5
+				} else {
+					9
+				};
+				1 + 8 + 1 + var_int_size + result.len()
+			},
+			TransactionAttribute::NotValidBefore { height: _ } => 1 + 4,
+			TransactionAttribute::Conflicts { hash: _ } => 1 + 32,
+			TransactionAttribute::NotaryAssisted { n: _ } => 1 + 2,
 		}
 	}
 
@@ -100,9 +119,7 @@ impl NeoSerializable for TransactionAttribute {
 			},
 			TransactionAttribute::OracleResponse(OracleResponse { id, response_code, result }) => {
 				writer.write_u8(0x11);
-				let mut v = id.to_be_bytes();
-				v.reverse();
-				writer.write(&v);
+				writer.write_u64(*id);
 				writer.write_u8(*response_code as u8);
 				let decoded = match result.from_base64_string() {
 					Ok(bytes) => bytes,
@@ -118,7 +135,21 @@ impl NeoSerializable for TransactionAttribute {
 					tracing::warn!(error = %e, "Failed to encode oracle response");
 				}
 			},
-			_ => {},
+			TransactionAttribute::NotValidBefore { height } => {
+				writer.write_u8(0x20); 
+				writer.write_u32(*height);
+				// We assume Post-Domovoi, so no 28-byte padding.
+				// If we needed to support pre-Domovoi, we'd need context which Encoder doesn't have easily.
+				// Given this is a Neo 3.9 SDK, we use the modern format.
+			},
+			TransactionAttribute::Conflicts { hash } => {
+				writer.write_u8(0x21); 
+				writer.write_bytes(hash.as_bytes());
+			},
+			TransactionAttribute::NotaryAssisted { n } => {
+				writer.write_u8(0x22); 
+				writer.write_u16(*n);
+			},
 		}
 	}
 
@@ -126,12 +157,13 @@ impl NeoSerializable for TransactionAttribute {
 		match reader.read_u8_safe()? {
 			0x01 => Ok(TransactionAttribute::HighPriority),
 			0x11 => {
-				let id = reader.read_u32().map_err(|e| {
+				let id = reader.read_u64().map_err(|e| {
 					TransactionError::TransactionConfiguration(format!(
 						"Failed to read oracle response ID: {}",
 						e
 					))
 				})?;
+				
 				let response_code_byte = reader.read_u8_safe()?;
 				let response_code =
 					OracleResponseCode::try_from(response_code_byte).map_err(|_| {
@@ -155,7 +187,21 @@ impl NeoSerializable for TransactionAttribute {
 					result,
 				}))
 			},
-			_ => Err(TransactionError::InvalidTransaction),
+			0x20 => {
+				let height = reader.read_u32().map_err(|e| TransactionError::TransactionConfiguration(format!("Failed to read NotValidBefore height: {}", e)))?;
+				// Again, we assume post-Domovoi format (no padding consumer)
+				Ok(TransactionAttribute::NotValidBefore { height })
+			},
+			0x21 => {
+				let hash_bytes = reader.read_bytes(32).map_err(|e| TransactionError::TransactionConfiguration(format!("Failed to read Conflicts hash: {}", e)))?;
+				let hash = H256::from_slice(&hash_bytes);
+				Ok(TransactionAttribute::Conflicts { hash })
+			},
+			0x22 => {
+				let n = reader.read_u16().map_err(|e| TransactionError::TransactionConfiguration(format!("Failed to read NotaryAssisted n: {}", e)))?;
+				Ok(TransactionAttribute::NotaryAssisted { n })
+			},
+			t => Err(TransactionError::TransactionConfiguration(format!("Invalid transaction attribute type: {}", t))),
 		}
 	}
 

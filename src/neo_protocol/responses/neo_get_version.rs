@@ -11,6 +11,8 @@ pub struct NeoVersion {
 	pub nonce: u32,
 	#[serde(rename = "useragent", default = "default_user_agent")]
 	pub user_agent: String,
+	#[serde(default)]
+	pub rpc: Option<NeoRpcSettings>,
 	#[serde(default = "default_protocol")]
 	pub protocol: Option<NeoProtocol>,
 }
@@ -22,6 +24,7 @@ impl Default for NeoVersion {
 			ws_port: Some(10334),
 			nonce: 1234567890,
 			user_agent: "/Neo:3.5.0/".to_string(),
+			rpc: None,
 			protocol: Some(NeoProtocol::default()),
 		}
 	}
@@ -53,8 +56,25 @@ impl PartialEq for NeoVersion {
 			&& self.ws_port == other.ws_port
 			&& self.nonce == other.nonce
 			&& self.user_agent == other.user_agent
+			&& self.rpc == other.rpc
 			&& self.protocol == other.protocol
 	}
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Hash)]
+pub struct NeoRpcSettings {
+	#[serde(rename = "maxiteratorresultitems", default = "default_max_iterator_result_items")]
+	pub max_iterator_result_items: u32,
+	#[serde(rename = "sessionenabled", default = "default_session_enabled")]
+	pub session_enabled: bool,
+}
+
+fn default_max_iterator_result_items() -> u32 {
+	100
+}
+
+fn default_session_enabled() -> bool {
+	false
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Hash)]
@@ -85,6 +105,10 @@ pub struct NeoProtocol {
 	pub initial_gas_distribution: u64,
 	#[serde(rename = "hardforks", default, deserialize_with = "deserialize_hardforks")]
 	pub hard_forks: Vec<HardForks>,
+	#[serde(rename = "standbycommittee", default)]
+	pub standby_committee: Vec<String>,
+	#[serde(rename = "seedlist", default)]
+	pub seed_list: Vec<String>,
 }
 
 impl Default for NeoProtocol {
@@ -100,6 +124,8 @@ impl Default for NeoProtocol {
 			memory_pool_max_transactions: 50000,
 			initial_gas_distribution: 5200000000000000,
 			hard_forks: Vec::new(),
+			standby_committee: Vec::new(),
+			seed_list: Vec::new(),
 		}
 	}
 }

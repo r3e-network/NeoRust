@@ -1,4 +1,4 @@
-# Transaction Simulation Guide (v0.5.4)
+# Transaction Simulation Guide (v0.5.5)
 
 Use `neo3::sdk::transaction_simulator::TransactionSimulator` to preview gas, VM state, and effects before broadcasting.
 

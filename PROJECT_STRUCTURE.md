@@ -48,10 +48,6 @@ NeoRust/
 │   ├── src/
 │   ├── templates/                # Project generator templates
 │   └── Cargo.toml
-├── neo-gui-rs/                   # Native Rust GUI shell (workspace member)
-│   ├── src/
-│   └── Cargo.toml
-├── neo-gui/                      # Legacy React/Tauri GUI (not a Cargo member)
 │
 ├── docs/                        # Documentation
 │   ├── src/                     # mdBook source content
@@ -66,7 +62,7 @@ NeoRust/
 │
 ├── .cargo/                    # Cargo configuration
 │   └── config.toml
-├── vendor/                    # Vendored/patched deps (see `[patch.crates-io]`)
+├── vendor/                    # Vendored/patched deps (if any)
 ├── config/                    # App configuration (dev/prod)
 ├── assets/                    # Branding assets
 ├── website/                   # Project website sources
@@ -90,7 +86,7 @@ NeoRust/
 
 ### 1. **Modular Architecture**
 - Major components live as modules under `src/` in the `neo3` crate
-- Workspace applications (`neo-cli`, `neo-gui-rs`) are separate crates
+- Workspace applications (`neo-cli`) are separate crates
 - Clear separation of concerns
 - Minimal cross-module coupling
 - Well-defined public APIs
@@ -122,8 +118,6 @@ NeoRust/
 
 ### Workspace applications
 - `neo-cli/`: CLI for common operations (wallets, contracts, NeoFS, etc.)
-- `neo-gui-rs/`: Native Rust GUI shell for the SDK
-- `neo-gui/`: Legacy React/Tauri GUI for historical parity
 
 ### Core modules (selected)
 - `neo_clients`: JSON-RPC client + HTTP/WS/IPC transports

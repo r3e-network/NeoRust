@@ -4,13 +4,12 @@ import styles from './styles.module.css';
 
 const FeatureList = [
   {
-    title: '🎨 Beautiful Desktop GUI',
-    Svg: require('@site/static/img/gui-feature.svg').default,
+    title: '🧰 Developer Tooling',
+    Svg: require('@site/static/img/developer-tools.svg').default,
     description: (
       <>
-        Modern, responsive interface built with Tauri and React. 
-        Manage wallets, trade NFTs, and interact with the blockchain 
-        through an intuitive visual interface.
+        Curated guides, templates, and examples to speed up Neo N3 development.
+        Build contracts, manage wallets, and automate workflows with confidence.
       </>
     ),
   },

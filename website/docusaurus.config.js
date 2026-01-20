@@ -119,10 +119,6 @@ const config = {
                 to: '/sdk/intro',
               },
               {
-                label: '🖥️ Desktop GUI',
-                to: '/gui/intro',
-              },
-              {
                 label: '⌨️ CLI Tools',
                 to: '/cli/intro',
               },
@@ -173,10 +169,6 @@ const config = {
                 to: '/sdk/intro',
               },
               {
-                label: 'GUI Documentation',
-                to: '/gui/intro',
-              },
-              {
                 label: 'CLI Documentation',
                 to: '/cli/intro',
               },
@@ -192,10 +184,6 @@ const config = {
               {
                 label: 'Rust SDK',
                 to: '/sdk/installation',
-              },
-              {
-                label: 'Desktop GUI',
-                to: '/gui/installation',
               },
               {
                 label: 'CLI Tools',
@@ -324,18 +312,6 @@ const config = {
         path: 'sdk',
         routeBasePath: 'sdk',
         sidebarPath: require.resolve('./sidebars-sdk.js'),
-        editUrl: 'https://github.com/R3E-Network/NeoRust/tree/main/website/',
-        showLastUpdateAuthor: true,
-        showLastUpdateTime: true,
-      },
-    ],
-    [
-      '@docusaurus/plugin-content-docs',
-      {
-        id: 'gui',
-        path: 'gui',
-        routeBasePath: 'gui',
-        sidebarPath: require.resolve('./sidebars-gui.js'),
         editUrl: 'https://github.com/R3E-Network/NeoRust/tree/main/website/',
         showLastUpdateAuthor: true,
         showLastUpdateTime: true,

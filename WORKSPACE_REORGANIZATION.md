@@ -95,7 +95,6 @@ members = [
     "crates/neo3-contracts",
     "crates/neo3-macros",
     "apps/neo-cli",
-    "apps/neo-gui",
 ]
 
 [workspace.package]

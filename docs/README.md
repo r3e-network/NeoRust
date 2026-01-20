@@ -2,7 +2,7 @@
 
 <div align="center">
   <h1>🚀 NeoRust - Production-Ready Neo N3 SDK</h1>
-  <p><strong>Rust SDK • Beautiful GUI • Powerful CLI • Enterprise Ready</strong></p>
+  <p><strong>Rust SDK • Powerful CLI • Enterprise Ready</strong></p>
   
   <p>
     <img src="../assets/images/neo-logo.png" alt="Neo Logo" width="100"/>
@@ -20,35 +20,14 @@
 
 **NeoRust** is the most comprehensive and production-ready toolkit for Neo N3 blockchain development. It's not just an SDK - it's a complete development suite that includes:
 
-- 🎨 **Beautiful Desktop GUI** - Modern wallet and developer tools
 - 💻 **Powerful CLI** - Professional command-line interface
 - 📚 **Comprehensive SDK** - Production-ready Rust library
 - 🔧 **Developer Tools** - Everything you need to build on Neo
 - 🌐 **Flexible Transports** - HTTP by default, opt-in WebSocket/IPC support, and mockable clients for tests/CI
 
-## 🎯 Three Ways to Use NeoRust
+## 🎯 Two Ways to Use NeoRust
 
-### 1. 🖥️ Desktop GUI Application
-
-**Perfect for**: End users, wallet management, NFT trading, portfolio tracking
-
-```bash
-# Quick start
-git clone https://github.com/R3E-Network/NeoRust.git
-cd NeoRust/neo-gui
-npm install && npm run dev
-# Open http://localhost:1420
-```
-
-**Features:**
-- 💼 **Multi-Wallet Management**: Secure wallet creation and management
-- 📊 **Portfolio Dashboard**: Real-time charts and analytics
-- 🎨 **NFT Marketplace**: Browse, mint, and trade NFTs
-- 🔧 **Developer Tools**: Built-in utilities for blockchain development
-- 🌐 **Network Management**: Connect to multiple Neo networks
-- ⚡ **Lightning Fast**: Modern React + Tauri architecture
-
-### 2. 💻 Command Line Interface
+### 1. 💻 Command Line Interface
 
 **Perfect for**: Developers, automation, CI/CD, power users
 
@@ -74,7 +53,7 @@ cargo build --release
 - ✅ **Production Ready**: Comprehensive error handling and validation
 - 🔄 **Automation Friendly**: Perfect for scripts and CI/CD pipelines
 
-### 3. 📚 Rust SDK Library
+### 2. 📚 Rust SDK Library
 
 **Perfect for**: Application integration, custom solutions, enterprise development
 
@@ -163,24 +142,6 @@ let client = RpcClient::new(http);
 
 ## 📸 Application Screenshots
 
-### Desktop GUI Application
-
-#### 📊 Dashboard - Portfolio Overview
-![Dashboard](../assets/screenshots/dashboard.png)
-*Real-time portfolio tracking with interactive charts and market data*
-
-#### 💼 Wallet Management
-![Wallet](../assets/screenshots/wallet.png)
-*Secure multi-wallet management with transaction history*
-
-#### 🎨 NFT Marketplace
-![NFT](../assets/screenshots/nft.png)
-*Beautiful NFT collection browser with minting capabilities*
-
-#### 🔧 Developer Tools
-![Tools](../assets/screenshots/tools.png)
-*Built-in encoding, hashing, and debugging utilities*
-
 ### Command Line Interface
 
 #### 💻 Beautiful CLI Output
@@ -200,16 +161,6 @@ NeoRust/
 │   │   ├── neo_contract/       # Smart contract interaction
 │   │   └── prelude.rs          # Easy imports
 │   └── Cargo.toml
-│
-├── 🖥️  neo-gui/                # Desktop GUI Application
-│   ├── src/
-│   │   ├── components/         # React components
-│   │   ├── pages/              # Application pages
-│   │   ├── stores/             # State management
-│   │   └── main.tsx            # Application entry
-│   ├── src-tauri/              # Tauri backend
-│   ├── package.json
-│   └── tauri.conf.json
 │
 ├── 💻 neo-cli/                 # Command Line Interface
 │   ├── src/
@@ -232,16 +183,6 @@ NeoRust/
 ## 🚀 Quick Start Guide
 
 ### Step 1: Choose Your Interface
-
-#### For End Users (GUI)
-```bash
-git clone https://github.com/R3E-Network/NeoRust.git
-cd NeoRust/neo-gui
-npm install
-npm run dev
-# Open http://localhost:1420
-```
-
 #### For Developers (CLI)
 ```bash
 cd NeoRust/neo-cli
@@ -256,13 +197,6 @@ neo3 = "0.5.5"
 ```
 
 ### Step 2: Create Your First Wallet
-
-#### GUI Method:
-1. Launch the Neo N3 Wallet application
-2. Click "Create New Wallet"
-3. Follow the secure setup wizard
-4. Start managing your Neo assets
-
 #### CLI Method:
 ```bash
 # Create wallet
@@ -295,12 +229,6 @@ async fn create_wallet() -> Result<(), Box<dyn std::error::Error>> {
 ```
 
 ### Step 3: Connect to Neo Network
-
-#### GUI:
-- Use the network selector in the top navigation
-- Monitor real-time connection status
-- Automatic health checks and failover
-
 #### CLI:
 ```bash
 # Connect to testnet
@@ -470,7 +398,6 @@ neo-cli contract invoke --hash "0x..." --method "test" --network testnet
 ### 🔧 Developer Documentation
 - **[API Reference](https://docs.rs/neo3)**: Complete API documentation
 - **[CLI Reference](./cli/commands.md)**: All CLI commands and options
-- **[GUI Development](./gui/development.md)**: GUI customization and extension
 - **[SDK Integration](./sdk/integration.md)**: SDK integration patterns
 
 ### 💡 Examples & Tutorials

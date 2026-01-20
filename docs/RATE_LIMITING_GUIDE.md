@@ -1,5 +1,5 @@
 # Rate Limiting Guide - NeoRust (historical v0.4.4)
-> Authored for v0.4.4; APIs remain available, but the current SDK release is v0.5.4. See the main README/crate docs for any updates.
+> Authored for v0.4.4; APIs remain available, but the current SDK release is v0.5.5. See the main README/crate docs for any updates.
 
 ## Overview
 

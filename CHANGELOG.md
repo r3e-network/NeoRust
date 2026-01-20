@@ -7,12 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+_No changes yet._
+
+## [0.5.5] - 2026-01-20
+
 ### ⚠️ Breaking Changes
 
 - High-level SDK balances are now represented exactly (no floating point rounding):
   - `sdk::Balance.gas` changed from `f64` to `DecimalAmount` (8 decimals)
   - `sdk::TokenBalance.amount` changed from `f64` to `DecimalAmount` (uses token decimals)
   - `sdk::TokenBalance.decimals` removed (use `token.amount.decimals()`)
+
+### ✨ Added
+
+- Faun-era Policy helpers to unwrap iterator results for blocked accounts and whitelisted fee contracts.
+- `getversion` response now captures RPC settings plus protocol `standbycommittee` and `seedlist` metadata.
+
+### 🔧 Changed
+
+- Updated embedded `neo_csharp` core/node/vm sources to the upstream v3.9.0 releases.
 
 ### 🐛 Fixes
 

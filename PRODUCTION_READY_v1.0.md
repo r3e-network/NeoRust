@@ -21,7 +21,7 @@ NeoRust CLI tooling and SDK have been successfully upgraded to **production-read
 
 ## ✅ Completed Implementation
 
-### Phase 1: SDK Integration (v1.0.0 Features)
+### Phase 1: SDK Integration (v1.0.1 Features)
 - ✅ **HD Wallet Support**: BIP-39/44 compliant hierarchical deterministic wallets
 - ✅ **WebSocket Real-time Events**: Live blockchain monitoring and subscriptions
 - ✅ **Transaction Simulation**: Gas estimation and pre-execution validation
@@ -49,7 +49,7 @@ NeoRust CLI tooling and SDK have been successfully upgraded to **production-read
 NeoRust/
 ├── neo-cli/                    # CLI Application
 │   ├── src/
-│   │   ├── commands/           # CLI commands with v1.0.0 features
+│   │   ├── commands/           # CLI commands with v1.0.1 features
 │   │   ├── security/           # Security infrastructure
 │   │   │   ├── keychain.rs    # OS keychain integration
 │   │   │   ├── session.rs     # Session management
@@ -247,7 +247,7 @@ max_retries = 3
 
 NeoRust CLI tooling and SDK are now **production-ready v1.0** with:
 
-- ✅ **Complete feature set** from v1.0.0 SDK
+- ✅ **Complete feature set** from v1.0.1 SDK
 - ✅ **Enterprise-grade security** infrastructure
 - ✅ **Comprehensive monitoring** and logging
 - ✅ **Automated deployment** and updates

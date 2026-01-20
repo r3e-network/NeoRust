@@ -1,4 +1,4 @@
-# Examples Update Summary - NeoRust v1.0.0
+# Examples Update Summary - NeoRust v1.0.1
 
 ## Overview
 All examples in the NeoRust SDK have been reviewed and updated to use real, complete, and production-ready code instead of placeholders.
@@ -85,4 +85,4 @@ cargo run --example deploy_neo_contract
 
 ## Conclusion
 
-All examples in the NeoRust SDK v1.0.0 are now complete, production-ready, and use real values instead of placeholders. The SDK provides comprehensive examples for all major use cases with proper error handling and clear documentation.
+All examples in the NeoRust SDK v1.0.1 are now complete, production-ready, and use real values instead of placeholders. The SDK provides comprehensive examples for all major use cases with proper error handling and clear documentation.

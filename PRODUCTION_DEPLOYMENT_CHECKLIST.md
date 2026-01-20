@@ -1,4 +1,4 @@
-# Production Deployment Checklist - NeoRust SDK v1.0.0
+# Production Deployment Checklist - NeoRust SDK v1.0.1
 
 This checklist ensures safe and successful deployment of NeoRust SDK applications to production environments.
 
@@ -6,7 +6,7 @@ This checklist ensures safe and successful deployment of NeoRust SDK application
 
 ### 🔒 Security Review
 - [ ] Run `cargo audit` - ensure 0 vulnerabilities
-- [ ] Review SECURITY_AUDIT_v1.0.0.md findings
+- [ ] Review SECURITY_AUDIT_v1.0.1.md findings
 - [ ] Verify all private keys are encrypted (NEP-2)
 - [ ] Confirm no hardcoded credentials in code
 - [ ] Enable HTTPS for all RPC endpoints
@@ -83,7 +83,7 @@ panic = 'abort'       # Smaller binary, no unwinding
 ## Deployment Phase
 
 ### 🚀 Deployment Steps
-1. [ ] Create deployment tag: `git tag -a v1.0.0-prod -m "Production release"`
+1. [ ] Create deployment tag: `git tag -a v1.0.1-prod -m "Production release"`
 2. [ ] Build release binary: `cargo build --release`
 3. [ ] Run final security scan on binary
 4. [ ] Deploy to staging environment first
@@ -245,6 +245,6 @@ tracing_subscriber::fmt()
 
 ---
 
-**Version**: 1.0.0  
+**Version**: 1.0.1  
 **Last Updated**: August 19, 2025  
-**Next Review**: Before v1.0.0 deployment
+**Next Review**: Before v1.0.1 deployment

@@ -1,5 +1,5 @@
 /**
- * NeoRust CLI Tools Sidebar Configuration v1.0.0
+ * NeoRust CLI Tools Sidebar Configuration v1.0.1
  * Simplified navigation for the CLI Tools documentation
  * @type {import('@docusaurus/plugin-content-docs').SidebarsConfig}
  */

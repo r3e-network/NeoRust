@@ -1,7 +1,7 @@
 {
   "id": "intro",
   "title": "Welcome to NeoRust",
-  "description": "🚀 NeoRust v1.0.0",
+  "description": "🚀 NeoRust v1.0.1",
   "source": "@site/docs/intro.md",
   "sourceDirName": ".",
   "slug": "/intro",
@@ -12,7 +12,7 @@
   "tags": [],
   "version": "current",
   "lastUpdatedBy": "Jimmy",
-  "lastUpdatedAt": 1768886508000,
+  "lastUpdatedAt": 1768899527000,
   "frontMatter": {},
   "sidebar": "tutorialSidebar",
   "next": {

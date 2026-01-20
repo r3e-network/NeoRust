@@ -4,7 +4,7 @@
  * Modify the docusaurus.config.js file at your site's root instead.
  */
 export default {
-  "title": "NeoRust v1.0.0",
+  "title": "NeoRust v1.0.1",
   "tagline": "Production-ready Neo N3 blockchain development toolkit built in Rust",
   "favicon": "img/favicon.svg",
   "url": "https://neorust.netlify.app",
@@ -33,7 +33,7 @@ export default {
           "includeCurrentVersion": true,
           "versions": {
             "current": {
-              "label": "v1.0.0",
+              "label": "v1.0.1",
               "path": ""
             }
           }
@@ -68,7 +68,7 @@ export default {
       },
       {
         "name": "description",
-        "content": "NeoRust v1.0.0 - A production-ready Rust SDK for Neo N3 blockchain development. Build high-performance dApps with type-safe, modern Rust. Optimized and production-ready."
+        "content": "NeoRust v1.0.1 - A production-ready Rust SDK for Neo N3 blockchain development. Build high-performance dApps with type-safe, modern Rust. Optimized and production-ready."
       },
       {
         "property": "og:image",
@@ -240,7 +240,7 @@ export default {
         "width": 160,
         "height": 51
       },
-      "copyright": "\n          <div style=\"margin-top: 16px; padding-top: 16px; border-top: 1px solid #333;\">\n            <p>Copyright © 2026 R3E Network. Built with ❤️ and Docusaurus.</p>\n            <p>NeoRust v1.0.0 - Production-Ready Neo N3 Development Suite - Optimized and Enhanced</p>\n          </div>\n        "
+      "copyright": "\n          <div style=\"margin-top: 16px; padding-top: 16px; border-top: 1px solid #333;\">\n            <p>Copyright © 2026 R3E Network. Built with ❤️ and Docusaurus.</p>\n            <p>NeoRust v1.0.1 - Production-Ready Neo N3 Development Suite - Optimized and Enhanced</p>\n          </div>\n        "
     },
     "prism": {
       "theme": {
@@ -464,8 +464,8 @@ export default {
       "respectPrefersColorScheme": true
     },
     "announcementBar": {
-      "id": "v1.0.0-release",
-      "content": "🎉 <strong>NeoRust v1.0.0</strong> is now available! Enhanced performance, optimized code quality, and improved reliability. <a target=\"_blank\" rel=\"noopener noreferrer\" href=\"https://github.com/R3E-Network/NeoRust/releases/tag/v1.0.0\">See what's new</a>",
+      "id": "v1.0.1-release",
+      "content": "🎉 <strong>NeoRust v1.0.1</strong> is now available! Enhanced performance, optimized code quality, and improved reliability. <a target=\"_blank\" rel=\"noopener noreferrer\" href=\"https://github.com/R3E-Network/NeoRust/releases/tag/v1.0.1\">See what's new</a>",
       "backgroundColor": "#059669",
       "textColor": "#ffffff",
       "isCloseable": true

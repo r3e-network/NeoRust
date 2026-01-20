@@ -1,5 +1,5 @@
 <!DOCTYPE HTML>
-<html lang="en" class="light sidebar-visible" dir="ltr">
+<html lang="en" class="light" dir="ltr">
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
@@ -7,7 +7,7 @@
 
 
         <!-- Custom HTML head -->
-
+        
         <meta name="description" content="Documentation for the NeoRust SDK, a comprehensive Rust SDK for interacting with the Neo N3 blockchain">
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <meta name="theme-color" content="#ffffff">
@@ -24,43 +24,29 @@
         <link rel="stylesheet" href="../fonts/fonts.css">
 
         <!-- Highlight.js Stylesheets -->
-        <link rel="stylesheet" id="highlight-css" href="../highlight.css">
-        <link rel="stylesheet" id="tomorrow-night-css" href="../tomorrow-night.css">
-        <link rel="stylesheet" id="ayu-highlight-css" href="../ayu-highlight.css">
+        <link rel="stylesheet" href="../highlight.css">
+        <link rel="stylesheet" href="../tomorrow-night.css">
+        <link rel="stylesheet" href="../ayu-highlight.css">
 
         <!-- Custom theme stylesheets -->
         <link rel="stylesheet" href="../theme/custom.css">
 
         <!-- MathJax -->
         <script async src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
-
-        <!-- Provide site root and default themes to javascript -->
-        <script>
-            const path_to_root = "../";
-            const default_light_theme = "light";
-            const default_dark_theme = "navy";
-        </script>
-        <!-- Start loading toc.js asap -->
-        <script src="../toc.js"></script>
     </head>
-    <body>
-    <div id="mdbook-help-container">
-        <div id="mdbook-help-popup">
-            <h2 class="mdbook-help-title">Keyboard shortcuts</h2>
-            <div>
-                <p>Press <kbd>←</kbd> or <kbd>→</kbd> to navigate between chapters</p>
-                <p>Press <kbd>S</kbd> or <kbd>/</kbd> to search in the book</p>
-                <p>Press <kbd>?</kbd> to show this help</p>
-                <p>Press <kbd>Esc</kbd> to hide this help</p>
-            </div>
-        </div>
-    </div>
+    <body class="sidebar-visible no-js">
     <div id="body-container">
+        <!-- Provide site root to javascript -->
+        <script>
+            var path_to_root = "../";
+            var default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "navy" : "light";
+        </script>
+
         <!-- Work around some values being stored in localStorage wrapped in quotes -->
         <script>
             try {
-                let theme = localStorage.getItem('mdbook-theme');
-                let sidebar = localStorage.getItem('mdbook-sidebar');
+                var theme = localStorage.getItem('mdbook-theme');
+                var sidebar = localStorage.getItem('mdbook-sidebar');
 
                 if (theme.startsWith('"') && theme.endsWith('"')) {
                     localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
@@ -74,22 +60,24 @@
 
         <!-- Set the theme before any content is loaded, prevents flash -->
         <script>
-            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
-            let theme;
+            var theme;
             try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
             if (theme === null || theme === undefined) { theme = default_theme; }
-            const html = document.documentElement;
+            var html = document.querySelector('html');
             html.classList.remove('light')
             html.classList.add(theme);
-            html.classList.add("js");
+            var body = document.querySelector('body');
+            body.classList.remove('no-js')
+            body.classList.add('js');
         </script>
 
         <input type="checkbox" id="sidebar-toggle-anchor" class="hidden">
 
         <!-- Hide / unhide sidebar before it is displayed -->
         <script>
-            let sidebar = null;
-            const sidebar_toggle = document.getElementById("sidebar-toggle-anchor");
+            var body = document.querySelector('body');
+            var sidebar = null;
+            var sidebar_toggle = document.getElementById("sidebar-toggle-anchor");
             if (document.body.clientWidth >= 1080) {
                 try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
                 sidebar = sidebar || 'visible';
@@ -97,25 +85,45 @@
                 sidebar = 'hidden';
             }
             sidebar_toggle.checked = sidebar === 'visible';
-            html.classList.remove('sidebar-visible');
-            html.classList.add("sidebar-" + sidebar);
+            body.classList.remove('sidebar-visible');
+            body.classList.add("sidebar-" + sidebar);
         </script>
 
         <nav id="sidebar" class="sidebar" aria-label="Table of contents">
-            <!-- populated by js -->
-            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
-            <noscript>
-                <iframe class="sidebar-iframe-outer" src="../toc.html"></iframe>
-            </noscript>
+            <div class="sidebar-scrollbox">
+                <ol class="chapter"><li class="chapter-item affix "><a href="../index.html">Introduction</a></li><li class="chapter-item affix "><li class="part-title">User Guide</li><li class="chapter-item "><a href="../guides/getting-started.html"><strong aria-hidden="true">1.</strong> Getting Started</a></li><li class="chapter-item "><a href="../guides/installation.html"><strong aria-hidden="true">2.</strong> Installation</a></li><li class="chapter-item affix "><li class="part-title">Tutorials</li><li class="chapter-item "><a href="../tutorials/wallet-management.html"><strong aria-hidden="true">3.</strong> Wallet Management</a></li><li class="chapter-item "><a href="../tutorials/smart-contracts.html"><strong aria-hidden="true">4.</strong> Smart Contracts</a></li><li class="chapter-item "><a href="../tutorials/transactions.html"><strong aria-hidden="true">5.</strong> Transactions</a></li><li class="chapter-item "><a href="../tutorials/nep17-tokens.html"><strong aria-hidden="true">6.</strong> NEP-17 Tokens</a></li><li class="chapter-item expanded "><a href="../tutorials/nns.html" class="active"><strong aria-hidden="true">7.</strong> Neo Name Service</a></li><li class="chapter-item "><a href="../tutorials/neo-x.html"><strong aria-hidden="true">8.</strong> Neo X Integration</a></li><li class="chapter-item "><a href="../tutorials/sgx.html"><strong aria-hidden="true">9.</strong> SGX Support</a></li><li class="chapter-item affix "><li class="part-title">API Reference</li><li class="chapter-item "><a href="../reference/api-overview.html"><strong aria-hidden="true">10.</strong> API Overview</a></li><li class="chapter-item "><a href="../reference/configuration.html"><strong aria-hidden="true">11.</strong> Configuration</a></li><li class="chapter-item "><a href="../reference/error-handling.html"><strong aria-hidden="true">12.</strong> Error Handling</a></li><li class="chapter-item "><a href="../reference/copyright.html"><strong aria-hidden="true">13.</strong> Copyright Information</a></li><li class="chapter-item affix "><li class="part-title">Cryptography</li><li class="chapter-item "><a href="../tutorials/wallet-management.html"><strong aria-hidden="true">14.</strong> Cryptographic Operations</a></li><li class="chapter-item affix "><li class="part-title">Examples</li><li class="chapter-item "><a href="../examples/index.html"><strong aria-hidden="true">15.</strong> Example Code</a></li></ol>
+            </div>
             <div id="sidebar-resize-handle" class="sidebar-resize-handle">
                 <div class="sidebar-resize-indicator"></div>
             </div>
         </nav>
 
+        <!-- Track and set sidebar scroll position -->
+        <script>
+            var sidebarScrollbox = document.querySelector('#sidebar .sidebar-scrollbox');
+            sidebarScrollbox.addEventListener('click', function(e) {
+                if (e.target.tagName === 'A') {
+                    sessionStorage.setItem('sidebar-scroll', sidebarScrollbox.scrollTop);
+                }
+            }, { passive: true });
+            var sidebarScrollTop = sessionStorage.getItem('sidebar-scroll');
+            sessionStorage.removeItem('sidebar-scroll');
+            if (sidebarScrollTop) {
+                // preserve sidebar scroll position when navigating via links within sidebar
+                sidebarScrollbox.scrollTop = sidebarScrollTop;
+            } else {
+                // scroll sidebar to current active section when navigating via "next/previous chapter" buttons
+                var activeSection = document.querySelector('#sidebar .active');
+                if (activeSection) {
+                    activeSection.scrollIntoView({ block: 'center' });
+                }
+            }
+        </script>
+
         <div id="page-wrapper" class="page-wrapper">
 
             <div class="page">
-                <div id="menu-bar-hover-placeholder"></div>
+                                <div id="menu-bar-hover-placeholder"></div>
                 <div id="menu-bar" class="menu-bar sticky">
                     <div class="left-buttons">
                         <label id="sidebar-toggle" class="icon-button" for="sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
@@ -125,14 +133,13 @@
                             <i class="fa fa-paint-brush"></i>
                         </button>
                         <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
-                            <li role="none"><button role="menuitem" class="theme" id="default_theme">Auto</button></li>
                             <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
                             <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
                             <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
                             <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
                             <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
                         </ul>
-                        <button id="search-toggle" class="icon-button" type="button" title="Search (`/`)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="/ s" aria-controls="searchbar">
+                        <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
                             <i class="fa fa-search"></i>
                         </button>
                     </div>
@@ -189,7 +196,7 @@
 </ul>
 <h2 id="creating-an-nns-instance"><a class="header" href="#creating-an-nns-instance">Creating an NNS Instance</a></h2>
 <p>To interact with the NNS, you first need to create an NNS instance:</p>
-<pre><pre class="playground"><code class="language-rust">use neo3::prelude::*;
+<pre><pre class="playground"><code class="language-rust no_run edition2021">use neo3::prelude::*;
 
 #[tokio::main]
 async fn main() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
@@ -203,7 +210,7 @@ async fn main() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
 }</code></pre></pre>
 <h2 id="checking-domain-availability"><a class="header" href="#checking-domain-availability">Checking Domain Availability</a></h2>
 <p>Before registering a domain, you should check if it's available:</p>
-<pre><pre class="playground"><code class="language-rust">use neo3::prelude::*;
+<pre><pre class="playground"><code class="language-rust no_run edition2021">use neo3::prelude::*;
 
 #[tokio::main]
 async fn main() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
@@ -227,7 +234,7 @@ async fn main() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
 }</code></pre></pre>
 <h2 id="registering-a-domain"><a class="header" href="#registering-a-domain">Registering a Domain</a></h2>
 <p>If a domain is available, you can register it:</p>
-<pre><pre class="playground"><code class="language-rust">use neo3::prelude::*;
+<pre><pre class="playground"><code class="language-rust no_run edition2021">use neo3::prelude::*;
 use std::path::Path;
 
 #[tokio::main]
@@ -268,7 +275,7 @@ async fn main() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
 }</code></pre></pre>
 <h2 id="setting-domain-records"><a class="header" href="#setting-domain-records">Setting Domain Records</a></h2>
 <p>Once you own a domain, you can set various records for it:</p>
-<pre><pre class="playground"><code class="language-rust">use neo3::prelude::*;
+<pre><pre class="playground"><code class="language-rust no_run edition2021">use neo3::prelude::*;
 use std::path::Path;
 
 #[tokio::main]
@@ -311,7 +318,7 @@ async fn main() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
 }</code></pre></pre>
 <h2 id="resolving-domain-records"><a class="header" href="#resolving-domain-records">Resolving Domain Records</a></h2>
 <p>You can resolve domain records to get the associated data:</p>
-<pre><pre class="playground"><code class="language-rust">use neo3::prelude::*;
+<pre><pre class="playground"><code class="language-rust no_run edition2021">use neo3::prelude::*;
 
 #[tokio::main]
 async fn main() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
@@ -347,7 +354,7 @@ async fn main() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
 }</code></pre></pre>
 <h2 id="renewing-a-domain"><a class="header" href="#renewing-a-domain">Renewing a Domain</a></h2>
 <p>Domains need to be renewed periodically to maintain ownership:</p>
-<pre><pre class="playground"><code class="language-rust">use neo3::prelude::*;
+<pre><pre class="playground"><code class="language-rust no_run edition2021">use neo3::prelude::*;
 use std::path::Path;
 
 #[tokio::main]
@@ -392,7 +399,7 @@ async fn main() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
 }</code></pre></pre>
 <h2 id="transferring-domain-ownership"><a class="header" href="#transferring-domain-ownership">Transferring Domain Ownership</a></h2>
 <p>You can transfer ownership of a domain to another address:</p>
-<pre><pre class="playground"><code class="language-rust">use neo3::prelude::*;
+<pre><pre class="playground"><code class="language-rust no_run edition2021">use neo3::prelude::*;
 use std::path::Path;
 
 #[tokio::main]
@@ -430,7 +437,7 @@ async fn main() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
 }</code></pre></pre>
 <h2 id="using-nns-in-applications"><a class="header" href="#using-nns-in-applications">Using NNS in Applications</a></h2>
 <p>You can integrate NNS resolution into your applications to allow users to use domain names instead of addresses:</p>
-<pre><pre class="playground"><code class="language-rust">use neo3::prelude::*;
+<pre><pre class="playground"><code class="language-rust no_run edition2021">use neo3::prelude::*;
 use std::path::Path;
 
 #[tokio::main]
@@ -530,8 +537,8 @@ async fn main() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
         </script>
 
         <script src="../ace.js"></script>
-        <script src="../mode-rust.js"></script>
         <script src="../editor.js"></script>
+        <script src="../mode-rust.js"></script>
         <script src="../theme-dawn.js"></script>
         <script src="../theme-tomorrow_night.js"></script>
 

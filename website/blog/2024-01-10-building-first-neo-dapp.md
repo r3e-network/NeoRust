@@ -76,7 +76,7 @@ Add dependencies to `Cargo.toml`:
 
 ```toml
 [dependencies]
-neo3 = "1.0.0"
+neo3 = "1.0.1"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 
@@ -262,7 +262,7 @@ cargo init
 
 ```toml
 [dependencies]
-neo3 = "1.0.0"
+neo3 = "1.0.1"
 tokio = { version = "1.0", features = ["full"] }
 warp = "0.3"
 serde = { version = "1.0", features = ["derive"] }

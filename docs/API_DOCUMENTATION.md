@@ -1,5 +1,5 @@
-# NeoRust API Documentation (v1.0.0)
-> This document reflects the v1.0.0 API surface. For the latest APIs and examples, refer to the root README and current guides.
+# NeoRust API Documentation (v1.0.1)
+> This document reflects the v1.0.1 API surface. For the latest APIs and examples, refer to the root README and current guides.
 
 ## Table of Contents
 1. [Core Components](#core-components)
@@ -492,13 +492,13 @@ let version = results[2].as_version()?;
 
 ## Migration Guide
 
-### From pre-1.0 to v1.0.0
+### From pre-1.0 to v1.0.1
 
 ```rust
 // Pre-1.0
 let client = Client::new("https://mainnet.neo.org", None, None).await?;
 
-// v1.0.0
+// v1.0.1
 let client = ProductionNeoClient::new(
     "https://mainnet.neo.org",
     RateLimitPreset::Standard,
@@ -507,7 +507,7 @@ let client = ProductionNeoClient::new(
 // Pre-1.0 gas estimation
 let gas = 1000000; // Fixed estimate
 
-// v1.0.0 gas estimation
+// v1.0.1 gas estimation
 let gas = GasEstimator::new(&client)
     .estimate_gas(script, signers)
     .await?;
@@ -522,4 +522,4 @@ For issues, questions, or contributions:
 
 ---
 
-*Generated for NeoRust v1.0.0 - Production Ready*
+*Generated for NeoRust v1.0.1 - Production Ready*

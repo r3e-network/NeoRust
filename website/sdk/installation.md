@@ -1,6 +1,6 @@
 # Installation
 
-Get started with NeoRust SDK v1.0.0 by installing it in your Rust project.
+Get started with NeoRust SDK v1.0.1 by installing it in your Rust project.
 
 ## Prerequisites
 
@@ -13,14 +13,14 @@ Add NeoRust to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-neo3 = "1.0.0"
+neo3 = "1.0.1"
 ```
 
 For specific features, use:
 
 ```toml
 [dependencies]
-neo3 = { version = "1.0.0", features = ["futures", "ledger"] }
+neo3 = { version = "1.0.1", features = ["futures", "ledger"] }
 ```
 
 ## Available Features
@@ -37,7 +37,7 @@ Verify your installation:
 use neo3::prelude::*;
 
 fn main() {
-    println!("NeoRust SDK v1.0.0 is ready!");
+    println!("NeoRust SDK v1.0.1 is ready!");
 }
 ```
 

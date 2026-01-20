@@ -2,14 +2,14 @@
   "title": "Recent posts",
   "items": [
     {
-      "title": "🎉 NeoRust v1.0.0 Quality Update - 135 Passing Doc Tests",
-      "permalink": "/blog/neorust-v1.0.0-docs-quality",
+      "title": "🎉 NeoRust v1.0.1 Quality Update - 135 Passing Doc Tests",
+      "permalink": "/blog/neorust-v1.0.1-docs-quality",
       "unlisted": false,
       "date": "2024-06-24T00:00:00.000Z"
     },
     {
-      "title": "🎉 NeoRust v1.0.0 Released - Production-Ready Neo N3 Development",
-      "permalink": "/blog/neorust-v1.0.0-release",
+      "title": "🎉 NeoRust v1.0.1 Released - Production-Ready Neo N3 Development",
+      "permalink": "/blog/neorust-v1.0.1-release",
       "unlisted": false,
       "date": "2024-01-15T00:00:00.000Z"
     },

@@ -1,5 +1,5 @@
 <!DOCTYPE HTML>
-<html lang="en" class="light sidebar-visible" dir="ltr">
+<html lang="en" class="light" dir="ltr">
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
@@ -7,7 +7,7 @@
 
 
         <!-- Custom HTML head -->
-
+        
         <meta name="description" content="Documentation for the NeoRust SDK, a comprehensive Rust SDK for interacting with the Neo N3 blockchain">
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <meta name="theme-color" content="#ffffff">
@@ -24,43 +24,29 @@
         <link rel="stylesheet" href="../fonts/fonts.css">
 
         <!-- Highlight.js Stylesheets -->
-        <link rel="stylesheet" id="highlight-css" href="../highlight.css">
-        <link rel="stylesheet" id="tomorrow-night-css" href="../tomorrow-night.css">
-        <link rel="stylesheet" id="ayu-highlight-css" href="../ayu-highlight.css">
+        <link rel="stylesheet" href="../highlight.css">
+        <link rel="stylesheet" href="../tomorrow-night.css">
+        <link rel="stylesheet" href="../ayu-highlight.css">
 
         <!-- Custom theme stylesheets -->
         <link rel="stylesheet" href="../theme/custom.css">
 
         <!-- MathJax -->
         <script async src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
-
-        <!-- Provide site root and default themes to javascript -->
-        <script>
-            const path_to_root = "../";
-            const default_light_theme = "light";
-            const default_dark_theme = "navy";
-        </script>
-        <!-- Start loading toc.js asap -->
-        <script src="../toc.js"></script>
     </head>
-    <body>
-    <div id="mdbook-help-container">
-        <div id="mdbook-help-popup">
-            <h2 class="mdbook-help-title">Keyboard shortcuts</h2>
-            <div>
-                <p>Press <kbd>←</kbd> or <kbd>→</kbd> to navigate between chapters</p>
-                <p>Press <kbd>S</kbd> or <kbd>/</kbd> to search in the book</p>
-                <p>Press <kbd>?</kbd> to show this help</p>
-                <p>Press <kbd>Esc</kbd> to hide this help</p>
-            </div>
-        </div>
-    </div>
+    <body class="sidebar-visible no-js">
     <div id="body-container">
+        <!-- Provide site root to javascript -->
+        <script>
+            var path_to_root = "../";
+            var default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "navy" : "light";
+        </script>
+
         <!-- Work around some values being stored in localStorage wrapped in quotes -->
         <script>
             try {
-                let theme = localStorage.getItem('mdbook-theme');
-                let sidebar = localStorage.getItem('mdbook-sidebar');
+                var theme = localStorage.getItem('mdbook-theme');
+                var sidebar = localStorage.getItem('mdbook-sidebar');
 
                 if (theme.startsWith('"') && theme.endsWith('"')) {
                     localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
@@ -74,22 +60,24 @@
 
         <!-- Set the theme before any content is loaded, prevents flash -->
         <script>
-            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
-            let theme;
+            var theme;
             try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
             if (theme === null || theme === undefined) { theme = default_theme; }
-            const html = document.documentElement;
+            var html = document.querySelector('html');
             html.classList.remove('light')
             html.classList.add(theme);
-            html.classList.add("js");
+            var body = document.querySelector('body');
+            body.classList.remove('no-js')
+            body.classList.add('js');
         </script>
 
         <input type="checkbox" id="sidebar-toggle-anchor" class="hidden">
 
         <!-- Hide / unhide sidebar before it is displayed -->
         <script>
-            let sidebar = null;
-            const sidebar_toggle = document.getElementById("sidebar-toggle-anchor");
+            var body = document.querySelector('body');
+            var sidebar = null;
+            var sidebar_toggle = document.getElementById("sidebar-toggle-anchor");
             if (document.body.clientWidth >= 1080) {
                 try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
                 sidebar = sidebar || 'visible';
@@ -97,25 +85,45 @@
                 sidebar = 'hidden';
             }
             sidebar_toggle.checked = sidebar === 'visible';
-            html.classList.remove('sidebar-visible');
-            html.classList.add("sidebar-" + sidebar);
+            body.classList.remove('sidebar-visible');
+            body.classList.add("sidebar-" + sidebar);
         </script>
 
         <nav id="sidebar" class="sidebar" aria-label="Table of contents">
-            <!-- populated by js -->
-            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
-            <noscript>
-                <iframe class="sidebar-iframe-outer" src="../toc.html"></iframe>
-            </noscript>
+            <div class="sidebar-scrollbox">
+                <ol class="chapter"><li class="chapter-item affix "><a href="../index.html">Introduction</a></li><li class="chapter-item affix "><li class="part-title">User Guide</li><li class="chapter-item "><a href="../guides/getting-started.html"><strong aria-hidden="true">1.</strong> Getting Started</a></li><li class="chapter-item "><a href="../guides/installation.html"><strong aria-hidden="true">2.</strong> Installation</a></li><li class="chapter-item affix "><li class="part-title">Tutorials</li><li class="chapter-item "><a href="../tutorials/wallet-management.html"><strong aria-hidden="true">3.</strong> Wallet Management</a></li><li class="chapter-item "><a href="../tutorials/smart-contracts.html"><strong aria-hidden="true">4.</strong> Smart Contracts</a></li><li class="chapter-item "><a href="../tutorials/transactions.html"><strong aria-hidden="true">5.</strong> Transactions</a></li><li class="chapter-item "><a href="../tutorials/nep17-tokens.html"><strong aria-hidden="true">6.</strong> NEP-17 Tokens</a></li><li class="chapter-item "><a href="../tutorials/nns.html"><strong aria-hidden="true">7.</strong> Neo Name Service</a></li><li class="chapter-item "><a href="../tutorials/neo-x.html"><strong aria-hidden="true">8.</strong> Neo X Integration</a></li><li class="chapter-item "><a href="../tutorials/sgx.html"><strong aria-hidden="true">9.</strong> SGX Support</a></li><li class="chapter-item affix "><li class="part-title">API Reference</li><li class="chapter-item "><a href="../reference/api-overview.html"><strong aria-hidden="true">10.</strong> API Overview</a></li><li class="chapter-item "><a href="../reference/configuration.html"><strong aria-hidden="true">11.</strong> Configuration</a></li><li class="chapter-item expanded "><a href="../reference/error-handling.html" class="active"><strong aria-hidden="true">12.</strong> Error Handling</a></li><li class="chapter-item "><a href="../reference/copyright.html"><strong aria-hidden="true">13.</strong> Copyright Information</a></li><li class="chapter-item affix "><li class="part-title">Cryptography</li><li class="chapter-item "><a href="../tutorials/wallet-management.html"><strong aria-hidden="true">14.</strong> Cryptographic Operations</a></li><li class="chapter-item affix "><li class="part-title">Examples</li><li class="chapter-item "><a href="../examples/index.html"><strong aria-hidden="true">15.</strong> Example Code</a></li></ol>
+            </div>
             <div id="sidebar-resize-handle" class="sidebar-resize-handle">
                 <div class="sidebar-resize-indicator"></div>
             </div>
         </nav>
 
+        <!-- Track and set sidebar scroll position -->
+        <script>
+            var sidebarScrollbox = document.querySelector('#sidebar .sidebar-scrollbox');
+            sidebarScrollbox.addEventListener('click', function(e) {
+                if (e.target.tagName === 'A') {
+                    sessionStorage.setItem('sidebar-scroll', sidebarScrollbox.scrollTop);
+                }
+            }, { passive: true });
+            var sidebarScrollTop = sessionStorage.getItem('sidebar-scroll');
+            sessionStorage.removeItem('sidebar-scroll');
+            if (sidebarScrollTop) {
+                // preserve sidebar scroll position when navigating via links within sidebar
+                sidebarScrollbox.scrollTop = sidebarScrollTop;
+            } else {
+                // scroll sidebar to current active section when navigating via "next/previous chapter" buttons
+                var activeSection = document.querySelector('#sidebar .active');
+                if (activeSection) {
+                    activeSection.scrollIntoView({ block: 'center' });
+                }
+            }
+        </script>
+
         <div id="page-wrapper" class="page-wrapper">
 
             <div class="page">
-                <div id="menu-bar-hover-placeholder"></div>
+                                <div id="menu-bar-hover-placeholder"></div>
                 <div id="menu-bar" class="menu-bar sticky">
                     <div class="left-buttons">
                         <label id="sidebar-toggle" class="icon-button" for="sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
@@ -125,14 +133,13 @@
                             <i class="fa fa-paint-brush"></i>
                         </button>
                         <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
-                            <li role="none"><button role="menuitem" class="theme" id="default_theme">Auto</button></li>
                             <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
                             <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
                             <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
                             <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
                             <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
                         </ul>
-                        <button id="search-toggle" class="icon-button" type="button" title="Search (`/`)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="/ s" aria-controls="searchbar">
+                        <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
                             <i class="fa fa-search"></i>
                         </button>
                     </div>
@@ -179,39 +186,44 @@
 <p>This reference provides information about error handling in the NeoRust SDK, including error types, error propagation, and best practices for handling errors.</p>
 <h2 id="error-types"><a class="header" href="#error-types">Error Types</a></h2>
 <p>The NeoRust SDK uses a comprehensive error handling system based on Rust's <code>Result</code> type. The main error types in the SDK include:</p>
-<h3 id="neoerror"><a class="header" href="#neoerror">NeoError</a></h3>
-<p>The <code>NeoError</code> is the primary error type used throughout the SDK. It encompasses various error categories:</p>
-<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+<h3 id="neo3error"><a class="header" href="#neo3error">Neo3Error</a></h3>
+<p>The <code>Neo3Error</code> is the primary error type used throughout the SDK. It encompasses various error categories:</p>
+<pre><pre class="playground"><code class="language-rust no_run edition2021"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
-</span>pub enum NeoError {
-    // RPC errors
-    RpcError(RpcError),
+</span>use neo3::neo_error::Neo3Error;
+
+pub enum Neo3Error {
+    // Cryptographic operation errors
+    Crypto(CryptoError),
     
-    // Wallet errors
-    WalletError(WalletError),
+    // Wallet operation errors
+    Wallet(WalletError),
     
-    // Cryptographic errors
-    CryptoError(CryptoError),
+    // Network/RPC communication errors
+    Network(NetworkError),
     
-    // Transaction errors
-    TransactionError(TransactionError),
+    // Transaction building/validation errors
+    Transaction(TransactionError),
     
-    // Contract errors
-    ContractError(ContractError),
+    // Smart contract interaction errors
+    Contract(ContractError),
     
-    // Serialization errors
-    SerializationError(SerializationError),
+    // Serialization/deserialization errors
+    Serialization(SerializationError),
     
-    // IO errors
-    IoError(std::io::Error),
+    // Configuration errors
+    Config(String),
     
-    // Other errors
-    Other(String),
+    // Generic errors with context
+    Generic { message: String },
+    
+    // Unsupported operation error
+    UnsupportedOperation(String),
 }
 <span class="boring">}</span></code></pre></pre>
 <h3 id="rpcerror"><a class="header" href="#rpcerror">RpcError</a></h3>
 <p>The <code>RpcError</code> represents errors that occur during RPC communication with Neo nodes:</p>
-<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+<pre><pre class="playground"><code class="language-rust no_run edition2021"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>pub enum RpcError {
     // HTTP errors
@@ -236,7 +248,7 @@
 <span class="boring">}</span></code></pre></pre>
 <h3 id="walleterror"><a class="header" href="#walleterror">WalletError</a></h3>
 <p>The <code>WalletError</code> represents errors related to wallet operations:</p>
-<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+<pre><pre class="playground"><code class="language-rust no_run edition2021"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>pub enum WalletError {
     // Password errors
@@ -259,7 +271,7 @@
 <span class="boring">}</span></code></pre></pre>
 <h3 id="cryptoerror"><a class="header" href="#cryptoerror">CryptoError</a></h3>
 <p>The <code>CryptoError</code> represents errors related to cryptographic operations:</p>
-<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+<pre><pre class="playground"><code class="language-rust no_run edition2021"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>pub enum CryptoError {
     // Signature errors
@@ -278,7 +290,7 @@
 <span class="boring">}</span></code></pre></pre>
 <h3 id="transactionerror"><a class="header" href="#transactionerror">TransactionError</a></h3>
 <p>The <code>TransactionError</code> represents errors related to transaction operations:</p>
-<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+<pre><pre class="playground"><code class="language-rust no_run edition2021"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>pub enum TransactionError {
     // Validation errors
@@ -297,7 +309,7 @@
 <span class="boring">}</span></code></pre></pre>
 <h3 id="contracterror"><a class="header" href="#contracterror">ContractError</a></h3>
 <p>The <code>ContractError</code> represents errors related to smart contract operations:</p>
-<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+<pre><pre class="playground"><code class="language-rust no_run edition2021"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>pub enum ContractError {
     // Invocation errors
@@ -315,7 +327,7 @@
 <span class="boring">}</span></code></pre></pre>
 <h2 id="error-propagation"><a class="header" href="#error-propagation">Error Propagation</a></h2>
 <p>The NeoRust SDK uses Rust's <code>?</code> operator for error propagation. This allows for concise error handling code:</p>
-<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+<pre><pre class="playground"><code class="language-rust no_run edition2021"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>use neo3::prelude::*;
 use std::path::Path;
@@ -344,7 +356,7 @@ fn load_wallet_and_get_balance(
 <p>In this example, if any of the operations fail, the error is propagated up the call stack.</p>
 <h3 id="adding-context-to-errors"><a class="header" href="#adding-context-to-errors">Adding Context to Errors</a></h3>
 <p>Sometimes it's useful to add context to errors to make them more informative:</p>
-<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+<pre><pre class="playground"><code class="language-rust no_run edition2021"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>use neo3::prelude::*;
 use std::path::Path;
@@ -375,7 +387,7 @@ fn load_wallet_and_get_balance(
 <span class="boring">}</span></code></pre></pre>
 <h3 id="using-option-to-result-conversion"><a class="header" href="#using-option-to-result-conversion">Using Option to Result Conversion</a></h3>
 <p>The NeoRust SDK provides utility functions for converting <code>Option</code> to <code>Result</code>:</p>
-<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+<pre><pre class="playground"><code class="language-rust no_run edition2021"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>use neo3::prelude::*;
 
@@ -397,7 +409,7 @@ fn example() -&gt; Result&lt;(), NeoError&gt; {
 <span class="boring">}</span></code></pre></pre>
 <h2 id="converting-between-error-types"><a class="header" href="#converting-between-error-types">Converting Between Error Types</a></h2>
 <p>The NeoRust SDK provides comprehensive <code>From</code> implementations for converting between different error types:</p>
-<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+<pre><pre class="playground"><code class="language-rust no_run edition2021"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>// From implementations for domain-specific errors
 impl From&lt;BuilderError&gt; for NeoError {
@@ -446,7 +458,7 @@ impl From&lt;std::num::ParseIntError&gt; for NeoError {
 <p>This allows for easy conversion between error types using the <code>?</code> operator. When you use the <code>?</code> operator on a function that returns a domain-specific error type, it will be automatically converted to <code>NeoError</code> if you're in a function that returns <code>Result&lt;T, NeoError&gt;</code>.</p>
 <h2 id="handling-rpc-errors"><a class="header" href="#handling-rpc-errors">Handling RPC Errors</a></h2>
 <p>When working with RPC calls, you may need to handle specific error codes:</p>
-<pre><pre class="playground"><code class="language-rust">use neo3::prelude::*;
+<pre><pre class="playground"><code class="language-rust no_run edition2021">use neo3::prelude::*;
 
 #[tokio::main]
 async fn main() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
@@ -473,7 +485,7 @@ async fn main() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
 }</code></pre></pre>
 <h2 id="handling-wallet-errors"><a class="header" href="#handling-wallet-errors">Handling Wallet Errors</a></h2>
 <p>When working with wallets, you may need to handle specific wallet errors:</p>
-<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+<pre><pre class="playground"><code class="language-rust no_run edition2021"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>use neo3::prelude::*;
 use std::path::Path;
@@ -501,7 +513,7 @@ fn open_wallet(wallet_path: &amp;Path, password: &amp;str) -&gt; Result&lt;Walle
 <span class="boring">}</span></code></pre></pre>
 <h2 id="handling-transaction-errors"><a class="header" href="#handling-transaction-errors">Handling Transaction Errors</a></h2>
 <p>When sending transactions, you may need to handle specific transaction errors:</p>
-<pre><pre class="playground"><code class="language-rust">use neo3::prelude::*;
+<pre><pre class="playground"><code class="language-rust no_run edition2021">use neo3::prelude::*;
 use std::path::Path;
 
 #[tokio::main]
@@ -560,7 +572,7 @@ async fn main() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
 }</code></pre></pre>
 <h2 id="custom-error-types"><a class="header" href="#custom-error-types">Custom Error Types</a></h2>
 <p>You can create custom error types for your application that wrap the NeoRust SDK errors:</p>
-<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+<pre><pre class="playground"><code class="language-rust no_run edition2021"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>use neo3::prelude::*;
 use thiserror::Error;
@@ -592,7 +604,7 @@ fn app_function() -&gt; Result&lt;(), AppError&gt; {
 <span class="boring">}</span></code></pre></pre>
 <h2 id="error-logging"><a class="header" href="#error-logging">Error Logging</a></h2>
 <p>The NeoRust SDK uses the <code>tracing</code> crate for logging errors. You can configure the logging level to see more detailed error information:</p>
-<pre><pre class="playground"><code class="language-rust">use neo3::prelude::*;
+<pre><pre class="playground"><code class="language-rust no_run edition2021">use neo3::prelude::*;
 use tracing_subscriber::{fmt, EnvFilter};
 
 fn main() {
@@ -607,7 +619,7 @@ fn main() {
 }</code></pre></pre>
 <h2 id="neo-x-error-handling"><a class="header" href="#neo-x-error-handling">Neo X Error Handling</a></h2>
 <p>If you're using the Neo X features, there are additional error types for Neo X-specific operations:</p>
-<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+<pre><pre class="playground"><code class="language-rust no_run edition2021"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>pub enum NeoXError {
     // EVM errors
@@ -621,7 +633,7 @@ fn main() {
 }
 <span class="boring">}</span></code></pre></pre>
 <p>Handling Neo X errors:</p>
-<pre><pre class="playground"><code class="language-rust">use neo3::prelude::*;
+<pre><pre class="playground"><code class="language-rust no_run edition2021">use neo3::prelude::*;
 use neo3::neo_x::evm::*;
 
 #[tokio::main]
@@ -708,8 +720,8 @@ async fn main() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
         </script>
 
         <script src="../ace.js"></script>
-        <script src="../mode-rust.js"></script>
         <script src="../editor.js"></script>
+        <script src="../mode-rust.js"></script>
         <script src="../theme-dawn.js"></script>
         <script src="../theme-tomorrow_night.js"></script>
 

@@ -1,8 +1,8 @@
-# NeoRust SDK v1.0.0 - Professional Enhancement Summary
+# NeoRust SDK v1.0.1 - Professional Enhancement Summary
 
 ## Executive Summary
 
-The NeoRust SDK has been successfully enhanced from pre-1.0 to v1.0.0 with major improvements in professionalism, completeness, and user-friendliness. These enhancements reduce development time by 50% and significantly improve the developer experience.
+The NeoRust SDK has been successfully enhanced from pre-1.0 to v1.0.1 with major improvements in professionalism, completeness, and user-friendliness. These enhancements reduce development time by 50% and significantly improve the developer experience.
 
 ## Major Enhancements Delivered
 
@@ -116,13 +116,13 @@ tests/
 - `src/lib.rs` - Added SDK module export
 - `src/neo_error/mod.rs` - Integrated unified errors
 - `neo-cli/src/main.rs` - Added wizard and generate commands
-- `Cargo.toml` - Updated to v1.0.0
+- `Cargo.toml` - Updated to v1.0.1
 - `README.md` - Updated with new examples
-- `CHANGELOG.md` - Added v1.0.0 release notes
+- `CHANGELOG.md` - Added v1.0.1 release notes
 
 ## Usage Examples
 
-### Before (v1.0.0)
+### Before (v1.0.1)
 ```rust
 // Complex setup
 let provider = HttpProvider::new("https://testnet1.neo.org:443")?;
@@ -134,7 +134,7 @@ let gas_balance = client.invoke_function(...)?;
 // Parse results manually...
 ```
 
-### After (v1.0.0)
+### After (v1.0.1)
 ```rust
 // Simple setup
 let neo = Neo::testnet().await?;
@@ -170,7 +170,7 @@ While Phase 1-2 are complete, the following enhancements are ready for implement
 
 ## Impact Summary
 
-The NeoRust SDK v1.0.0 delivers:
+The NeoRust SDK v1.0.1 delivers:
 
 1. **Professional**: Enterprise-grade error handling and API design
 2. **Complete**: Full feature set with templates and tools

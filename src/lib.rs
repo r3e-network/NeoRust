@@ -7,7 +7,7 @@
 )]
 #![allow(unexpected_cfgs)]
 //! ![Neo Logo](https://neo.org/images/neo-logo/NEO-logo.svg)
-//! # NeoRust SDK v1.0.0
+//! # NeoRust SDK v1.0.1
 //!
 //! A production-ready Rust SDK for the Neo N3 blockchain with enterprise-grade features.
 //!
@@ -26,7 +26,7 @@
 //!   hardware wallets for transaction signing and key management. This feature provides an additional
 //!   security layer by keeping private keys on dedicated hardware.
 //!
-//! - **aws**: ⚠️ **DISABLED in v1.0.0** due to security vulnerabilities in rusoto dependencies.
+//! - **aws**: ⚠️ **DISABLED in v1.0.1** due to security vulnerabilities in rusoto dependencies.
 //!   Will be re-enabled in a future 1.x release with the modern AWS SDK. For AWS KMS integration,
 //!   use the legacy v0.3.x line or wait for updated AWS SDK support.
 //!
@@ -42,13 +42,13 @@
 //!
 //! ```toml
 //! [dependencies]
-//! neo3 = { version = "1.0.0", features = ["futures", "ledger"] }
+//! neo3 = { version = "1.0.1", features = ["futures", "ledger"] }
 //! ```
 //!
 //! You can disable default features with:
 //!
 //! ```toml
-//! neo3 = { version = "1.0.0", default-features = false, features = ["futures"] }
+//! neo3 = { version = "1.0.1", default-features = false, features = ["futures"] }
 //! ```
 //!
 //! ## Overview
@@ -685,7 +685,7 @@ pub use futures;
 #[cfg(feature = "ledger")]
 pub use coins_ledger;
 
-// AWS feature is disabled in v1.0.0 due to security vulnerabilities
+// AWS feature is disabled in v1.0.1 due to security vulnerabilities
 // #[cfg(feature = "aws")]
 // #[cfg_attr(docsrs, doc(cfg(feature = "aws")))]
 // pub use rusoto_core;

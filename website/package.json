@@ -1,9 +1,17 @@
 {
   "name": "neorust-website",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "private": true,
-  "description": "Official website and documentation for NeoRust v1.0.0 - A comprehensive Rust SDK for Neo N3 blockchain development",
-  "keywords": ["neo", "blockchain", "rust", "sdk", "neo3", "cryptocurrency", "smart-contracts"],
+  "description": "Official website and documentation for NeoRust v1.0.1 - A comprehensive Rust SDK for Neo N3 blockchain development",
+  "keywords": [
+    "neo",
+    "blockchain",
+    "rust",
+    "sdk",
+    "neo3",
+    "cryptocurrency",
+    "smart-contracts"
+  ],
   "scripts": {
     "docusaurus": "docusaurus",
     "start": "docusaurus start",

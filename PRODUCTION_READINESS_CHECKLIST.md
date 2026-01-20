@@ -107,7 +107,7 @@
 ## 🔧 Technical Debt & Improvements
 
 ### CLI (neo-cli)
-- [ ] Complete integration with v1.0.0 SDK features
+- [ ] Complete integration with v1.0.1 SDK features
 - [ ] Add comprehensive integration tests
 - [ ] Implement proper async/await patterns
 - [ ] Add progress indicators for long operations
@@ -125,7 +125,7 @@
 ## 🚀 Next Steps
 
 1. **Implement Priority 1 security features**
-2. **Integrate v1.0.0 SDK features** (HD Wallet, WebSocket, Transaction Simulation)
+2. **Integrate v1.0.1 SDK features** (HD Wallet, WebSocket, Transaction Simulation)
 3. **Add comprehensive error handling**
 4. **Create production configuration files**
 5. **Add monitoring and logging**
@@ -144,4 +144,4 @@
 - ⚠️ Testing coverage: 45%
 - ✅ Documentation: 75%
 
-**Target: 95% Production Ready for v1.0.0**
+**Target: 95% Production Ready for v1.0.1**

@@ -4,7 +4,7 @@
 [template]
 name = "nft-collection"
 description = "NEP-11 NFT collection scaffold (dApp + contract stub)"
-version = "1.0.0"
+version = "1.0.1"
 author = "NeoRust Team"
 
 [files]

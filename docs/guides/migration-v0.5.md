@@ -22,7 +22,7 @@ let balance = neo.get_balance(&address).await?;
 ```
 
 ## Checklist
-- Update `Cargo.toml` to `neo3 = "0.5"` (current: `0.5.5`).
+- Update `Cargo.toml` to `neo3 = "0.5"` (current: `1.0.0`).
 - Replace deprecated `push_string`/`emit` helpers with `push_data`/`op_code`.
 - Adjust examples and docs to use `Neo` and `TransactionSimulator` where appropriate.
 - Audit any direct error field access; use pattern matching on `NeoError`.

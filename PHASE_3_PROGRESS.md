@@ -1,4 +1,4 @@
-# NeoRust SDK v0.5.0 - Phase 3 Progress Report
+# NeoRust SDK v1.0.0 - Phase 3 Progress Report
 
 ## Executive Summary
 

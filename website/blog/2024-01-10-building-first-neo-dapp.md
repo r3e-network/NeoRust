@@ -76,7 +76,7 @@ Add dependencies to `Cargo.toml`:
 
 ```toml
 [dependencies]
-neo3 = "0.4.1"
+neo3 = "1.0.0"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 
@@ -262,7 +262,7 @@ cargo init
 
 ```toml
 [dependencies]
-neo3 = "0.4.1"
+neo3 = "1.0.0"
 tokio = { version = "1.0", features = ["full"] }
 warp = "0.3"
 serde = { version = "1.0", features = ["derive"] }
@@ -965,7 +965,7 @@ You've successfully built a complete Neo dApp with:
 - Blockchain integration patterns
 
 ### Resources
-- **[NeoRust Documentation](../docs)**: Complete API reference
+- **[NeoRust Documentation](/docs/intro)**: Complete API reference
 - **[Neo Developer Hub](https://developers.neo.org)**: Official Neo resources
 - **[Community Discord](https://discord.gg/neo-rust)**: Get help and connect
 - **[GitHub Repository](https://github.com/R3E-Network/NeoRust)**: Source code and examples

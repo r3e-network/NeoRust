@@ -33,7 +33,7 @@ A comprehensive, production-ready Rust SDK for the Neo N3 blockchain platform. N
 - 🪙 **Token Support** - Native NEP-17 token operations and custom token support
 - 🌐 **Network Support** - Mainnet, Testnet, and custom network configurations
 
-### New in v0.5.x 🚀
+### New in v1.0.x 🚀
 - 🌐 **WebSocket Support** - Real-time blockchain events with auto-reconnection
 - 🔑 **HD Wallet (BIP-39/44)** - Hierarchical deterministic wallets with mnemonic phrases
 - 🔮 **Transaction Simulation** - Preview effects and estimate gas before submission
@@ -58,7 +58,7 @@ neo3 = "1.0.0"
 
 ## Basic Usage
 
-### New Simplified API (v0.5.x+)
+### New Simplified API (v1.0.x+)
 
 ```rust
 use neo3::sdk::{Neo, Network};
@@ -265,7 +265,7 @@ cargo build --workspace
 - [Transaction Simulation Guide](docs/guides/transaction-simulation.md)
 - [Examples](examples/)
 - [CLI Documentation](neo-cli/README.md)
-- [Migration Guide v0.4 → v0.5](docs/guides/migration-v0.5.md)
+- [Migration Guide to v1.0](docs/guides/migration-v1.0.md)
 
 ## Examples
 
@@ -341,8 +341,8 @@ cargo doc --no-deps --all-features
 
 ## Feature Comparison
 
-| Feature | v0.4.x | v0.5.x | Improvement |
-|---------|--------|--------|-------------|
+| Feature | Pre-1.0 | v1.0.x | Improvement |
+|---------|---------|--------|-------------|
 | **Connection Setup** | 5-10 lines | 1 line | 90% reduction |
 | **Balance Check** | Manual RPC + parsing | Single method | 70% reduction |
 | **Error Handling** | Basic errors | Recovery suggestions | Enhanced UX |
@@ -353,18 +353,18 @@ cargo doc --no-deps --all-features
 | **Project Setup** | Manual | Template generation | 80% faster |
 | **CLI Experience** | Commands only | Interactive wizard | Enhanced UX |
 
-## Migration from v0.4 to v0.5
+## Migration to v1.0
 
 ### Quick Migration
 
 ```rust
-// Old (v0.4)
+// Pre-1.0
 let provider = HttpProvider::new("https://testnet1.neo.org:443")?;
 let client = RpcClient::new(provider);
 let result = client.invoke_function(&contract, "balanceOf", vec![address], None).await?;
 let balance = parse_balance(result)?; // Manual parsing
 
-// New (v0.5)
+// v1.0
 let neo = Neo::testnet().await?;
 let balance = neo.get_balance(address).await?; // Automatic parsing
 ```
@@ -375,12 +375,12 @@ let balance = neo.get_balance(address).await?; // Automatic parsing
 2. **Module Structure**: Some modules reorganized for better discoverability
 3. **Async Patterns**: Standardized async/await usage across all APIs
 
-See the [full migration guide](docs/guides/migration-v0.5.md) for detailed instructions.
+See the [full migration guide](docs/guides/migration-v1.0.md) for detailed instructions.
 
 ## Performance Metrics
 
-| Operation | v0.4.x | v0.5.x | Improvement |
-|-----------|--------|--------|-------------|
+| Operation | Pre-1.0 | v1.0.x | Improvement |
+|-----------|---------|--------|-------------|
 | **WebSocket Events** | N/A | <100ms | New |
 | **HD Account Derivation** | N/A | <10ms | New |
 | **Transaction Simulation** | N/A | <200ms | New |

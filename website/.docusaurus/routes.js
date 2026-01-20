@@ -4,7 +4,7 @@ import ComponentCreator from '@docusaurus/ComponentCreator';
 export default [
   {
     path: '/blog',
-    component: ComponentCreator('/blog', '39d'),
+    component: ComponentCreator('/blog', 'e99'),
     exact: true
   },
   {
@@ -23,13 +23,13 @@ export default [
     exact: true
   },
   {
-    path: '/blog/neorust-v0.4.1-release',
-    component: ComponentCreator('/blog/neorust-v0.4.1-release', '003'),
+    path: '/blog/neorust-v1.0.0-docs-quality',
+    component: ComponentCreator('/blog/neorust-v1.0.0-docs-quality', '774'),
     exact: true
   },
   {
-    path: '/blog/neorust-v0.4.2-release',
-    component: ComponentCreator('/blog/neorust-v0.4.2-release', 'f74'),
+    path: '/blog/neorust-v1.0.0-release',
+    component: ComponentCreator('/blog/neorust-v1.0.0-release', '4f1'),
     exact: true
   },
   {
@@ -44,7 +44,7 @@ export default [
   },
   {
     path: '/blog/tags/blockchain',
-    component: ComponentCreator('/blog/tags/blockchain', '393'),
+    component: ComponentCreator('/blog/tags/blockchain', '6da'),
     exact: true
   },
   {
@@ -54,32 +54,32 @@ export default [
   },
   {
     path: '/blog/tags/documentation',
-    component: ComponentCreator('/blog/tags/documentation', '57a'),
+    component: ComponentCreator('/blog/tags/documentation', '606'),
     exact: true
   },
   {
     path: '/blog/tags/neo-3',
-    component: ComponentCreator('/blog/tags/neo-3', '229'),
+    component: ComponentCreator('/blog/tags/neo-3', '934'),
     exact: true
   },
   {
     path: '/blog/tags/quality',
-    component: ComponentCreator('/blog/tags/quality', 'fa3'),
+    component: ComponentCreator('/blog/tags/quality', '116'),
     exact: true
   },
   {
     path: '/blog/tags/release',
-    component: ComponentCreator('/blog/tags/release', '097'),
+    component: ComponentCreator('/blog/tags/release', 'c46'),
     exact: true
   },
   {
     path: '/blog/tags/rust',
-    component: ComponentCreator('/blog/tags/rust', '6af'),
+    component: ComponentCreator('/blog/tags/rust', 'e98'),
     exact: true
   },
   {
     path: '/blog/tags/sdk',
-    component: ComponentCreator('/blog/tags/sdk', 'af4'),
+    component: ComponentCreator('/blog/tags/sdk', '56d'),
     exact: true
   },
   {
@@ -99,15 +99,15 @@ export default [
   },
   {
     path: '/cli',
-    component: ComponentCreator('/cli', '1f5'),
+    component: ComponentCreator('/cli', '4c1'),
     routes: [
       {
         path: '/cli',
-        component: ComponentCreator('/cli', '527'),
+        component: ComponentCreator('/cli', '242'),
         routes: [
           {
             path: '/cli',
-            component: ComponentCreator('/cli', 'ec0'),
+            component: ComponentCreator('/cli', 'f76'),
             routes: [
               {
                 path: '/cli/commands',
@@ -117,7 +117,7 @@ export default [
               },
               {
                 path: '/cli/configuration',
-                component: ComponentCreator('/cli/configuration', '34e'),
+                component: ComponentCreator('/cli/configuration', '51b'),
                 exact: true,
                 sidebar: "cliSidebar"
               },
@@ -135,15 +135,15 @@ export default [
   },
   {
     path: '/docs',
-    component: ComponentCreator('/docs', '2e9'),
+    component: ComponentCreator('/docs', 'a4b'),
     routes: [
       {
         path: '/docs',
-        component: ComponentCreator('/docs', 'a95'),
+        component: ComponentCreator('/docs', 'b3f'),
         routes: [
           {
             path: '/docs',
-            component: ComponentCreator('/docs', '45d'),
+            component: ComponentCreator('/docs', 'dbd'),
             routes: [
               {
                 path: '/docs/getting-started/installation',
@@ -153,13 +153,13 @@ export default [
               },
               {
                 path: '/docs/getting-started/quick-start',
-                component: ComponentCreator('/docs/getting-started/quick-start', 'a2d'),
+                component: ComponentCreator('/docs/getting-started/quick-start', 'dc1'),
                 exact: true,
                 sidebar: "tutorialSidebar"
               },
               {
                 path: '/docs/intro',
-                component: ComponentCreator('/docs/intro', 'b40'),
+                component: ComponentCreator('/docs/intro', 'a79'),
                 exact: true,
                 sidebar: "tutorialSidebar"
               },
@@ -168,72 +168,6 @@ export default [
                 component: ComponentCreator('/docs/testing', '5bd'),
                 exact: true,
                 sidebar: "tutorialSidebar"
-              }
-            ]
-          }
-        ]
-      }
-    ]
-  },
-  {
-    path: '/gui',
-    component: ComponentCreator('/gui', '515'),
-    routes: [
-      {
-        path: '/gui',
-        component: ComponentCreator('/gui', 'b29'),
-        routes: [
-          {
-            path: '/gui',
-            component: ComponentCreator('/gui', '538'),
-            routes: [
-              {
-                path: '/gui/basic-operations',
-                component: ComponentCreator('/gui/basic-operations', '3f3'),
-                exact: true,
-                sidebar: "guiSidebar"
-              },
-              {
-                path: '/gui/first-wallet',
-                component: ComponentCreator('/gui/first-wallet', 'efc'),
-                exact: true,
-                sidebar: "guiSidebar"
-              },
-              {
-                path: '/gui/installation',
-                component: ComponentCreator('/gui/installation', '938'),
-                exact: true,
-                sidebar: "guiSidebar"
-              },
-              {
-                path: '/gui/intro',
-                component: ComponentCreator('/gui/intro', 'c25'),
-                exact: true,
-                sidebar: "guiSidebar"
-              },
-              {
-                path: '/gui/settings',
-                component: ComponentCreator('/gui/settings', 'be4'),
-                exact: true,
-                sidebar: "guiSidebar"
-              },
-              {
-                path: '/gui/token-operations',
-                component: ComponentCreator('/gui/token-operations', '3f2'),
-                exact: true,
-                sidebar: "guiSidebar"
-              },
-              {
-                path: '/gui/transactions',
-                component: ComponentCreator('/gui/transactions', '6fc'),
-                exact: true,
-                sidebar: "guiSidebar"
-              },
-              {
-                path: '/gui/wallet-management',
-                component: ComponentCreator('/gui/wallet-management', 'e0d'),
-                exact: true,
-                sidebar: "guiSidebar"
               }
             ]
           }

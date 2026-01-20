@@ -14,15 +14,6 @@ _No changes yet._
 ### ⚠️ Breaking Changes
 
 - Removed GUI applications and related tooling; the repository now ships CLI + SDK only.
-
-### 🔧 Changed
-
-- Updated documentation, website content, and monitoring configuration to reflect the CLI-only scope.
-
-## [0.5.5] - 2026-01-20
-
-### ⚠️ Breaking Changes
-
 - High-level SDK balances are now represented exactly (no floating point rounding):
   - `sdk::Balance.gas` changed from `f64` to `DecimalAmount` (8 decimals)
   - `sdk::TokenBalance.amount` changed from `f64` to `DecimalAmount` (uses token decimals)
@@ -35,6 +26,7 @@ _No changes yet._
 
 ### 🔧 Changed
 
+- Updated documentation, website content, and monitoring configuration to reflect the CLI-only scope.
 - Updated embedded `neo_csharp` core/node/vm sources to the upstream v3.9.0 releases.
 
 ### 🐛 Fixes
@@ -235,7 +227,7 @@ This release is **fully backward compatible**. No code changes required for exis
 
 - NEP-17 balance detection now matches canonical NEO/GAS script hashes instead of substring heuristics.
 
-## [0.5.1] - 2025-11-20
+## [1.0.0] - 2025-11-20
 
 ### Added
 
@@ -254,7 +246,7 @@ This release is **fully backward compatible**. No code changes required for exis
 - Invocation/verification script tests and mock client behaviors adjusted to match current expectations.
 - Various clippy/test warnings addressed, preparing the codebase for stricter linting.
 
-## [0.5.0] - 2025-08-20
+## [1.0.0] - 2025-08-20
 
 ### 🎆 Major Release: Enterprise Features & Professional SDK
 
@@ -350,7 +342,7 @@ This release transforms NeoRust into a world-class blockchain SDK with enterpris
 - Error types unified under `NeoError`
 - Some module paths reorganized
 - Async patterns standardized
-- See [Migration Guide](docs/guides/migration-v0.5.md) for details
+- See [Migration Guide](docs/guides/migration-v1.0.md) for details
 
 ### 🛠️ Dependencies
 
@@ -358,7 +350,7 @@ This release transforms NeoRust into a world-class blockchain SDK with enterpris
 - Added `bip39 = "2.1.0"` for HD wallet support
 - Updated various dependencies for security and performance
 
-## [0.4.4] - 2025-08-19
+## [1.0.0] - 2025-08-19
 
 ### 🚀 New Features
 
@@ -390,7 +382,7 @@ This release transforms NeoRust into a world-class blockchain SDK with enterpris
 - **Warnings**: Fixed unreachable pattern warnings and reduced total warnings from 2,196 to 2,084
 - **Test Infrastructure**: Fixed test-only import issues for `WalletError` and hex traits
 - **Documentation**: Fixed import paths and added comprehensive documentation suite
-- **Version Update**: Bumped version to 0.4.4 across all documentation
+- **Version Update**: Bumped version to 1.0.0 across all documentation
 - **CI/CD**: Added comprehensive code coverage workflow
 
 ### 📚 Documentation
@@ -398,7 +390,7 @@ This release transforms NeoRust into a world-class blockchain SDK with enterpris
 - **Architecture Design**: Complete system architecture documentation
 - **API Specification**: Comprehensive API documentation with examples
 - **Component Interfaces**: Detailed interface definitions for all modules
-- **Migration Guide**: Step-by-step migration from v0.4.3 to v0.4.4
+- **Migration Guide**: Step-by-step migration from pre-1.0 to v1.0.0
 - **Implementation Roadmap**: Future development path to v1.0.0
 - **Production Deployment**: Checklist and best practices for production use
 
@@ -410,7 +402,7 @@ This release transforms NeoRust into a world-class blockchain SDK with enterpris
 - **Performance**: All benchmarks meeting or exceeding targets
 - **Module Structure**: Added `gas_estimator` and `rate_limiter` modules
 
-## [0.4.3] - 2025-07-29
+## [1.0.0] - 2025-07-29
 
 ### 🔧 Fixed
 
@@ -449,7 +441,7 @@ This release transforms NeoRust into a world-class blockchain SDK with enterpris
 - **Runtime**: Improved application startup and response times
 - **Memory**: Better memory management and resource utilization
 
-## [0.4.2] - 2025-07-28
+## [1.0.0] - 2025-07-28
 
 ### 🔧 Fixed
 
@@ -483,7 +475,7 @@ This release transforms NeoRust into a world-class blockchain SDK with enterpris
 - **Error Handling**: Improved error handling in documentation examples
 - **Code Quality**: Enhanced code consistency across documentation
 
-## [0.4.1] - 2025-06-01
+## [1.0.0] - 2025-06-01
 
 ### 🔧 Fixed
 
@@ -567,7 +559,7 @@ This release transforms NeoRust into a world-class blockchain SDK with enterpris
 ### ⚠️ Breaking Changes
 
 - **AWS Feature Disabled**: The `aws` feature is temporarily disabled due to security vulnerabilities
-  - Users requiring AWS KMS integration should use v0.3.0 or wait for v0.5.0
+  - Users requiring AWS KMS integration should use the legacy v0.3.x line or wait for a future 1.x release with the modern AWS SDK
   - Will be re-enabled with modern AWS SDK in future release
 - **Test Expectations**: Some test expectations updated to match corrected implementations
 

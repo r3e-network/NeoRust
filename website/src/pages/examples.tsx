@@ -538,7 +538,7 @@ export default function Examples(): JSX.Element {
                   <Link to="/docs/intro" className={clsx('btn btn-primary', styles.ctaButton)}>
                     📚 Read Documentation
                   </Link>
-                  <Link to="/sdk" className={clsx('btn btn-secondary', styles.ctaButton)}>
+                  <Link to="/sdk/intro" className={clsx('btn btn-secondary', styles.ctaButton)}>
                     🦀 Explore SDK
                   </Link>
                   <a 
@@ -574,7 +574,7 @@ export default function Examples(): JSX.Element {
                   <p className={styles.resourceDescription}>
                     Step-by-step tutorials for building complete applications.
                   </p>
-                  <Link to="/docs/tutorials" className={styles.resourceLink}>
+                  <Link to="/docs/getting-started/quick-start" className={styles.resourceLink}>
                     Start Learning →
                   </Link>
                 </div>

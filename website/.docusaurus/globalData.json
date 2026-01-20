@@ -5,7 +5,7 @@
       "versions": [
         {
           "name": "current",
-          "label": "v0.4.2",
+          "label": "v1.0.0",
           "isLast": true,
           "path": "/docs",
           "mainDocId": "intro",
@@ -111,70 +111,6 @@
               "link": {
                 "path": "/sdk/intro",
                 "label": "🦀 Rust SDK Overview"
-              }
-            }
-          }
-        }
-      ],
-      "breadcrumbs": true
-    },
-    "gui": {
-      "path": "/gui",
-      "versions": [
-        {
-          "name": "current",
-          "label": "Next",
-          "isLast": true,
-          "path": "/gui",
-          "mainDocId": "intro",
-          "docs": [
-            {
-              "id": "basic-operations",
-              "path": "/gui/basic-operations",
-              "sidebar": "guiSidebar"
-            },
-            {
-              "id": "first-wallet",
-              "path": "/gui/first-wallet",
-              "sidebar": "guiSidebar"
-            },
-            {
-              "id": "installation",
-              "path": "/gui/installation",
-              "sidebar": "guiSidebar"
-            },
-            {
-              "id": "intro",
-              "path": "/gui/intro",
-              "sidebar": "guiSidebar"
-            },
-            {
-              "id": "settings",
-              "path": "/gui/settings",
-              "sidebar": "guiSidebar"
-            },
-            {
-              "id": "token-operations",
-              "path": "/gui/token-operations",
-              "sidebar": "guiSidebar"
-            },
-            {
-              "id": "transactions",
-              "path": "/gui/transactions",
-              "sidebar": "guiSidebar"
-            },
-            {
-              "id": "wallet-management",
-              "path": "/gui/wallet-management",
-              "sidebar": "guiSidebar"
-            }
-          ],
-          "draftIds": [],
-          "sidebars": {
-            "guiSidebar": {
-              "link": {
-                "path": "/gui/intro",
-                "label": "🖥️ Desktop GUI Overview"
               }
             }
           }

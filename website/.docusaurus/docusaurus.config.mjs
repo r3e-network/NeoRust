@@ -4,7 +4,7 @@
  * Modify the docusaurus.config.js file at your site's root instead.
  */
 export default {
-  "title": "NeoRust v0.4.2",
+  "title": "NeoRust v1.0.0",
   "tagline": "Production-ready Neo N3 blockchain development toolkit built in Rust",
   "favicon": "img/favicon.svg",
   "url": "https://neorust.netlify.app",
@@ -26,14 +26,14 @@ export default {
       "classic",
       {
         "docs": {
-          "sidebarPath": "/Users/jinghuiliao/git/r3e/NeoRust/website/sidebars.js",
+          "sidebarPath": "/home/neo/git/neo-rust-sdk/website/sidebars.js",
           "editUrl": "https://github.com/R3E-Network/NeoRust/tree/main/website/",
           "showLastUpdateAuthor": true,
           "showLastUpdateTime": true,
           "includeCurrentVersion": true,
           "versions": {
             "current": {
-              "label": "v0.4.2",
+              "label": "v1.0.0",
               "path": ""
             }
           }
@@ -46,7 +46,7 @@ export default {
           "editUrl": "https://github.com/R3E-Network/NeoRust/tree/main/website/"
         },
         "theme": {
-          "customCss": "/Users/jinghuiliao/git/r3e/NeoRust/website/src/css/custom.css"
+          "customCss": "/home/neo/git/neo-rust-sdk/website/src/css/custom.css"
         },
         "sitemap": {
           "changefreq": "weekly",
@@ -68,7 +68,7 @@ export default {
       },
       {
         "name": "description",
-        "content": "NeoRust v0.4.2 - A production-ready Rust SDK for Neo N3 blockchain development. Build high-performance dApps with type-safe, modern Rust. Features 135 passing documentation tests."
+        "content": "NeoRust v1.0.0 - A production-ready Rust SDK for Neo N3 blockchain development. Build high-performance dApps with type-safe, modern Rust. Optimized and production-ready."
       },
       {
         "property": "og:image",
@@ -116,10 +116,6 @@ export default {
             {
               "label": "🦀 Rust SDK",
               "to": "/sdk/intro"
-            },
-            {
-              "label": "🖥️ Desktop GUI",
-              "to": "/gui/intro"
             },
             {
               "label": "⌨️ CLI Tools",
@@ -173,10 +169,6 @@ export default {
               "to": "/sdk/intro"
             },
             {
-              "label": "GUI Documentation",
-              "to": "/gui/intro"
-            },
-            {
               "label": "CLI Documentation",
               "to": "/cli/intro"
             },
@@ -192,10 +184,6 @@ export default {
             {
               "label": "Rust SDK",
               "to": "/sdk/installation"
-            },
-            {
-              "label": "Desktop GUI",
-              "to": "/gui/installation"
             },
             {
               "label": "CLI Tools",
@@ -252,7 +240,7 @@ export default {
         "width": 160,
         "height": 51
       },
-      "copyright": "\n          <div style=\"margin-top: 16px; padding-top: 16px; border-top: 1px solid #333;\">\n            <p>Copyright © 2025 R3E Network. Built with ❤️ and Docusaurus.</p>\n            <p>NeoRust v0.4.2 - Production-Ready Neo N3 Development Suite with 135 Passing Doc Tests</p>\n          </div>\n        "
+      "copyright": "\n          <div style=\"margin-top: 16px; padding-top: 16px; border-top: 1px solid #333;\">\n            <p>Copyright © 2026 R3E Network. Built with ❤️ and Docusaurus.</p>\n            <p>NeoRust v1.0.0 - Production-Ready Neo N3 Development Suite - Optimized and Enhanced</p>\n          </div>\n        "
     },
     "prism": {
       "theme": {
@@ -476,8 +464,8 @@ export default {
       "respectPrefersColorScheme": true
     },
     "announcementBar": {
-      "id": "v0.4.2-release",
-      "content": "🎉 <strong>NeoRust v0.4.2</strong> is now available! Production-ready with 135 passing documentation tests and enhanced stability. <a target=\"_blank\" rel=\"noopener noreferrer\" href=\"https://github.com/R3E-Network/NeoRust/releases/tag/v0.4.2\">See what's new</a>",
+      "id": "v1.0.0-release",
+      "content": "🎉 <strong>NeoRust v1.0.0</strong> is now available! Enhanced performance, optimized code quality, and improved reliability. <a target=\"_blank\" rel=\"noopener noreferrer\" href=\"https://github.com/R3E-Network/NeoRust/releases/tag/v1.0.0\">See what's new</a>",
       "backgroundColor": "#059669",
       "textColor": "#ffffff",
       "isCloseable": true
@@ -519,19 +507,7 @@ export default {
         "id": "sdk",
         "path": "sdk",
         "routeBasePath": "sdk",
-        "sidebarPath": "/Users/jinghuiliao/git/r3e/NeoRust/website/sidebars-sdk.js",
-        "editUrl": "https://github.com/R3E-Network/NeoRust/tree/main/website/",
-        "showLastUpdateAuthor": true,
-        "showLastUpdateTime": true
-      }
-    ],
-    [
-      "@docusaurus/plugin-content-docs",
-      {
-        "id": "gui",
-        "path": "gui",
-        "routeBasePath": "gui",
-        "sidebarPath": "/Users/jinghuiliao/git/r3e/NeoRust/website/sidebars-gui.js",
+        "sidebarPath": "/home/neo/git/neo-rust-sdk/website/sidebars-sdk.js",
         "editUrl": "https://github.com/R3E-Network/NeoRust/tree/main/website/",
         "showLastUpdateAuthor": true,
         "showLastUpdateTime": true
@@ -543,7 +519,7 @@ export default {
         "id": "cli",
         "path": "cli",
         "routeBasePath": "cli",
-        "sidebarPath": "/Users/jinghuiliao/git/r3e/NeoRust/website/sidebars-cli.js",
+        "sidebarPath": "/home/neo/git/neo-rust-sdk/website/sidebars-cli.js",
         "editUrl": "https://github.com/R3E-Network/NeoRust/tree/main/website/",
         "showLastUpdateAuthor": true,
         "showLastUpdateTime": true

@@ -13,7 +13,7 @@ Add NeoRust to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-neo3 = "0.5.5"
+neo3 = "1.0.0"
 ```
 
 Note: The crate is published as `neo3` but is imported as `neo` in code:
@@ -37,7 +37,7 @@ Example of enabling specific features:
 
 ```toml
 [dependencies]
-neo3 = { version = "0.5.5", features = ["futures", "ws", "ledger"] }
+neo3 = { version = "1.0.0", features = ["futures", "ws", "ledger"] }
 ```
 
 ### Development vs Production Features
@@ -46,21 +46,21 @@ For development and testing, you can enable mock functionality:
 
 ```toml
 [dependencies]
-neo3 = { version = "0.5.5", features = ["futures", "mock-hsm"] }
+neo3 = { version = "1.0.0", features = ["futures", "mock-hsm"] }
 ```
 
 For production builds, avoid mock features:
 
 ```toml
 [dependencies]
-neo3 = { version = "0.5.5", features = ["futures", "ws", "ipc", "ledger"] }
+neo3 = { version = "1.0.0", features = ["futures", "ws", "ipc", "ledger"] }
 ```
 
 You can disable default features with:
 
 ```toml
 [dependencies]
-neo3 = { version = "0.5.5", default-features = false, features = ["futures"] }
+neo3 = { version = "1.0.0", default-features = false, features = ["futures"] }
 ```
 
 ## Build Configuration

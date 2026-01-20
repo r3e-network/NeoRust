@@ -1,9 +1,9 @@
 # NeoRust v0.4.1 Release Preparation Guide
-> Historical snapshot for the v0.4.1 release. Current SDK is v0.5.5; follow main release tooling for future versions.
+> Historical snapshot for the v0.4.1 release. Current SDK is v1.0.0; follow main release tooling for future versions.
 
 ## 📋 Release Overview
 
-**Version**: 0.4.1  (superseded by v0.5.5)
+**Version**: 0.4.1  (superseded by v1.0.0)
 **Release Type**: Minor Release  
 **Target Date**: TBD  
 **Focus**: Testing Framework Enhancement & Quality Assurance

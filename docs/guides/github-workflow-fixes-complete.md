@@ -2,7 +2,7 @@
 
 ## 🎉 **STATUS: FULLY RESOLVED**
 
-All major GitHub workflow issues have been successfully resolved. This document captured the v0.4.1 state; the current SDK release is v0.5.5 (see main README).
+All major GitHub workflow issues have been successfully resolved. This document captured the v0.4.1 state; the current SDK release is v1.0.0 (see main README).
 
 ## ✅ **What We Fixed**
 

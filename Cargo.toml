@@ -150,7 +150,7 @@ bs58 = "0.5.1"
 aes = "0.8.3"
 # For JSON manipulation
 # json = "0.12"  # REMOVED: Unmaintained and vulnerable (RUSTSEC-2022-0081)
-rust_decimal = "1.0"
+rust_decimal = "1.40"
 # JSON encode
 
 ripemd = "0.1.3"

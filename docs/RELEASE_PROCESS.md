@@ -24,8 +24,8 @@ cargo clippy --workspace --all-features --all-targets
 cargo test --workspace --all-features --all-targets
 
 # 3) Tag and push (release workflow triggers on vX.Y.Z tags)
-git tag -a v0.5.4 -m "Release version 0.5.4"
-git push origin v0.5.4
+git tag -a v0.5.5 -m "Release version 0.5.5"
+git push origin v0.5.5
 ```
 
 ### 3. Monitor the Automated Release

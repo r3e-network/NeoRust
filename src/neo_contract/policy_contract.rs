@@ -15,14 +15,15 @@
 use async_trait::async_trait;
 use primitive_types::H160;
 use serde::{Deserialize, Serialize};
+use std::sync::Arc;
 
 use crate::{
 	neo_builder::TransactionBuilder,
 	neo_clients::{JsonRpcProvider, RpcClient},
-	neo_contract::{traits::SmartContractTrait, ContractError},
+	neo_contract::{traits::SmartContractTrait, ContractError, NeoIterator},
 	neo_types::{
 		serde_with_utils::{deserialize_script_hash, serialize_script_hash},
-		ScriptHash,
+		ScriptHash, StackItem, WhitelistedContract,
 	},
 	ScriptHashExtension,
 };
@@ -213,6 +214,41 @@ impl<'a, P: JsonRpcProvider + 'static> PolicyContract<'a, P> {
 		self.call_function_returning_bool("isBlocked", vec![script_hash.into()]).await
 	}
 
+	/// Gets blocked accounts as an iterator.
+	///
+	/// Available after HF_Faun.
+	pub async fn get_blocked_accounts(
+		&self,
+	) -> Result<NeoIterator<'_, H160, P>, ContractError> {
+		self.call_function_returning_iterator(
+			"getBlockedAccounts",
+			vec![],
+			Arc::new(|item: StackItem| item.as_hash160().unwrap_or_default()),
+		)
+		.await
+	}
+
+	/// Gets all blocked accounts by fully unwrapping the iterator.
+	///
+	/// Available after HF_Faun.
+	pub async fn get_blocked_accounts_all(&self) -> Result<Vec<H160>, ContractError> {
+		self.get_blocked_accounts_all_with_batch(
+			<Self as SmartContractTrait>::DEFAULT_ITERATOR_COUNT,
+		)
+		.await
+	}
+
+	/// Gets all blocked accounts using a custom batch size.
+	///
+	/// Available after HF_Faun.
+	pub async fn get_blocked_accounts_all_with_batch(
+		&self,
+		batch_size: usize,
+	) -> Result<Vec<H160>, ContractError> {
+		let iterator = self.get_blocked_accounts().await?;
+		self.collect_all(iterator, batch_size).await
+	}
+
 	/// Blocks an account.
 	///
 	/// This method requires committee approval.
@@ -294,6 +330,85 @@ impl<'a, P: JsonRpcProvider + 'static> PolicyContract<'a, P> {
 	}
 
 	// ========== Whitelist Fee Contracts (HF_Faun) ==========
+
+	/// Gets whitelisted fee contracts as an iterator.
+	///
+	/// Available after HF_Faun.
+	pub async fn get_whitelist_fee_contracts(
+		&self,
+	) -> Result<NeoIterator<'_, WhitelistedContract, P>, ContractError> {
+		self.call_function_returning_iterator(
+			"getWhitelistFeeContracts",
+			vec![],
+			Arc::new(|item: StackItem| {
+				WhitelistedContract::from_stack_item(&item).unwrap_or_else(|_| {
+					WhitelistedContract::new(H160::zero(), String::new(), 0, 0)
+				})
+			}),
+		)
+		.await
+	}
+
+	/// Gets all whitelisted fee contracts by fully unwrapping the iterator.
+	///
+	/// Available after HF_Faun.
+	pub async fn get_whitelist_fee_contracts_all(
+		&self,
+	) -> Result<Vec<WhitelistedContract>, ContractError> {
+		self.get_whitelist_fee_contracts_all_with_batch(
+			<Self as SmartContractTrait>::DEFAULT_ITERATOR_COUNT,
+		)
+		.await
+	}
+
+	/// Gets all whitelisted fee contracts using a custom batch size.
+	///
+	/// Available after HF_Faun.
+	pub async fn get_whitelist_fee_contracts_all_with_batch(
+		&self,
+		batch_size: usize,
+	) -> Result<Vec<WhitelistedContract>, ContractError> {
+		let iterator = self.get_whitelist_fee_contracts().await?;
+		self.collect_all(iterator, batch_size).await
+	}
+
+	async fn collect_all<T>(
+		&self,
+		iterator: NeoIterator<'_, T, P>,
+		batch_size: usize,
+	) -> Result<Vec<T>, ContractError> {
+		if batch_size == 0 {
+			return Err(ContractError::InvalidArgError(
+				"Batch size must be greater than zero".to_string(),
+			));
+		}
+
+		let mut all_items = Vec::new();
+		let mut traverse_error: Option<ContractError> = None;
+
+		loop {
+			match iterator.traverse(batch_size as i32).await {
+				Ok(batch) => {
+					if batch.is_empty() {
+						break;
+					}
+					all_items.extend(batch);
+				},
+				Err(err) => {
+					traverse_error = Some(err);
+					break;
+				},
+			}
+		}
+
+		if let Some(err) = traverse_error {
+			let _ = iterator.terminate_session().await;
+			return Err(err);
+		}
+
+		iterator.terminate_session().await?;
+		Ok(all_items)
+	}
 
 	/// Sets a whitelisted contract method for fee exemption.
 	///

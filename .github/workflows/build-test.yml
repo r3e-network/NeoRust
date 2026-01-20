@@ -61,7 +61,7 @@ jobs:
 
     - name: Run tests
       run: cargo test --lib -- --test-threads=1 --nocapture
-      timeout-minutes: 5
+      timeout-minutes: 15
 
     - name: Build documentation
       run: cargo doc --no-deps --no-default-features

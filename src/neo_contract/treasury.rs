@@ -110,4 +110,3 @@ mod tests {
 		assert!(!treasury.script_hash.is_zero());
 	}
 }
-

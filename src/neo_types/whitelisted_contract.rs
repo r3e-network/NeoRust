@@ -47,28 +47,25 @@ impl WhitelistedContract {
 	pub fn from_stack_item(item: &StackItem) -> Result<Self, String> {
 		match item {
 			StackItem::Struct { value } | StackItem::Array { value } if value.len() >= 4 => {
-				let contract_hash = value[0]
-					.as_bytes()
-					.and_then(|bytes| {
-						if bytes.len() == 20 {
-							Some(H160::from_slice(&bytes))
-						} else {
-							None
-						}
-					})
-					.ok_or_else(|| "Invalid contract hash".to_string())?;
+				let contract_hash =
+					value[0]
+						.as_bytes()
+						.and_then(|bytes| {
+							if bytes.len() == 20 {
+								Some(H160::from_slice(&bytes))
+							} else {
+								None
+							}
+						})
+						.ok_or_else(|| "Invalid contract hash".to_string())?;
 
-				let method = value[1]
-					.as_string()
-					.ok_or_else(|| "Invalid method name".to_string())?;
+				let method =
+					value[1].as_string().ok_or_else(|| "Invalid method name".to_string())?;
 
-				let arg_count = value[2]
-					.as_int()
-					.ok_or_else(|| "Invalid arg count".to_string())? as i32;
+				let arg_count =
+					value[2].as_int().ok_or_else(|| "Invalid arg count".to_string())? as i32;
 
-				let fixed_fee = value[3]
-					.as_int()
-					.ok_or_else(|| "Invalid fixed fee".to_string())?;
+				let fixed_fee = value[3].as_int().ok_or_else(|| "Invalid fixed fee".to_string())?;
 
 				Ok(Self { contract_hash, method, arg_count, fixed_fee })
 			},

@@ -84,9 +84,10 @@ pub mod utils;
 mod wif;
 
 // Re-export important types
-pub use crypto_lib::{blake2b_512, recover_secp256k1, sha3_512, verify_with_ed25519, CryptoLibHashable};
+pub use crypto_lib::{
+	blake2b_512, recover_secp256k1, sha3_512, verify_with_ed25519, CryptoLibHashable,
+};
 pub use error::CryptoError;
 pub use hash::HashableForVec;
 pub use key_pair::KeyPair;
 pub use keys::{Secp256r1PublicKey, Secp256r1Signature};
-

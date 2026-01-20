@@ -24,8 +24,8 @@ cargo clippy --workspace --all-features --all-targets
 cargo test --workspace --all-features --all-targets
 
 # 3) Tag and push (release workflow triggers on vX.Y.Z tags)
-git tag -a v1.0.0 -m "Release version 1.0.0"
-git push origin v1.0.0
+git tag -a v1.0.1 -m "Release version 1.0.1"
+git push origin v1.0.1
 ```
 
 ### 3. Monitor the Automated Release
@@ -55,7 +55,7 @@ Pre-release versions use suffixes to indicate stability:
 - `beta` - Feature complete, testing and stabilization phase
 - `rc` - Release candidate, final testing before stable
 
-Examples: `1.0.0-alpha.1`, `1.0.0-beta.2`, `1.0.0-rc.1`
+Examples: `1.0.1-alpha.1`, `1.0.1-beta.2`, `1.0.1-rc.1`
 
 ### Release Channels
 
@@ -98,8 +98,8 @@ Examples: `1.0.0-alpha.1`, `1.0.0-beta.2`, `1.0.0-rc.1`
 #### 1. Version Tagging
 ```bash
 # Create and push version tag
-git tag -a v1.0.0 -m "Release version 1.0.0"
-git push origin v1.0.0
+git tag -a v1.0.1 -m "Release version 1.0.1"
+git push origin v1.0.1
 ```
 
 #### 2. Automated Release (GitHub Actions)
@@ -191,8 +191,8 @@ For critical security issues or major bugs:
 6. **Communication**: Immediate security advisory if needed
 
 ### Hotfix Version Numbers
-- Increment PATCH version: `1.0.0` → `1.0.1`
-- For security fixes, consider pre-release: `1.0.0-security.1`
+- Increment PATCH version: `1.0.1` → `1.0.1`
+- For security fixes, consider pre-release: `1.0.1-security.1`
 
 ## 📊 Release Metrics
 

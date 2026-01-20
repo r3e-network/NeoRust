@@ -267,7 +267,7 @@ export default function Home(): JSX.Element {
   return (
     <Layout
       title={`${siteConfig.title} - ${siteConfig.tagline}`}
-      description="NeoRust v1.0.0 - A production-ready Rust SDK for Neo N3 blockchain development. Build high-performance dApps with type-safe, modern Rust. Features 135 passing documentation tests.">
+      description="NeoRust v1.0.1 - A production-ready Rust SDK for Neo N3 blockchain development. Build high-performance dApps with type-safe, modern Rust. Features 135 passing documentation tests.">
       
       {/* Hero Section */}
       <header className={clsx('hero hero--primary', styles.heroBanner)}>
@@ -529,7 +529,7 @@ export default function Home(): JSX.Element {
             <div className={styles.ctaContent}>
               <h2 className={styles.ctaTitle}>Ready to Build on Neo?</h2>
               <p className={styles.ctaSubtitle}>
-                Join the growing community of developers building the future of blockchain with NeoRust v1.0.0
+                Join the growing community of developers building the future of blockchain with NeoRust v1.0.1
               </p>
               
               <div className={styles.ctaButtons}>
@@ -549,7 +549,7 @@ export default function Home(): JSX.Element {
               
               <div className={styles.ctaNote}>
                 <p>
-                  <strong>New in v1.0.0:</strong> Production-ready stability with 135 passing documentation tests, enhanced error handling, and comprehensive code quality improvements.
+                  <strong>New in v1.0.1:</strong> Production-ready stability with 135 passing documentation tests, enhanced error handling, and comprehensive code quality improvements.
                   <Link to="/blog" className={styles.ctaLink}> Read the release notes →</Link>
                 </p>
               </div>

@@ -1,5 +1,5 @@
 <!DOCTYPE HTML>
-<html lang="en" class="light sidebar-visible" dir="ltr">
+<html lang="en" class="light" dir="ltr">
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
@@ -8,7 +8,7 @@
 
 
         <!-- Custom HTML head -->
-
+        
         <meta name="description" content="Documentation for the NeoRust SDK, a comprehensive Rust SDK for interacting with the Neo N3 blockchain">
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <meta name="theme-color" content="#ffffff">
@@ -25,43 +25,29 @@
         <link rel="stylesheet" href="fonts/fonts.css">
 
         <!-- Highlight.js Stylesheets -->
-        <link rel="stylesheet" id="highlight-css" href="highlight.css">
-        <link rel="stylesheet" id="tomorrow-night-css" href="tomorrow-night.css">
-        <link rel="stylesheet" id="ayu-highlight-css" href="ayu-highlight.css">
+        <link rel="stylesheet" href="highlight.css">
+        <link rel="stylesheet" href="tomorrow-night.css">
+        <link rel="stylesheet" href="ayu-highlight.css">
 
         <!-- Custom theme stylesheets -->
         <link rel="stylesheet" href="theme/custom.css">
 
         <!-- MathJax -->
         <script async src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
-
-        <!-- Provide site root and default themes to javascript -->
-        <script>
-            const path_to_root = "";
-            const default_light_theme = "light";
-            const default_dark_theme = "navy";
-        </script>
-        <!-- Start loading toc.js asap -->
-        <script src="toc.js"></script>
     </head>
-    <body>
-    <div id="mdbook-help-container">
-        <div id="mdbook-help-popup">
-            <h2 class="mdbook-help-title">Keyboard shortcuts</h2>
-            <div>
-                <p>Press <kbd>←</kbd> or <kbd>→</kbd> to navigate between chapters</p>
-                <p>Press <kbd>S</kbd> or <kbd>/</kbd> to search in the book</p>
-                <p>Press <kbd>?</kbd> to show this help</p>
-                <p>Press <kbd>Esc</kbd> to hide this help</p>
-            </div>
-        </div>
-    </div>
+    <body class="sidebar-visible no-js">
     <div id="body-container">
+        <!-- Provide site root to javascript -->
+        <script>
+            var path_to_root = "";
+            var default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "navy" : "light";
+        </script>
+
         <!-- Work around some values being stored in localStorage wrapped in quotes -->
         <script>
             try {
-                let theme = localStorage.getItem('mdbook-theme');
-                let sidebar = localStorage.getItem('mdbook-sidebar');
+                var theme = localStorage.getItem('mdbook-theme');
+                var sidebar = localStorage.getItem('mdbook-sidebar');
 
                 if (theme.startsWith('"') && theme.endsWith('"')) {
                     localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
@@ -75,22 +61,24 @@
 
         <!-- Set the theme before any content is loaded, prevents flash -->
         <script>
-            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
-            let theme;
+            var theme;
             try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
             if (theme === null || theme === undefined) { theme = default_theme; }
-            const html = document.documentElement;
+            var html = document.querySelector('html');
             html.classList.remove('light')
             html.classList.add(theme);
-            html.classList.add("js");
+            var body = document.querySelector('body');
+            body.classList.remove('no-js')
+            body.classList.add('js');
         </script>
 
         <input type="checkbox" id="sidebar-toggle-anchor" class="hidden">
 
         <!-- Hide / unhide sidebar before it is displayed -->
         <script>
-            let sidebar = null;
-            const sidebar_toggle = document.getElementById("sidebar-toggle-anchor");
+            var body = document.querySelector('body');
+            var sidebar = null;
+            var sidebar_toggle = document.getElementById("sidebar-toggle-anchor");
             if (document.body.clientWidth >= 1080) {
                 try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
                 sidebar = sidebar || 'visible';
@@ -98,25 +86,45 @@
                 sidebar = 'hidden';
             }
             sidebar_toggle.checked = sidebar === 'visible';
-            html.classList.remove('sidebar-visible');
-            html.classList.add("sidebar-" + sidebar);
+            body.classList.remove('sidebar-visible');
+            body.classList.add("sidebar-" + sidebar);
         </script>
 
         <nav id="sidebar" class="sidebar" aria-label="Table of contents">
-            <!-- populated by js -->
-            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
-            <noscript>
-                <iframe class="sidebar-iframe-outer" src="toc.html"></iframe>
-            </noscript>
+            <div class="sidebar-scrollbox">
+                <ol class="chapter"><li class="chapter-item affix "><a href="index.html">Introduction</a></li><li class="chapter-item affix "><li class="part-title">User Guide</li><li class="chapter-item "><a href="guides/getting-started.html"><strong aria-hidden="true">1.</strong> Getting Started</a></li><li class="chapter-item "><a href="guides/installation.html"><strong aria-hidden="true">2.</strong> Installation</a></li><li class="chapter-item affix "><li class="part-title">Tutorials</li><li class="chapter-item "><a href="tutorials/wallet-management.html"><strong aria-hidden="true">3.</strong> Wallet Management</a></li><li class="chapter-item "><a href="tutorials/smart-contracts.html"><strong aria-hidden="true">4.</strong> Smart Contracts</a></li><li class="chapter-item "><a href="tutorials/transactions.html"><strong aria-hidden="true">5.</strong> Transactions</a></li><li class="chapter-item "><a href="tutorials/nep17-tokens.html"><strong aria-hidden="true">6.</strong> NEP-17 Tokens</a></li><li class="chapter-item "><a href="tutorials/nns.html"><strong aria-hidden="true">7.</strong> Neo Name Service</a></li><li class="chapter-item "><a href="tutorials/neo-x.html"><strong aria-hidden="true">8.</strong> Neo X Integration</a></li><li class="chapter-item "><a href="tutorials/sgx.html"><strong aria-hidden="true">9.</strong> SGX Support</a></li><li class="chapter-item affix "><li class="part-title">API Reference</li><li class="chapter-item "><a href="reference/api-overview.html"><strong aria-hidden="true">10.</strong> API Overview</a></li><li class="chapter-item "><a href="reference/configuration.html"><strong aria-hidden="true">11.</strong> Configuration</a></li><li class="chapter-item "><a href="reference/error-handling.html"><strong aria-hidden="true">12.</strong> Error Handling</a></li><li class="chapter-item "><a href="reference/copyright.html"><strong aria-hidden="true">13.</strong> Copyright Information</a></li><li class="chapter-item affix "><li class="part-title">Cryptography</li><li class="chapter-item "><a href="tutorials/wallet-management.html"><strong aria-hidden="true">14.</strong> Cryptographic Operations</a></li><li class="chapter-item affix "><li class="part-title">Examples</li><li class="chapter-item "><a href="examples/index.html"><strong aria-hidden="true">15.</strong> Example Code</a></li></ol>
+            </div>
             <div id="sidebar-resize-handle" class="sidebar-resize-handle">
                 <div class="sidebar-resize-indicator"></div>
             </div>
         </nav>
 
+        <!-- Track and set sidebar scroll position -->
+        <script>
+            var sidebarScrollbox = document.querySelector('#sidebar .sidebar-scrollbox');
+            sidebarScrollbox.addEventListener('click', function(e) {
+                if (e.target.tagName === 'A') {
+                    sessionStorage.setItem('sidebar-scroll', sidebarScrollbox.scrollTop);
+                }
+            }, { passive: true });
+            var sidebarScrollTop = sessionStorage.getItem('sidebar-scroll');
+            sessionStorage.removeItem('sidebar-scroll');
+            if (sidebarScrollTop) {
+                // preserve sidebar scroll position when navigating via links within sidebar
+                sidebarScrollbox.scrollTop = sidebarScrollTop;
+            } else {
+                // scroll sidebar to current active section when navigating via "next/previous chapter" buttons
+                var activeSection = document.querySelector('#sidebar .active');
+                if (activeSection) {
+                    activeSection.scrollIntoView({ block: 'center' });
+                }
+            }
+        </script>
+
         <div id="page-wrapper" class="page-wrapper">
 
             <div class="page">
-                <div id="menu-bar-hover-placeholder"></div>
+                                <div id="menu-bar-hover-placeholder"></div>
                 <div id="menu-bar" class="menu-bar sticky">
                     <div class="left-buttons">
                         <label id="sidebar-toggle" class="icon-button" for="sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
@@ -126,14 +134,13 @@
                             <i class="fa fa-paint-brush"></i>
                         </button>
                         <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
-                            <li role="none"><button role="menuitem" class="theme" id="default_theme">Auto</button></li>
                             <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
                             <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
                             <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
                             <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
                             <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
                         </ul>
-                        <button id="search-toggle" class="icon-button" type="button" title="Search (`/`)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="/ s" aria-controls="searchbar">
+                        <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
                             <i class="fa fa-search"></i>
                         </button>
                     </div>
@@ -216,7 +223,7 @@ neo3 = "0.1.0"
 </code></pre>
 <h2 id="basic-usage"><a class="header" href="#basic-usage">Basic Usage</a></h2>
 <p>Here's a simple example of connecting to a Neo N3 node and getting the current block height:</p>
-<pre><pre class="playground"><code class="language-rust">use neo3::prelude::*;
+<pre><pre class="playground"><code class="language-rust edition2021">use neo3::prelude::*;
 
 #[tokio::main]
 async fn main() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
@@ -246,10 +253,10 @@ async fn main() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
 <h2 id="installation-1"><a class="header" href="#installation-1">Installation</a></h2>
 <p>Add NeoRust to your <code>Cargo.toml</code>:</p>
 <pre><code class="language-toml">[dependencies]
-neo3 = "1.0.0"
+neo3 = "1.0.1"
 </code></pre>
 <p>Note: The crate is published as <code>neo3</code> but is imported as <code>neo</code> in code:</p>
-<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+<pre><pre class="playground"><code class="language-rust no_run edition2021"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>use neo3::prelude::*;
 <span class="boring">}</span></code></pre></pre>
@@ -257,20 +264,23 @@ neo3 = "1.0.0"
 <p>NeoRust provides several features to customize functionality:</p>
 <ul>
 <li><code>futures</code>: Enables async/futures support (recommended)</li>
+<li><code>ws</code>: Enables the modern WebSocket transport</li>
+<li><code>ipc</code>: Enables IPC (Unix domain sockets / Windows named pipes) transport</li>
 <li><code>ledger</code>: Enables hardware wallet support via Ledger devices</li>
-<li><code>aws</code>: Enables AWS KMS integration</li>
+<li><code>yubi</code> / <code>mock-hsm</code>: YubiHSM support and its mock for testing</li>
+<li><code>legacy-ws</code>: Compatibility WebSocket transport (fallback)</li>
 </ul>
 <p>Example of enabling specific features:</p>
 <pre><code class="language-toml">[dependencies]
-neo3 = { version = "1.0.0", features = ["futures", "ledger"] }
+neo3 = { version = "1.0.1", features = ["futures", "ws", "ledger"] }
 </code></pre>
 <p>You can disable default features with:</p>
 <pre><code class="language-toml">[dependencies]
-neo3 = { version = "1.0.0", default-features = false, features = ["futures"] }
+neo3 = { version = "1.0.1", default-features = false, features = ["futures"] }
 </code></pre>
 <h2 id="verifying-installation"><a class="header" href="#verifying-installation">Verifying Installation</a></h2>
 <p>To verify that the SDK is installed correctly, create a simple test program:</p>
-<pre><pre class="playground"><code class="language-rust">use neo3::prelude::*;
+<pre><pre class="playground"><code class="language-rust no_run edition2021">use neo3::prelude::*;
 
 fn main() {
     println!("NeoRust SDK installed successfully!");
@@ -283,7 +293,7 @@ fn main() {
 <div style="break-before: page; page-break-before: always;"></div><h1 id="wallet-management"><a class="header" href="#wallet-management">Wallet Management</a></h1>
 <p>This tutorial covers wallet management with the NeoRust SDK, including creating, loading, and using wallets.</p>
 <h2 id="creating-a-new-wallet"><a class="header" href="#creating-a-new-wallet">Creating a New Wallet</a></h2>
-<pre><pre class="playground"><code class="language-rust">use neo3::prelude::*;
+<pre><pre class="playground"><code class="language-rust edition2021">use neo3::prelude::*;
 
 #[tokio::main]
 async fn main() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
@@ -301,7 +311,7 @@ async fn main() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
     Ok(())
 }</code></pre></pre>
 <h2 id="loading-an-existing-wallet"><a class="header" href="#loading-an-existing-wallet">Loading an Existing Wallet</a></h2>
-<pre><pre class="playground"><code class="language-rust">use neo3::prelude::*;
+<pre><pre class="playground"><code class="language-rust edition2021">use neo3::prelude::*;
 use std::path::Path;
 
 #[tokio::main]
@@ -318,7 +328,7 @@ async fn main() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
     Ok(())
 }</code></pre></pre>
 <h2 id="importing-a-private-key"><a class="header" href="#importing-a-private-key">Importing a Private Key</a></h2>
-<pre><pre class="playground"><code class="language-rust">use neo3::prelude::*;
+<pre><pre class="playground"><code class="language-rust edition2021">use neo3::prelude::*;
 
 #[tokio::main]
 async fn main() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
@@ -337,7 +347,7 @@ async fn main() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
     Ok(())
 }</code></pre></pre>
 <h2 id="signing-a-message"><a class="header" href="#signing-a-message">Signing a Message</a></h2>
-<pre><pre class="playground"><code class="language-rust">use neo3::prelude::*;
+<pre><pre class="playground"><code class="language-rust edition2021">use neo3::prelude::*;
 use neo3::neo_wallets::WalletSigner;
 
 #[tokio::main]
@@ -359,7 +369,7 @@ async fn main() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
     Ok(())
 }</code></pre></pre>
 <h2 id="wallet-backup-and-recovery"><a class="header" href="#wallet-backup-and-recovery">Wallet Backup and Recovery</a></h2>
-<pre><pre class="playground"><code class="language-rust">use neo3::prelude::*;
+<pre><pre class="playground"><code class="language-rust edition2021">use neo3::prelude::*;
 use neo3::neo_wallets::bip39_account::create_account_from_mnemonic;
 
 #[tokio::main]
@@ -381,7 +391,7 @@ async fn main() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
 }</code></pre></pre>
 <h2 id="using-hardware-wallets"><a class="header" href="#using-hardware-wallets">Using Hardware Wallets</a></h2>
 <p>If you have enabled the <code>ledger</code> feature, you can use hardware wallets for enhanced security:</p>
-<pre><pre class="playground"><code class="language-rust">use neo3::prelude::*;
+<pre><pre class="playground"><code class="language-rust edition2021">use neo3::prelude::*;
 use neo3::neo_wallets::{HDPath, LedgerWallet, WalletSigner};
 
 #[tokio::main]
@@ -423,7 +433,7 @@ async fn main() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
 <p>Neo N3 smart contracts are written in a variety of languages including C#, Python, Go, and TypeScript, and are compiled to NeoVM bytecode. The NeoRust SDK provides tools for deploying and interacting with these contracts.</p>
 <h2 id="deploying-a-smart-contract"><a class="header" href="#deploying-a-smart-contract">Deploying a Smart Contract</a></h2>
 <p>To deploy a smart contract, you need the contract's NEF (Neo Executable Format) file and its manifest:</p>
-<pre><pre class="playground"><code class="language-rust">use neo3::prelude::*;
+<pre><pre class="playground"><code class="language-rust no_run edition2021">use neo3::prelude::*;
 use std::path::Path;
 use std::fs;
 
@@ -465,7 +475,7 @@ async fn main() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
 }</code></pre></pre>
 <h2 id="invoking-a-smart-contract"><a class="header" href="#invoking-a-smart-contract">Invoking a Smart Contract</a></h2>
 <p>Once a contract is deployed, you can invoke its methods:</p>
-<pre><pre class="playground"><code class="language-rust">use neo3::prelude::*;
+<pre><pre class="playground"><code class="language-rust no_run edition2021">use neo3::prelude::*;
 use std::path::Path;
 
 #[tokio::main]
@@ -518,7 +528,7 @@ async fn main() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
 }</code></pre></pre>
 <h2 id="reading-contract-state"><a class="header" href="#reading-contract-state">Reading Contract State</a></h2>
 <p>You can read the state of a contract without sending a transaction:</p>
-<pre><pre class="playground"><code class="language-rust">use neo3::prelude::*;
+<pre><pre class="playground"><code class="language-rust no_run edition2021">use neo3::prelude::*;
 
 #[tokio::main]
 async fn main() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
@@ -550,7 +560,7 @@ async fn main() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
 }</code></pre></pre>
 <h2 id="working-with-nep-17-tokens"><a class="header" href="#working-with-nep-17-tokens">Working with NEP-17 Tokens</a></h2>
 <p>NEP-17 is Neo's token standard, similar to Ethereum's ERC-20. The NeoRust SDK provides a convenient way to work with NEP-17 tokens:</p>
-<pre><pre class="playground"><code class="language-rust">use neo3::prelude::*;
+<pre><pre class="playground"><code class="language-rust no_run edition2021">use neo3::prelude::*;
 use std::path::Path;
 
 #[tokio::main]
@@ -595,7 +605,7 @@ async fn main() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
 }</code></pre></pre>
 <h2 id="contract-events"><a class="header" href="#contract-events">Contract Events</a></h2>
 <p>Neo smart contracts can emit events that you can listen for:</p>
-<pre><pre class="playground"><code class="language-rust">use neo3::prelude::*;
+<pre><pre class="playground"><code class="language-rust no_run edition2021">use neo3::prelude::*;
 use std::time::Duration;
 
 #[tokio::main]
@@ -659,7 +669,7 @@ async fn main() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
 </ul>
 <h2 id="creating-a-basic-transaction"><a class="header" href="#creating-a-basic-transaction">Creating a Basic Transaction</a></h2>
 <p>Here's how to create a basic transaction using the TransactionBuilder:</p>
-<pre><pre class="playground"><code class="language-rust">use neo3::prelude::*;
+<pre><pre class="playground"><code class="language-rust edition2021">use neo3::prelude::*;
 use std::path::Path;
 
 #[tokio::main]
@@ -709,7 +719,7 @@ async fn main() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
 }</code></pre></pre>
 <h2 id="transferring-neo-or-gas"><a class="header" href="#transferring-neo-or-gas">Transferring NEO or GAS</a></h2>
 <p>The NeoRust SDK provides convenient methods for transferring NEO and GAS tokens:</p>
-<pre><pre class="playground"><code class="language-rust">use neo3::prelude::*;
+<pre><pre class="playground"><code class="language-rust edition2021">use neo3::prelude::*;
 use std::path::Path;
 
 #[tokio::main]
@@ -748,7 +758,7 @@ async fn main() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
 }</code></pre></pre>
 <h2 id="multi-signature-transactions"><a class="header" href="#multi-signature-transactions">Multi-signature Transactions</a></h2>
 <p>Neo supports multi-signature accounts, which require multiple signatures to authorize a transaction:</p>
-<pre><pre class="playground"><code class="language-rust">use neo3::prelude::*;
+<pre><pre class="playground"><code class="language-rust edition2021">use neo3::prelude::*;
 use std::path::Path;
 
 #[tokio::main]
@@ -821,7 +831,7 @@ async fn main() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
 <li><strong>Network Fee</strong>: Cost of including the transaction in a block</li>
 </ol>
 <p>You can estimate these fees before sending a transaction:</p>
-<pre><pre class="playground"><code class="language-rust">use neo3::prelude::*;
+<pre><pre class="playground"><code class="language-rust edition2021">use neo3::prelude::*;
 use std::path::Path;
 
 #[tokio::main]
@@ -885,7 +895,7 @@ async fn main() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
 }</code></pre></pre>
 <h2 id="checking-transaction-status"><a class="header" href="#checking-transaction-status">Checking Transaction Status</a></h2>
 <p>You can check the status of a transaction after sending it:</p>
-<pre><pre class="playground"><code class="language-rust">use neo3::prelude::*;
+<pre><pre class="playground"><code class="language-rust edition2021">use neo3::prelude::*;
 
 #[tokio::main]
 async fn main() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
@@ -944,7 +954,7 @@ async fn main() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
 </ul>
 <h2 id="creating-a-nep-17-token-instance"><a class="header" href="#creating-a-nep-17-token-instance">Creating a NEP-17 Token Instance</a></h2>
 <p>To interact with a NEP-17 token, you first need to create a token instance:</p>
-<pre><pre class="playground"><code class="language-rust">use neo3::prelude::*;
+<pre><pre class="playground"><code class="language-rust edition2021">use neo3::prelude::*;
 
 #[tokio::main]
 async fn main() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
@@ -961,7 +971,7 @@ async fn main() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
 }</code></pre></pre>
 <h2 id="getting-token-information"><a class="header" href="#getting-token-information">Getting Token Information</a></h2>
 <p>You can retrieve basic information about a token:</p>
-<pre><pre class="playground"><code class="language-rust">use neo3::prelude::*;
+<pre><pre class="playground"><code class="language-rust edition2021">use neo3::prelude::*;
 
 #[tokio::main]
 async fn main() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
@@ -986,7 +996,7 @@ async fn main() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
 }</code></pre></pre>
 <h2 id="checking-token-balance"><a class="header" href="#checking-token-balance">Checking Token Balance</a></h2>
 <p>You can check the token balance of an address:</p>
-<pre><pre class="playground"><code class="language-rust">use neo3::prelude::*;
+<pre><pre class="playground"><code class="language-rust edition2021">use neo3::prelude::*;
 
 #[tokio::main]
 async fn main() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
@@ -1017,7 +1027,7 @@ async fn main() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
 }</code></pre></pre>
 <h2 id="transferring-tokens"><a class="header" href="#transferring-tokens">Transferring Tokens</a></h2>
 <p>You can transfer tokens from one address to another:</p>
-<pre><pre class="playground"><code class="language-rust">use neo3::prelude::*;
+<pre><pre class="playground"><code class="language-rust edition2021">use neo3::prelude::*;
 use std::path::Path;
 
 #[tokio::main]
@@ -1059,7 +1069,7 @@ async fn main() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
 }</code></pre></pre>
 <h2 id="working-with-neo-and-gas-tokens"><a class="header" href="#working-with-neo-and-gas-tokens">Working with NEO and GAS Tokens</a></h2>
 <p>The NeoRust SDK provides specialized classes for the native NEO and GAS tokens:</p>
-<pre><pre class="playground"><code class="language-rust">use neo3::prelude::*;
+<pre><pre class="playground"><code class="language-rust edition2021">use neo3::prelude::*;
 use std::path::Path;
 
 #[tokio::main]
@@ -1106,7 +1116,7 @@ async fn main() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
 }</code></pre></pre>
 <h2 id="monitoring-token-transfers"><a class="header" href="#monitoring-token-transfers">Monitoring Token Transfers</a></h2>
 <p>You can monitor token transfers by subscribing to the Transfer event:</p>
-<pre><pre class="playground"><code class="language-rust">use neo3::prelude::*;
+<pre><pre class="playground"><code class="language-rust edition2021">use neo3::prelude::*;
 
 #[tokio::main]
 async fn main() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
@@ -1143,7 +1153,7 @@ async fn main() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
 <h2 id="working-with-famous-neo-n3-contracts"><a class="header" href="#working-with-famous-neo-n3-contracts">Working with Famous Neo N3 Contracts</a></h2>
 <p>The NeoRust SDK provides direct support for several famous Neo N3 contracts:</p>
 <h3 id="flamingo-finance"><a class="header" href="#flamingo-finance">Flamingo Finance</a></h3>
-<pre><pre class="playground"><code class="language-rust">use neo3::prelude::*;
+<pre><pre class="playground"><code class="language-rust edition2021">use neo3::prelude::*;
 use neo3::neo_contract::famous::flamingo::*;
 use std::path::Path;
 
@@ -1188,7 +1198,7 @@ async fn main() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
     Ok(())
 }</code></pre></pre>
 <h3 id="neoburgerneo"><a class="header" href="#neoburgerneo">NeoburgerNeo</a></h3>
-<pre><pre class="playground"><code class="language-rust">use neo3::prelude::*;
+<pre><pre class="playground"><code class="language-rust edition2021">use neo3::prelude::*;
 use neo3::neo_contract::famous::neoburger::*;
 use std::path::Path;
 
@@ -1248,7 +1258,7 @@ async fn main() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
 </ul>
 <h2 id="creating-an-nns-instance"><a class="header" href="#creating-an-nns-instance">Creating an NNS Instance</a></h2>
 <p>To interact with the NNS, you first need to create an NNS instance:</p>
-<pre><pre class="playground"><code class="language-rust">use neo3::prelude::*;
+<pre><pre class="playground"><code class="language-rust no_run edition2021">use neo3::prelude::*;
 
 #[tokio::main]
 async fn main() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
@@ -1262,7 +1272,7 @@ async fn main() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
 }</code></pre></pre>
 <h2 id="checking-domain-availability"><a class="header" href="#checking-domain-availability">Checking Domain Availability</a></h2>
 <p>Before registering a domain, you should check if it's available:</p>
-<pre><pre class="playground"><code class="language-rust">use neo3::prelude::*;
+<pre><pre class="playground"><code class="language-rust no_run edition2021">use neo3::prelude::*;
 
 #[tokio::main]
 async fn main() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
@@ -1286,7 +1296,7 @@ async fn main() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
 }</code></pre></pre>
 <h2 id="registering-a-domain"><a class="header" href="#registering-a-domain">Registering a Domain</a></h2>
 <p>If a domain is available, you can register it:</p>
-<pre><pre class="playground"><code class="language-rust">use neo3::prelude::*;
+<pre><pre class="playground"><code class="language-rust no_run edition2021">use neo3::prelude::*;
 use std::path::Path;
 
 #[tokio::main]
@@ -1327,7 +1337,7 @@ async fn main() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
 }</code></pre></pre>
 <h2 id="setting-domain-records"><a class="header" href="#setting-domain-records">Setting Domain Records</a></h2>
 <p>Once you own a domain, you can set various records for it:</p>
-<pre><pre class="playground"><code class="language-rust">use neo3::prelude::*;
+<pre><pre class="playground"><code class="language-rust no_run edition2021">use neo3::prelude::*;
 use std::path::Path;
 
 #[tokio::main]
@@ -1370,7 +1380,7 @@ async fn main() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
 }</code></pre></pre>
 <h2 id="resolving-domain-records"><a class="header" href="#resolving-domain-records">Resolving Domain Records</a></h2>
 <p>You can resolve domain records to get the associated data:</p>
-<pre><pre class="playground"><code class="language-rust">use neo3::prelude::*;
+<pre><pre class="playground"><code class="language-rust no_run edition2021">use neo3::prelude::*;
 
 #[tokio::main]
 async fn main() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
@@ -1406,7 +1416,7 @@ async fn main() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
 }</code></pre></pre>
 <h2 id="renewing-a-domain"><a class="header" href="#renewing-a-domain">Renewing a Domain</a></h2>
 <p>Domains need to be renewed periodically to maintain ownership:</p>
-<pre><pre class="playground"><code class="language-rust">use neo3::prelude::*;
+<pre><pre class="playground"><code class="language-rust no_run edition2021">use neo3::prelude::*;
 use std::path::Path;
 
 #[tokio::main]
@@ -1451,7 +1461,7 @@ async fn main() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
 }</code></pre></pre>
 <h2 id="transferring-domain-ownership"><a class="header" href="#transferring-domain-ownership">Transferring Domain Ownership</a></h2>
 <p>You can transfer ownership of a domain to another address:</p>
-<pre><pre class="playground"><code class="language-rust">use neo3::prelude::*;
+<pre><pre class="playground"><code class="language-rust no_run edition2021">use neo3::prelude::*;
 use std::path::Path;
 
 #[tokio::main]
@@ -1489,7 +1499,7 @@ async fn main() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
 }</code></pre></pre>
 <h2 id="using-nns-in-applications"><a class="header" href="#using-nns-in-applications">Using NNS in Applications</a></h2>
 <p>You can integrate NNS resolution into your applications to allow users to use domain names instead of addresses:</p>
-<pre><pre class="playground"><code class="language-rust">use neo3::prelude::*;
+<pre><pre class="playground"><code class="language-rust no_run edition2021">use neo3::prelude::*;
 use std::path::Path;
 
 #[tokio::main]
@@ -1560,28 +1570,25 @@ async fn main() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
 </ul>
 <h2 id="setting-up-neo-x-provider"><a class="header" href="#setting-up-neo-x-provider">Setting Up Neo X Provider</a></h2>
 <p>To interact with Neo X, you first need to create a Neo X provider:</p>
-<pre><pre class="playground"><code class="language-rust">use neo3::prelude::*;
-use neo3::neo_x::evm::*;
+<pre><pre class="playground"><code class="language-rust no_run edition2021">use neo3::prelude::*;
+use neo3::neo_clients::{HttpProvider, RpcClient};
 
 #[tokio::main]
 async fn main() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
     // Connect to a Neo X node
-    let provider = NeoXProvider::new_http("https://rpc.neoX.io");
+    // Note: Neo X provider functionality is currently under development
+    let http_provider = HttpProvider::new_http("https://rpc.neoX.io");
+    let rpc_client = RpcClient::new(http_provider);
     
-    // Get the current block number
-    let block_number = provider.get_block_number().await?;
-    println!("Current Neo X block number: {}", block_number);
-    
-    // Get chain ID
-    let chain_id = provider.get_chain_id().await?;
-    println!("Neo X chain ID: {}", chain_id);
+    // Example of getting block information from Neo X
+    // This demonstrates how to interact with Neo X RPC endpoints
     
     Ok(())
 }</code></pre></pre>
 <h2 id="creating-and-sending-neo-x-transactions"><a class="header" href="#creating-and-sending-neo-x-transactions">Creating and Sending Neo X Transactions</a></h2>
 <p>You can create and send transactions on the Neo X chain:</p>
-<pre><pre class="playground"><code class="language-rust">use neo3::prelude::*;
-use neo3::neo_x::evm::*;
+<pre><pre class="playground"><code class="language-rust no_run edition2021">use neo3::prelude::*;
+use neo3::neo_clients::{HttpProvider, RpcClient};
 use std::path::Path;
 
 #[tokio::main]
@@ -1622,8 +1629,8 @@ async fn main() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
 }</code></pre></pre>
 <h2 id="interacting-with-evm-smart-contracts"><a class="header" href="#interacting-with-evm-smart-contracts">Interacting with EVM Smart Contracts</a></h2>
 <p>You can interact with EVM smart contracts on Neo X:</p>
-<pre><pre class="playground"><code class="language-rust">use neo3::prelude::*;
-use neo3::neo_x::evm::*;
+<pre><pre class="playground"><code class="language-rust no_run edition2021">use neo3::prelude::*;
+use neo3::neo_clients::{HttpProvider, RpcClient};
 use std::path::Path;
 
 #[tokio::main]
@@ -1670,7 +1677,7 @@ async fn main() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
 }</code></pre></pre>
 <h2 id="using-the-neo-x-bridge"><a class="header" href="#using-the-neo-x-bridge">Using the Neo X Bridge</a></h2>
 <p>The Neo X Bridge allows you to transfer tokens between Neo N3 and Neo X:</p>
-<pre><pre class="playground"><code class="language-rust">use neo3::prelude::*;
+<pre><pre class="playground"><code class="language-rust no_run edition2021">use neo3::prelude::*;
 use neo3::neo_x::bridge::*;
 use std::path::Path;
 
@@ -1724,7 +1731,7 @@ async fn main() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
 }</code></pre></pre>
 <h2 id="bridging-tokens-from-neo-x-to-neo-n3"><a class="header" href="#bridging-tokens-from-neo-x-to-neo-n3">Bridging Tokens from Neo X to Neo N3</a></h2>
 <p>You can also bridge tokens from Neo X back to Neo N3:</p>
-<pre><pre class="playground"><code class="language-rust">use neo3::prelude::*;
+<pre><pre class="playground"><code class="language-rust no_run edition2021">use neo3::prelude::*;
 use neo3::neo_x::bridge::*;
 use std::path::Path;
 
@@ -1773,7 +1780,7 @@ async fn main() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
 }</code></pre></pre>
 <h2 id="monitoring-bridge-events"><a class="header" href="#monitoring-bridge-events">Monitoring Bridge Events</a></h2>
 <p>You can monitor bridge events to track token transfers between chains:</p>
-<pre><pre class="playground"><code class="language-rust">use neo3::prelude::*;
+<pre><pre class="playground"><code class="language-rust no_run edition2021">use neo3::prelude::*;
 use neo3::neo_x::bridge::*;
 
 #[tokio::main]
@@ -1852,7 +1859,7 @@ async fn main() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
 <p>The NeoRust SDK is organized into several core modules, each responsible for a specific aspect of Neo blockchain interaction:</p>
 <h3 id="neo_wallets"><a class="header" href="#neo_wallets">neo_wallets</a></h3>
 <p>The <code>neo_wallets</code> module provides functionality for creating, loading, and managing Neo wallets and accounts.</p>
-<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+<pre><pre class="playground"><code class="language-rust no_run edition2021"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>use neo3::prelude::*;
 
@@ -1873,7 +1880,7 @@ let address = account.address();
 </ul>
 <h3 id="neo_clients"><a class="header" href="#neo_clients">neo_clients</a></h3>
 <p>The <code>neo_clients</code> module provides clients for interacting with Neo nodes via RPC.</p>
-<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+<pre><pre class="playground"><code class="language-rust no_run edition2021"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>use neo3::prelude::*;
 
@@ -1891,7 +1898,7 @@ let block_count = provider.get_block_count().await?;
 </ul>
 <h3 id="neo_types"><a class="header" href="#neo_types">neo_types</a></h3>
 <p>The <code>neo_types</code> module provides fundamental Neo blockchain types.</p>
-<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+<pre><pre class="playground"><code class="language-rust no_run edition2021"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>use neo3::prelude::*;
 
@@ -1913,7 +1920,7 @@ let tx_hash = "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcde
 </ul>
 <h3 id="neo_crypto"><a class="header" href="#neo_crypto">neo_crypto</a></h3>
 <p>The <code>neo_crypto</code> module provides cryptographic functionality.</p>
-<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+<pre><pre class="playground"><code class="language-rust no_run edition2021"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>use neo3::prelude::*;
 
@@ -1936,7 +1943,7 @@ let is_valid = key_pair.verify_signature(message, &amp;signature)?;
 </ul>
 <h3 id="neo_builder"><a class="header" href="#neo_builder">neo_builder</a></h3>
 <p>The <code>neo_builder</code> module provides builders for creating transactions and scripts.</p>
-<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+<pre><pre class="playground"><code class="language-rust no_run edition2021"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>use neo3::prelude::*;
 
@@ -1970,7 +1977,7 @@ let script = ScriptBuilder::new()
 </ul>
 <h3 id="neo_contract"><a class="header" href="#neo_contract">neo_contract</a></h3>
 <p>The <code>neo_contract</code> module provides interfaces for interacting with Neo smart contracts.</p>
-<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+<pre><pre class="playground"><code class="language-rust no_run edition2021"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>use neo3::prelude::*;
 
@@ -1994,7 +2001,7 @@ let balance = token.balance_of(address).await?;
 </ul>
 <h3 id="neo_x"><a class="header" href="#neo_x">neo_x</a></h3>
 <p>The <code>neo_x</code> module provides support for Neo X, an EVM-compatible chain maintained by Neo.</p>
-<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+<pre><pre class="playground"><code class="language-rust no_run edition2021"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>use neo3::prelude::*;
 use neo3::neo_x::evm::*;
@@ -2018,7 +2025,7 @@ let transaction = NeoXTransaction::new()
 </ul>
 <h3 id="neo_sgx"><a class="header" href="#neo_sgx">neo_sgx</a></h3>
 <p>The <code>neo_sgx</code> module provides support for Intel SGX (Software Guard Extensions) for secure operations.</p>
-<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+<pre><pre class="playground"><code class="language-rust no_run edition2021"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>use neo3::prelude::*;
 
@@ -2039,7 +2046,7 @@ let signed_tx = wallet.sign_transaction(&amp;transaction)?;
 </ul>
 <h2 id="prelude"><a class="header" href="#prelude">Prelude</a></h2>
 <p>The <code>prelude</code> module re-exports commonly used types and functions for convenience:</p>
-<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+<pre><pre class="playground"><code class="language-rust no_run edition2021"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>use neo3::prelude::*;
 <span class="boring">}</span></code></pre></pre>
@@ -2057,7 +2064,7 @@ neo3 = { git = "https://github.com/R3E-Network/NeoRust", features = ["ledger", "
 </code></pre>
 <h2 id="error-handling"><a class="header" href="#error-handling">Error Handling</a></h2>
 <p>The NeoRust SDK uses Rust's <code>Result</code> type for error handling. Most functions return a <code>Result&lt;T, Error&gt;</code> where <code>Error</code> is a custom error type that can represent various error conditions.</p>
-<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+<pre><pre class="playground"><code class="language-rust no_run edition2021"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>use neo3::prelude::*;
 
@@ -2082,7 +2089,7 @@ fn example() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
 <p>The NeoRust SDK supports connecting to different Neo networks, including MainNet, TestNet, and private networks.</p>
 <h3 id="predefined-networks"><a class="header" href="#predefined-networks">Predefined Networks</a></h3>
 <p>The SDK includes predefined configurations for common Neo networks:</p>
-<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+<pre><pre class="playground"><code class="language-rust no_run edition2021"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>use neo3::prelude::*;
 
@@ -2097,7 +2104,7 @@ let local_provider = Provider::new_http("http://localhost:10332");
 <span class="boring">}</span></code></pre></pre>
 <h3 id="custom-networks"><a class="header" href="#custom-networks">Custom Networks</a></h3>
 <p>You can also connect to custom Neo networks by providing the RPC URL:</p>
-<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+<pre><pre class="playground"><code class="language-rust no_run edition2021"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>use neo3::prelude::*;
 
@@ -2106,7 +2113,7 @@ let custom_provider = Provider::new_http("https://my-custom-neo-node.example.com
 <span class="boring">}</span></code></pre></pre>
 <h3 id="websocket-connections"><a class="header" href="#websocket-connections">WebSocket Connections</a></h3>
 <p>For applications that need real-time updates, you can use WebSocket connections:</p>
-<pre><pre class="playground"><code class="language-rust">use neo3::prelude::*;
+<pre><pre class="playground"><code class="language-rust no_run edition2021">use neo3::prelude::*;
 
 #[tokio::main]
 async fn main() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
@@ -2127,7 +2134,7 @@ async fn main() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
 }</code></pre></pre>
 <h2 id="sdk-configuration"><a class="header" href="#sdk-configuration">SDK Configuration</a></h2>
 <p>The NeoRust SDK can be configured using the <code>Config</code> struct:</p>
-<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+<pre><pre class="playground"><code class="language-rust no_run edition2021"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>use neo3::prelude::*;
 
@@ -2163,7 +2170,7 @@ let provider = Provider::with_config("https://testnet1.neo.coz.io:443", config);
 </tbody></table>
 </div>
 <p>You can set these environment variables in your shell or use a <code>.env</code> file with the <code>dotenv</code> crate:</p>
-<pre><pre class="playground"><code class="language-rust">use dotenv::dotenv;
+<pre><pre class="playground"><code class="language-rust no_run edition2021">use dotenv::dotenv;
 use neo3::prelude::*;
 
 fn main() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
@@ -2177,7 +2184,7 @@ fn main() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
 }</code></pre></pre>
 <h2 id="logging-configuration"><a class="header" href="#logging-configuration">Logging Configuration</a></h2>
 <p>The NeoRust SDK uses the <code>tracing</code> crate for logging. You can configure the logging level and output:</p>
-<pre><pre class="playground"><code class="language-rust">use neo3::prelude::*;
+<pre><pre class="playground"><code class="language-rust no_run edition2021">use neo3::prelude::*;
 use tracing_subscriber::{fmt, EnvFilter};
 
 fn main() {
@@ -2199,7 +2206,7 @@ cargo run
 </code></pre>
 <h2 id="gas-configuration"><a class="header" href="#gas-configuration">Gas Configuration</a></h2>
 <p>You can configure gas settings for transactions:</p>
-<pre><pre class="playground"><code class="language-rust">use neo3::prelude::*;
+<pre><pre class="playground"><code class="language-rust no_run edition2021">use neo3::prelude::*;
 use std::path::Path;
 
 #[tokio::main]
@@ -2247,7 +2254,7 @@ async fn main() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
 }</code></pre></pre>
 <h2 id="sgx-configuration"><a class="header" href="#sgx-configuration">SGX Configuration</a></h2>
 <p>If you're using the SGX features, you can configure the SGX environment:</p>
-<pre><pre class="playground"><code class="language-rust">use neo3::prelude::*;
+<pre><pre class="playground"><code class="language-rust no_run edition2021">use neo3::prelude::*;
 
 #[tokio::main]
 async fn main() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
@@ -2286,39 +2293,44 @@ async fn main() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
 <p>This reference provides information about error handling in the NeoRust SDK, including error types, error propagation, and best practices for handling errors.</p>
 <h2 id="error-types"><a class="header" href="#error-types">Error Types</a></h2>
 <p>The NeoRust SDK uses a comprehensive error handling system based on Rust's <code>Result</code> type. The main error types in the SDK include:</p>
-<h3 id="neoerror"><a class="header" href="#neoerror">NeoError</a></h3>
-<p>The <code>NeoError</code> is the primary error type used throughout the SDK. It encompasses various error categories:</p>
-<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+<h3 id="neo3error"><a class="header" href="#neo3error">Neo3Error</a></h3>
+<p>The <code>Neo3Error</code> is the primary error type used throughout the SDK. It encompasses various error categories:</p>
+<pre><pre class="playground"><code class="language-rust no_run edition2021"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
-</span>pub enum NeoError {
-    // RPC errors
-    RpcError(RpcError),
+</span>use neo3::neo_error::Neo3Error;
+
+pub enum Neo3Error {
+    // Cryptographic operation errors
+    Crypto(CryptoError),
     
-    // Wallet errors
-    WalletError(WalletError),
+    // Wallet operation errors
+    Wallet(WalletError),
     
-    // Cryptographic errors
-    CryptoError(CryptoError),
+    // Network/RPC communication errors
+    Network(NetworkError),
     
-    // Transaction errors
-    TransactionError(TransactionError),
+    // Transaction building/validation errors
+    Transaction(TransactionError),
     
-    // Contract errors
-    ContractError(ContractError),
+    // Smart contract interaction errors
+    Contract(ContractError),
     
-    // Serialization errors
-    SerializationError(SerializationError),
+    // Serialization/deserialization errors
+    Serialization(SerializationError),
     
-    // IO errors
-    IoError(std::io::Error),
+    // Configuration errors
+    Config(String),
     
-    // Other errors
-    Other(String),
+    // Generic errors with context
+    Generic { message: String },
+    
+    // Unsupported operation error
+    UnsupportedOperation(String),
 }
 <span class="boring">}</span></code></pre></pre>
 <h3 id="rpcerror"><a class="header" href="#rpcerror">RpcError</a></h3>
 <p>The <code>RpcError</code> represents errors that occur during RPC communication with Neo nodes:</p>
-<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+<pre><pre class="playground"><code class="language-rust no_run edition2021"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>pub enum RpcError {
     // HTTP errors
@@ -2343,7 +2355,7 @@ async fn main() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
 <span class="boring">}</span></code></pre></pre>
 <h3 id="walleterror"><a class="header" href="#walleterror">WalletError</a></h3>
 <p>The <code>WalletError</code> represents errors related to wallet operations:</p>
-<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+<pre><pre class="playground"><code class="language-rust no_run edition2021"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>pub enum WalletError {
     // Password errors
@@ -2366,7 +2378,7 @@ async fn main() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
 <span class="boring">}</span></code></pre></pre>
 <h3 id="cryptoerror"><a class="header" href="#cryptoerror">CryptoError</a></h3>
 <p>The <code>CryptoError</code> represents errors related to cryptographic operations:</p>
-<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+<pre><pre class="playground"><code class="language-rust no_run edition2021"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>pub enum CryptoError {
     // Signature errors
@@ -2385,7 +2397,7 @@ async fn main() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
 <span class="boring">}</span></code></pre></pre>
 <h3 id="transactionerror"><a class="header" href="#transactionerror">TransactionError</a></h3>
 <p>The <code>TransactionError</code> represents errors related to transaction operations:</p>
-<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+<pre><pre class="playground"><code class="language-rust no_run edition2021"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>pub enum TransactionError {
     // Validation errors
@@ -2404,7 +2416,7 @@ async fn main() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
 <span class="boring">}</span></code></pre></pre>
 <h3 id="contracterror"><a class="header" href="#contracterror">ContractError</a></h3>
 <p>The <code>ContractError</code> represents errors related to smart contract operations:</p>
-<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+<pre><pre class="playground"><code class="language-rust no_run edition2021"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>pub enum ContractError {
     // Invocation errors
@@ -2422,7 +2434,7 @@ async fn main() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
 <span class="boring">}</span></code></pre></pre>
 <h2 id="error-propagation"><a class="header" href="#error-propagation">Error Propagation</a></h2>
 <p>The NeoRust SDK uses Rust's <code>?</code> operator for error propagation. This allows for concise error handling code:</p>
-<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+<pre><pre class="playground"><code class="language-rust no_run edition2021"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>use neo3::prelude::*;
 use std::path::Path;
@@ -2451,7 +2463,7 @@ fn load_wallet_and_get_balance(
 <p>In this example, if any of the operations fail, the error is propagated up the call stack.</p>
 <h3 id="adding-context-to-errors"><a class="header" href="#adding-context-to-errors">Adding Context to Errors</a></h3>
 <p>Sometimes it's useful to add context to errors to make them more informative:</p>
-<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+<pre><pre class="playground"><code class="language-rust no_run edition2021"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>use neo3::prelude::*;
 use std::path::Path;
@@ -2482,7 +2494,7 @@ fn load_wallet_and_get_balance(
 <span class="boring">}</span></code></pre></pre>
 <h3 id="using-option-to-result-conversion"><a class="header" href="#using-option-to-result-conversion">Using Option to Result Conversion</a></h3>
 <p>The NeoRust SDK provides utility functions for converting <code>Option</code> to <code>Result</code>:</p>
-<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+<pre><pre class="playground"><code class="language-rust no_run edition2021"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>use neo3::prelude::*;
 
@@ -2504,7 +2516,7 @@ fn example() -&gt; Result&lt;(), NeoError&gt; {
 <span class="boring">}</span></code></pre></pre>
 <h2 id="converting-between-error-types"><a class="header" href="#converting-between-error-types">Converting Between Error Types</a></h2>
 <p>The NeoRust SDK provides comprehensive <code>From</code> implementations for converting between different error types:</p>
-<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+<pre><pre class="playground"><code class="language-rust no_run edition2021"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>// From implementations for domain-specific errors
 impl From&lt;BuilderError&gt; for NeoError {
@@ -2553,7 +2565,7 @@ impl From&lt;std::num::ParseIntError&gt; for NeoError {
 <p>This allows for easy conversion between error types using the <code>?</code> operator. When you use the <code>?</code> operator on a function that returns a domain-specific error type, it will be automatically converted to <code>NeoError</code> if you're in a function that returns <code>Result&lt;T, NeoError&gt;</code>.</p>
 <h2 id="handling-rpc-errors"><a class="header" href="#handling-rpc-errors">Handling RPC Errors</a></h2>
 <p>When working with RPC calls, you may need to handle specific error codes:</p>
-<pre><pre class="playground"><code class="language-rust">use neo3::prelude::*;
+<pre><pre class="playground"><code class="language-rust no_run edition2021">use neo3::prelude::*;
 
 #[tokio::main]
 async fn main() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
@@ -2580,7 +2592,7 @@ async fn main() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
 }</code></pre></pre>
 <h2 id="handling-wallet-errors"><a class="header" href="#handling-wallet-errors">Handling Wallet Errors</a></h2>
 <p>When working with wallets, you may need to handle specific wallet errors:</p>
-<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+<pre><pre class="playground"><code class="language-rust no_run edition2021"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>use neo3::prelude::*;
 use std::path::Path;
@@ -2608,7 +2620,7 @@ fn open_wallet(wallet_path: &amp;Path, password: &amp;str) -&gt; Result&lt;Walle
 <span class="boring">}</span></code></pre></pre>
 <h2 id="handling-transaction-errors"><a class="header" href="#handling-transaction-errors">Handling Transaction Errors</a></h2>
 <p>When sending transactions, you may need to handle specific transaction errors:</p>
-<pre><pre class="playground"><code class="language-rust">use neo3::prelude::*;
+<pre><pre class="playground"><code class="language-rust no_run edition2021">use neo3::prelude::*;
 use std::path::Path;
 
 #[tokio::main]
@@ -2667,7 +2679,7 @@ async fn main() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
 }</code></pre></pre>
 <h2 id="custom-error-types"><a class="header" href="#custom-error-types">Custom Error Types</a></h2>
 <p>You can create custom error types for your application that wrap the NeoRust SDK errors:</p>
-<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+<pre><pre class="playground"><code class="language-rust no_run edition2021"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>use neo3::prelude::*;
 use thiserror::Error;
@@ -2699,7 +2711,7 @@ fn app_function() -&gt; Result&lt;(), AppError&gt; {
 <span class="boring">}</span></code></pre></pre>
 <h2 id="error-logging"><a class="header" href="#error-logging">Error Logging</a></h2>
 <p>The NeoRust SDK uses the <code>tracing</code> crate for logging errors. You can configure the logging level to see more detailed error information:</p>
-<pre><pre class="playground"><code class="language-rust">use neo3::prelude::*;
+<pre><pre class="playground"><code class="language-rust no_run edition2021">use neo3::prelude::*;
 use tracing_subscriber::{fmt, EnvFilter};
 
 fn main() {
@@ -2714,7 +2726,7 @@ fn main() {
 }</code></pre></pre>
 <h2 id="neo-x-error-handling"><a class="header" href="#neo-x-error-handling">Neo X Error Handling</a></h2>
 <p>If you're using the Neo X features, there are additional error types for Neo X-specific operations:</p>
-<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+<pre><pre class="playground"><code class="language-rust no_run edition2021"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>pub enum NeoXError {
     // EVM errors
@@ -2728,7 +2740,7 @@ fn main() {
 }
 <span class="boring">}</span></code></pre></pre>
 <p>Handling Neo X errors:</p>
-<pre><pre class="playground"><code class="language-rust">use neo3::prelude::*;
+<pre><pre class="playground"><code class="language-rust no_run edition2021">use neo3::prelude::*;
 use neo3::neo_x::evm::*;
 
 #[tokio::main]
@@ -2786,7 +2798,7 @@ async fn main() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
 <h2 id="copyright-format"><a class="header" href="#copyright-format">Copyright Format</a></h2>
 <p>When adding new files to the NeoRust project, please include the appropriate copyright header:</p>
 <h3 id="for-rust-files"><a class="header" href="#for-rust-files">For Rust files:</a></h3>
-<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+<pre><pre class="playground"><code class="language-rust no_run edition2021"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>// Copyright (c) 2023-2025 R3E Network
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -2926,8 +2938,8 @@ Copyright © 2020-2025 R3E Network. All rights reserved.
         </script>
 
         <script src="ace.js"></script>
-        <script src="mode-rust.js"></script>
         <script src="editor.js"></script>
+        <script src="mode-rust.js"></script>
         <script src="theme-dawn.js"></script>
         <script src="theme-tomorrow_night.js"></script>
 

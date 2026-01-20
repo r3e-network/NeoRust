@@ -4,7 +4,7 @@ import ComponentCreator from '@docusaurus/ComponentCreator';
 export default [
   {
     path: '/blog',
-    component: ComponentCreator('/blog', 'e99'),
+    component: ComponentCreator('/blog', '606'),
     exact: true
   },
   {
@@ -23,13 +23,13 @@ export default [
     exact: true
   },
   {
-    path: '/blog/neorust-v1.0.0-docs-quality',
-    component: ComponentCreator('/blog/neorust-v1.0.0-docs-quality', '774'),
+    path: '/blog/neorust-v1.0.1-docs-quality',
+    component: ComponentCreator('/blog/neorust-v1.0.1-docs-quality', '403'),
     exact: true
   },
   {
-    path: '/blog/neorust-v1.0.0-release',
-    component: ComponentCreator('/blog/neorust-v1.0.0-release', '4f1'),
+    path: '/blog/neorust-v1.0.1-release',
+    component: ComponentCreator('/blog/neorust-v1.0.1-release', '244'),
     exact: true
   },
   {
@@ -44,7 +44,7 @@ export default [
   },
   {
     path: '/blog/tags/blockchain',
-    component: ComponentCreator('/blog/tags/blockchain', '6da'),
+    component: ComponentCreator('/blog/tags/blockchain', '341'),
     exact: true
   },
   {
@@ -54,32 +54,32 @@ export default [
   },
   {
     path: '/blog/tags/documentation',
-    component: ComponentCreator('/blog/tags/documentation', '606'),
+    component: ComponentCreator('/blog/tags/documentation', 'ea2'),
     exact: true
   },
   {
     path: '/blog/tags/neo-3',
-    component: ComponentCreator('/blog/tags/neo-3', '934'),
+    component: ComponentCreator('/blog/tags/neo-3', 'a4f'),
     exact: true
   },
   {
     path: '/blog/tags/quality',
-    component: ComponentCreator('/blog/tags/quality', '116'),
+    component: ComponentCreator('/blog/tags/quality', 'c5e'),
     exact: true
   },
   {
     path: '/blog/tags/release',
-    component: ComponentCreator('/blog/tags/release', 'c46'),
+    component: ComponentCreator('/blog/tags/release', '699'),
     exact: true
   },
   {
     path: '/blog/tags/rust',
-    component: ComponentCreator('/blog/tags/rust', 'e98'),
+    component: ComponentCreator('/blog/tags/rust', '477'),
     exact: true
   },
   {
     path: '/blog/tags/sdk',
-    component: ComponentCreator('/blog/tags/sdk', '56d'),
+    component: ComponentCreator('/blog/tags/sdk', 'd18'),
     exact: true
   },
   {
@@ -99,15 +99,15 @@ export default [
   },
   {
     path: '/cli',
-    component: ComponentCreator('/cli', '4c1'),
+    component: ComponentCreator('/cli', '901'),
     routes: [
       {
         path: '/cli',
-        component: ComponentCreator('/cli', '242'),
+        component: ComponentCreator('/cli', '79b'),
         routes: [
           {
             path: '/cli',
-            component: ComponentCreator('/cli', 'f76'),
+            component: ComponentCreator('/cli', '05d'),
             routes: [
               {
                 path: '/cli/commands',
@@ -117,13 +117,13 @@ export default [
               },
               {
                 path: '/cli/configuration',
-                component: ComponentCreator('/cli/configuration', '51b'),
+                component: ComponentCreator('/cli/configuration', '73d'),
                 exact: true,
                 sidebar: "cliSidebar"
               },
               {
                 path: '/cli/intro',
-                component: ComponentCreator('/cli/intro', '936'),
+                component: ComponentCreator('/cli/intro', '1eb'),
                 exact: true,
                 sidebar: "cliSidebar"
               }
@@ -135,31 +135,31 @@ export default [
   },
   {
     path: '/docs',
-    component: ComponentCreator('/docs', 'a4b'),
+    component: ComponentCreator('/docs', 'edf'),
     routes: [
       {
         path: '/docs',
-        component: ComponentCreator('/docs', 'b3f'),
+        component: ComponentCreator('/docs', '6ed'),
         routes: [
           {
             path: '/docs',
-            component: ComponentCreator('/docs', 'dbd'),
+            component: ComponentCreator('/docs', 'c1d'),
             routes: [
               {
                 path: '/docs/getting-started/installation',
-                component: ComponentCreator('/docs/getting-started/installation', 'b95'),
+                component: ComponentCreator('/docs/getting-started/installation', 'cfa'),
                 exact: true,
                 sidebar: "tutorialSidebar"
               },
               {
                 path: '/docs/getting-started/quick-start',
-                component: ComponentCreator('/docs/getting-started/quick-start', 'dc1'),
+                component: ComponentCreator('/docs/getting-started/quick-start', 'e99'),
                 exact: true,
                 sidebar: "tutorialSidebar"
               },
               {
                 path: '/docs/intro',
-                component: ComponentCreator('/docs/intro', 'a79'),
+                component: ComponentCreator('/docs/intro', '36e'),
                 exact: true,
                 sidebar: "tutorialSidebar"
               },
@@ -177,19 +177,19 @@ export default [
   },
   {
     path: '/sdk',
-    component: ComponentCreator('/sdk', '5bc'),
+    component: ComponentCreator('/sdk', '315'),
     routes: [
       {
         path: '/sdk',
-        component: ComponentCreator('/sdk', '62c'),
+        component: ComponentCreator('/sdk', 'd6d'),
         routes: [
           {
             path: '/sdk',
-            component: ComponentCreator('/sdk', '7b7'),
+            component: ComponentCreator('/sdk', 'df2'),
             routes: [
               {
                 path: '/sdk/api-reference',
-                component: ComponentCreator('/sdk/api-reference', 'b8c'),
+                component: ComponentCreator('/sdk/api-reference', 'dcc'),
                 exact: true,
                 sidebar: "sdkSidebar"
               },
@@ -207,13 +207,13 @@ export default [
               },
               {
                 path: '/sdk/installation',
-                component: ComponentCreator('/sdk/installation', 'f58'),
+                component: ComponentCreator('/sdk/installation', '590'),
                 exact: true,
                 sidebar: "sdkSidebar"
               },
               {
                 path: '/sdk/intro',
-                component: ComponentCreator('/sdk/intro', '1b9'),
+                component: ComponentCreator('/sdk/intro', '4b1'),
                 exact: true,
                 sidebar: "sdkSidebar"
               },

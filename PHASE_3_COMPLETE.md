@@ -1,4 +1,4 @@
-# NeoRust SDK v1.0.0 - Phase 3 Complete! 🎉
+# NeoRust SDK v1.0.1 - Phase 3 Complete! 🎉
 
 ## Executive Summary
 
@@ -321,7 +321,7 @@ let handle = ws.subscribe(
 
 ## Next Steps: Phase 4
 
-With Phase 3 complete, the SDK is feature-complete for v1.0.0. Phase 4 will focus on:
+With Phase 3 complete, the SDK is feature-complete for v1.0.1. Phase 4 will focus on:
 
 1. **Performance Optimization**
    - Connection pooling optimization
@@ -347,7 +347,7 @@ With Phase 3 complete, the SDK is feature-complete for v1.0.0. Phase 4 will focu
 
 **🎉 Phase 3 is 100% COMPLETE!**
 
-The NeoRust SDK v1.0.0 now offers:
+The NeoRust SDK v1.0.1 now offers:
 - **Enterprise Features**: HD wallets, transaction simulation, real-time updates
 - **Developer Friendly**: 50-70% code reduction, clear errors, guided tools
 - **Production Ready**: Comprehensive testing, robust error handling, performance optimization

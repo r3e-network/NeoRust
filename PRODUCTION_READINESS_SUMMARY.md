@@ -55,13 +55,13 @@
 
 ## 💡 Key Improvements Made
 
-1. **Feature Coverage**: CLI now exposes key v1.0.0 SDK features
+1. **Feature Coverage**: CLI now exposes key v1.0.1 SDK features
 2. **User Experience**: Added intuitive CLI flows for complex blockchain operations
 3. **Developer Tools**: Enhanced simulation and debugging capabilities
 4. **Real-time Updates**: WebSocket integration for live blockchain monitoring
 5. **Security Awareness**: Added warnings and best practices throughout UI
 
-## 🚀 Next Steps for v1.0.0
+## 🚀 Next Steps for v1.0.1
 
 1. **Implement remaining security features** (2-3 days)
    - OS keychain integration
@@ -91,7 +91,7 @@
 ## 📝 Technical Notes
 
 ### Dependencies Added
-- Used existing neo3 v1.0.0 SDK features
+- Used existing neo3 v1.0.1 SDK features
 - No additional external dependencies required
 
 ### Code Quality
@@ -105,11 +105,11 @@
 
 ## ✨ Conclusion
 
-The NeoRust CLI and SDK are now significantly more production-ready with the integration of v1.0.0 SDK features. The tooling now offers:
+The NeoRust CLI and SDK are now significantly more production-ready with the integration of v1.0.1 SDK features. The tooling now offers:
 
 - **Professional HD wallet management**
 - **Real-time blockchain monitoring**
 - **Advanced transaction simulation**
 - **Consistent developer experience**
 
-With the completion of the remaining security and infrastructure tasks, the applications will be ready for v1.0.0 production release.
+With the completion of the remaining security and infrastructure tasks, the applications will be ready for v1.0.1 production release.

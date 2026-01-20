@@ -1,4 +1,4 @@
-# NeoRust SDK - API Specification v1.0.0
+# NeoRust SDK - API Specification v1.0.1
 
 ## Table of Contents
 1. [Core APIs](#core-apis)
@@ -474,7 +474,7 @@ let results = futures::future::try_join_all(transactions).await?;
 
 ## API Versioning
 
-Current API Version: **1.0.0**
+Current API Version: **1.0.1**
 
 ### Breaking Changes Policy
 - Major version (2.0.0): Breaking API changes

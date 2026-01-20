@@ -1,8 +1,8 @@
-# NeoRust SDK v1.0.0 - Fixes Applied Report
+# NeoRust SDK v1.0.1 - Fixes Applied Report
 
 **Date**: August 19, 2025  
-**Version**: 1.0.0  
-**Previous Version**: 1.0.0
+**Version**: 1.0.1  
+**Previous Version**: 1.0.1
 
 ## Executive Summary
 
@@ -13,14 +13,14 @@ All identified issues from the comprehensive review have been successfully addre
 ### 1. Documentation Test Import Paths ✅
 **Issue**: Documentation examples had incorrect import paths  
 **Fix Applied**:
-- Updated version references from 1.0.0 to 1.0.0 in all documentation
+- Updated version references from 1.0.1 to 1.0.1 in all documentation
 - Corrected import paths in lib.rs documentation examples
 - Fixed version consistency across README and Cargo.toml
 
 ### 2. Base58 Implementation ✅
 **Issue**: Basic Base58 implementation needed enhancement  
 **Fix Applied**:
-- Verified bs58 crate (v1.0.0) is already integrated in dependencies
+- Verified bs58 crate (v1.0.1) is already integrated in dependencies
 - Implementation in `neo_crypto/base58_helper.rs` is complete with:
   - Full base58check encoding/decoding
   - Checksum validation
@@ -75,12 +75,12 @@ All identified issues from the comprehensive review have been successfully addre
 ### 7. Version Update ✅
 **Issue**: Version needed to be bumped for new release  
 **Fix Applied**:
-- Updated version to 1.0.0 in:
+- Updated version to 1.0.1 in:
   - Cargo.toml
   - src/lib.rs documentation
   - README.md
   - All example references
-- Created comprehensive CHANGELOG.md entry for v1.0.0
+- Created comprehensive CHANGELOG.md entry for v1.0.1
 
 ## Additional Improvements
 
@@ -101,7 +101,7 @@ All identified issues from the comprehensive review have been successfully addre
 
 ## Metrics Comparison
 
-| Metric | Pre-1.0 | v1.0.0 | Improvement |
+| Metric | Pre-1.0 | v1.0.1 | Improvement |
 |--------|---------|--------|-------------|
 | Production Readiness | 95% | 99% | +4% |
 | Test Coverage Tools | Basic | Comprehensive | ✅ |
@@ -116,11 +116,11 @@ None. All changes are backward compatible.
 
 ## Migration Guide
 
-No migration required. Users can upgrade from pre-1.0 to v1.0.0 by updating their dependency:
+No migration required. Users can upgrade from pre-1.0 to v1.0.1 by updating their dependency:
 
 ```toml
 [dependencies]
-neo3 = "1.0.0"
+neo3 = "1.0.1"
 ```
 
 ## New Features Usage
@@ -161,7 +161,7 @@ All fixes have been verified through:
 
 ## Conclusion
 
-The NeoRust SDK v1.0.0 successfully addresses all issues identified in the comprehensive review. With 99% production readiness, enhanced testing infrastructure, and real-time gas estimation, the SDK is now even more robust and enterprise-ready.
+The NeoRust SDK v1.0.1 successfully addresses all issues identified in the comprehensive review. With 99% production readiness, enhanced testing infrastructure, and real-time gas estimation, the SDK is now even more robust and enterprise-ready.
 
 ### Certification
 

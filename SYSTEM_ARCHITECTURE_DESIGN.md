@@ -175,7 +175,7 @@ pub mod neo_crypto {
 openapi: 3.0.0
 info:
   title: NeoRust SDK API
-  version: 1.0.0
+  version: 1.0.1
   
 paths:
   /rpc:
@@ -488,7 +488,7 @@ spec:
     spec:
       containers:
       - name: neorust
-        image: neorust:1.0.0
+        image: neorust:1.0.1
         ports:
         - containerPort: 8080
         resources:

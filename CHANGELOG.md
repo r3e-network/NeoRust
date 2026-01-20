@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 _No changes yet._
 
-## [1.0.0] - 2026-01-20
+## [1.0.1] - 2026-01-20
 
 ### ⚠️ Breaking Changes
 
@@ -27,7 +27,7 @@ _No changes yet._
 ### 🔧 Changed
 
 - Updated documentation, website content, and monitoring configuration to reflect the CLI-only scope.
-- Updated embedded `neo_csharp` core/node/vm sources to the upstream v3.9.0 releases.
+- Aligned policy helpers and protocol metadata handling with Neo v3.9 behavior (using `neo_csharp` as reference only).
 
 ### 🐛 Fixes
 

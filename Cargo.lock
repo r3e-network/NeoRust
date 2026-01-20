@@ -2223,7 +2223,7 @@ dependencies = [
 
 [[package]]
 name = "neo-cli"
-version = "1.0.0"
+version = "1.0.1"
 dependencies = [
  "aes-gcm",
  "anyhow",
@@ -2260,7 +2260,7 @@ dependencies = [
 
 [[package]]
 name = "neo3"
-version = "1.0.0"
+version = "1.0.1"
 dependencies = [
  "aes",
  "async-trait",

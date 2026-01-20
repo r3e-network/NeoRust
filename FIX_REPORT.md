@@ -1,11 +1,11 @@
-# NeoRust SDK v1.0.0 - Fix Report
+# NeoRust SDK v1.0.1 - Fix Report
 
 **Date**: August 19, 2025  
 **Status**: ✅ FIXES APPLIED
 
 ## Summary
 
-Applied critical fixes to resolve compilation issues and reduce warnings in the NeoRust SDK v1.0.0.
+Applied critical fixes to resolve compilation issues and reduce warnings in the NeoRust SDK v1.0.1.
 
 ## Issues Fixed
 

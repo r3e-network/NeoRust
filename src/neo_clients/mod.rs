@@ -103,7 +103,7 @@ pub use rate_limiter::{RateLimitPermit, RateLimiter, RateLimiterBuilder, RateLim
 pub use rpc::*;
 #[deprecated(
 	note = "Use `HttpProvider::new(...)`/`RpcClient::new(...)` or the high-level `sdk::Neo` builder instead.",
-	since = "1.0.0"
+	since = "1.0.1"
 )]
 pub use test_provider::{MAINNET, TESTNET};
 pub use utils::*;

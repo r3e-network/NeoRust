@@ -29,17 +29,17 @@ The workflow builds binaries for the following platforms:
 1. **Update version numbers** in all relevant files:
    ```bash
    # Update main Cargo.toml
-   sed -i 's/version = "0.9.0"/version = "1.0.0"/g' Cargo.toml
+   sed -i 's/version = "0.9.0"/version = "1.0.1"/g' Cargo.toml
    
    # Update CLI Cargo.toml
-   sed -i 's/version = "0.9.0"/version = "1.0.0"/g' neo-cli/Cargo.toml
-   sed -i 's/neo3.*version = "0.9.0"/neo3 = { path = "..", version = "1.0.0" }/g' neo-cli/Cargo.toml
+   sed -i 's/version = "0.9.0"/version = "1.0.1"/g' neo-cli/Cargo.toml
+   sed -i 's/neo3.*version = "0.9.0"/neo3 = { path = "..", version = "1.0.1" }/g' neo-cli/Cargo.toml
    
    ```
 
 2. **Update CHANGELOG.md** with the new version:
    ```markdown
-   ## [1.0.0] - 2026-01-20
+   ## [1.0.1] - 2026-01-20
    
    ### Added
    - New feature descriptions
@@ -54,14 +54,14 @@ The workflow builds binaries for the following platforms:
 3. **Commit and push changes**:
    ```bash
    git add .
-   git commit -m "chore: bump version to 1.0.0"
+   git commit -m "chore: bump version to 1.0.1"
    git push origin master
    ```
 
 4. **Create and push a git tag**:
    ```bash
-   git tag -a v1.0.0 -m "Release v1.0.0"
-   git push origin v1.0.0
+   git tag -a v1.0.1 -m "Release v1.0.1"
+   git push origin v1.0.1
    ```
 
 ### Method 2: Manual Workflow Dispatch
@@ -71,7 +71,7 @@ You can also trigger the release manually from the GitHub Actions tab:
 1. Go to the **Actions** tab in your GitHub repository
 2. Select the **Release** workflow
 3. Click **Run workflow**
-4. Enter the tag name (e.g., `v1.0.0`)
+4. Enter the tag name (e.g., `v1.0.1`)
 5. Click **Run workflow**
 
 ## What the Workflow Does
@@ -183,13 +183,13 @@ Error: cross compilation failed
 
 ## Example Release Process
 
-Here's a complete example of releasing version 1.0.0:
+Here's a complete example of releasing version 1.0.1:
 
 ```bash
 # 1. Update version numbers
-sed -i 's/version = "0.9.0"/version = "1.0.0"/g' Cargo.toml
-sed -i 's/version = "0.9.0"/version = "1.0.0"/g' neo-cli/Cargo.toml
-sed -i 's/neo3.*version = "0.9.0"/neo3 = { path = "..", version = "1.0.0" }/g' neo-cli/Cargo.toml
+sed -i 's/version = "0.9.0"/version = "1.0.1"/g' Cargo.toml
+sed -i 's/version = "0.9.0"/version = "1.0.1"/g' neo-cli/Cargo.toml
+sed -i 's/neo3.*version = "0.9.0"/neo3 = { path = "..", version = "1.0.1" }/g' neo-cli/Cargo.toml
 
 # 2. Update CHANGELOG.md (manually edit the file)
 
@@ -199,12 +199,12 @@ cd neo-cli && cargo test --all-features
 
 # 4. Commit changes
 git add .
-git commit -m "chore: bump version to 1.0.0"
+git commit -m "chore: bump version to 1.0.1"
 git push origin master
 
 # 5. Create and push tag
-git tag -a v1.0.0 -m "Release v1.0.0: Add new features and improvements"
-git push origin v1.0.0
+git tag -a v1.0.1 -m "Release v1.0.1: Add new features and improvements"
+git push origin v1.0.1
 
 # 6. Monitor the workflow in GitHub Actions
 # 7. Verify the release was created successfully

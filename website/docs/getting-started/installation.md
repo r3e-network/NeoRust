@@ -29,7 +29,7 @@ Add NeoRust to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-neo3 = "1.0.0"
+neo3 = "1.0.1"
 tokio = { version = "1.0", features = ["full"] }
 ```
 
@@ -39,7 +39,7 @@ NeoRust provides several optional features:
 
 ```toml
 [dependencies]
-neo3 = { version = "1.0.0", features = ["futures", "ledger", "websocket"] }
+neo3 = { version = "1.0.1", features = ["futures", "ledger", "websocket"] }
 ```
 
 ### Available Features
@@ -58,7 +58,7 @@ Create a simple test to verify everything works:
 use neo3::prelude::*;
 
 fn main() {
-    println!("NeoRust SDK v1.0.0 is ready!");
+    println!("NeoRust SDK v1.0.1 is ready!");
     
     // Create a simple account
     let account = Account::create().expect("Failed to create account");
@@ -74,7 +74,7 @@ cargo run
 
 You should see output like:
 ```
-NeoRust SDK v1.0.0 is ready!
+NeoRust SDK v1.0.1 is ready!
 Generated address: NXXXXxxxXXXxxxXXXxxxXXXxxxXXXxxx
 ```
 

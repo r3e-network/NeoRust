@@ -31,13 +31,6 @@ scrape_configs:
         labels:
           component: 'cli'
           
-  # Neo GUI metrics
-  - job_name: 'neo-gui'
-    static_configs:
-      - targets: ['host.docker.internal:9092']
-        labels:
-          component: 'gui'
-          
   # Node Exporter (system metrics)
   - job_name: 'node-exporter'
     static_configs:

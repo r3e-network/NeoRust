@@ -1,8 +1,8 @@
-# Production Readiness Checklist for Neo GUI & CLI
+# Production Readiness Checklist for Neo CLI & SDK
 
-## 🔍 Feature Comparison Analysis
+## 🔍 Feature Coverage
 
-### ✅ Common Features (Present in Both)
+### ✅ Core Features
 - [x] **Wallet Management**
   - Create new wallet
   - Import wallet (WIF)
@@ -25,18 +25,6 @@
   - Token operations
   - Basic DeFi protocols
 
-### ⚠️ GUI-Specific Features
-- [x] Dashboard with charts and analytics
-- [x] Portfolio distribution visualization
-- [x] Real-time price tracking
-- [x] Visual transaction history
-- [x] Balance visibility toggle
-- [ ] **Missing**: HD wallet UI
-- [ ] **Missing**: WebSocket real-time updates UI
-- [ ] **Missing**: Transaction simulation UI
-- [ ] **Missing**: Multi-signature wallet UI
-- [ ] **Missing**: Hardware wallet integration UI
-
 ### ⚠️ CLI-Specific Features
 - [x] Command-line wizard
 - [x] Project generator templates
@@ -53,7 +41,6 @@
 
 ### Security & Authentication
 - [ ] **Two-Factor Authentication (2FA)**
-- [ ] **Biometric authentication** (GUI)
 - [ ] **Session management & timeout**
 - [ ] **Secure key storage** (OS keychain integration)
 - [ ] **Hardware wallet support** (Ledger, Trezor)
@@ -75,16 +62,12 @@
 - [ ] **Performance metrics** collection
 - [ ] **Error logging** with structured formats
 - [ ] **Audit trail** for all operations
-- [ ] **Health check endpoints** (GUI backend)
 
 ### User Experience
 - [ ] **Internationalization (i18n)** support
-- [ ] **Dark/Light theme** toggle (GUI)
-- [ ] **Keyboard shortcuts** (GUI)
 - [ ] **Command history** (CLI)
 - [ ] **Auto-completion** (CLI)
 - [ ] **Help system** with examples
-- [ ] **Onboarding tutorial** (GUI)
 - [ ] **Export functionality** (CSV, JSON, PDF)
 
 ### Production Infrastructure
@@ -106,13 +89,12 @@
 5. **Network failover mechanism**
 
 ### Priority 2 - User Experience (Should Have)
-1. **HD Wallet Integration** (both GUI & CLI)
-2. **WebSocket real-time updates** (both)
-3. **Transaction simulation** (both)
+1. **HD Wallet Integration** (CLI)
+2. **WebSocket real-time updates** (CLI)
+3. **Transaction simulation** (CLI)
 4. **Backup & restore functionality**
 5. **Help system with examples**
-6. **Dark/Light theme** (GUI)
-7. **Command auto-completion** (CLI)
+6. **Command auto-completion** (CLI)
 
 ### Priority 3 - Production Features (Nice to Have)
 1. **Hardware wallet support**
@@ -124,15 +106,6 @@
 
 ## 🔧 Technical Debt & Improvements
 
-### GUI (neo-gui)
-- [ ] Replace mock data with real blockchain data
-- [ ] Implement proper state management for WebSocket
-- [ ] Add comprehensive error boundaries
-- [ ] Implement lazy loading for performance
-- [ ] Add unit tests for all components
-- [ ] Add E2E tests with Playwright
-- [ ] Optimize bundle size
-
 ### CLI (neo-cli)
 - [ ] Complete integration with v0.5.0 SDK features
 - [ ] Add comprehensive integration tests
@@ -141,7 +114,7 @@
 - [ ] Improve error messages with suggestions
 - [ ] Add shell completion scripts
 
-### Both Applications
+### CLI & SDK
 - [ ] Unified configuration format
 - [ ] Shared utility libraries
 - [ ] Consistent error codes

@@ -5,25 +5,24 @@ A comprehensive monitoring infrastructure for the NeoRust SDK and its components
 ## Architecture Overview
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                     Application Layer                        │
-├───────────────┬─────────────────┬───────────────────────────┤
-│   Neo SDK     │    Neo CLI      │       Neo GUI            │
-│   Metrics     │    Metrics      │       Metrics            │
-└───────┬───────┴────────┬────────┴────────┬──────────────────┘
-        │                │                 │
-┌───────▼────────────────▼─────────────────▼──────────────────┐
-│              Metrics Collection Layer (OpenTelemetry)        │
-├───────────────────────────────────────────────────────────────┤
-│   • Traces  • Metrics  • Logs  • Distributed Context        │
-└───────────────────────────┬───────────────────────────────────┘
+┌────────────────────────────────────────────────────────┐
+│                   Application Layer                    │
+├───────────────────────────┬────────────────────────────┤
+│   Neo SDK Metrics         │    Neo CLI Metrics         │
+└───────────────┬───────────┴───────────────┬────────────┘
+                │                           │
+┌───────────────▼───────────────────────────▼────────────┐
+│           Metrics Collection Layer (OpenTelemetry)     │
+├────────────────────────────────────────────────────────┤
+│   • Traces  • Metrics  • Logs  • Distributed Context   │
+└───────────────────────────┬────────────────────────────┘
                            │
-┌───────────────────────────▼───────────────────────────────────┐
-│                    Storage & Analysis                         │
-├─────────────┬──────────────┬─────────────┬──────────────────┤
-│  Prometheus │   Grafana    │   Jaeger    │   Loki           │
-│  (Metrics)  │ (Dashboards) │  (Traces)   │  (Logs)          │
-└─────────────┴──────────────┴─────────────┴──────────────────┘
+┌───────────────────────────▼────────────────────────────┐
+│                  Storage & Analysis                    │
+├─────────────┬──────────────┬─────────────┬─────────────┤
+│  Prometheus │   Grafana    │   Jaeger    │   Loki      │
+│  (Metrics)  │ (Dashboards) │  (Traces)   │  (Logs)     │
+└─────────────┴──────────────┴─────────────┴─────────────┘
 ```
 
 ## Components
@@ -90,9 +89,6 @@ neo-cli --metrics-port 9091 wallet create
 # Export metrics endpoint
 export NEO_CLI_METRICS_ENABLED=true
 ```
-
-### GUI
-The GUI automatically exports metrics on port 9092 when running.
 
 ## Metrics Reference
 

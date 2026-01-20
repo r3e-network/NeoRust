@@ -46,7 +46,6 @@ A comprehensive, production-ready Rust SDK for the Neo N3 blockchain platform. N
 
 ### Applications
 - 🖥️ **CLI Tools** - Command-line interface for common blockchain operations
-- 🖼️ **GUI Applications** - Native Rust desktop shell (`neo-gui-rs`) is first-class; legacy React/Tauri app (`neo-gui`) remains for historical parity
 
 ## Quick Start
 
@@ -250,33 +249,11 @@ neo-cli network status
 neo-cli de-fi token NEO
 ```
 
-### GUI Applications
-- **neo-gui-rs**: Native Rust desktop shell built with eframe/egui (no Node toolchain required).
-- **neo-gui**: Legacy React/Tauri desktop application. **Note:** Requires GTK libraries on Linux.
-
 ## Building
 
 ### Core SDK and CLI
 ```bash
-cargo build --workspace --exclude neo-gui
-```
-
-### GUI Application (native Rust)
-```bash
-cargo run -p neo-gui-rs
-```
-
-### Legacy GUI Application (React/Tauri, requires additional dependencies)
-
-**Linux (Ubuntu/Debian):**
-```bash
-sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.0-dev libayatana-appindicator3-dev librsvg2-dev
-cd neo-gui && npm install && cargo build
-```
-
-**macOS and Windows:**
-```bash
-cd neo-gui && npm install && cargo build
+cargo build --workspace
 ```
 
 ## Documentation
@@ -288,8 +265,6 @@ cd neo-gui && npm install && cargo build
 - [Transaction Simulation Guide](docs/guides/transaction-simulation.md)
 - [Examples](examples/)
 - [CLI Documentation](neo-cli/README.md)
-- [Native GUI (`neo-gui-rs`)](neo-gui-rs/README.md)
-- [Legacy GUI Documentation](neo-gui/README.md)
 - [Migration Guide v0.4 → v0.5](docs/guides/migration-v0.5.md)
 
 ## Examples
@@ -337,7 +312,6 @@ The project uses streamlined GitHub Actions workflows:
   - Rust formatting and clippy checks
   - Security audit on every PR
   - Code coverage reporting
-  - Optional Neo GUI builds
   
 - **release.yml** - Automated release process
   - Triggered by version tags (v*.*.*)

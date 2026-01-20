@@ -205,14 +205,11 @@ This release is **fully backward compatible**. No code changes required for exis
 ### Added
 
 - Transaction tracing and contract deployment examples now run against real TestNet RPC, loading actual NEF/manifest fixtures.
-- Native GUI analytics tab with block-height telemetry, peer counts, and recent activity feed.
-- Settings panel for the native GUI (theme toggle, poll cadence, log retention, endpoint presets).
 
 ### Changed
 
 - neo-cli now ships with a lightweight, dependency-free spinner/progress indicator (indicatif removed).
-- README refreshed with the new NeoRust logo and native-GUI-first positioning.
-- Native GUI now uses a vendored glow-only `eframe` build to drop the `wgpu/paste` advisory from audit noise.
+- README refreshed with the new NeoRust logo and updated positioning.
 
 ### Fixed
 
@@ -222,22 +219,11 @@ This release is **fully backward compatible**. No code changes required for exis
 
 ### Added
 
-- Native Rust desktop GUI (`neo-gui-rs`) built with eframe/egui, featuring RPC connectivity, status polling, and local account management.
-- HD wallet generation/import with derivation flows wired into the native GUI.
-- WebSocket monitor for NewBlocks events inside the native GUI.
-- Transaction simulator panel (invokescript dry-run) in the native GUI.
-- WebSocket subscriptions selectable (blocks, transactions, execution results) in the native GUI.
-- Draft transfer UI in the native wallet tab now validates inputs and runs an invoke-based estimation.
 - Fresh NeoRust brand mark for the SDK landing page and documentation.
 
 ### Fixed
 
 - NEP-17 balance detection now matches canonical NEO/GAS script hashes instead of substring heuristics.
-- Unclaimed GAS refresh validates addresses and surfaces RPC errors in the native GUI.
-
-### DevOps
-
-- GitHub Actions now includes an optional job to build the native GUI across platforms when GUI files change.
 
 ## [0.5.1] - 2025-11-20
 
@@ -419,9 +405,7 @@ This release transforms NeoRust into a world-class blockchain SDK with enterpris
 ### 🔧 Fixed
 
 - **Code Quality**: Fixed 113+ clippy warnings with format string optimizations
-- **Compilation Issues**: Resolved all TypeScript/React compilation errors in GUI
-- **Network Connectivity**: Fixed GUI remote node connection issues
-- **Module Structure**: Restructured Tauri project with proper module organization
+- **Module Structure**: Restructured project modules with proper organization
 - **Security**: Updated website dependencies to resolve vulnerabilities
 
 ### 🚀 Improved
@@ -447,7 +431,6 @@ This release transforms NeoRust into a world-class blockchain SDK with enterpris
 
 - **Clippy Fixes**: Resolved format string warnings and code quality issues
 - **Network Service**: Updated to use RpcClient<HttpProvider> for better reliability
-- **Module Architecture**: Improved separation of concerns in GUI components
 - **Build Process**: Streamlined build and test processes
 
 ### ⚡ Performance
@@ -716,7 +699,7 @@ This release transforms NeoRust from a broken development project into a **produ
 ### Added
 
 - Comprehensive documentation website with Docusaurus
-- Complete GUI, CLI, and SDK documentation with beautiful design
+- Complete CLI and SDK documentation with beautiful design
 - Getting started guides for installation, quick start, and first wallet
 - Detailed NFT operations guide with minting, trading, and portfolio management
 - Developer tools documentation with encoding, hashing, and cryptographic utilities

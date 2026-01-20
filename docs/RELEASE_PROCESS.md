@@ -92,7 +92,6 @@ Examples: `0.5.2-alpha.1`, `0.5.2-beta.2`, `0.5.2-rc.1`
 - [ ] Test examples and tutorials
 - [ ] Performance benchmarks regression testing
 - [ ] Integration testing with real Neo N3 networks
-- [ ] GUI application testing on all platforms
 
 ### Release Phase
 
@@ -141,7 +140,6 @@ Runs on pushes and pull requests:
 - `cargo build` / `cargo test` (no-default-features)
 - `cargo doc` build
 - Security audit (`cargo audit`, best-effort)
-- Optional GUI builds (label-gated)
 - Optional code coverage (main/master only)
 
 ### Release Automation (`release.yml`)
@@ -156,7 +154,7 @@ Triggered by version tags:
 ## 📦 Publishing Notes
 
 The current release workflow publishes the `neo3` crate. The workspace contains additional applications
-(`neo-cli`, `neo-gui-rs`) that are built as release artifacts but are not published as crates.
+(`neo-cli`) that are built as release artifacts but are not published as crates.
 
 If/when the SDK is split into multiple crates, update this document and `release.yml` accordingly.
 See `WORKSPACE_REORGANIZATION.md` for the tracked plan.

@@ -21,7 +21,6 @@
 | **Core SDK** | ✅ Ready | High (95%) |
 | **Examples** | ✅ Ready | High (95%) |
 | **CLI Tools** | ✅ Ready | High (85%) |
-| **GUI Application** | 🔶 Framework Ready | Medium (75%) |
 
 ---
 
@@ -98,24 +97,6 @@ export NEO_WALLET_DIR="/secure/wallets"
 export NEO_CONFIG_DIR="/etc/neo-cli"
 export NEO_LOG_LEVEL="info"
 ```
-
-### **3. GUI Application Deployment**
-*For desktop environments (development/testing recommended)*
-
-```bash
-# Build for production
-cd neo-gui
-npm install
-npm run build
-cargo build --release
-
-# Package for distribution
-npm run tauri build
-```
-
-**⚠️ Important**: GUI currently operates in simulation mode for transactions. Recommended for development and UI testing only.
-
----
 
 ## 🔒 **SECURITY CONFIGURATION**
 

@@ -1,6 +1,6 @@
 #![allow(clippy::items_after_test_module)]
 
-//! # Neo Types (v0.4.1)
+//! # Neo Types (v1.0.0)
 //!
 //! Core data types for the Neo N3 blockchain.
 //!

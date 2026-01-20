@@ -1,8 +1,8 @@
-# Gas Estimation Guide - NeoRust v0.4.4
+# Gas Estimation Guide - NeoRust v1.0.0
 
 ## Overview
 
-NeoRust v0.4.4 introduces real-time gas estimation using the Neo N3 `invokescript` RPC method, providing accurate fee calculations for transactions before submission. This feature helps optimize costs and prevent transaction failures due to insufficient gas.
+NeoRust v1.0.0 introduces real-time gas estimation using the Neo N3 `invokescript` RPC method, providing accurate fee calculations for transactions before submission. This feature helps optimize costs and prevent transaction failures due to insufficient gas.
 
 ## Understanding Neo N3 Gas
 
@@ -646,7 +646,7 @@ async fn test_real_transaction_estimation() {
 
 ## Summary
 
-The gas estimation feature in NeoRust v0.4.4 provides:
+The gas estimation feature in NeoRust v1.0.0 provides:
 
 - **Accuracy**: Real-time estimation via RPC
 - **Safety**: Built-in buffer options

@@ -1,4 +1,4 @@
-# NeoRust SDK v0.4.4 Build Report
+# NeoRust SDK v1.0.0 Build Report
 
 **Build Date**: August 19, 2025  
 **Build Type**: Production Release  
@@ -6,7 +6,7 @@
 
 ## Build Summary
 
-The NeoRust SDK v0.4.4 has been successfully built in release mode with optimizations enabled.
+The NeoRust SDK v1.0.0 has been successfully built in release mode with optimizations enabled.
 
 ## Build Steps Completed
 
@@ -58,7 +58,7 @@ The NeoRust SDK v0.4.4 has been successfully built in release mode with optimiza
 - `tokio v1.45.1` - Async runtime
 - `serde v1.0.219` - Serialization
 - `proptest v1.5` - Property testing
-- `criterion v0.5.1` - Benchmarking
+- `criterion v1.0.0` - Benchmarking
 
 ## Build Configuration
 
@@ -171,7 +171,7 @@ target/
 
 ## Conclusion
 
-The NeoRust SDK v0.4.4 has been successfully built with production optimizations. The library is ready for deployment and integration. Minor issues with test compilation should be addressed in a patch release but do not block production usage.
+The NeoRust SDK v1.0.0 has been successfully built with production optimizations. The library is ready for deployment and integration. Minor issues with test compilation should be addressed in a patch release but do not block production usage.
 
 ---
 

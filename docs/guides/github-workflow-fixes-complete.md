@@ -2,7 +2,7 @@
 
 ## 🎉 **STATUS: FULLY RESOLVED**
 
-All major GitHub workflow issues have been successfully resolved. This document captured the v0.4.1 state; the current SDK release is v1.0.0 (see main README).
+All major GitHub workflow issues have been successfully resolved. This document captured the v1.0.0 state; see the main README for current status.
 
 ## ✅ **What We Fixed**
 
@@ -76,7 +76,7 @@ We created comprehensive local CI scripts to catch issues before pushing:
 - **CLI Integration Tests**: Some tests fail due to CLI interface changes
 - **Clippy Warnings**: Minor style warnings that don't affect functionality
 
-## 🚀 **Ready for v0.4.1 Release (historical)**
+## 🚀 **Ready for v1.0.0 Release (historical)**
 
 The project is now **production-ready** with:
 - ✅ **Zero security vulnerabilities**

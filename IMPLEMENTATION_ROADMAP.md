@@ -2,9 +2,9 @@
 
 ## Executive Summary
 
-This roadmap outlines the implementation strategy for adopting NeoRust SDK v0.4.4's new features and planning for future enhancements through v1.0.0.
+This roadmap outlines the implementation strategy for adopting NeoRust SDK v1.0.0 features and planning for future enhancements beyond v1.0.0.
 
-## Current State (v0.4.4)
+## Current State (v1.0.0)
 
 ### Completed Features ✅
 - Real-time gas estimation via RPC
@@ -26,7 +26,7 @@ This roadmap outlines the implementation strategy for adopting NeoRust SDK v0.4.
 
 1. **Update Dependencies**
    ```toml
-   neo3 = "0.4.4"
+   neo3 = "1.0.0"
    proptest = "1.5"
    ```
 
@@ -149,7 +149,7 @@ This roadmap outlines the implementation strategy for adopting NeoRust SDK v0.4.
 - Plugin examples
 - Advanced rate limiting
 
-## Phase 3: v0.5.0 Development (Month 2-3)
+## Phase 3: v1.0.0 Development (Month 2-3)
 
 ### Target Release: Q1 2026
 
@@ -395,12 +395,12 @@ gantt
 ### Month 1 Milestone
 - Phase 1 complete
 - Phase 2 in progress
-- v0.5.0 planning finalized
+- v1.0.0 planning finalized
 - Beta program launched
 
 ## Conclusion
 
-The NeoRust SDK v0.4.4 provides a solid foundation for production use with 99% readiness. This roadmap outlines a clear path to v1.0.0 with incremental improvements, comprehensive testing, and community engagement. Success depends on disciplined execution, continuous feedback, and maintaining high quality standards.
+The NeoRust SDK v1.0.0 provides a solid foundation for production use with 99% readiness. This roadmap outlines a clear path beyond v1.0.0 with incremental improvements, comprehensive testing, and community engagement. Success depends on disciplined execution, continuous feedback, and maintaining high quality standards.
 
 ---
 

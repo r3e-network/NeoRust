@@ -1,7 +1,7 @@
 {
   "id": "installation",
   "title": "Installation",
-  "description": "Get started with NeoRust SDK v0.4.2 by installing it in your Rust project.",
+  "description": "Get started with NeoRust SDK v1.0.0 by installing it in your Rust project.",
   "source": "@site/sdk/installation.md",
   "sourceDirName": ".",
   "slug": "/installation",

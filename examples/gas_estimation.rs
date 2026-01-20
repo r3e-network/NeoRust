@@ -1,7 +1,7 @@
 //! Gas Estimation Example
 //!
 //! This example demonstrates how to use the new real-time gas estimation
-//! features in NeoRust v0.4.4 for accurate transaction fee calculation.
+//! features in NeoRust v1.0.0 for accurate transaction fee calculation.
 
 use neo3::neo_builder::{AccountSigner, GasEstimator, ScriptBuilder, Signer};
 use neo3::neo_clients::{APITrait, HttpProvider, RpcClient};

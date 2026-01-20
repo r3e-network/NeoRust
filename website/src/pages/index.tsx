@@ -267,7 +267,7 @@ export default function Home(): JSX.Element {
   return (
     <Layout
       title={`${siteConfig.title} - ${siteConfig.tagline}`}
-      description="NeoRust v0.4.2 - A production-ready Rust SDK for Neo N3 blockchain development. Build high-performance dApps with type-safe, modern Rust. Features 135 passing documentation tests.">
+      description="NeoRust v1.0.0 - A production-ready Rust SDK for Neo N3 blockchain development. Build high-performance dApps with type-safe, modern Rust. Features 135 passing documentation tests.">
       
       {/* Hero Section */}
       <header className={clsx('hero hero--primary', styles.heroBanner)}>
@@ -493,7 +493,7 @@ export default function Home(): JSX.Element {
                 <p className={styles.toolDescription}>
                   Comprehensive Rust library with full Neo N3 support, smart contract interaction, and wallet management.
                 </p>
-                <Link to="/sdk" className={clsx('btn btn-primary', styles.toolButton)}>
+                <Link to="/sdk/intro" className={clsx('btn btn-primary', styles.toolButton)}>
                   Explore SDK
                 </Link>
               </div>
@@ -515,7 +515,7 @@ export default function Home(): JSX.Element {
                 <p className={styles.toolDescription}>
                   Command-line interface for developers who prefer terminal-based workflows and automation scripts.
                 </p>
-                <Link to="/cli" className={clsx('btn btn-primary', styles.toolButton)}>
+                <Link to="/cli/intro" className={clsx('btn btn-primary', styles.toolButton)}>
                   CLI Docs
                 </Link>
               </div>
@@ -529,7 +529,7 @@ export default function Home(): JSX.Element {
             <div className={styles.ctaContent}>
               <h2 className={styles.ctaTitle}>Ready to Build on Neo?</h2>
               <p className={styles.ctaSubtitle}>
-                Join the growing community of developers building the future of blockchain with NeoRust v0.4.2
+                Join the growing community of developers building the future of blockchain with NeoRust v1.0.0
               </p>
               
               <div className={styles.ctaButtons}>
@@ -549,7 +549,7 @@ export default function Home(): JSX.Element {
               
               <div className={styles.ctaNote}>
                 <p>
-                  <strong>New in v0.4.2:</strong> Production-ready stability with 135 passing documentation tests, enhanced error handling, and comprehensive code quality improvements.
+                  <strong>New in v1.0.0:</strong> Production-ready stability with 135 passing documentation tests, enhanced error handling, and comprehensive code quality improvements.
                   <Link to="/blog" className={styles.ctaLink}> Read the release notes →</Link>
                 </p>
               </div>

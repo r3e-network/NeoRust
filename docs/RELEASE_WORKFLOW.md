@@ -29,17 +29,17 @@ The workflow builds binaries for the following platforms:
 1. **Update version numbers** in all relevant files:
    ```bash
    # Update main Cargo.toml
-   sed -i 's/version = "0.2.3"/version = "0.3.0"/g' Cargo.toml
+   sed -i 's/version = "0.9.0"/version = "1.0.0"/g' Cargo.toml
    
    # Update CLI Cargo.toml
-   sed -i 's/version = "0.2.3"/version = "0.3.0"/g' neo-cli/Cargo.toml
-   sed -i 's/neo3.*version = "0.2.3"/neo3 = { path = "..", version = "0.3.0" }/g' neo-cli/Cargo.toml
+   sed -i 's/version = "0.9.0"/version = "1.0.0"/g' neo-cli/Cargo.toml
+   sed -i 's/neo3.*version = "0.9.0"/neo3 = { path = "..", version = "1.0.0" }/g' neo-cli/Cargo.toml
    
    ```
 
 2. **Update CHANGELOG.md** with the new version:
    ```markdown
-   ## [0.3.0] - 2025-06-01
+   ## [1.0.0] - 2026-01-20
    
    ### Added
    - New feature descriptions
@@ -54,14 +54,14 @@ The workflow builds binaries for the following platforms:
 3. **Commit and push changes**:
    ```bash
    git add .
-   git commit -m "chore: bump version to 0.3.0"
+   git commit -m "chore: bump version to 1.0.0"
    git push origin master
    ```
 
 4. **Create and push a git tag**:
    ```bash
-   git tag -a v0.3.0 -m "Release v0.3.0"
-   git push origin v0.3.0
+   git tag -a v1.0.0 -m "Release v1.0.0"
+   git push origin v1.0.0
    ```
 
 ### Method 2: Manual Workflow Dispatch
@@ -71,7 +71,7 @@ You can also trigger the release manually from the GitHub Actions tab:
 1. Go to the **Actions** tab in your GitHub repository
 2. Select the **Release** workflow
 3. Click **Run workflow**
-4. Enter the tag name (e.g., `v0.3.0`)
+4. Enter the tag name (e.g., `v1.0.0`)
 5. Click **Run workflow**
 
 ## What the Workflow Does
@@ -88,7 +88,6 @@ You can also trigger the release manually from the GitHub Actions tab:
 
 ### 3. Publish Crates
 - Publishes the `neo3` crate to crates.io
-- Publishes the `neo-cli` crate to crates.io
 - Handles crate propagation delays
 
 ### 4. Update Documentation
@@ -126,7 +125,7 @@ For each release, the following assets are created:
 
 The workflow requires the following secrets to be set in your GitHub repository:
 
-1. **`CARGO_REGISTRY_TOKEN`** - Token for publishing to crates.io
+1. **`CARGO_TOKEN`** - Token for publishing to crates.io
    - Go to [crates.io](https://crates.io/me) and generate an API token
    - Add it as a repository secret in GitHub
 
@@ -184,13 +183,13 @@ Error: cross compilation failed
 
 ## Example Release Process
 
-Here's a complete example of releasing version 0.3.0:
+Here's a complete example of releasing version 1.0.0:
 
 ```bash
 # 1. Update version numbers
-sed -i 's/version = "0.2.3"/version = "0.3.0"/g' Cargo.toml
-sed -i 's/version = "0.2.3"/version = "0.3.0"/g' neo-cli/Cargo.toml
-sed -i 's/neo3.*version = "0.2.3"/neo3 = { path = "..", version = "0.3.0" }/g' neo-cli/Cargo.toml
+sed -i 's/version = "0.9.0"/version = "1.0.0"/g' Cargo.toml
+sed -i 's/version = "0.9.0"/version = "1.0.0"/g' neo-cli/Cargo.toml
+sed -i 's/neo3.*version = "0.9.0"/neo3 = { path = "..", version = "1.0.0" }/g' neo-cli/Cargo.toml
 
 # 2. Update CHANGELOG.md (manually edit the file)
 
@@ -200,12 +199,12 @@ cd neo-cli && cargo test --all-features
 
 # 4. Commit changes
 git add .
-git commit -m "chore: bump version to 0.3.0"
+git commit -m "chore: bump version to 1.0.0"
 git push origin master
 
 # 5. Create and push tag
-git tag -a v0.3.0 -m "Release v0.3.0: Add new features and improvements"
-git push origin v0.3.0
+git tag -a v1.0.0 -m "Release v1.0.0: Add new features and improvements"
+git push origin v1.0.0
 
 # 6. Monitor the workflow in GitHub Actions
 # 7. Verify the release was created successfully

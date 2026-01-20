@@ -276,7 +276,7 @@ impl NeoService {
 
 1. **📚 [Explore Documentation](../intro.md)** - Learn about advanced features
 2. **🔍 [View Examples](/examples)** - See more practical code examples  
-3. **🛠️ [Try the CLI Tool](/cli)** - Use command-line tools for development
+3. **🛠️ [Try the CLI Tool](/cli/intro)** - Use command-line tools for development
 4. **🤝 [Join Community](https://github.com/R3E-Network/NeoRust/discussions)** - Get help and share projects
 
 ### Useful Resources

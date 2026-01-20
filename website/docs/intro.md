@@ -2,7 +2,7 @@
 
 <div className="hero hero--primary">
   <div className="container">
-    <h1 className="hero__title">🚀 NeoRust v0.4.2</h1>
+    <h1 className="hero__title">🚀 NeoRust v1.0.0</h1>
     <p className="hero__subtitle">
       Production-Ready Neo N3 Development Suite with 135 Passing Doc Tests
     </p>
@@ -49,7 +49,7 @@
         </p>
       </div>
       <div className="card__footer">
-        <a href="/cli" className="button button--primary">Explore CLI →</a>
+        <a href="/cli/intro" className="button button--primary">Explore CLI →</a>
       </div>
     </div>
   </div>
@@ -66,7 +66,7 @@
         </p>
       </div>
       <div className="card__footer">
-        <a href="/sdk" className="button button--primary">Explore SDK →</a>
+        <a href="/sdk/intro" className="button button--primary">Explore SDK →</a>
       </div>
     </div>
   </div>
@@ -91,8 +91,8 @@
   </div>
   <div className="col col--3">
     <div className="text--center">
-      <h2 className="gradient-text">Zero</h2>
-      <p><strong>Breaking Changes</strong></p>
+      <h2 className="gradient-text">100%</h2>
+      <p><strong>Breaking Changes Documented</strong></p>
     </div>
   </div>
   <div className="col col--3">
@@ -125,7 +125,7 @@ cargo build --release
 
 ```toml
 [dependencies]
-neo3 = "0.4.2"
+neo3 = "1.0.0"
 ```
 
 ```rust
@@ -169,19 +169,19 @@ This documentation is organized into several sections:
 ### 📖 **Getting Started**
 - [Installation Guide](./getting-started/installation) - Set up your development environment
 - [Quick Start](./getting-started/quick-start) - Get up and running in 5 minutes
-- [First Wallet](./getting-started/first-wallet) - Create your first Neo wallet
+- [Testing Guide](./testing) - Validate and test your integration
 
 ### 💻 **Command Line Interface**
-- [CLI Overview](./cli/overview) - Introduction to the command line tools
-- [Commands Reference](./cli/commands) - Complete command documentation
-- [Configuration](./cli/configuration) - Customizing the CLI
-- [Scripting](./cli/scripting) - Automation and scripting examples
+- [CLI Intro](/cli/intro) - Introduction to the command line tools
+- [Commands Reference](/cli/commands) - Complete command documentation
+- [Configuration](/cli/configuration) - Customizing the CLI
 
 ### 📚 **Rust SDK**
-- [SDK Overview](./sdk/overview) - Introduction to the Rust library
-- [Integration Guide](./sdk/integration) - Integrating NeoRust into your project
-- [Examples](./sdk/examples) - Real-world usage examples
-- [API Reference](./sdk/api-reference) - Complete API documentation
+- [SDK Intro](/sdk/intro) - Introduction to the Rust library
+- [Installation](/sdk/installation) - Set up the SDK in your project
+- [Quick Start](/sdk/quick-start) - Build your first SDK workflow
+- [Examples](/sdk/examples) - Real-world usage examples
+- [API Reference](/sdk/api-reference) - Complete API documentation
 
 ## 🌐 Community & Support
 
@@ -191,9 +191,9 @@ This documentation is organized into several sections:
 - **Documentation**: [Comprehensive guides and API docs](https://neorust.netlify.app)
 
 ### 🤝 **Contributing**
-- **[Contributing Guide](./advanced/contributing)**: How to contribute to NeoRust
-- **[Development Setup](./advanced/architecture)**: Set up development environment
-- **[Code Style](./advanced/performance)**: Coding standards and guidelines
+- **[Contributing Guide](https://github.com/R3E-Network/NeoRust/blob/v1.0.0/CONTRIBUTING.md)**: How to contribute to NeoRust
+- **[System Architecture](https://github.com/R3E-Network/NeoRust/blob/v1.0.0/SYSTEM_ARCHITECTURE_DESIGN.md)**: Core architecture and components
+- **[API Guidelines](https://github.com/R3E-Network/NeoRust/blob/v1.0.0/API_GUIDELINES.md)**: API design standards and guidance
 
 ### 🔗 **Links**
 - **Website**: [https://neorust.netlify.app](https://neorust.netlify.app)
@@ -211,10 +211,10 @@ This documentation is organized into several sections:
     <a href="/docs/intro" className="button button--primary button--lg margin--sm">
       📘 Read the Docs
     </a>
-    <a href="/cli" className="button button--secondary button--lg margin--sm">
+    <a href="/cli/intro" className="button button--secondary button--lg margin--sm">
       💻 Use CLI Tools
     </a>
-    <a href="/sdk" className="button button--outline button--lg margin--sm">
+    <a href="/sdk/intro" className="button button--outline button--lg margin--sm">
       📚 Integrate SDK
     </a>
   </div>

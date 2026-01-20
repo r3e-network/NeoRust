@@ -1,7 +1,7 @@
 {
   "id": "api-reference",
   "title": "API Reference",
-  "description": "Complete API documentation for NeoRust SDK v0.4.2.",
+  "description": "Complete API documentation for NeoRust SDK v1.0.0.",
   "source": "@site/sdk/api-reference.md",
   "sourceDirName": ".",
   "slug": "/api-reference",

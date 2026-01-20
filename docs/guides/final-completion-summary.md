@@ -1,5 +1,5 @@
 # 🎉 Final Completion Summary: GitHub Workflow Issues RESOLVED
-> Historical note: This report captured the v0.4.1 stabilization. The current SDK release is v0.5.5; see the main README and migration guides for the latest details.
+> Historical note: This report captured the v0.4.1 stabilization. The current SDK release is v1.0.0; see the main README and migration guides for the latest details.
 
 ## **MISSION ACCOMPLISHED! ✅**
 

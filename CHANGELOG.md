@@ -9,6 +9,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 _No changes yet._
 
+## [1.0.0] - 2026-01-20
+
+### ⚠️ Breaking Changes
+
+- Removed GUI applications and related tooling; the repository now ships CLI + SDK only.
+
+### 🔧 Changed
+
+- Updated documentation, website content, and monitoring configuration to reflect the CLI-only scope.
+
 ## [0.5.5] - 2026-01-20
 
 ### ⚠️ Breaking Changes

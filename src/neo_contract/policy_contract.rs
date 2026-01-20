@@ -137,7 +137,9 @@ impl<'a, P: JsonRpcProvider + 'static> PolicyContract<'a, P> {
 	///
 	/// This method is available after HF_Echidna.
 	pub async fn get_max_valid_until_block_increment(&self) -> Result<u32, ContractError> {
-		Ok(self.call_function_returning_int("getMaxValidUntilBlockIncrement", vec![]).await? as u32)
+		Ok(self
+			.call_function_returning_int("getMaxValidUntilBlockIncrement", vec![])
+			.await? as u32)
 	}
 
 	/// Sets the maximum ValidUntilBlock increment.
@@ -185,8 +187,9 @@ impl<'a, P: JsonRpcProvider + 'static> PolicyContract<'a, P> {
 	///
 	/// * `attribute_type` - The transaction attribute type (as a byte value).
 	pub async fn get_attribute_fee(&self, attribute_type: u8) -> Result<u32, ContractError> {
-		Ok(self.call_function_returning_int("getAttributeFee", vec![attribute_type.into()]).await?
-			as u32)
+		Ok(self
+			.call_function_returning_int("getAttributeFee", vec![attribute_type.into()])
+			.await? as u32)
 	}
 
 	/// Sets the fee for a specific transaction attribute type.
@@ -204,7 +207,8 @@ impl<'a, P: JsonRpcProvider + 'static> PolicyContract<'a, P> {
 		attribute_type: u8,
 		value: u32,
 	) -> Result<TransactionBuilder<'_, P>, ContractError> {
-		self.invoke_function("setAttributeFee", vec![attribute_type.into(), value.into()]).await
+		self.invoke_function("setAttributeFee", vec![attribute_type.into(), value.into()])
+			.await
 	}
 
 	// ========== Account Blocking ==========
@@ -217,9 +221,7 @@ impl<'a, P: JsonRpcProvider + 'static> PolicyContract<'a, P> {
 	/// Gets blocked accounts as an iterator.
 	///
 	/// Available after HF_Faun.
-	pub async fn get_blocked_accounts(
-		&self,
-	) -> Result<NeoIterator<'_, H160, P>, ContractError> {
+	pub async fn get_blocked_accounts(&self) -> Result<NeoIterator<'_, H160, P>, ContractError> {
 		self.call_function_returning_iterator(
 			"getBlockedAccounts",
 			vec![],
@@ -341,9 +343,8 @@ impl<'a, P: JsonRpcProvider + 'static> PolicyContract<'a, P> {
 			"getWhitelistFeeContracts",
 			vec![],
 			Arc::new(|item: StackItem| {
-				WhitelistedContract::from_stack_item(&item).unwrap_or_else(|_| {
-					WhitelistedContract::new(H160::zero(), String::new(), 0, 0)
-				})
+				WhitelistedContract::from_stack_item(&item)
+					.unwrap_or_else(|_| WhitelistedContract::new(H160::zero(), String::new(), 0, 0))
 			}),
 		)
 		.await

@@ -163,7 +163,8 @@ pub fn recover_secp256k1(message_hash: &[u8], signature: &[u8]) -> Option<Vec<u8
 
 	let signature = K256Signature::from_bytes(&sig_bytes.into()).ok()?;
 
-	let recovered_key = K256VerifyingKey::recover_from_prehash(message_hash, &signature, recovery_id).ok()?;
+	let recovered_key =
+		K256VerifyingKey::recover_from_prehash(message_hash, &signature, recovery_id).ok()?;
 
 	// Return the compressed public key (33 bytes)
 	Some(recovered_key.to_sec1_bytes().to_vec())

@@ -1,7 +1,4 @@
-use std::{
-	fmt::Debug,
-	hash::Hash,
-};
+use std::{fmt::Debug, hash::Hash};
 
 use crate::neo_crypto::utils::FromBase64String;
 use primitive_types::H256;
@@ -25,19 +22,13 @@ pub enum TransactionAttribute {
 	OracleResponse(OracleResponse),
 
 	#[serde(rename = "NotValidBefore")]
-	NotValidBefore {
-		height: u32,
-	},
+	NotValidBefore { height: u32 },
 
 	#[serde(rename = "Conflicts")]
-	Conflicts {
-		hash: H256,
-	},
+	Conflicts { hash: H256 },
 
 	#[serde(rename = "NotaryAssisted")]
-	NotaryAssisted {
-		n: u16,
-	},
+	NotaryAssisted { n: u16 },
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Hash, Debug, Clone)]
@@ -136,18 +127,18 @@ impl NeoSerializable for TransactionAttribute {
 				}
 			},
 			TransactionAttribute::NotValidBefore { height } => {
-				writer.write_u8(0x20); 
+				writer.write_u8(0x20);
 				writer.write_u32(*height);
 				// We assume Post-Domovoi, so no 28-byte padding.
 				// If we needed to support pre-Domovoi, we'd need context which Encoder doesn't have easily.
 				// Given this is a Neo 3.9 SDK, we use the modern format.
 			},
 			TransactionAttribute::Conflicts { hash } => {
-				writer.write_u8(0x21); 
+				writer.write_u8(0x21);
 				writer.write_bytes(hash.as_bytes());
 			},
 			TransactionAttribute::NotaryAssisted { n } => {
-				writer.write_u8(0x22); 
+				writer.write_u8(0x22);
 				writer.write_u16(*n);
 			},
 		}
@@ -163,7 +154,7 @@ impl NeoSerializable for TransactionAttribute {
 						e
 					))
 				})?;
-				
+
 				let response_code_byte = reader.read_u8_safe()?;
 				let response_code =
 					OracleResponseCode::try_from(response_code_byte).map_err(|_| {
@@ -188,20 +179,38 @@ impl NeoSerializable for TransactionAttribute {
 				}))
 			},
 			0x20 => {
-				let height = reader.read_u32().map_err(|e| TransactionError::TransactionConfiguration(format!("Failed to read NotValidBefore height: {}", e)))?;
+				let height = reader.read_u32().map_err(|e| {
+					TransactionError::TransactionConfiguration(format!(
+						"Failed to read NotValidBefore height: {}",
+						e
+					))
+				})?;
 				// Again, we assume post-Domovoi format (no padding consumer)
 				Ok(TransactionAttribute::NotValidBefore { height })
 			},
 			0x21 => {
-				let hash_bytes = reader.read_bytes(32).map_err(|e| TransactionError::TransactionConfiguration(format!("Failed to read Conflicts hash: {}", e)))?;
+				let hash_bytes = reader.read_bytes(32).map_err(|e| {
+					TransactionError::TransactionConfiguration(format!(
+						"Failed to read Conflicts hash: {}",
+						e
+					))
+				})?;
 				let hash = H256::from_slice(&hash_bytes);
 				Ok(TransactionAttribute::Conflicts { hash })
 			},
 			0x22 => {
-				let n = reader.read_u16().map_err(|e| TransactionError::TransactionConfiguration(format!("Failed to read NotaryAssisted n: {}", e)))?;
+				let n = reader.read_u16().map_err(|e| {
+					TransactionError::TransactionConfiguration(format!(
+						"Failed to read NotaryAssisted n: {}",
+						e
+					))
+				})?;
 				Ok(TransactionAttribute::NotaryAssisted { n })
 			},
-			t => Err(TransactionError::TransactionConfiguration(format!("Invalid transaction attribute type: {}", t))),
+			t => Err(TransactionError::TransactionConfiguration(format!(
+				"Invalid transaction attribute type: {}",
+				t
+			))),
 		}
 	}
 

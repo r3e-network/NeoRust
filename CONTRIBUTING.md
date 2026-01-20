@@ -57,10 +57,6 @@ cargo build --workspace
 # Run tests
 cargo test --workspace
 
-# For GUI development
-cd neo-gui
-npm install
-npm run dev
 ```
 
 ### Branch Naming Convention
@@ -125,10 +121,6 @@ cargo fmt --all
 # Run clippy
 cargo clippy --workspace --all-features -- -D warnings
 
-# For TypeScript/React (GUI)
-cd neo-gui
-npm run lint
-npm run format
 ```
 
 ### Testing
@@ -136,8 +128,6 @@ npm run format
 - **Unit Tests**: Place in the same file as the code using `#[cfg(test)]`
 - **Integration Tests**: Place in `tests/` directory
 - **Documentation Tests**: Include examples in doc comments
-- **GUI Tests**: Use Jest for unit tests and Playwright for E2E tests
-
 ```bash
 # Run all tests
 cargo test --workspace
@@ -148,10 +138,6 @@ cargo test test_name
 # Run tests with output
 cargo test -- --nocapture
 
-# Run GUI tests
-cd neo-gui
-npm test
-npm run test:e2e
 ```
 
 ### Documentation
@@ -221,7 +207,6 @@ NeoRust/
 ├── crates/                 # Individual crates (future)
 ├── examples/               # Example applications
 ├── neo-cli/               # CLI application
-├── neo-gui/               # GUI application
 ├── tests/                 # Integration tests
 ├── benches/               # Benchmarks
 └── docs/                  # Documentation

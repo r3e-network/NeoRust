@@ -499,13 +499,13 @@ export default function Home(): JSX.Element {
               </div>
               
               <div className={clsx('card', styles.tool)}>
-                <div className={styles.toolIcon}>🖥️</div>
-                <h3 className={styles.toolTitle}>Desktop GUI</h3>
+                <div className={styles.toolIcon}>📘</div>
+                <h3 className={styles.toolTitle}>Guides & Examples</h3>
                 <p className={styles.toolDescription}>
-                  Modern desktop application built with Tauri for managing wallets, tokens, and blockchain interactions.
+                  Step-by-step guides and real-world examples to accelerate wallet, contract, and integration work.
                 </p>
-                <Link to="/gui" className={clsx('btn btn-primary', styles.toolButton)}>
-                  View GUI
+                <Link to="/docs/getting-started/quick-start" className={clsx('btn btn-primary', styles.toolButton)}>
+                  Get Started
                 </Link>
               </div>
               

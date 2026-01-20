@@ -41,17 +41,4 @@ cp -a ~/.cargo/advisory-db /tmp/rustsec-advisory-db
 cargo audit --db /tmp/rustsec-advisory-db --no-fetch
 ```
 
-## Frontend / Tauri App (`neo-gui`)
-
-The legacy `neo-gui` app is not part of the Rust workspace. If you work on it, verify it separately:
-
-```bash
-cd neo-gui
-npm ci
-npm run lint
-npm test
-```
-
----
-
 **Happy coding! 🦀🌐**

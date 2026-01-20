@@ -7,8 +7,8 @@
       Production-Ready Neo N3 Development Suite with 135 Passing Doc Tests
     </p>
     <p>
-      The most comprehensive toolkit for Neo N3 blockchain development. 
-      Build with confidence using our beautiful GUI, powerful CLI, and robust Rust SDK.
+      The most comprehensive toolkit for Neo N3 blockchain development.
+      Build with confidence using our powerful CLI, robust Rust SDK, and curated guides.
     </p>
   </div>
 </div>
@@ -17,22 +17,22 @@
 
 **NeoRust** isn't just another blockchain SDK - it's a complete development ecosystem that provides everything you need to build production-ready Neo N3 applications.
 
-### ✨ **Three Powerful Interfaces**
+### ✨ **Three Powerful Resources**
 
 <div className="row">
   <div className="col col--4">
     <div className="card">
       <div className="card__header">
-        <h3>🖥️ Desktop GUI</h3>
+        <h3>📘 Guides & Examples</h3>
       </div>
       <div className="card__body">
         <p>
-          Beautiful, modern interface for wallet management, NFT trading, 
-          and blockchain interaction. Perfect for end users and visual workflows.
+          Step-by-step guides and real-world examples for wallets, contracts,
+          and integration workflows.
         </p>
       </div>
       <div className="card__footer">
-        <a href="/gui" className="button button--primary">Explore GUI →</a>
+        <a href="/docs/getting-started/quick-start" className="button button--primary">Get Started →</a>
       </div>
     </div>
   </div>
@@ -113,15 +113,6 @@
 
 Choose your preferred interface and get started in minutes:
 
-### 🖥️ **Desktop GUI** (Recommended for Users)
-
-```bash
-git clone https://github.com/R3E-Network/NeoRust.git
-cd NeoRust/neo-gui
-npm install && npm run dev
-# Open http://localhost:1420
-```
-
 ### 💻 **Command Line** (Recommended for Developers)
 
 ```bash
@@ -180,12 +171,6 @@ This documentation is organized into several sections:
 - [Quick Start](./getting-started/quick-start) - Get up and running in 5 minutes
 - [First Wallet](./getting-started/first-wallet) - Create your first Neo wallet
 
-### 🖥️ **Desktop GUI**
-- [GUI Overview](./gui/overview) - Introduction to the desktop application
-- [Wallet Management](./gui/wallet-management) - Managing wallets and accounts
-- [NFT Operations](./gui/nft-operations) - Working with NFTs
-- [Developer Tools](./gui/developer-tools) - Built-in development utilities
-
 ### 💻 **Command Line Interface**
 - [CLI Overview](./cli/overview) - Introduction to the command line tools
 - [Commands Reference](./cli/commands) - Complete command documentation
@@ -223,8 +208,8 @@ This documentation is organized into several sections:
   <p>Choose your preferred interface and start building amazing blockchain applications today!</p>
   
   <div className="margin-top--lg">
-    <a href="/gui" className="button button--primary button--lg margin--sm">
-      🖥️ Try Desktop GUI
+    <a href="/docs/intro" className="button button--primary button--lg margin--sm">
+      📘 Read the Docs
     </a>
     <a href="/cli" className="button button--secondary button--lg margin--sm">
       💻 Use CLI Tools

@@ -35,9 +35,6 @@ The workflow builds binaries for the following platforms:
    sed -i 's/version = "0.2.3"/version = "0.3.0"/g' neo-cli/Cargo.toml
    sed -i 's/neo3.*version = "0.2.3"/neo3 = { path = "..", version = "0.3.0" }/g' neo-cli/Cargo.toml
    
-   # Update GUI Cargo.toml
-   sed -i 's/version = "0.2.3"/version = "0.3.0"/g' neo-gui/Cargo.toml
-   sed -i 's/neo3.*version = "0.2.3"/neo3 = { path = "..", version = "0.3.0" }/g' neo-gui/Cargo.toml
    ```
 
 2. **Update CHANGELOG.md** with the new version:
@@ -85,7 +82,7 @@ You can also trigger the release manually from the GitHub Actions tab:
 - Sets up the release for binary uploads
 
 ### 2. Build Binaries
-- Builds CLI and GUI binaries for all supported platforms
+- Builds CLI binaries for all supported platforms
 - Creates individual binary files and compressed archives
 - Uploads all binaries to the GitHub release
 
@@ -114,13 +111,6 @@ For each release, the following assets are created:
 - `neo-cli-macos-aarch64` - CLI for Apple Silicon Macs
 - `neo-cli-windows-x86_64.exe` - CLI for Windows x64
 - `neo-cli-windows-i686.exe` - CLI for Windows x86
-
-- `neo-gui-linux-x86_64` - GUI for Linux x64 (if available)
-- `neo-gui-linux-aarch64` - GUI for Linux ARM64 (if available)
-- `neo-gui-macos-x86_64` - GUI for Intel Macs (if available)
-- `neo-gui-macos-aarch64` - GUI for Apple Silicon Macs (if available)
-- `neo-gui-windows-x86_64.exe` - GUI for Windows x64 (if available)
-- `neo-gui-windows-i686.exe` - GUI for Windows x86 (if available)
 
 ### Compressed Archives
 - `neorust-linux-x86_64.tar.gz` - All Linux x64 binaries
@@ -168,15 +158,6 @@ Error: cross compilation failed
 - Verify that all dependencies support cross-compilation
 - Check for platform-specific code issues
 
-#### 3. GUI Build Fails
-```
-Error: neo-gui build failed
-```
-**Solution**:
-- GUI builds are marked as `continue-on-error: true`
-- Check the GUI dependencies and build requirements
-- Ensure Tauri dependencies are properly configured
-
 ### Monitoring Releases
 
 1. **Check the Actions tab** for workflow progress
@@ -199,7 +180,7 @@ Error: neo-gui build failed
 ### Testing
 - Run the full test suite before releasing
 - Test binaries on target platforms when possible
-- Verify that the CLI and GUI work as expected
+- Verify that the CLI works as expected
 
 ## Example Release Process
 

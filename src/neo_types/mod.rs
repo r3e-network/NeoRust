@@ -88,6 +88,7 @@ pub use op_code::*;
 pub use path_or_string::*;
 pub use plugin_type::*;
 pub mod script_hash;
+pub use hardfork::*;
 pub use script_hash::{ScriptHash, ScriptHashExtension};
 pub use serde_with_utils::*;
 pub use stack_item::*;
@@ -95,17 +96,16 @@ pub use syncing::*;
 pub use tx_pool::*;
 pub use url_session::*;
 pub use util::*;
-pub use hardfork::*;
 pub use whitelisted_contract::*;
 
 // Make modules public for direct access
 pub mod contract;
-pub mod hardfork;
-pub mod whitelisted_contract;
 pub mod error;
+pub mod hardfork;
 pub mod nns;
 pub mod serde_value;
 pub mod serde_with_utils;
+pub mod whitelisted_contract;
 
 mod address;
 mod address_or_scripthash;

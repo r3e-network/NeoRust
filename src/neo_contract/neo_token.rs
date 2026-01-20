@@ -194,9 +194,7 @@ impl<'a, P: JsonRpcProvider + 'static> NeoToken<'a, P> {
 	///
 	/// The script hash of the committee's multi-signature address.
 	pub async fn get_committee_address(&self) -> Result<H160, ContractError> {
-		let result = self
-			.call_invoke_function("getCommitteeAddress", vec![], vec![])
-			.await?;
+		let result = self.call_invoke_function("getCommitteeAddress", vec![], vec![]).await?;
 		self.throw_if_fault_state(&result)?;
 
 		let item = result

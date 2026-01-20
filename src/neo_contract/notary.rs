@@ -36,8 +36,7 @@ impl NotaryDeposit {
 	pub fn from_stack_item(item: &StackItem) -> Result<Self, String> {
 		match item {
 			StackItem::Struct { value } | StackItem::Array { value } if value.len() >= 2 => {
-				let amount =
-					value[0].as_int().ok_or_else(|| "Invalid amount".to_string())?;
+				let amount = value[0].as_int().ok_or_else(|| "Invalid amount".to_string())?;
 
 				let till = value[1].as_int().ok_or_else(|| "Invalid till".to_string())? as u32;
 
@@ -139,7 +138,8 @@ impl<'a, P: JsonRpcProvider + 'static> NotaryContract<'a, P> {
 		account: &H160,
 		till: u32,
 	) -> Result<TransactionBuilder<'_, P>, ContractError> {
-		self.invoke_function("lockDepositUntil", vec![account.into(), till.into()]).await
+		self.invoke_function("lockDepositUntil", vec![account.into(), till.into()])
+			.await
 	}
 
 	/// Withdraws the deposit from the specified account.
@@ -254,4 +254,3 @@ mod tests {
 		assert_eq!(deposit.till, 100000);
 	}
 }
-

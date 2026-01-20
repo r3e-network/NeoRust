@@ -32,7 +32,7 @@
       "permalink": "/blog/tags/beginner"
     }
   ],
-  "readingTime": 11.53,
+  "readingTime": 11.54,
   "hasTruncateMarker": true,
   "authors": [
     {
@@ -61,7 +61,7 @@
   },
   "unlisted": false,
   "prevItem": {
-    "title": "🎉 NeoRust v0.4.1 Released - Production-Ready Neo N3 Development",
-    "permalink": "/blog/neorust-v0.4.1-release"
+    "title": "🎉 NeoRust v1.0.0 Released - Production-Ready Neo N3 Development",
+    "permalink": "/blog/neorust-v1.0.0-release"
   }
 }

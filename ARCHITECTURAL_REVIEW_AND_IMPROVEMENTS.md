@@ -2,7 +2,7 @@
 
 ## Executive Summary
 
-As a blockchain SDK expert, I've conducted a comprehensive review of the NeoRust SDK v0.4.4. The SDK demonstrates strong fundamentals with 99.5% production readiness, but there are opportunities to enhance professionalism, completeness, and user-friendliness.
+As a blockchain SDK expert, I've conducted a comprehensive review of the NeoRust SDK v1.0.0. The SDK demonstrates strong fundamentals with 99.5% production readiness, but there are opportunities to enhance professionalism, completeness, and user-friendliness.
 
 ## Current State Assessment
 

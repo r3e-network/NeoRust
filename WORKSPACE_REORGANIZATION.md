@@ -98,7 +98,7 @@ members = [
 ]
 
 [workspace.package]
-version = "0.5.0"
+version = "1.0.0"
 authors = ["R3E Network <team@r3e.network>"]
 edition = "2021"
 license = "MIT OR Apache-2.0"

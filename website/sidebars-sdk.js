@@ -1,7 +1,7 @@
 // @ts-check
 
 /**
- * NeoRust SDK Sidebar Configuration v0.4.1
+ * NeoRust SDK Sidebar Configuration v1.0.0
  * Simplified navigation for the Rust SDK documentation
  * @type {import('@docusaurus/plugin-content-docs').SidebarsConfig}
  */

@@ -1,5 +1,5 @@
 {
-  "/blog-39d": {
+  "/blog-e99": {
     "__comp": "a6aa9e1f",
     "__context": {
       "plugin": "36994c47"
@@ -7,10 +7,10 @@
     "sidebar": "814f3328",
     "items": [
       {
-        "content": "d3323f26"
+        "content": "14fea898"
       },
       {
-        "content": "9e85f735"
+        "content": "f4908e99"
       },
       {
         "content": "4e9f12a1"
@@ -47,7 +47,7 @@
     "sidebar": "814f3328",
     "content": "27085fdb"
   },
-  "/blog/neorust-v0.4.1-release-003": {
+  "/blog/neorust-v1.0.0-docs-quality-774": {
     "__comp": "ccc49370",
     "__context": {
       "data": {
@@ -56,9 +56,9 @@
       "plugin": "36994c47"
     },
     "sidebar": "814f3328",
-    "content": "0dbec274"
+    "content": "990ac75a"
   },
-  "/blog/neorust-v0.4.2-release-f74": {
+  "/blog/neorust-v1.0.0-release-4f1": {
     "__comp": "ccc49370",
     "__context": {
       "data": {
@@ -67,7 +67,7 @@
       "plugin": "36994c47"
     },
     "sidebar": "814f3328",
-    "content": "70167549"
+    "content": "61e7a122"
   },
   "/blog/tags-287": {
     "__comp": "01a85c17",
@@ -90,7 +90,7 @@
     ],
     "__props": "8e4df3f0"
   },
-  "/blog/tags/blockchain-393": {
+  "/blog/tags/blockchain-6da": {
     "__comp": "6875c492",
     "__context": {
       "plugin": "36994c47"
@@ -98,10 +98,10 @@
     "sidebar": "814f3328",
     "items": [
       {
-        "content": "d3323f26"
+        "content": "14fea898"
       },
       {
-        "content": "9e85f735"
+        "content": "f4908e99"
       }
     ],
     "__props": "78be4dd5"
@@ -119,7 +119,7 @@
     ],
     "__props": "bed88b70"
   },
-  "/blog/tags/documentation-57a": {
+  "/blog/tags/documentation-606": {
     "__comp": "6875c492",
     "__context": {
       "plugin": "36994c47"
@@ -127,12 +127,12 @@
     "sidebar": "814f3328",
     "items": [
       {
-        "content": "d3323f26"
+        "content": "14fea898"
       }
     ],
     "__props": "af8066c0"
   },
-  "/blog/tags/neo-3-229": {
+  "/blog/tags/neo-3-934": {
     "__comp": "6875c492",
     "__context": {
       "plugin": "36994c47"
@@ -140,10 +140,10 @@
     "sidebar": "814f3328",
     "items": [
       {
-        "content": "d3323f26"
+        "content": "14fea898"
       },
       {
-        "content": "9e85f735"
+        "content": "f4908e99"
       },
       {
         "content": "4e9f12a1"
@@ -151,7 +151,7 @@
     ],
     "__props": "bdbe6e7e"
   },
-  "/blog/tags/quality-fa3": {
+  "/blog/tags/quality-116": {
     "__comp": "6875c492",
     "__context": {
       "plugin": "36994c47"
@@ -159,12 +159,12 @@
     "sidebar": "814f3328",
     "items": [
       {
-        "content": "d3323f26"
+        "content": "14fea898"
       }
     ],
     "__props": "e8ef6962"
   },
-  "/blog/tags/release-097": {
+  "/blog/tags/release-c46": {
     "__comp": "6875c492",
     "__context": {
       "plugin": "36994c47"
@@ -172,15 +172,15 @@
     "sidebar": "814f3328",
     "items": [
       {
-        "content": "d3323f26"
+        "content": "14fea898"
       },
       {
-        "content": "9e85f735"
+        "content": "f4908e99"
       }
     ],
     "__props": "c9cac9d9"
   },
-  "/blog/tags/rust-6af": {
+  "/blog/tags/rust-e98": {
     "__comp": "6875c492",
     "__context": {
       "plugin": "36994c47"
@@ -188,10 +188,10 @@
     "sidebar": "814f3328",
     "items": [
       {
-        "content": "d3323f26"
+        "content": "14fea898"
       },
       {
-        "content": "9e85f735"
+        "content": "f4908e99"
       },
       {
         "content": "4e9f12a1"
@@ -199,7 +199,7 @@
     ],
     "__props": "d7de637e"
   },
-  "/blog/tags/sdk-af4": {
+  "/blog/tags/sdk-56d": {
     "__comp": "6875c492",
     "__context": {
       "plugin": "36994c47"
@@ -207,10 +207,10 @@
     "sidebar": "814f3328",
     "items": [
       {
-        "content": "d3323f26"
+        "content": "14fea898"
       },
       {
-        "content": "9e85f735"
+        "content": "f4908e99"
       }
     ],
     "__props": "8179312c"
@@ -241,24 +241,24 @@
       "plugin": "c141421f"
     }
   },
-  "/cli-1f5": {
+  "/cli-4c1": {
     "__comp": "5e95c892",
     "__context": {
       "plugin": "19622068"
     }
   },
-  "/cli-527": {
+  "/cli-242": {
     "__comp": "a7bd4aaa",
     "__props": "58880a5f"
   },
-  "/cli-ec0": {
+  "/cli-f76": {
     "__comp": "a94703ab"
   },
   "/cli/commands-c46": {
     "__comp": "17896441",
     "content": "05b3d406"
   },
-  "/cli/configuration-34e": {
+  "/cli/configuration-51b": {
     "__comp": "17896441",
     "content": "7495bed9"
   },
@@ -266,79 +266,34 @@
     "__comp": "17896441",
     "content": "9cc01b4b"
   },
-  "/docs-2e9": {
+  "/docs-a4b": {
     "__comp": "5e95c892",
     "__context": {
       "plugin": "aba21aa0"
     }
   },
-  "/docs-a95": {
+  "/docs-b3f": {
     "__comp": "a7bd4aaa",
     "__props": "0058b4c6"
   },
-  "/docs-45d": {
+  "/docs-dbd": {
     "__comp": "a94703ab"
   },
   "/docs/getting-started/installation-b95": {
     "__comp": "17896441",
     "content": "54f44165"
   },
-  "/docs/getting-started/quick-start-a2d": {
+  "/docs/getting-started/quick-start-dc1": {
     "__comp": "17896441",
     "content": "588bd741"
   },
-  "/docs/intro-b40": {
+  "/docs/intro-a79": {
     "__comp": "17896441",
     "content": "0e384e19"
   },
   "/docs/testing-5bd": {
     "__comp": "17896441",
     "content": "fbe93038"
-  },
-  "/gui-515": {
-    "__comp": "5e95c892",
-    "__context": {
-      "plugin": "4980b587"
-    }
-  },
-  "/gui-b29": {
-    "__comp": "a7bd4aaa",
-    "__props": "7d8b676e"
-  },
-  "/gui-538": {
-    "__comp": "a94703ab"
-  },
-  "/gui/basic-operations-3f3": {
-    "__comp": "17896441",
-    "content": "894f6afc"
-  },
-  "/gui/first-wallet-efc": {
-    "__comp": "17896441",
-    "content": "ad273aa5"
-  },
-  "/gui/installation-938": {
-    "__comp": "17896441",
-    "content": "6706447e"
-  },
-  "/gui/intro-c25": {
-    "__comp": "17896441",
-    "content": "f672b7f6"
-  },
-  "/gui/settings-be4": {
-    "__comp": "17896441",
-    "content": "b3c3471f"
-  },
-  "/gui/token-operations-3f2": {
-    "__comp": "17896441",
-    "content": "92d93292"
-  },
-  "/gui/transactions-6fc": {
-    "__comp": "17896441",
-    "content": "75ce022d"
-  },
-  "/gui/wallet-management-e0d": {
-    "__comp": "17896441",
-    "content": "91559b99"
   },
   "/sdk-5bc": {
     "__comp": "5e95c892",

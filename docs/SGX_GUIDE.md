@@ -1,5 +1,5 @@
 # SGX Support Guide - NeoRust (updated for v1.0.0)
-> Note: This guide originated with v0.4.4; the SGX/no_std feature set remains the same. Use the latest published crate version in the snippets below.
+> Note: This guide originated with v1.0.0; the SGX/no_std feature set remains the same. Use the latest published crate version in the snippets below.
 
 ## Overview
 

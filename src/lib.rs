@@ -26,9 +26,9 @@
 //!   hardware wallets for transaction signing and key management. This feature provides an additional
 //!   security layer by keeping private keys on dedicated hardware.
 //!
-//! - **aws**: ⚠️ **DISABLED in v0.4.1** due to security vulnerabilities in rusoto dependencies.
-//!   Will be re-enabled in a future version with modern AWS SDK. For AWS KMS integration,
-//!   please use v0.3.0 or wait for the next major release with updated AWS dependencies.
+//! - **aws**: ⚠️ **DISABLED in v1.0.0** due to security vulnerabilities in rusoto dependencies.
+//!   Will be re-enabled in a future 1.x release with the modern AWS SDK. For AWS KMS integration,
+//!   use the legacy v0.3.x line or wait for updated AWS SDK support.
 //!
 //! - **sgx**: Enables Intel SGX (Software Guard Extensions) support for running Neo operations
 //!   in secure enclaves. This feature enables `no_std` compilation and provides hardware-based
@@ -57,7 +57,7 @@
 //! intuitive, type-safe, and productive. The library provides full support for all
 //! Neo N3 features and follows Rust best practices for reliability and performance.
 //!
-//! ### New in v0.5.x
+//! ### New in v1.0.x
 //! - **WebSocket Support**: Real-time blockchain events with automatic reconnection
 //! - **HD Wallets (BIP-39/44)**: Deterministic wallet generation and derivation
 //! - **Transaction Simulation**: Preview fees, VM state, and state changes before sending
@@ -443,7 +443,7 @@ pub mod neo_sgx;
 pub mod neo_wallets;
 pub mod neo_x;
 
-// High-level SDK API (new in v0.5.x)
+// High-level SDK API (new in v1.0.x)
 pub mod sdk;
 
 // Re-exports for convenience
@@ -685,7 +685,7 @@ pub use futures;
 #[cfg(feature = "ledger")]
 pub use coins_ledger;
 
-// AWS feature is disabled in v0.4.1 due to security vulnerabilities
+// AWS feature is disabled in v1.0.0 due to security vulnerabilities
 // #[cfg(feature = "aws")]
 // #[cfg_attr(docsrs, doc(cfg(feature = "aws")))]
 // pub use rusoto_core;

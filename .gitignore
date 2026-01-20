@@ -12,6 +12,7 @@ node_modules/
 scripts/
 .claude/
 .claude-flow/
+neo_csharp/
 
 # Local wallet artifacts (examples/tests)
 /my_wallet.json

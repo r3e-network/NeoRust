@@ -373,26 +373,36 @@ impl Signer {
 	}
 
 	/// Safely converts to AccountSigner
-	pub fn to_account_signer(self) -> Result<AccountSigner, String> {
+	///
+	/// # Errors
+	///
+	/// Returns `BuilderError::IllegalState` if the signer is not an AccountSigner.
+	pub fn to_account_signer(self) -> Result<AccountSigner, BuilderError> {
 		match self {
 			Signer::AccountSigner(account_signer) => Ok(account_signer),
-			_ => {
-				Err("Cannot convert ContractSigner or TransactionSigner into AccountSigner"
-					.to_string())
-			},
+			Signer::ContractSigner(_) => Err(BuilderError::IllegalState(
+				"Cannot convert ContractSigner into AccountSigner".to_string(),
+			)),
+			Signer::TransactionSigner(_) => Err(BuilderError::IllegalState(
+				"Cannot convert TransactionSigner into AccountSigner".to_string(),
+			)),
 		}
 	}
 
 	/// Safely converts to ContractSigner
-	pub fn to_contract_signer(self) -> Result<ContractSigner, String> {
+	///
+	/// # Errors
+	///
+	/// Returns `BuilderError::IllegalState` if the signer is not a ContractSigner.
+	pub fn to_contract_signer(self) -> Result<ContractSigner, BuilderError> {
 		match self {
-			Signer::AccountSigner(_) => {
-				Err("Cannot convert AccountSigner into ContractSigner".to_string())
-			},
+			Signer::AccountSigner(_) => Err(BuilderError::IllegalState(
+				"Cannot convert AccountSigner into ContractSigner".to_string(),
+			)),
 			Signer::ContractSigner(contract_signer) => Ok(contract_signer),
-			Signer::TransactionSigner(_) => {
-				Err("Cannot convert TransactionSigner into ContractSigner".to_string())
-			},
+			Signer::TransactionSigner(_) => Err(BuilderError::IllegalState(
+				"Cannot convert TransactionSigner into ContractSigner".to_string(),
+			)),
 		}
 	}
 }
@@ -420,15 +430,17 @@ impl From<ContractSigner> for Signer {
 }
 
 // Keep the existing Into implementations for backward compatibility
+// Note: These will panic if called with the wrong variant. Use to_account_signer()/to_contract_signer() for safe conversion.
 impl Into<AccountSigner> for Signer {
 	#[track_caller]
 	fn into(self) -> AccountSigner {
 		match self {
 			Signer::AccountSigner(account_signer) => account_signer,
-			_ => {
-				panic!(
-					"Cannot convert ContractSigner or TransactionSigner into AccountSigner. Use Signer::to_account_signer() instead."
-				)
+			Signer::ContractSigner(_) => {
+				panic!("Cannot convert ContractSigner into AccountSigner. Use Signer::to_account_signer() instead.")
+			},
+			Signer::TransactionSigner(_) => {
+				panic!("Cannot convert TransactionSigner into AccountSigner. Use Signer::to_account_signer() instead.")
 			},
 		}
 	}
@@ -509,10 +521,11 @@ impl Into<ContractSigner> for &mut Signer {
 	fn into(self) -> ContractSigner {
 		match self {
 			Signer::ContractSigner(contract_signer) => contract_signer.clone(),
-			_ => {
-				panic!(
-					"Cannot convert AccountSigner or TransactionSigner into ContractSigner. Use Signer::to_contract_signer() instead."
-				)
+			Signer::AccountSigner(_) => {
+				panic!("Cannot convert AccountSigner into ContractSigner. Use Signer::to_contract_signer() instead.")
+			},
+			Signer::TransactionSigner(_) => {
+				panic!("Cannot convert TransactionSigner into ContractSigner. Use Signer::to_contract_signer() instead.")
 			},
 		}
 	}
@@ -523,10 +536,11 @@ impl Into<ContractSigner> for Signer {
 	fn into(self) -> ContractSigner {
 		match self {
 			Signer::ContractSigner(contract_signer) => contract_signer,
-			_ => {
-				panic!(
-					"Cannot convert AccountSigner or TransactionSigner into ContractSigner. Use Signer::to_contract_signer() instead."
-				)
+			Signer::AccountSigner(_) => {
+				panic!("Cannot convert AccountSigner into ContractSigner. Use Signer::to_contract_signer() instead.")
+			},
+			Signer::TransactionSigner(_) => {
+				panic!("Cannot convert TransactionSigner into ContractSigner. Use Signer::to_contract_signer() instead.")
 			},
 		}
 	}

@@ -79,8 +79,6 @@ impl FromStr for NeoClient {
 #[derive(Clone, Debug, Getters)]
 pub struct RpcClient<P> {
 	provider: P,
-	#[allow(dead_code)]
-	nns: Option<Address>,
 	interval: Option<Duration>,
 	from: Option<Address>,
 	_node_client: Arc<Mutex<Option<NeoVersion>>>,
@@ -100,7 +98,6 @@ impl<P: JsonRpcProvider> RpcClient<P> {
 	pub fn new(provider: P) -> Self {
 		Self {
 			provider,
-			nns: None,
 			interval: None,
 			from: None,
 			_node_client: Arc::new(Mutex::new(None)),

@@ -9,6 +9,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 _No changes yet._
 
+## [1.0.3] - 2026-01-28
+
+### 🔧 Changed
+
+- Comprehensive 10-round code review and refactoring:
+  - **Error Handling**: Replaced 40+ `.unwrap()` calls with `.expect()` containing descriptive error messages
+  - **Dead Code Removal**: Removed unused fields, imports, and commented code
+  - **Performance**: Optimized 9 vector allocations with `Vec::with_capacity()`, removed 4 unnecessary clones
+  - **Documentation**: Added comprehensive docs to `serde_with_utils` (100% coverage) and `contract_manifest` (100% coverage)
+  - **Security**: Added memory zeroization for `KeyPair`, `Account`, and `NEP6Account` to clear sensitive data on drop
+  - **API Cleanup**: Removed dead `nns` field from `RpcClient`, cleaned up unused macros
+  - **Bounds Checking**: Added `debug_assert!` for buffer bounds in hot-path decoder methods
+
+### 📚 Documentation
+
+- Added detailed memory layout documentation for `StackItem` enum explaining variant sizes and boxing considerations
+- Added zero-copy access methods `as_array_ref()` and `as_map_entries()` to `StackItem`
+- Documented all serde serialization helpers with examples
+- Added comprehensive module-level documentation to previously undocumented modules
+
+### 🛡️ Security
+
+- Implemented `Zeroize` and `ZeroizeOnDrop` for `KeyPair` to securely clear private key bytes
+- Implemented custom `Drop` for `Account` and `NEP6Account` to zeroize encrypted private key strings
+- Added input validation assertions to prevent buffer underflows in debug builds
+
 ## [1.0.2] - 2026-01-28
 
 ### 🔧 Changed

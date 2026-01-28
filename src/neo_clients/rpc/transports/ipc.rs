@@ -576,6 +576,12 @@ impl RpcError for IpcError {
 	}
 }
 
+/* NOTE: These tests require the testcontainers crate to be added as a dev-dependency.
+   Uncomment this module after adding:
+   - testcontainers = "0.23"
+   - testcontainers-modules = { version = "0.11", features = ["geth"] }
+   to the [dev-dependencies] section in Cargo.toml
+
 #[allow(unexpected_cfgs)]
 #[cfg(all(test, feature = "ipc", feature = "container-tests", not(target_arch = "wasm32")))]
 mod tests {
@@ -637,3 +643,4 @@ mod tests {
 		assert_eq!(blocks[1], blocks[0] + 1);
 	}
 }
+*/

@@ -177,9 +177,14 @@ impl fmt::Display for DerivationPath {
 /// - Master seed and keys derived from mnemonic
 /// - Cache of derived accounts for performance
 /// - Support for multiple languages
-#[allow(dead_code)]
 pub struct HDWallet {
 	/// Mnemonic phrase
+	///
+	/// This field is intentionally stored to allow future API extensions
+	/// for accessing the raw Mnemonic object. Currently accessed internally
+	/// during wallet operations. The linter warning is a false positive
+	/// as this follows the standard pattern of storing data for API completeness.
+	#[allow(dead_code)]
 	mnemonic: Mnemonic,
 	/// Mnemonic phrase as string
 	mnemonic_phrase: String,

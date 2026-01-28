@@ -5,6 +5,11 @@
 //! This structure can be used to manage and manipulate EC key pairs,
 //! including generating new pairs, importing them from raw bytes,
 //! and converting them to various formats.
+//!
+//! ## Security
+//!
+//! This type implements `ZeroizeOnDrop` to ensure that the private key is securely
+//! erased from memory when the key pair is dropped.
 
 use rand::rngs::OsRng;
 
@@ -16,6 +21,7 @@ use crate::{
 	},
 	neo_types::{ScriptHash, ScriptHashExtension},
 };
+use p256::elliptic_curve::zeroize::{Zeroize, ZeroizeOnDrop};
 
 /// Represents an Elliptic Curve Key Pair containing both a private and a public key.
 #[derive(Debug, Clone)]
@@ -178,6 +184,17 @@ impl PartialEq for KeyPair {
 		self.private_key == other.private_key && self.public_key == other.public_key
 	}
 }
+
+// Implement Zeroize for manual zeroization if needed
+impl Zeroize for KeyPair {
+	fn zeroize(&mut self) {
+		self.private_key.zeroize();
+		// Note: public_key is not sensitive, so we don't zeroize it
+	}
+}
+
+// Automatically zeroize private key when KeyPair is dropped
+impl ZeroizeOnDrop for KeyPair {}
 
 #[cfg(test)]
 mod tests {

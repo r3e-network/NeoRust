@@ -96,6 +96,7 @@ use crate::{
 	neo_wallets::{NEP6Account, NEP6Contract, NEP6Parameter, Wallet},
 	vec_to_array32, Base64Encode, ScriptHashExtension,
 };
+use p256::elliptic_curve::zeroize::Zeroize;
 use scrypt::Params;
 
 pub trait AccountTrait: Sized + PartialEq + Send + Sync + Debug + Clone {
@@ -241,8 +242,16 @@ impl Account {
 impl From<H160> for Account {
 	fn from(script_hash: H160) -> Self {
 		Self {
+			key_pair: None,
 			address_or_scripthash: AddressOrScriptHash::ScriptHash(script_hash),
-			..Default::default()
+			label: None,
+			verification_script: None,
+			is_default: false,
+			is_locked: false,
+			encrypted_private_key: None,
+			signing_threshold: None,
+			nr_of_participants: None,
+			wallet: None,
 		}
 	}
 }
@@ -250,8 +259,16 @@ impl From<H160> for Account {
 impl From<&H160> for Account {
 	fn from(script_hash: &H160) -> Self {
 		Self {
+			key_pair: None,
 			address_or_scripthash: AddressOrScriptHash::ScriptHash(*script_hash),
-			..Default::default()
+			label: None,
+			verification_script: None,
+			is_default: false,
+			is_locked: false,
+			encrypted_private_key: None,
+			signing_threshold: None,
+			nr_of_participants: None,
+			wallet: None,
 		}
 	}
 }
@@ -277,6 +294,18 @@ impl Hash for Account {
 		self.encrypted_private_key.hash(state);
 		self.signing_threshold.hash(state);
 		self.nr_of_participants.hash(state);
+	}
+}
+
+impl Drop for Account {
+	fn drop(&mut self) {
+		// Zeroize the encrypted private key to prevent sensitive data
+		// from lingering in memory after the account is dropped.
+		// The key_pair field contains a KeyPair which implements ZeroizeOnDrop,
+		// so it will be automatically zeroized when dropped.
+		if let Some(ref mut encrypted_key) = self.encrypted_private_key {
+			encrypted_key.zeroize();
+		}
 	}
 }
 
@@ -522,12 +551,16 @@ impl AccountTrait for Account {
 		};
 
 		Ok(Self {
+			key_pair: None,
 			address_or_scripthash: AddressOrScriptHash::ScriptHash(address),
 			label: Some(address.to_address()),
 			verification_script: Some(script.clone()),
+			is_default: false,
+			is_locked: false,
+			encrypted_private_key: None,
 			signing_threshold,
 			nr_of_participants,
-			..Default::default()
+			wallet: None,
 		})
 	}
 
@@ -536,10 +569,16 @@ impl AccountTrait for Account {
 		let address = ScriptHash::from_script(script.script());
 
 		Ok(Self {
+			key_pair: None,
 			address_or_scripthash: AddressOrScriptHash::ScriptHash(address),
 			label: Some(address.to_address()),
 			verification_script: Some(script),
-			..Default::default()
+			is_default: false,
+			is_locked: false,
+			encrypted_private_key: None,
+			signing_threshold: None,
+			nr_of_participants: None,
+			wallet: None,
 		})
 	}
 
@@ -559,12 +598,16 @@ impl AccountTrait for Account {
 		let addr = ScriptHash::from_script(script.script());
 
 		Ok(Self {
+			key_pair: None,
+			address_or_scripthash: AddressOrScriptHash::ScriptHash(addr),
 			label: Some(addr.to_address()),
 			verification_script: Some(script),
+			is_default: false,
+			is_locked: false,
+			encrypted_private_key: None,
 			signing_threshold: Some(signing_threshold),
 			nr_of_participants: Some(public_keys.len() as u32),
-			address_or_scripthash: AddressOrScriptHash::ScriptHash(addr),
-			..Default::default()
+			wallet: None,
 		})
 	}
 
@@ -574,11 +617,16 @@ impl AccountTrait for Account {
 		nr_of_participants: u8,
 	) -> Result<Self, Self::Error> {
 		Ok(Self {
-			label: Option::from(address.clone()),
+			key_pair: None,
+			address_or_scripthash: AddressOrScriptHash::Address(address),
+			label: None,
+			verification_script: None,
+			is_default: false,
+			is_locked: false,
+			encrypted_private_key: None,
 			signing_threshold: Some(signing_threshold as u32),
 			nr_of_participants: Some(nr_of_participants as u32),
-			address_or_scripthash: AddressOrScriptHash::Address(address),
-			..Default::default()
+			wallet: None,
 		})
 	}
 
@@ -587,9 +635,16 @@ impl AccountTrait for Account {
 			.map_err(|_| Self::Error::IllegalState(format!("Invalid address format: {address}")))?;
 
 		Ok(Self {
+			key_pair: None,
 			address_or_scripthash: AddressOrScriptHash::Address(address.clone()),
 			label: Some(address),
-			..Default::default()
+			verification_script: None,
+			is_default: false,
+			is_locked: false,
+			encrypted_private_key: None,
+			signing_threshold: None,
+			nr_of_participants: None,
+			wallet: None,
 		})
 	}
 

@@ -60,19 +60,27 @@ mod tests {
 	#[test]
 	fn test_decode_boolean_condition() {
 		let json = r#"{"action": "Allow","condition": {"type": "Boolean","expression": "false"}}"#;
-		let rule: WitnessRule = serde_json::from_str(json).unwrap();
+		let rule: WitnessRule = serde_json::from_str(json)
+			.expect("Failed to decode WitnessRule JSON with Boolean condition");
 		assert!(matches!(rule.condition, WitnessCondition::Boolean(_)));
-		assert!(!rule.condition.boolean_expression().unwrap());
+		assert!(!rule
+			.condition
+			.boolean_expression()
+			.expect("boolean_expression should return Some for Boolean condition"));
 	}
 
 	#[test]
 	fn test_script_hash_condition_serialize_deserialize() {
 		let hash = TestConstants::DEFAULT_ACCOUNT_SCRIPT_HASH;
-		let condition = WitnessCondition::ScriptHash(H160::from_hex(hash).unwrap());
+		let condition = WitnessCondition::ScriptHash(
+			H160::from_hex(hash).expect("Failed to decode DEFAULT_ACCOUNT_SCRIPT_HASH hex"),
+		);
 
-		let bytes = hex::decode(format!("18{}", hash)).unwrap();
+		let bytes = hex::decode(format!("18{}", hash))
+			.expect("Failed to decode hex bytes for ScriptHash condition");
 
-		let deserialized = WitnessCondition::from_bytes(&bytes).unwrap();
+		let deserialized = WitnessCondition::from_bytes(&bytes)
+			.expect("Failed to deserialize WitnessCondition from bytes");
 		assert_eq!(condition, deserialized);
 
 		let mut writer = Encoder::new();
@@ -95,7 +103,8 @@ mod tests {
         }
     }"#;
 
-		let rule: WitnessRule = serde_json::from_str(json).unwrap();
+		let rule: WitnessRule = serde_json::from_str(json)
+			.expect("Failed to decode WitnessRule JSON with nested Not condition");
 
 		assert!(matches!(
 			rule.condition,
@@ -110,7 +119,8 @@ mod tests {
 			WitnessCondition::Boolean(false),
 		]);
 
-		let bytes = hex::decode("020200010000").unwrap();
+		let bytes =
+			hex::decode("020200010000").expect("Failed to decode hex bytes for And condition");
 
 		let deserialized = WitnessCondition::from_bytes(&bytes).unwrap();
 		assert_eq!(condition, deserialized);
@@ -125,7 +135,7 @@ mod tests {
 	fn test_not_condition_serialize_deserialize() {
 		let condition = WitnessCondition::Not(Box::new(WitnessCondition::CalledByEntry));
 
-		let bytes = hex::decode("0120").unwrap();
+		let bytes = hex::decode("0120").expect("Failed to decode hex bytes for Not condition");
 
 		let deserialized = WitnessCondition::from_bytes(&bytes).unwrap();
 		assert_eq!(condition, deserialized);
@@ -145,7 +155,8 @@ mod tests {
         }
     }"#;
 
-		let rule: WitnessRule = serde_json::from_str(json).unwrap();
+		let rule: WitnessRule = serde_json::from_str(json)
+			.expect("Failed to decode WitnessRule JSON with CalledByGroup condition");
 
 		assert!(rule.condition.boolean_expression().is_none());
 		assert!(rule.condition.expression().is_none());
@@ -178,7 +189,8 @@ mod tests {
         }
     }"#;
 
-		let rule: WitnessRule = serde_json::from_str(json).unwrap();
+		let rule: WitnessRule = serde_json::from_str(json)
+			.expect("Failed to decode WitnessRule JSON with Or condition");
 
 		assert!(matches!(
 			rule.condition,
@@ -189,10 +201,13 @@ mod tests {
 	#[test]
 	fn test_called_by_group_condition_serialize_deserialize() {
 		let key: &str = TestConstants::DEFAULT_ACCOUNT_PUBLIC_KEY;
-		let condition =
-			WitnessCondition::CalledByGroup(Secp256r1PublicKey::from_encoded(key).unwrap());
+		let condition = WitnessCondition::CalledByGroup(
+			Secp256r1PublicKey::from_encoded(key)
+				.expect("Failed to decode DEFAULT_ACCOUNT_PUBLIC_KEY"),
+		);
 
-		let bytes = hex::decode(format!("29{}", key)).unwrap();
+		let bytes = hex::decode(format!("29{}", key))
+			.expect("Failed to decode hex bytes for CalledByGroup condition");
 
 		let deserialized = WitnessCondition::from_bytes(&bytes).unwrap();
 		assert_eq!(condition, deserialized);
@@ -207,7 +222,8 @@ mod tests {
 	fn test_called_by_entry_serialize_deserialize() {
 		let condition = WitnessCondition::CalledByEntry;
 
-		let bytes = hex::decode("20").unwrap();
+		let bytes =
+			hex::decode("20").expect("Failed to decode hex bytes for CalledByEntry condition");
 
 		let deserialized = WitnessCondition::from_bytes(&bytes).unwrap();
 		assert_eq!(condition, deserialized);
@@ -221,9 +237,12 @@ mod tests {
 	#[test]
 	fn test_called_by_contract_serialize_deserialize() {
 		let hash = TestConstants::DEFAULT_ACCOUNT_SCRIPT_HASH;
-		let condition = WitnessCondition::CalledByContract(H160::from_hex(hash).unwrap());
+		let condition = WitnessCondition::CalledByContract(
+			H160::from_hex(hash).expect("Failed to decode DEFAULT_ACCOUNT_SCRIPT_HASH hex"),
+		);
 
-		let bytes = hex::decode(format!("28{}", hash)).unwrap();
+		let bytes = hex::decode(format!("28{}", hash))
+			.expect("Failed to decode hex bytes for CalledByContract condition");
 
 		let deserialized = WitnessCondition::from_bytes(&bytes).unwrap();
 		assert_eq!(condition, deserialized);
@@ -244,7 +263,8 @@ mod tests {
         }
     }"#;
 
-		let rule: WitnessRule = serde_json::from_str(json).unwrap();
+		let rule: WitnessRule = serde_json::from_str(json)
+			.expect("Failed to decode WitnessRule JSON with ScriptHash condition");
 
 		assert!(matches!(rule.condition, WitnessCondition::ScriptHash(_)));
 	}
@@ -259,7 +279,8 @@ mod tests {
         }
     }"#;
 
-		let rule: WitnessRule = serde_json::from_str(json).unwrap();
+		let rule: WitnessRule = serde_json::from_str(json)
+			.expect("Failed to decode WitnessRule JSON with Group condition");
 
 		assert!(matches!(rule.condition, WitnessCondition::Group(_),));
 	}
@@ -273,7 +294,8 @@ mod tests {
         }
     }"#;
 
-		let rule: WitnessRule = serde_json::from_str(json).unwrap();
+		let rule: WitnessRule = serde_json::from_str(json)
+			.expect("Failed to decode WitnessRule JSON with CalledByEntry condition");
 
 		assert_eq!(rule.condition, WitnessCondition::CalledByEntry,);
 	}
@@ -288,7 +310,8 @@ mod tests {
         }
     }"#;
 
-		let rule: WitnessRule = serde_json::from_str(json).unwrap();
+		let rule: WitnessRule = serde_json::from_str(json)
+			.expect("Failed to decode WitnessRule JSON with CalledByContract condition");
 
 		assert!(matches!(rule.condition, WitnessCondition::CalledByContract(_),));
 	}
@@ -307,7 +330,9 @@ mod tests {
         }
     }"#;
 
-		let rule: WitnessRule = serde_json::from_str(json).unwrap();
+		let rule: WitnessRule = serde_json::from_str(json).expect(
+			"Failed to decode WitnessRule JSON with And condition containing multiple expressions",
+		);
 
 		assert!(matches!(
 			rule.condition,
@@ -327,7 +352,8 @@ mod tests {
         }
     }"#;
 
-		let rule: WitnessRule = serde_json::from_str(json).unwrap();
+		let rule: WitnessRule = serde_json::from_str(json)
+			.expect("Failed to decode WitnessRule JSON with Not condition");
 
 		assert!(matches!(rule.condition, WitnessCondition::Not(_)));
 	}
@@ -342,7 +368,9 @@ mod tests {
     }"#;
 
 		let condition = parse_condition(json);
-		assert!(!condition.boolean_expression().unwrap());
+		assert!(!condition
+			.boolean_expression()
+			.expect("boolean_expression should return Some for Boolean condition"));
 	}
 
 	fn parse_condition(_: &str) -> WitnessCondition {

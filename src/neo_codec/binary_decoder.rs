@@ -75,14 +75,26 @@ impl<'a> Decoder<'a> {
 	}
 
 	/// Reads a boolean value from the byte slice.
+	///
+	/// # Panics
+	///
+	/// Panics in debug mode if the buffer has no more bytes to read.
+	/// For a fallible alternative, use [`Self::read_bool_safe`].
 	pub fn read_bool(&mut self) -> bool {
+		debug_assert!(self.pointer < self.data.len(), "read_bool: buffer underflow");
 		let val = self.data[self.pointer] == 1;
 		self.pointer += 1;
 		val
 	}
 
 	/// Reads an unsigned 8-bit integer from the byte slice.
+	///
+	/// # Panics
+	///
+	/// Panics in debug mode if the buffer has no more bytes to read.
+	/// For a fallible alternative, use [`Self::read_u8_safe`].
 	pub fn read_u8(&mut self) -> u8 {
+		debug_assert!(self.pointer < self.data.len(), "read_u8: buffer underflow");
 		let val = self.data[self.pointer];
 		self.pointer += 1;
 		val
@@ -350,7 +362,7 @@ impl<'a> Decoder<'a> {
 			));
 		}
 
-		let mut list = Vec::new();
+		let mut list = Vec::with_capacity(len);
 		for _ in 0..len {
 			list.push(T::decode(self).map_err(|_e| CodecError::InvalidFormat)?);
 		}
@@ -372,7 +384,7 @@ impl<'a> Decoder<'a> {
 			.checked_add(len)
 			.ok_or_else(|| CodecError::InvalidEncoding("List length overflow".into()))?;
 
-		let mut list = Vec::new();
+		let mut list = Vec::with_capacity(len);
 		while self.pointer < end {
 			let before = self.pointer;
 			list.push(T::decode(self).map_err(|_e| CodecError::InvalidFormat)?);
@@ -396,22 +408,6 @@ impl<'a> Decoder<'a> {
 		self.pointer = self.marker;
 	}
 
-	// pub fn read_ec_point(&mut self) -> Result<ProjectivePoint, &'static str> {
-	// 	let tag = self.read_u8();
-	// 	let bytes = match tag {
-	// 		0x00 => return Ok(ProjectivePoint::IDENTITY),
-	// 		0x02 | 0x03 => self.read_bytes(32),
-	// 		0x04 => self.read_bytes(64),
-	// 		_ => return Err("Invalid EC point tag"),
-	// 	};
-	//
-	// 	let point = EncodedPoint::from_bytes(bytes).unwrap();
-	// 	match ProjectivePoint::from_encoded_point(&point) {
-	// 		Some(point) => Ok(point),
-	// 		None => Err("Invalid EC point"),
-	// 	}
-	// }
-
 	pub fn available(&self) -> usize {
 		self.data.len() - self.pointer
 	}
@@ -425,17 +421,32 @@ mod tests {
 	#[test]
 	fn test_read_u16_is_little_endian() {
 		let bytes = [0x00_u8, 0x01_u8];
-		assert_eq!(Decoder::new(&bytes).read_u16().unwrap(), 256);
+		assert_eq!(
+			Decoder::new(&bytes)
+				.read_u16()
+				.expect("read_u16 should decode [0x00, 0x01] as 256"),
+			256
+		);
 
 		let bytes = [0x01_u8, 0x00_u8];
-		assert_eq!(Decoder::new(&bytes).read_u16().unwrap(), 1);
+		assert_eq!(
+			Decoder::new(&bytes)
+				.read_u16()
+				.expect("read_u16 should decode [0x01, 0x00] as 1"),
+			1
+		);
 	}
 
 	#[test]
 	fn test_read_var_int_u16_is_little_endian() {
 		// 256 encoded as VarInt: 0xfd 0x00 0x01 (u16 LE)
 		let bytes = [0xfd_u8, 0x00_u8, 0x01_u8];
-		assert_eq!(Decoder::new(&bytes).read_var_int().unwrap(), 256);
+		assert_eq!(
+			Decoder::new(&bytes)
+				.read_var_int()
+				.expect("read_var_int should decode VarInt 256 (0xfd 0x00 0x01)"),
+			256
+		);
 	}
 
 	#[test]
@@ -455,85 +466,181 @@ mod tests {
 	#[test]
 	fn test_read_push_data_bytes() {
 		let prefix_count_map = [
-			(hex::decode("0c01").unwrap(), 1),
-			(hex::decode("0cff").unwrap(), 255),
-			(hex::decode("0d0001").unwrap(), 256),
-			(hex::decode("0d0010").unwrap(), 4096),
-			(hex::decode("0e00000100").unwrap(), 65536),
+			(hex::decode("0c01").expect("hex decode should succeed for prefix 0x0c01 (1 byte)"), 1),
+			(
+				hex::decode("0cff")
+					.expect("hex decode should succeed for prefix 0x0cff (255 bytes)"),
+				255,
+			),
+			(
+				hex::decode("0d0001")
+					.expect("hex decode should succeed for prefix 0x0d0001 (256 bytes)"),
+				256,
+			),
+			(
+				hex::decode("0d0010")
+					.expect("hex decode should succeed for prefix 0x0d0010 (4096 bytes)"),
+				4096,
+			),
+			(
+				hex::decode("0e00000100")
+					.expect("hex decode should succeed for prefix 0x0e00000100 (65536 bytes)"),
+				65536,
+			),
 		];
 
 		for (prefix, count) in prefix_count_map {
 			let bytes = vec![1u8; count];
 			let data = [prefix.as_slice(), bytes.as_slice()].concat();
-			assert_eq!(Decoder::new(&data).read_push_bytes().unwrap(), bytes);
+			assert_eq!(
+				Decoder::new(&data)
+					.read_push_bytes()
+					.expect(&format!("read_push_bytes should decode {} bytes of push data", count)),
+				bytes
+			);
 		}
 	}
 
 	#[test]
 	fn test_fail_read_push_data() {
-		let data = hex::decode("4b010000").unwrap();
+		let data =
+			hex::decode("4b010000").expect("hex decode should succeed for test data 0x4b010000");
 		let err = Decoder::new(&data).read_push_bytes().unwrap_err();
 		assert_eq!(err.to_string(), "Invalid op code")
 	}
 
 	#[test]
 	fn test_read_push_data_string() {
-		let empty = hex::decode("0c00").unwrap();
-		assert_eq!(Decoder::new(&empty).read_push_string().unwrap(), "");
+		let empty = hex::decode("0c00")
+			.expect("hex decode should succeed for empty push data prefix 0x0c00");
+		assert_eq!(
+			Decoder::new(&empty)
+				.read_push_string()
+				.expect("read_push_string should decode empty string"),
+			""
+		);
 
-		let a = hex::decode("0c0161").unwrap();
-		assert_eq!(Decoder::new(&a).read_push_string().unwrap(), "a");
+		let a = hex::decode("0c0161")
+			.expect("hex decode should succeed for push data 'a' prefix 0x0c0161");
+		assert_eq!(
+			Decoder::new(&a)
+				.read_push_string()
+				.expect("read_push_string should decode single character 'a'"),
+			"a"
+		);
 
 		let bytes = vec![0u8; 10000];
-		let input = [hex::decode("0e10270000").unwrap(), bytes.as_slice().to_vec()].concat();
-		let expected = String::from_utf8(bytes).unwrap();
+		let input = [
+			hex::decode("0e10270000")
+				.expect("hex decode should succeed for 10000-byte prefix 0x0e10270000"),
+			bytes.as_slice().to_vec(),
+		]
+		.concat();
+		let expected = String::from_utf8(bytes).expect("bytes should be valid UTF-8");
 
-		assert_eq!(Decoder::new(&input).read_push_string().unwrap(), expected);
+		assert_eq!(
+			Decoder::new(&input)
+				.read_push_string()
+				.expect("read_push_string should decode 10000 null bytes"),
+			expected
+		);
 	}
 
 	#[test]
 	fn test_read_push_data_big_integer() {
-		let zero = hex::decode("10").unwrap();
-		assert_eq!(Decoder::new(&zero).read_push_int().unwrap(), BigInt::from(0));
+		let zero = hex::decode("10").expect("hex decode should succeed for PUSH0 opcode 0x10");
+		assert_eq!(
+			Decoder::new(&zero)
+				.read_push_int()
+				.expect("read_push_int should decode PUSH0 as 0"),
+			BigInt::from(0)
+		);
 
-		let one = hex::decode("11").unwrap();
-		assert_eq!(Decoder::new(&one).read_push_int().unwrap(), BigInt::from(1));
+		let one = hex::decode("11").expect("hex decode should succeed for PUSH1 opcode 0x11");
+		assert_eq!(
+			Decoder::new(&one)
+				.read_push_int()
+				.expect("read_push_int should decode PUSH1 as 1"),
+			BigInt::from(1)
+		);
 
-		let minus_one = hex::decode("0f").unwrap();
-		assert_eq!(Decoder::new(&minus_one).read_push_int().unwrap(), BigInt::from(-1));
+		let minus_one =
+			hex::decode("0f").expect("hex decode should succeed for PUSHM1 opcode 0x0f");
+		assert_eq!(
+			Decoder::new(&minus_one)
+				.read_push_int()
+				.expect("read_push_int should decode PUSHM1 as -1"),
+			BigInt::from(-1)
+		);
 
-		let sixteen = hex::decode("20").unwrap();
-		assert_eq!(Decoder::new(&sixteen).read_push_int().unwrap(), BigInt::from(16));
+		let sixteen = hex::decode("20").expect("hex decode should succeed for PUSH16 opcode 0x20");
+		assert_eq!(
+			Decoder::new(&sixteen)
+				.read_push_int()
+				.expect("read_push_int should decode PUSH16 as 16"),
+			BigInt::from(16)
+		);
 	}
 
 	#[test]
 	fn test_read_u32() {
 		let max = [0xffu8; 4];
-		assert_eq!(Decoder::new(&max).read_u32().unwrap(), 4_294_967_295);
+		assert_eq!(
+			Decoder::new(&max)
+				.read_u32()
+				.expect("read_u32 should decode max u32 value [0xff; 4]"),
+			4_294_967_295
+		);
 
-		let one = hex::decode("01000000").unwrap();
-		assert_eq!(Decoder::new(&one).read_u32().unwrap(), 1);
+		let one = hex::decode("01000000")
+			.expect("hex decode should succeed for u32 value 1 (little-endian 0x01000000)");
+		assert_eq!(
+			Decoder::new(&one)
+				.read_u32()
+				.expect("read_u32 should decode little-endian 0x01000000 as 1"),
+			1
+		);
 
 		let zero = [0u8; 4];
-		assert_eq!(Decoder::new(&zero).read_u32().unwrap(), 0);
+		assert_eq!(
+			Decoder::new(&zero).read_u32().expect("read_u32 should decode zero [0; 4] as 0"),
+			0
+		);
 
-		let custom = hex::decode("8cae0000ff").unwrap();
-		assert_eq!(Decoder::new(&custom).read_u32().unwrap(), 44_684);
+		let custom = hex::decode("8cae0000ff")
+			.expect("hex decode should succeed for custom u32 value 0x8cae0000");
+		assert_eq!(
+			Decoder::new(&custom)
+				.read_u32()
+				.expect("read_u32 should decode little-endian 0x8cae0000 as 44684"),
+			44_684
+		);
 	}
 
 	#[test]
 	fn test_read_i64() {
 		let min = [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x80];
-		assert_eq!(Decoder::new(&min).read_i64().unwrap(), i64::MIN);
+		assert_eq!(
+			Decoder::new(&min).read_i64().expect("read_i64 should decode i64::MIN"),
+			i64::MIN
+		);
 
 		let max = [0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x7f];
-		assert_eq!(Decoder::new(&max).read_i64().unwrap(), i64::MAX);
+		assert_eq!(
+			Decoder::new(&max).read_i64().expect("read_i64 should decode i64::MAX"),
+			i64::MAX
+		);
 
 		let zero = [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00];
-		assert_eq!(Decoder::new(&zero).read_i64().unwrap(), 0);
+		assert_eq!(Decoder::new(&zero).read_i64().expect("read_i64 should decode zero as 0"), 0);
 
 		let custom = [0x11, 0x33, 0x22, 0x8c, 0xae, 0x00, 0x00, 0x00, 0xff];
-		assert_eq!(Decoder::new(&custom).read_i64().unwrap(), 749_675_361_041);
+		assert_eq!(
+			Decoder::new(&custom)
+				.read_i64()
+				.expect("read_i64 should decode custom little-endian value as 749675361041"),
+			749_675_361_041
+		);
 	}
 
 	#[test]

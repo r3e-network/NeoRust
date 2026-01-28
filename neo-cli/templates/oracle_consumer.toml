@@ -26,7 +26,8 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let height = neo.get_block_height().await?;
     println!("✅ Connected (height = {})", height);
 
-    // TODO: Add contract hash + view method that returns oracle-fed data.
+    // NOTE: Add your contract hash and view method to read oracle-fed data.
+    // Example: neo.invoke_read(contract_hash, "getPrice", vec![]).await?;
     println!("ℹ️  Next: call `neo.invoke_read(...)` for your contract’s getter method.");
 
     Ok(())

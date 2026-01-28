@@ -1,5 +1,4 @@
 //! Helpers for creating wallets for YubiHSM2
-#[allow(unused_imports)]
 use crate::{
 	neo_clients::public_key_to_address, neo_crypto::Secp256r1PublicKey, neo_error::WalletError,
 	neo_wallets::WalletSigner, Address,
@@ -143,8 +142,6 @@ impl From<YubiSigner<NistP256>> for WalletSigner<YubiSigner<NistP256>> {
 
 #[cfg(test)]
 mod tests {
-	#![allow(unused_imports)]
-
 	use std::str::FromStr;
 
 	use super::*;

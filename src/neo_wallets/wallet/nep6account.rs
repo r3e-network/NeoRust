@@ -9,6 +9,7 @@ use crate::{
 	StringExt,
 };
 use getset::{Getters, Setters};
+use p256::elliptic_curve::zeroize::Zeroize;
 use primitive_types::H160;
 use serde::{Deserialize, Serialize};
 
@@ -240,14 +241,16 @@ impl NEP6Account {
 		};
 
 		Ok(Account {
+			key_pair: None,
 			address_or_scripthash: AddressOrScriptHash::ScriptHash(script_hash),
 			label: self.label.clone(),
 			verification_script,
+			is_default: false,
 			is_locked: self.lock,
-			encrypted_private_key: self.clone().key,
+			encrypted_private_key: self.key.clone(),
 			signing_threshold: signing_threshold.map(|s| s as u32),
 			nr_of_participants: nr_of_participants.map(|s| s as u32),
-			..Default::default()
+			wallet: None,
 		})
 	}
 }
@@ -267,6 +270,16 @@ impl PartialEq for NEP6Account {
 	/// ```
 	fn eq(&self, other: &Self) -> bool {
 		self.address == other.address
+	}
+}
+
+impl Drop for NEP6Account {
+	fn drop(&mut self) {
+		// Zeroize the encrypted private key to prevent sensitive data
+		// from lingering in memory after the account is dropped.
+		if let Some(ref mut key) = self.key {
+			key.zeroize();
+		}
 	}
 }
 

@@ -37,8 +37,14 @@ struct CacheEntry<V> {
 	value: V,
 	expires_at: Instant,
 	last_accessed: Instant,
-	/// Access count for potential frequency-based eviction (LFU).
-	/// Currently unused but reserved for future eviction strategy enhancements.
+	/// Access count for frequency-based eviction (LFU).
+	///
+	/// # Note
+	/// This field is reserved for future LFU (Least Frequently Used) eviction
+	/// strategy enhancements. It is not currently used by the active LRU
+	/// eviction implementation but is maintained to preserve API compatibility
+	/// for future caching enhancements.
+	#[doc(hidden)]
 	#[allow(dead_code)]
 	access_count: u64,
 }
@@ -54,7 +60,15 @@ impl<V> CacheEntry<V> {
 	}
 
 	/// Access the cached value and update tracking metadata.
-	/// Reserved for future use with write-lock-based access patterns.
+	///
+	/// # Note
+	/// This method is reserved for future eviction strategy enhancements that
+	/// require write-lock-based access patterns (e.g., LFU). The current
+	/// implementation uses read-optimized access patterns via `get()`.
+	///
+	/// # Returns
+	/// A reference to the cached value.
+	#[doc(hidden)]
 	#[allow(dead_code)]
 	fn access(&mut self) -> &V {
 		self.last_accessed = Instant::now();

@@ -12,6 +12,61 @@ use crate::crypto::Secp256r1PublicKey;
 use neo3::prelude::{Address, ScriptHashExtension};
 
 /// The `StackItem` enum represents an item on the Neo virtual machine stack.
+///
+/// # Memory Layout Considerations
+///
+/// This enum is designed for use in Neo VM stack operations and JSON-RPC serialization.
+/// Current size: **48 bytes** (on 64-bit platforms).
+///
+/// ## Variant Size Analysis
+///
+/// | Variant | Payload Size | Notes |
+/// |---------|-------------|-------|
+/// | `Any` | 0 bytes | Unit type |
+/// | `Pointer` | 8 bytes | i64 value |
+/// | `Boolean` | 8 bytes | bool + padding |
+/// | `Integer` | 8 bytes | i64 value |
+/// | `ByteString` | 24 bytes | String (ptr + len + cap) |
+/// | `Buffer` | 24 bytes | String (ptr + len + cap) |
+/// | `Array` | 24 bytes | Vec (ptr + len + cap on heap) |
+/// | `Struct` | 24 bytes | Vec (ptr + len + cap on heap) |
+/// | `Map` | 24 bytes | `Vec<MapEntry>` (ptr + len + cap on heap) |
+/// | `InteropInterface` | **48 bytes** | Two Strings (largest variant) |
+///
+/// ## Boxing Considerations
+///
+/// While boxing large enum variants is a common Rust optimization technique, **boxing `Array`,
+/// `Struct`, or `Map` would NOT reduce the enum size** because `InteropInterface` (48 bytes)
+/// is already larger than the `Vec` variants (24 bytes each).
+///
+/// To actually reduce the enum size, we would need to:
+/// 1. **Box `InteropInterface`** - This would reduce the enum from 48 bytes to 32 bytes
+/// 2. **Use a single `String` or `Arc<str>` for `InteropInterface`** - Depends on usage patterns
+///
+/// ## Performance Trade-offs
+///
+/// The current design prioritizes:
+/// - **Cache locality**: No pointer indirection for most variants
+/// - **Zero-allocation access**: Direct access to Array/Map elements without dereferencing
+/// - **Clone efficiency**: Simple memcpy for small variants
+///
+/// Boxing would trade:
+/// - **Extra heap allocation** for Array/Map/InteropInterface creation
+/// - **Pointer indirection** on every Array/Map access
+/// - **Better memory density** when storing many small variants (Boolean, Integer)
+///
+/// ## Future Optimization
+///
+/// If profiling shows memory pressure from `StackItem` allocations, consider:
+/// 1. Boxing only `InteropInterface` (gains 16 bytes per enum)
+/// 2. Using `Box<str>` instead of `String` where mutability isn't needed
+/// 3. Investigating arena allocation patterns for VM execution
+///
+/// # Serialization Note
+///
+/// This type uses externally tagged serialization (`#[serde(tag = "type")]`) to match
+/// Neo's JSON-RPC response format. Any changes to variant structure must maintain
+/// backward compatibility with the Neo node RPC API.
 #[derive(Clone, Debug, Hash, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "type")]
 pub enum StackItem {
@@ -50,18 +105,43 @@ pub enum StackItem {
 	},
 
 	/// Represents an array of stack items.
+	///
+	/// # Performance Note
+	/// The `Vec<StackItem>` is stored inline in the enum variant. While `Vec` itself is only
+	/// 24 bytes (pointer + length + capacity on the stack), the heap-allocated elements
+	/// are separate. See the enum-level documentation for memory layout considerations.
+	///
+	/// Arrays are commonly used in Neo VM execution results and smart contract return values.
+	/// Use `as_array()` to access elements without cloning when possible.
 	#[serde(rename = "Array")]
 	Array { value: Vec<StackItem> },
 
 	/// Represents a struct of stack items.
+	///
+	/// # Note
+	/// Similar to `Array`, but represents a struct type in the Neo VM. The memory layout
+	/// and performance characteristics are identical to `Array`.
 	#[serde(rename = "Struct")]
 	Struct { value: Vec<StackItem> },
 
 	/// Represents a map of stack items.
+	///
+	/// # Performance Note
+	/// Maps are stored as `Vec<MapEntry>` rather than `HashMap` to maintain deterministic
+	/// iteration order (required for Neo VM consistency) and reduce memory overhead.
+	/// Use `as_map()` to convert to `HashMap<StackItem, StackItem>` when needed.
 	#[serde(rename = "Map")]
 	Map { value: Vec<MapEntry> },
 
 	/// Represents an interop interface.
+	///
+	/// # Memory Note
+	/// This is the **largest variant** (48 bytes) due to storing two `String` values.
+	/// It determines the overall enum size. If memory optimization becomes critical,
+	/// consider boxing this variant or using `Box<str>` for immutable strings.
+	///
+	/// InteropInterface is used to represent external objects (like iterators) that
+	/// cannot be directly serialized but can be referenced by ID in subsequent operations.
 	#[serde(rename = "InteropInterface")]
 	InteropInterface { id: String, interface: String },
 }
@@ -117,8 +197,10 @@ where
 /// The `MapEntry` struct represents a key-value pair in a `StackItem::Map`.
 #[derive(Clone, Debug, Eq, Hash, PartialEq, Serialize, Deserialize)]
 pub struct MapEntry {
-	key: StackItem,
-	value: StackItem,
+	/// The key of the map entry.
+	pub key: StackItem,
+	/// The value of the map entry.
+	pub value: StackItem,
 }
 
 impl StackItem {
@@ -266,9 +348,34 @@ impl StackItem {
 	}
 
 	/// Returns the array value of a `StackItem::Array` or `StackItem::Struct`.
+	///
+	/// # Performance Note
+	/// This method clones the entire `Vec`. For read-only access, prefer `as_array_ref()`.
+	/// Use this when you need ownership of the array elements.
 	pub fn as_array(&self) -> Option<Vec<StackItem>> {
 		match self {
 			StackItem::Array { value } | StackItem::Struct { value } => Some(value.clone()),
+			_ => None,
+		}
+	}
+
+	/// Returns a reference to the array value without cloning.
+	///
+	/// # Performance
+	/// This is more efficient than `as_array()` when you only need to read the data,
+	/// as it avoids cloning the `Vec<StackItem>` and all its elements.
+	///
+	/// # Example
+	/// ```ignore
+	/// if let Some(arr) = stack_item.as_array_ref() {
+	///     for item in arr {
+	///         println!("{:?}", item);
+	///     }
+	/// }
+	/// ```
+	pub fn as_array_ref(&self) -> Option<&[StackItem]> {
+		match self {
+			StackItem::Array { value } | StackItem::Struct { value } => Some(value.as_slice()),
 			_ => None,
 		}
 	}
@@ -284,6 +391,10 @@ impl StackItem {
 	}
 
 	/// Returns the map value of a `StackItem::Map`.
+	///
+	/// # Performance Note
+	/// This method constructs a new `HashMap` by cloning all key-value pairs.
+	/// For read-only access without HashMap conversion, prefer `as_map_entries()`.
 	pub fn as_map(&self) -> Option<HashMap<StackItem, StackItem>> {
 		match self {
 			StackItem::Map { value } => {
@@ -293,6 +404,28 @@ impl StackItem {
 				}
 				Some(map)
 			},
+			_ => None,
+		}
+	}
+
+	/// Returns a reference to the underlying map entries without conversion.
+	///
+	/// # Performance
+	/// This is more efficient than `as_map()` when you only need to iterate over
+	/// entries, as it avoids creating a `HashMap` and cloning all elements.
+	/// Note that lookup by key is O(n) in the returned slice.
+	///
+	/// # Example
+	/// ```ignore
+	/// if let Some(entries) = stack_item.as_map_entries() {
+	///     for entry in entries {
+	///         println!("{:?} -> {:?}", entry.key, entry.value);
+	///     }
+	/// }
+	/// ```
+	pub fn as_map_entries(&self) -> Option<&[MapEntry]> {
+		match self {
+			StackItem::Map { value } => Some(value.as_slice()),
 			_ => None,
 		}
 	}

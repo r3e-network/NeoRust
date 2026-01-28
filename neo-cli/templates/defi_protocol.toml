@@ -26,7 +26,8 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let height = neo.get_block_height().await?;
     println!("✅ Connected (height = {})", height);
 
-    // TODO: Replace with calls into your DeFi contracts / routers.
+    // NOTE: Replace with calls into your DeFi contracts / routers.
+    // Example: neo.invoke_write(contract_hash, "swap", params).await?;
     println!("ℹ️  Next: add contract hashes + invoke_read/invoke_write flows.");
 
     Ok(())

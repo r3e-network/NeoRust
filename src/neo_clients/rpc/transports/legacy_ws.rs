@@ -24,14 +24,6 @@ use crate::neo_clients::{
 	JsonRpcProvider, ProviderError, PubsubClient, RpcClient, RpcError,
 };
 
-#[allow(unused_macros)]
-macro_rules! if_wasm {
-    ($($item:item)*) => {$(
-        #[cfg(target_arch = "wasm32")]
-        $item
-    )*}
-}
-
 macro_rules! if_not_wasm {
     ($($item:item)*) => {$(
         #[cfg(not(target_arch = "wasm32"))]
@@ -681,6 +673,12 @@ impl From<ClientError> for ProviderError {
 	}
 }
 
+/* NOTE: These tests require the testcontainers crate to be added as a dev-dependency.
+   Uncomment this module after adding:
+   - testcontainers = "0.23"
+   - testcontainers-modules = { version = "0.11", features = ["anvil"] }
+   to the [dev-dependencies] section in Cargo.toml
+
 #[allow(unexpected_cfgs)]
 #[cfg(all(test, feature = "legacy-ws", feature = "container-tests", not(target_arch = "wasm32")))]
 mod tests {
@@ -734,6 +732,7 @@ mod tests {
 		resp.unwrap_err();
 	}
 }
+*/
 
 impl RpcClient<Ws> {
 	/// Direct connection to a websocket endpoint

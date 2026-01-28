@@ -812,13 +812,13 @@ impl<'a, P: JsonRpcProvider + 'static> TransactionBuilder<'a, P> {
 		&self,
 		account: &Account,
 	) -> Result<VerificationScript, TransactionError> {
-		// Vector to store placeholder public keys for size estimation
-		let mut pub_keys: Vec<Secp256r1PublicKey> = Vec::new();
-
-		// Get the number of participants
+		// Get the number of participants first to allocate capacity
 		let nr_of_participants = account.get_nr_of_participants().map_err(|e| {
 			TransactionError::IllegalState(format!("Failed to get number of participants: {}", e))
 		})?;
+
+		// Vector to store placeholder public keys for size estimation
+		let mut pub_keys: Vec<Secp256r1PublicKey> = Vec::with_capacity(nr_of_participants as usize);
 
 		// Loop to add placeholder public keys based on the number of participants
 		for _ in 0..nr_of_participants {
@@ -931,7 +931,7 @@ impl<'a, P: JsonRpcProvider + 'static> TransactionBuilder<'a, P> {
 		let mut unsigned_tx = self.get_unsigned_tx().await?;
 		let tx_bytes = unsigned_tx.get_hash_data().await?;
 
-		let mut witnesses_to_add = Vec::new();
+		let mut witnesses_to_add = Vec::with_capacity(unsigned_tx.signers.len());
 		for signer in &mut unsigned_tx.signers {
 			if Self::is_account_signer(signer) {
 				let account_signer = signer.as_account_signer().ok_or_else(|| {

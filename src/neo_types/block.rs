@@ -5,6 +5,7 @@ use crate::neo_types::{
 };
 
 /// Lightweight transaction hash provider used for block equality checks.
+/// Note: This type is used by test code in ipc.rs and legacy_ws.rs which uses testcontainers.
 #[allow(dead_code)]
 pub(crate) trait TXTrait {
 	/// Return the transaction hash for comparison.
@@ -12,6 +13,8 @@ pub(crate) trait TXTrait {
 }
 
 /// Compatibility helper so plain `H256` hashes satisfy `TXTrait`.
+/// Note: This impl is used by test code in ipc.rs and legacy_ws.rs which uses testcontainers.
+#[allow(dead_code)]
 impl TXTrait for H256 {
 	fn hash(&self) -> H256 {
 		*self
@@ -19,6 +22,7 @@ impl TXTrait for H256 {
 }
 
 /// Basic N3 block model used by the legacy WebSocket transport.
+/// Note: This type is used by test code in ipc.rs and legacy_ws.rs which uses testcontainers.
 #[derive(Serialize, Deserialize, Clone, Debug)]
 #[allow(dead_code)]
 pub(crate) struct Block<TX, W> {
@@ -63,6 +67,8 @@ pub(crate) struct Block<TX, W> {
 	pub next_block_hash: Option<H256>,
 }
 
+/// Note: This impl is used by test code in ipc.rs and legacy_ws.rs which uses testcontainers.
+#[allow(dead_code)]
 impl<TX, W> PartialEq for Block<TX, W>
 where
 	TX: TXTrait,

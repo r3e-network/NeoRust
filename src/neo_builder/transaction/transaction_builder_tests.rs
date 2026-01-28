@@ -374,8 +374,8 @@ mod tests {
 			.map(|witness| witness.verification.get_public_keys().unwrap().first().unwrap().clone())
 			.collect::<Vec<_>>();
 
-		assert!(signers.contains(&ACCOUNT1.deref().clone().key_pair.unwrap().public_key()));
-		assert!(signers.contains(&ACCOUNT2.deref().clone().key_pair.unwrap().public_key()));
+		assert!(signers.contains(&ACCOUNT1.deref().clone().key_pair.clone().unwrap().public_key()));
+		assert!(signers.contains(&ACCOUNT2.deref().clone().key_pair.clone().unwrap().public_key()));
 	}
 
 	#[tokio::test]

@@ -134,7 +134,9 @@ impl InvocationScript {
 	/// The list of signatures found in this script
 	pub fn get_signatures(&self) -> Vec<Secp256r1Signature> {
 		let mut reader = Decoder::new(&self.script);
-		let mut sigs = Vec::new();
+		// Pre-allocate with estimated capacity: signature is 64-65 bytes + 2 byte overhead
+		let estimated_count = self.script.len() / 66;
+		let mut sigs = Vec::with_capacity(estimated_count.max(1));
 		while reader.available() > 0 {
 			let opcode = reader.read_u8();
 			if opcode != OpCode::PushData1.opcode() {

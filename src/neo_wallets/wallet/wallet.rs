@@ -156,14 +156,15 @@ impl Wallet {
 			},
 		};
 
+		let default_account_hash = account.address_or_scripthash.script_hash();
 		let mut accounts = HashMap::new();
-		accounts.insert(account.address_or_scripthash.script_hash(), account.clone());
+		accounts.insert(default_account_hash, account.clone());
 		Self {
 			name: "NeoWallet".to_string(),
 			version: "1.0".to_string(),
 			scrypt_params: ScryptParamsDef::default(),
 			accounts,
-			default_account: account.clone().address_or_scripthash.script_hash(),
+			default_account: default_account_hash,
 			extra: None,
 		}
 	}
@@ -172,9 +173,8 @@ impl Wallet {
 	pub fn to_nep6(&self) -> Result<Nep6Wallet, WalletError> {
 		let accounts = self
 			.accounts
-			.clone()
-			.into_iter()
-			.filter_map(|(_, account)| match NEP6Account::from_account(&account) {
+			.values()
+			.filter_map(|account| match NEP6Account::from_account(account) {
 				Ok(nep6_account) => Some(nep6_account),
 				Err(e) => {
 					tracing::warn!(error = %e, "Failed to convert account to NEP6Account");
@@ -889,7 +889,7 @@ impl Wallet {
 	fn address(&self) -> String {
 		// Get the default account's address
 		if let Some(account) = self.get_account(&self.default_account) {
-			account.address_or_scripthash.address().clone()
+			account.address_or_scripthash.address()
 		} else {
 			// Return a default address if no default account exists
 			H160::default().to_address()
@@ -1152,14 +1152,12 @@ mod tests {
 		assert_eq!(wallet.accounts.len(), 2);
 		assert!(wallet
 			.accounts
-			.clone()
-			.into_iter()
-			.any(|(s, _)| s == account1.address_or_scripthash.script_hash()));
+			.values()
+			.any(|a| a.get_script_hash() == account1.address_or_scripthash.script_hash()));
 		assert!(wallet
 			.accounts
-			.clone()
-			.into_iter()
-			.any(|(s, _)| s == account2.address_or_scripthash.script_hash()));
+			.values()
+			.any(|a| a.get_script_hash() == account2.address_or_scripthash.script_hash()));
 	}
 
 	#[test]

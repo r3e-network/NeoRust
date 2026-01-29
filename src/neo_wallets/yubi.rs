@@ -1,4 +1,5 @@
 //! Helpers for creating wallets for YubiHSM2
+#[cfg(feature = "yubi")]
 use crate::{
 	neo_clients::public_key_to_address, neo_crypto::Secp256r1PublicKey, neo_error::WalletError,
 	neo_wallets::WalletSigner, Address,

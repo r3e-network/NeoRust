@@ -495,7 +495,7 @@ mod tests {
 			assert_eq!(
 				Decoder::new(&data)
 					.read_push_bytes()
-					.expect(&format!("read_push_bytes should decode {} bytes of push data", count)),
+					.unwrap_or_else(|_| panic!("read_push_bytes should decode {} bytes of push data", count)),
 				bytes
 			);
 		}

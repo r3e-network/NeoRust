@@ -493,9 +493,10 @@ mod tests {
 			let bytes = vec![1u8; count];
 			let data = [prefix.as_slice(), bytes.as_slice()].concat();
 			assert_eq!(
-				Decoder::new(&data)
-					.read_push_bytes()
-					.unwrap_or_else(|_| panic!("read_push_bytes should decode {} bytes of push data", count)),
+				Decoder::new(&data).read_push_bytes().unwrap_or_else(|_| panic!(
+					"read_push_bytes should decode {} bytes of push data",
+					count
+				)),
 				bytes
 			);
 		}

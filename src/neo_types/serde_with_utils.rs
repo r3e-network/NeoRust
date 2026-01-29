@@ -1440,7 +1440,7 @@ mod test {
 
 		// hex inputs should also deserialize
 		let hex_json = r#"{"current":"0x10","highest":"0x20"}"#;
-		let parsed_hex: OptionalHeights = serde_json::from_str(&hex_json).unwrap();
+		let parsed_hex: OptionalHeights = serde_json::from_str(hex_json).unwrap();
 		assert_eq!(parsed_hex.current, 16);
 		assert_eq!(parsed_hex.highest, Some(32));
 	}

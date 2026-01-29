@@ -143,8 +143,10 @@ impl From<YubiSigner<NistP256>> for WalletSigner<YubiSigner<NistP256>> {
 
 #[cfg(test)]
 mod tests {
+	#[cfg(feature = "mock-hsm")]
 	use std::str::FromStr;
 
+	#[cfg(feature = "mock-hsm")]
 	use super::*;
 	#[cfg(feature = "mock-hsm")]
 	use signature::Verifier;

@@ -4,9 +4,8 @@
   <h1>🚀 NeoRust - Production-Ready Neo N3 SDK</h1>
   <p><strong>Rust SDK • Powerful CLI • Enterprise Ready</strong></p>
   
-  <p>
-    <img src="../assets/images/neo-logo.png" alt="Neo Logo" width="100"/>
-    <img src="../assets/images/r3e-logo.png" alt="R3E Logo" width="250"/>
+<p>
+    <img src="../assets/neo_rust_banner.png" alt="NeoRust Banner" width="100%"/>
   </p>
 </div>
 

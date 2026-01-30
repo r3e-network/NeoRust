@@ -209,7 +209,7 @@ async fn deploy_contract(
 	let signers = vec![Signer::AccountSigner(signer)];
 
 	let mut tx_builder: TransactionBuilder<'_, neo3::neo_clients::HttpProvider> =
-		TransactionBuilder::new();
+		TransactionBuilder::with_client(&rpc_client);
 
 	// Set up the transaction builder with all required parameters
 	tx_builder.version(0);
@@ -233,18 +233,7 @@ async fn deploy_contract(
 
 	tx_builder.set_script(Some(script));
 
-	// Convert to string for network fee calculation
-	// let tx_hex = tx_builder.to_hex()
-	//     .map_err(|e| CliError::TransactionBuilder(format!("Failed to convert transaction to hex: {}", e)))?;
-
-	// Calculate network fee
-	// let network_fee = rpc_client.calculate_network_fee(tx_hex).await
-	//     .map_err(|e| CliError::Network(format!("Failed to calculate network fee: {}", e)))?;
-
-	// Set additional network fee - using a hardcoded value for testing
-	tx_builder.set_additional_network_fee(100000000);
-
-	// Build and sign the transaction
+	// Build and sign the transaction (network fee calculated automatically via RPC client)
 	let mut tx = tx_builder
 		.build()
 		.await
@@ -413,7 +402,7 @@ async fn update_contract(
 	let signers = vec![Signer::AccountSigner(signer)];
 
 	let mut tx_builder: TransactionBuilder<'_, neo3::neo_clients::HttpProvider> =
-		TransactionBuilder::new();
+		TransactionBuilder::with_client(&rpc_client);
 
 	// Set up the transaction builder with all required parameters
 	tx_builder.version(0);
@@ -432,18 +421,7 @@ async fn update_contract(
 
 	tx_builder.set_script(Some(script));
 
-	// Convert to string for network fee calculation
-	// let tx_hex = tx_builder.to_hex()
-	//     .map_err(|e| CliError::TransactionBuilder(format!("Failed to convert transaction to hex: {}", e)))?;
-
-	// Calculate network fee
-	// let network_fee = rpc_client.calculate_network_fee(tx_hex).await
-	//     .map_err(|e| CliError::Network(format!("Failed to calculate network fee: {}", e)))?;
-
-	// Set additional network fee - using a hardcoded value for testing
-	tx_builder.set_additional_network_fee(100000000);
-
-	// Build and sign the transaction
+	// Build and sign the transaction (network fee calculated automatically via RPC client)
 	let mut tx = tx_builder
 		.build()
 		.await
@@ -618,7 +596,7 @@ async fn invoke_contract(
 		let signers = vec![Signer::AccountSigner(signer)];
 
 		let mut tx_builder: TransactionBuilder<'_, neo3::neo_clients::HttpProvider> =
-			TransactionBuilder::new();
+			TransactionBuilder::with_client(&rpc_client);
 
 		// Set up the transaction builder with all required parameters
 		tx_builder.version(0);
@@ -636,18 +614,7 @@ async fn invoke_contract(
 
 		tx_builder.set_script(Some(script));
 
-		// Convert to string for network fee calculation
-		// let tx_hex = tx_builder.to_hex()
-		//     .map_err(|e| CliError::TransactionBuilder(format!("Failed to convert transaction to hex: {}", e)))?;
-
-		// Calculate network fee
-		// let network_fee = rpc_client.calculate_network_fee(tx_hex).await
-		//     .map_err(|e| CliError::Network(format!("Failed to calculate network fee: {}", e)))?;
-
-		// Set additional network fee - using a hardcoded value for testing
-		tx_builder.set_additional_network_fee(100000000);
-
-		// Build and sign the transaction
+		// Build and sign the transaction (network fee calculated automatically via RPC client)
 		let mut tx = tx_builder
 			.build()
 			.await

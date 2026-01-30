@@ -678,7 +678,7 @@ All interfaces must include:
 /// 
 /// # Version
 /// 
-/// Interface version: 1.0.1
+/// Interface version: 1.0.3
 #[async_trait]
 pub trait NetworkClientInterface: Send + Sync {
     // ... methods ...

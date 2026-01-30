@@ -186,7 +186,7 @@ where
 
 impl Default for HttpProvider {
 	/// Default HTTP Provider from SEED_1
-	/// 
+	///
 	/// # Panics
 	/// Panics if NeoConstants::SEED_1 is not a valid URL. This is a compile-time
 	/// constant and should always be valid.
@@ -195,7 +195,8 @@ impl Default for HttpProvider {
 			panic!(
 				"NeoConstants::SEED_1 ('{}') is not a valid URL: {}. \
 				This is a bug in the SDK configuration.",
-				NeoConstants::SEED_1, e
+				NeoConstants::SEED_1,
+				e
 			)
 		});
 

@@ -119,7 +119,7 @@ impl SecureStorage {
 	pub fn retrieve(&self, _key_id: &[u8; 32]) -> Result<Vec<u8>, SgxError> {
 		// Secure storage requires SGX - return error in non-SGX builds
 		Err(SgxError::StorageError(
-			"Secure storage retrieval requires SGX. Use SGX-enabled build for production.".into()
+			"Secure storage retrieval requires SGX. Use SGX-enabled build for production.".into(),
 		))
 	}
 

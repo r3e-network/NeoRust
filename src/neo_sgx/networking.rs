@@ -142,7 +142,8 @@ impl SgxNetworking {
 			// Secure encryption requires SGX - return error in non-SGX builds
 			let _ = (data, session_key); // suppress unused warnings
 			Err(SgxError::NetworkError(
-				"Secure channel encryption requires SGX. Use SGX-enabled build for production.".into()
+				"Secure channel encryption requires SGX. Use SGX-enabled build for production."
+					.into(),
 			))
 		}
 	}
@@ -202,7 +203,8 @@ impl SgxNetworking {
 			// Secure decryption requires SGX - return error in non-SGX builds
 			let _ = (encrypted_data, session_key); // suppress unused warnings
 			Err(SgxError::NetworkError(
-				"Secure channel decryption requires SGX. Use SGX-enabled build for production.".into()
+				"Secure channel decryption requires SGX. Use SGX-enabled build for production."
+					.into(),
 			))
 		}
 	}
@@ -244,7 +246,8 @@ impl SecureChannel {
 			// Secure key exchange requires SGX - return error in non-SGX builds
 			let _ = remote_public_key; // suppress unused warning
 			Err(SgxError::NetworkError(
-				"Secure channel handshake requires SGX. Use SGX-enabled build for production.".into()
+				"Secure channel handshake requires SGX. Use SGX-enabled build for production."
+					.into(),
 			))
 		}
 	}
@@ -295,6 +298,6 @@ extern "C" {
 pub fn ocall_network_request(_request: &[u8]) -> Result<Vec<u8>, SgxError> {
 	// Network requests through SGX enclave require SGX - return error in non-SGX builds
 	Err(SgxError::NetworkError(
-		"SGX network requests require SGX. Use SGX-enabled build for production.".into()
+		"SGX network requests require SGX. Use SGX-enabled build for production.".into(),
 	))
 }

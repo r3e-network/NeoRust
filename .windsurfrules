@@ -1,5 +1,0 @@
-ignore target folders.
-
-ensure the sdk works for neo N3 and Neo X.
-
-ensures the contract address and network type are correct.

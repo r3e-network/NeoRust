@@ -15,8 +15,9 @@ A comprehensive, production-ready Rust SDK for the Neo N3 blockchain platform. N
 
 ## 📊 Project Status
 
-- **Version**: 1.0.1 (Production Ready - Security Hardened)
+- **Version**: 1.0.3 (Production Ready - Security Hardened)
 - **Rust Version**: 1.70.0+
+- **Neo Version**: v3.9.1 (Latest)
 - **Platform Support**: Windows, macOS, Linux
 - **Security**: Dependencies audited; no known CVEs, with tracked unmaintained transitive crates only
 - **Coverage**: Comprehensive testing with property-based tests
@@ -42,7 +43,7 @@ A comprehensive, production-ready Rust SDK for the Neo N3 blockchain platform. N
 - 📦 **Project Templates** - Quick-start templates for dApps, tokens, and smart contracts
 - 🔧 **Unified Error Handling** - Consistent errors with recovery suggestions
 - ⚡ **Performance Optimized** - <100ms event processing, efficient caching
-- 🆕 **Neo 3.9 Ready** - Full support for Hardfork Echidna, Faun, and upcoming Gorgon
+- 🆕 **Neo v3.9.1 Compatible** - Full support for latest Neo N3 protocols including Hardfork Echidna, Faun, and Gorgon
 
 ### Applications
 - 🖥️ **CLI Tools** - Command-line interface for common blockchain operations
@@ -53,7 +54,7 @@ Add NeoRust to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-neo3 = "1.0.1"
+neo3 = "1.0.3"
 ```
 
 ## Basic Usage
@@ -136,7 +137,7 @@ let client = RpcClient::new(http);
 Requires the `ws` feature:
 
 ```toml
-neo3 = { version = "1.0.1", features = ["ws"] }
+neo3 = { version = "1.0.3", features = ["ws"] }
 ```
 
 ```rust

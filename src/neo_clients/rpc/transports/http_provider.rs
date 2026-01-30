@@ -5,7 +5,7 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use async_trait::async_trait;
 use futures_util::StreamExt;
 use http::HeaderValue;
-use log::{debug, error, warn};
+use log::debug;
 use reqwest::{header, Client, Error as ReqwestError};
 use serde::{de::DeserializeOwned, Serialize};
 use thiserror::Error;
@@ -186,19 +186,17 @@ where
 
 impl Default for HttpProvider {
 	/// Default HTTP Provider from SEED_1
+	/// 
+	/// # Panics
+	/// Panics if NeoConstants::SEED_1 is not a valid URL. This is a compile-time
+	/// constant and should always be valid.
 	fn default() -> Self {
 		let url = Url::parse(NeoConstants::SEED_1).unwrap_or_else(|e| {
-			warn!("NeoConstants::SEED_1 is not a valid URL ({}); falling back to localhost", e);
-
-			Url::parse("http://localhost:10332")
-				.or_else(|_| Url::parse("http://localhost"))
-				.or_else(|_| Url::parse("http://127.0.0.1:10332"))
-				.or_else(|_| Url::parse("http://example.com"))
-				.unwrap_or_else(|e| {
-					error!("Failed to parse fallback URL: {}", e);
-					Url::parse("http://localhost:10332")
-						.expect("hard-coded fallback URLs should be valid")
-				})
+			panic!(
+				"NeoConstants::SEED_1 ('{}') is not a valid URL: {}. \
+				This is a bug in the SDK configuration.",
+				NeoConstants::SEED_1, e
+			)
 		});
 
 		Self::new_with_client(url, Client::new())

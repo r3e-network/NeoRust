@@ -139,12 +139,11 @@ impl SgxNetworking {
 
 		#[cfg(not(feature = "sgx"))]
 		{
-			// Simple XOR for non-SGX builds (not secure, just for testing)
-			let mut encrypted = data.to_vec();
-			for (i, byte) in encrypted.iter_mut().enumerate() {
-				*byte ^= session_key[i % 32];
-			}
-			Ok(encrypted)
+			// Secure encryption requires SGX - return error in non-SGX builds
+			let _ = (data, session_key); // suppress unused warnings
+			Err(SgxError::NetworkError(
+				"Secure channel encryption requires SGX. Use SGX-enabled build for production.".into()
+			))
 		}
 	}
 
@@ -200,12 +199,11 @@ impl SgxNetworking {
 
 		#[cfg(not(feature = "sgx"))]
 		{
-			// Simple XOR for non-SGX builds (not secure, just for testing)
-			let mut decrypted = encrypted_data.to_vec();
-			for (i, byte) in decrypted.iter_mut().enumerate() {
-				*byte ^= session_key[i % 32];
-			}
-			Ok(decrypted)
+			// Secure decryption requires SGX - return error in non-SGX builds
+			let _ = (encrypted_data, session_key); // suppress unused warnings
+			Err(SgxError::NetworkError(
+				"Secure channel decryption requires SGX. Use SGX-enabled build for production.".into()
+			))
 		}
 	}
 }
@@ -243,14 +241,11 @@ impl SecureChannel {
 
 		#[cfg(not(feature = "sgx"))]
 		{
-			self.remote_public_key = Some(*remote_public_key);
-			// Generate dummy session key for testing
-			let mut session_key = [0u8; 32];
-			for (i, byte) in session_key.iter_mut().enumerate() {
-				*byte = (i as u8) ^ remote_public_key[i % 64];
-			}
-			self.session_key = Some(session_key);
-			Ok(())
+			// Secure key exchange requires SGX - return error in non-SGX builds
+			let _ = remote_public_key; // suppress unused warning
+			Err(SgxError::NetworkError(
+				"Secure channel handshake requires SGX. Use SGX-enabled build for production.".into()
+			))
 		}
 	}
 
@@ -298,6 +293,8 @@ extern "C" {
 /// Simulated network request for non-SGX builds
 #[cfg(not(feature = "sgx"))]
 pub fn ocall_network_request(_request: &[u8]) -> Result<Vec<u8>, SgxError> {
-	// Return dummy response for testing
-	Ok(b"OK".to_vec())
+	// Network requests through SGX enclave require SGX - return error in non-SGX builds
+	Err(SgxError::NetworkError(
+		"SGX network requests require SGX. Use SGX-enabled build for production.".into()
+	))
 }

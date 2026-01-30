@@ -117,8 +117,10 @@ impl SecureStorage {
 
 	#[cfg(not(feature = "sgx"))]
 	pub fn retrieve(&self, _key_id: &[u8; 32]) -> Result<Vec<u8>, SgxError> {
-		// Return dummy data for non-SGX builds
-		Ok(vec![0u8; 32])
+		// Secure storage requires SGX - return error in non-SGX builds
+		Err(SgxError::StorageError(
+			"Secure storage retrieval requires SGX. Use SGX-enabled build for production.".into()
+		))
 	}
 
 	/// Delete stored data

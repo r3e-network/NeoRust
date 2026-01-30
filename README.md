@@ -1,7 +1,7 @@
 # NeoRust
 
 <p align="center">
-  <img src="./assets/neo-rust-sdk-logo.svg" alt="NeoRust SDK logo" width="520">
+  <img src="./assets/neo_rust_banner.png" alt="NeoRust SDK Banner" width="100%">
 </p>
 
 [![Build & Test](https://github.com/r3e-network/NeoRust/actions/workflows/build-test.yml/badge.svg)](https://github.com/r3e-network/NeoRust/actions/workflows/build-test.yml)

@@ -76,10 +76,10 @@ mod tests {
 		let wallet: Nep6Wallet = serde_json::from_str(data)
 			.expect("Should be able to deserialize valid Nep6Wallet JSON in test");
 
-		assert_eq!(wallet.clone().name, "Wallet");
-		assert_eq!(wallet.clone().version, "1.0");
-		assert_eq!(wallet.clone().scrypt, ScryptParamsDef::default());
-		assert_eq!(wallet.clone().accounts.len(), 2);
+		assert_eq!(wallet.name, "Wallet");
+		assert_eq!(wallet.version, "1.0");
+		assert_eq!(wallet.scrypt, ScryptParamsDef::default());
+		assert_eq!(wallet.accounts.len(), 2);
 
 		let account1 = &wallet.accounts[0];
 

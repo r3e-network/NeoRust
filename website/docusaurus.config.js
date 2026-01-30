@@ -1,7 +1,7 @@
 // @ts-check
 // Note: type annotations allow type checking and IDEs autocompletion
 
-const {themes} = require('prism-react-renderer');
+const { themes } = require('prism-react-renderer');
 const lightCodeTheme = themes.github;
 const darkCodeTheme = themes.dracula;
 
@@ -9,7 +9,7 @@ const darkCodeTheme = themes.dracula;
 const config = {
   title: 'NeoRust v1.0.1',
   tagline: 'Production-ready Neo N3 blockchain development toolkit built in Rust',
-  favicon: 'img/favicon.svg',
+  favicon: 'img/favicon.png',
 
   // Set the production url of your site here
   url: 'https://neorust.netlify.app',
@@ -81,19 +81,19 @@ const config = {
       // Replace with your project's social card
       image: 'img/neorust-social-card.jpg',
       metadata: [
-        {name: 'keywords', content: 'neo, blockchain, rust, sdk, neo3, cryptocurrency, smart-contracts, defi'},
-        {name: 'description', content: 'NeoRust v1.0.1 - A production-ready Rust SDK for Neo N3 blockchain development. Build high-performance dApps with type-safe, modern Rust. Optimized and production-ready.'},
-        {property: 'og:image', content: 'https://neorust.netlify.app/img/neorust-social-card.jpg'},
-        {property: 'og:type', content: 'website'},
-        {name: 'twitter:card', content: 'summary_large_image'},
-        {name: 'twitter:image', content: 'https://neorust.netlify.app/img/neorust-social-card.jpg'},
+        { name: 'keywords', content: 'neo, blockchain, rust, sdk, neo3, cryptocurrency, smart-contracts, defi' },
+        { name: 'description', content: 'NeoRust v1.0.1 - A production-ready Rust SDK for Neo N3 blockchain development. Build high-performance dApps with type-safe, modern Rust. Optimized and production-ready.' },
+        { property: 'og:image', content: 'https://neorust.netlify.app/img/neorust-social-card.jpg' },
+        { property: 'og:type', content: 'website' },
+        { name: 'twitter:card', content: 'summary_large_image' },
+        { name: 'twitter:image', content: 'https://neorust.netlify.app/img/neorust-social-card.jpg' },
       ],
       navbar: {
         title: 'NeoRust',
         logo: {
           alt: 'NeoRust Logo',
-          src: 'img/logo-icon.svg',
-          srcDark: 'img/logo-icon.svg',
+          src: 'img/logo-icon.png',
+          srcDark: 'img/logo-icon.png',
           width: 32,
           height: 32,
         },
@@ -236,7 +236,7 @@ const config = {
         ],
         logo: {
           alt: 'NeoRust Logo',
-          src: 'img/logo.svg',
+          src: 'img/logo.png',
           width: 160,
           height: 51,
         },
@@ -255,7 +255,7 @@ const config = {
           {
             className: 'theme-code-block-highlighted-line',
             line: 'highlight-next-line',
-            block: {start: 'highlight-start', end: 'highlight-end'},
+            block: { start: 'highlight-start', end: 'highlight-end' },
           },
           {
             className: 'code-block-error-line',

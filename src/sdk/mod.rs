@@ -51,7 +51,6 @@ pub struct Neo {
 	network: Network,
 	endpoint: String,
 	cache: Option<RpcCache>,
-	#[allow(dead_code)]
 	config: SdkConfig,
 }
 

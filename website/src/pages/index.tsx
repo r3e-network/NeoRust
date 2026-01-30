@@ -111,7 +111,7 @@ function Stat({ label, value, description }: typeof stats[0]) {
 
 export default function Home(): JSX.Element {
   const { siteConfig } = useDocusaurusContext();
-  
+
   // State for blockchain info
   const [blockchainInfo, setBlockchainInfo] = useState<BlockchainInfo>({
     blockHeight: 0,
@@ -148,18 +148,18 @@ export default function Home(): JSX.Element {
             params: []
           })
         });
-        
+
         if (!response.ok) {
           throw new Error(`HTTP ${response.status}`);
         }
-        
+
         const data = await response.json();
         if (data.error) {
           throw new Error(data.error.message);
         }
-        
+
         const blockCount = data.result;
-        
+
         // Get the latest block info
         const blockResponse = await fetch(endpoint, {
           method: 'POST',
@@ -173,19 +173,19 @@ export default function Home(): JSX.Element {
             params: [blockCount - 1, 1]
           })
         });
-        
+
         if (!blockResponse.ok) {
           throw new Error(`HTTP ${blockResponse.status}`);
         }
-        
+
         const blockData = await blockResponse.json();
         if (blockData.error) {
           throw new Error(blockData.error.message);
         }
-        
+
         const block = blockData.result;
         const blockTime = new Date(block.time * 1000).toLocaleString();
-        
+
         // Get version info
         const versionResponse = await fetch(endpoint, {
           method: 'POST',
@@ -199,18 +199,18 @@ export default function Home(): JSX.Element {
             params: []
           })
         });
-        
+
         if (!versionResponse.ok) {
           throw new Error(`HTTP ${versionResponse.status}`);
         }
-        
+
         const versionData = await versionResponse.json();
         if (versionData.error) {
           throw new Error(versionData.error.message);
         }
-        
+
         const version = versionData.result.useragent;
-        
+
         setBlockchainInfo({
           blockHeight: blockCount - 1,
           blockHash: block.hash,
@@ -220,17 +220,17 @@ export default function Home(): JSX.Element {
           loading: false,
           lastUpdated: Date.now()
         });
-        
+
         // If we reach here, the endpoint worked successfully
         console.log(`Successfully fetched blockchain data from ${endpoint}`);
         return;
-        
+
       } catch (error) {
         console.warn(`Failed to fetch from ${endpoint}:`, (error as Error).message);
         // Continue to next endpoint
       }
     }
-    
+
     // If all endpoints failed, set fallback data
     console.error('All Neo N3 RPC endpoints failed');
     setBlockchainInfo({
@@ -246,19 +246,19 @@ export default function Home(): JSX.Element {
 
   // Force refresh function
   const refreshBlockchainInfo = () => {
-    setBlockchainInfo(prev => ({...prev, loading: true}));
+    setBlockchainInfo(prev => ({ ...prev, loading: true }));
     fetchBlockchainInfo();
   };
 
   // Fetch blockchain info on mount and periodically
   useEffect(() => {
     fetchBlockchainInfo();
-    
+
     // Update every 15 seconds
     const interval = setInterval(() => {
       fetchBlockchainInfo();
     }, 15000);
-    
+
     return () => {
       clearInterval(interval);
     };
@@ -268,16 +268,12 @@ export default function Home(): JSX.Element {
     <Layout
       title={`${siteConfig.title} - ${siteConfig.tagline}`}
       description="NeoRust v1.0.1 - A production-ready Rust SDK for Neo N3 blockchain development. Build high-performance dApps with type-safe, modern Rust. Features 135 passing documentation tests.">
-      
+
       {/* Hero Section */}
       <header className={clsx('hero hero--primary', styles.heroBanner)}>
         <div className="container">
           <div className={styles.heroContent}>
-            <div className={styles.heroLogo}>
-              <div className={styles.logoCircle}>
-                <span className={styles.logoIcon}>⚡</span>
-              </div>
-            </div>
+            <img src="img/logo.png" alt="NeoRust Logo" className={styles.heroLogoImage} style={{ height: '150px', marginBottom: '20px' }} />
             <h1 className={styles.heroTitle}>
               <span className={styles.heroTitlePrimary}>Neo</span>
               <span className={styles.heroTitleSecondary}>Rust SDK</span>
@@ -285,7 +281,7 @@ export default function Home(): JSX.Element {
             <p className={styles.heroSubtitle}>
               A production-ready Rust library for building high-performance applications on the Neo N3 blockchain ecosystem. Now with 135 passing documentation tests ensuring code quality and reliability.
             </p>
-            
+
             <div className={styles.qualityBadges}>
               <div className={styles.badge}>
                 <span className={styles.badgeIcon}>✅</span>
@@ -300,7 +296,7 @@ export default function Home(): JSX.Element {
                 <span className={styles.badgeText}>Production Ready</span>
               </div>
             </div>
-            
+
             <div className={styles.heroButtons}>
               <Link
                 className={clsx('btn btn-primary', styles.heroButton)}
@@ -315,7 +311,7 @@ export default function Home(): JSX.Element {
                 View on GitHub
               </Link>
             </div>
-            
+
             <div className={styles.heroStats}>
               {stats.map((stat, index) => (
                 <Stat key={index} {...stat} />
@@ -338,8 +334,8 @@ export default function Home(): JSX.Element {
                     <p>Live network statistics</p>
                   </div>
                 </div>
-                
-                <button 
+
+                <button
                   onClick={refreshBlockchainInfo}
                   disabled={blockchainInfo.loading}
                   className={clsx('btn btn-secondary', styles.refreshButton)}
@@ -357,7 +353,7 @@ export default function Home(): JSX.Element {
                   )}
                 </button>
               </div>
-              
+
               {blockchainInfo.loading && !blockchainInfo.blockHeight ? (
                 <div className={styles.loadingState}>
                   <div className={styles.spinner}></div>
@@ -369,15 +365,15 @@ export default function Home(): JSX.Element {
                     <div className={styles.statLabel}>Height</div>
                     <div className={styles.statValue}>{blockchainInfo.blockHeight.toLocaleString()}</div>
                   </div>
-                  
+
                   <div className={styles.blockchainStat}>
                     <div className={styles.statLabel}>Latest Block</div>
                     <div className={styles.blockHash}>
                       <span>{blockchainInfo.blockHash ? `${blockchainInfo.blockHash.substring(0, 6)}...${blockchainInfo.blockHash.substring(blockchainInfo.blockHash.length - 8)}` : ''}</span>
                       {blockchainInfo.blockHash && (
-                        <a 
-                          href={`https://neo3.neotube.io/block/${blockchainInfo.blockHash}`} 
-                          target="_blank" 
+                        <a
+                          href={`https://neo3.neotube.io/block/${blockchainInfo.blockHash}`}
+                          target="_blank"
                           rel="noopener noreferrer"
                           className={styles.externalLink}
                         >
@@ -386,19 +382,19 @@ export default function Home(): JSX.Element {
                       )}
                     </div>
                   </div>
-                  
+
                   <div className={styles.blockchainStat}>
                     <div className={styles.statLabel}>Transactions</div>
                     <div className={styles.statValue}>{blockchainInfo.transactions}</div>
                   </div>
-                  
+
                   <div className={styles.blockchainStat}>
                     <div className={styles.statLabel}>Version</div>
                     <div className={styles.statValue}>{blockchainInfo.version}</div>
                   </div>
                 </div>
               )}
-              
+
               {!blockchainInfo.loading && blockchainInfo.lastUpdated > 0 && (
                 <div className={styles.lastUpdated}>
                   Last updated: {new Date(blockchainInfo.lastUpdated).toLocaleTimeString()}
@@ -419,7 +415,7 @@ export default function Home(): JSX.Element {
                 Built with Rust's performance and safety guarantees for robust blockchain applications
               </p>
             </div>
-            
+
             <div className={styles.featuresGrid}>
               {features.map((props, idx) => (
                 <Feature key={idx} {...props} />
@@ -439,7 +435,7 @@ export default function Home(): JSX.Element {
                 <p className={styles.sectionSubtitle}>
                   Write clean, type-safe blockchain code with modern Rust features
                 </p>
-                
+
                 <div className={styles.codeFeatures}>
                   {[
                     'Type-safe blockchain interactions',
@@ -461,7 +457,7 @@ export default function Home(): JSX.Element {
                   <span className={styles.buttonIcon}>→</span>
                 </Link>
               </div>
-              
+
               <div className={styles.codeExample}>
                 <CodeBlock
                   language="rust"
@@ -485,7 +481,7 @@ export default function Home(): JSX.Element {
                 Everything you need for Neo N3 development in one comprehensive suite
               </p>
             </div>
-            
+
             <div className={styles.toolsGrid}>
               <div className={clsx('card', styles.tool)}>
                 <div className={styles.toolIcon}>🦀</div>
@@ -497,7 +493,7 @@ export default function Home(): JSX.Element {
                   Explore SDK
                 </Link>
               </div>
-              
+
               <div className={clsx('card', styles.tool)}>
                 <div className={styles.toolIcon}>📘</div>
                 <h3 className={styles.toolTitle}>Guides & Examples</h3>
@@ -508,7 +504,7 @@ export default function Home(): JSX.Element {
                   Get Started
                 </Link>
               </div>
-              
+
               <div className={clsx('card', styles.tool)}>
                 <div className={styles.toolIcon}>⌨️</div>
                 <h3 className={styles.toolTitle}>CLI Tools</h3>
@@ -531,7 +527,7 @@ export default function Home(): JSX.Element {
               <p className={styles.ctaSubtitle}>
                 Join the growing community of developers building the future of blockchain with NeoRust v1.0.1
               </p>
-              
+
               <div className={styles.ctaButtons}>
                 <Link
                   className={clsx('btn btn-primary', styles.ctaButton)}
@@ -546,7 +542,7 @@ export default function Home(): JSX.Element {
                   <span className={styles.buttonIcon}>📚</span>
                 </Link>
               </div>
-              
+
               <div className={styles.ctaNote}>
                 <p>
                   <strong>New in v1.0.1:</strong> Production-ready stability with 135 passing documentation tests, enhanced error handling, and comprehensive code quality improvements.

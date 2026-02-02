@@ -6,8 +6,8 @@ description = "Basic Neo N3 examples for beginners"
 
 [dependencies]
 neo3 = { path = "../../", features = ["default"] }
-tokio = { version = "1.45", features = ["full"] }
-colored = "2.0"
+tokio = { version = "1.49", features = ["full"] }
+colored = "3.1"
 hex = "0.4"
 
 [[example]]

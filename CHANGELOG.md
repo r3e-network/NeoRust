@@ -41,6 +41,15 @@ _No changes yet._
 - Fixed doc version mismatch: updated `v1.0.1` → `v1.0.3` in doc comments and Cargo.toml examples (4 sites across `lib.rs` and `neo_types/mod.rs`); historical references preserved
 - Extracted `neo_config_lock()` helper in `config.rs` to eliminate 4 identical lock+poison-recovery blocks in `api_trait.rs` (DRY)
 
+### 🐛 Fixes
+
+- Fixed `neo-cli` macOS keychain integration: replaced nonexistent standalone `passwords::set_generic_password` / `get_generic_password` / `delete_generic_password` calls with correct `SecKeychain` method API from `security-framework` 2.11
+- Fixed `neo-cli` Windows credential store: resolved borrow-after-move (E0382) by reordering `store_windows_credential` (borrow) before `HashMap::insert` (move)
+
+### 📦 Dependencies
+
+- Upgraded `jsonwebtoken` from 9.2.0 to 10.3.0 with `rust_crypto` feature (eliminates process-level `CryptoProvider` requirement)
+
 ## [1.0.2] - 2026-01-28
 
 ### 🔧 Changed

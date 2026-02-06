@@ -10,6 +10,14 @@ version = 2
 unmaintained = "workspace"
 yanked = "warn"
 
+# Temporarily ignored advisories (no upstream fix available)
+ignore = [
+    # RUSTSEC-2023-0071: rsa crate Marvin Attack timing sidechannel.
+    # Transitive dep via jsonwebtoken -> rsa 0.9.x; no patched version exists yet.
+    # Tracked: https://rustsec.org/advisories/RUSTSEC-2023-0071
+    "RUSTSEC-2023-0071",
+]
+
 # This section is considered when running `cargo deny check bans`.
 # More documentation about the 'bans' section can be found here:
 # https://embarkstudios.github.io/cargo-deny/checks/bans/cfg.html
@@ -69,11 +77,6 @@ allow = [
 # Allow 1 or more licenses on a per-crate basis, so that particular licenses
 # aren't accepted for every possible crate as with the normal allow list
 exceptions = [
-    # CC0 is a permissive license but somewhat unclear status for source code
-    # so we prefer to not have dependencies using it
-    # https://tldrlegal.com/license/creative-commons-cc0-1.0-universal
-    { allow = ["CC0-1.0"], name = "tiny-keccak" },
-    { allow = ["CC0-1.0"], name = "constant_time_eq" },
     # root certificate bundle used by rustls/reqwest
     { allow = ["CDLA-Permissive-2.0"], name = "webpki-roots" },
 ]

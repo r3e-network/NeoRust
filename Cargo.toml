@@ -183,7 +183,7 @@ rand_core = "0.6.4"
 log = "0.4.14"
 ecb = "0.1.2"
 http = "1.1.0"
-jsonwebtoken = "9.2.0"
+jsonwebtoken = { version = "10.3.0", default-features = false, features = ["rust_crypto"] }
 
 # ledger
 coins-ledger = { version = "0.12.0", default-features = false, optional = true }

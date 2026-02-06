@@ -64,21 +64,18 @@ impl KeychainManager {
 
 		#[cfg(target_os = "macos")]
 		{
-			use security_framework::os::macos::passwords;
-			passwords::set_generic_password(
-				&self.service_name,
-				&credential.account,
-				data.as_slice(),
-			)
-			.map_err(|e| CliError::Security(format!("Failed to store in macOS keychain: {}", e)))?;
+			self.keychain
+				.set_generic_password(&self.service_name, key, data.as_slice())
+				.map_err(|e| {
+					CliError::Security(format!("Failed to store in macOS keychain: {}", e))
+				})?;
 		}
 
 		#[cfg(target_os = "windows")]
 		{
-			// Use Windows Credential Manager via winapi
-			self.credential_store.insert(key.to_string(), data);
-			// In production, this would use Windows DPAPI
+			// Borrow before move: DPAPI store borrows, then HashMap takes ownership
 			self.store_windows_credential(key, &data)?;
+			self.credential_store.insert(key.to_string(), data);
 		}
 
 		#[cfg(target_os = "linux")]
@@ -94,12 +91,12 @@ impl KeychainManager {
 	pub fn get_credential(&self, key: &str) -> Result<SecureCredential, CliError> {
 		#[cfg(target_os = "macos")]
 		{
-			use security_framework::os::macos::passwords;
-			let data = passwords::get_generic_password(&self.service_name, key).map_err(|e| {
-				CliError::Security(format!("Failed to retrieve from macOS keychain: {}", e))
-			})?;
+			let (password, _item) =
+				self.keychain.find_generic_password(&self.service_name, key).map_err(|e| {
+					CliError::Security(format!("Failed to retrieve from macOS keychain: {}", e))
+				})?;
 
-			serde_json::from_slice(&data)
+			serde_json::from_slice(password.as_ref())
 				.map_err(|e| CliError::Security(format!("Failed to deserialize credential: {}", e)))
 		}
 
@@ -130,10 +127,11 @@ impl KeychainManager {
 	pub fn delete_credential(&mut self, key: &str) -> Result<(), CliError> {
 		#[cfg(target_os = "macos")]
 		{
-			use security_framework::os::macos::passwords;
-			passwords::delete_generic_password(&self.service_name, key).map_err(|e| {
-				CliError::Security(format!("Failed to delete from keychain: {}", e))
-			})?;
+			let (_password, item) =
+				self.keychain.find_generic_password(&self.service_name, key).map_err(|e| {
+					CliError::Security(format!("Failed to find keychain item for deletion: {}", e))
+				})?;
+			item.delete();
 		}
 
 		#[cfg(target_os = "windows")]

@@ -1,13 +1,13 @@
-#![allow(
-	clippy::result_large_err,
-	clippy::too_many_arguments,
-	clippy::wrong_self_convention,
-	clippy::module_inception,
-	clippy::type_complexity
-)]
-#![allow(unexpected_cfgs)]
+// Clippy suppressions — each kept intentionally:
+#![allow(clippy::result_large_err)]
+// RPC error enums carry provider-specific payloads; boxing adds indirection with no consumer benefit
+#![allow(clippy::too_many_arguments)] // Builder-pattern constructors mirror the Neo N3 protocol fields 1:1
+#![allow(clippy::wrong_self_convention)] // `into_*` / `to_*` naming follows Neo C# SDK conventions for cross-language parity
+#![allow(clippy::module_inception)] // Re-export modules share parent name by design (e.g. neo_types::neo_types)
+#![allow(clippy::type_complexity)] // Nested generics in RPC futures are unavoidable without boxing
+#![allow(unexpected_cfgs)] // Feature flags checked at build time by downstream crates
 //! ![Neo Logo](https://neo.org/images/neo-logo/NEO-logo.svg)
-//! # NeoRust SDK v1.0.1
+//! # NeoRust SDK v1.0.3
 //!
 //! A production-ready Rust SDK for the Neo N3 blockchain with enterprise-grade features.
 //!
@@ -42,13 +42,13 @@
 //!
 //! ```toml
 //! [dependencies]
-//! neo3 = { version = "1.0.1", features = ["futures", "ledger"] }
+//! neo3 = { version = "1.0.3", features = ["futures", "ledger"] }
 //! ```
 //!
 //! You can disable default features with:
 //!
 //! ```toml
-//! neo3 = { version = "1.0.1", default-features = false, features = ["futures"] }
+//! neo3 = { version = "1.0.3", default-features = false, features = ["futures"] }
 //! ```
 //!
 //! ## Overview

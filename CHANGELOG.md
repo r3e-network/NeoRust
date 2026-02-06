@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 _No changes yet._
 
-## [1.0.3] - 2026-01-28
+## [1.0.3] - 2026-02-06
 
 ### 🔧 Changed
 
@@ -34,6 +34,12 @@ _No changes yet._
 - Implemented `Zeroize` and `ZeroizeOnDrop` for `KeyPair` to securely clear private key bytes
 - Implemented custom `Drop` for `Account` and `NEP6Account` to zeroize encrypted private key strings
 - Added input validation assertions to prevent buffer underflows in debug builds
+
+### 🧹 Code Quality
+
+- Added inline justification comments to all `#![allow(clippy::...)]` suppressions in `src/lib.rs`
+- Fixed doc version mismatch: updated `v1.0.1` → `v1.0.3` in doc comments and Cargo.toml examples (4 sites across `lib.rs` and `neo_types/mod.rs`); historical references preserved
+- Extracted `neo_config_lock()` helper in `config.rs` to eliminate 4 identical lock+poison-recovery blocks in `api_trait.rs` (DRY)
 
 ## [1.0.2] - 2026-01-28
 

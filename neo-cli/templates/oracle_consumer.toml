@@ -4,7 +4,7 @@
 [template]
 name = "oracle-consumer"
 description = "Oracle consumer scaffold (fetch/read oracle-fed state)"
-version = "1.0.1"
+version = "1.0.3"
 author = "NeoRust Team"
 
 [files]

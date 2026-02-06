@@ -1,4 +1,4 @@
-//! Example demonstrating new features in NeoRust v1.0.1
+//! Example demonstrating new features in NeoRust v1.0.3
 //!
 //! This example showcases the major features introduced in v1.0.x:
 //! - WebSocket real-time events
@@ -17,7 +17,7 @@ use std::sync::Arc;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-	println!("🚀 NeoRust v1.0.1 Feature Demonstration\n");
+	println!("🚀 NeoRust v1.0.3 Feature Demonstration\n");
 
 	// ========================================
 	// 1. High-Level SDK API
@@ -116,7 +116,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 	#[cfg(not(feature = "ws"))]
 	{
 		println!("🌐 WebSocket Real-time Events (disabled)");
-		println!("   Enable with: neo3 = {{ version = \"1.0.1\", features = [\"ws\"] }}");
+		println!("   Enable with: neo3 = {{ version = \"1.0.3\", features = [\"ws\"] }}");
 		println!();
 	}
 
@@ -218,7 +218,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 	// Summary
 	// ========================================
 	println!("✨ Summary");
-	println!("   NeoRust v1.0.1 provides:");
+	println!("   NeoRust v1.0.3 provides:");
 	println!("   ✅ 50-70% code reduction with high-level API");
 	println!("   ✅ Real-time events via WebSocket");
 	println!("   ✅ HD wallets with BIP-39/44 support");

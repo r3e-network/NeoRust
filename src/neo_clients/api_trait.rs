@@ -2,7 +2,7 @@ use std::{collections::HashMap, error::Error, fmt::Debug};
 
 use crate::{
 	builder::{Signer, Transaction, TransactionBuilder, TransactionSendToken},
-	config::NEOCONFIG,
+	config::neo_config_lock,
 	neo_clients::{JsonRpcProvider, ProviderError, RpcClient},
 	neo_protocol::{
 		ApplicationLog, MemPoolDetails, NeoAddress, NeoBlock, NeoNetworkFee, NeoVersion,
@@ -33,46 +33,22 @@ pub trait APITrait: Sync + Send + Debug {
 
 	/// Returns the NNS resolver address.
 	fn nns_resolver(&self) -> H160 {
-		NEOCONFIG
-			.lock()
-			.unwrap_or_else(|e| {
-				tracing::warn!("NEOCONFIG mutex poisoned; recovering inner state");
-				e.into_inner()
-			})
-			.nns_resolver
+		neo_config_lock().nns_resolver
 	}
 
 	/// Returns the block interval in milliseconds.
 	fn block_interval(&self) -> u32 {
-		NEOCONFIG
-			.lock()
-			.unwrap_or_else(|e| {
-				tracing::warn!("NEOCONFIG mutex poisoned; recovering inner state");
-				e.into_inner()
-			})
-			.milliseconds_per_block
+		neo_config_lock().milliseconds_per_block
 	}
 
 	/// Returns the polling interval in milliseconds.
 	fn polling_interval(&self) -> u32 {
-		NEOCONFIG
-			.lock()
-			.unwrap_or_else(|e| {
-				tracing::warn!("NEOCONFIG mutex poisoned; recovering inner state");
-				e.into_inner()
-			})
-			.milliseconds_per_block
+		neo_config_lock().milliseconds_per_block
 	}
 
 	/// Returns the maximum valid-until-block increment.
 	fn max_valid_until_block_increment(&self) -> u32 {
-		NEOCONFIG
-			.lock()
-			.unwrap_or_else(|e| {
-				tracing::warn!("NEOCONFIG mutex poisoned; recovering inner state");
-				e.into_inner()
-			})
-			.get_max_valid_until_block_increment()
+		neo_config_lock().get_max_valid_until_block_increment()
 	}
 
 	// Blockchain methods

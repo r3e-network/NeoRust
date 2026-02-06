@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use std::{
 	collections::HashMap,
 	hash::{Hash, Hasher},
-	sync::{Arc, Mutex},
+	sync::{Arc, Mutex, MutexGuard},
 };
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Deserialize, Serialize)]
@@ -58,6 +58,16 @@ pub struct NeoConfig {
 
 lazy_static! {
 	pub static ref NEOCONFIG: Mutex<NeoConfig> = Mutex::new(NeoConfig::default());
+}
+
+/// Acquires the global [`NEOCONFIG`] lock, recovering from poison if a
+/// previous holder panicked.  Centralises the lock+recovery pattern so
+/// callers never duplicate the `unwrap_or_else` boilerplate.
+pub fn neo_config_lock() -> MutexGuard<'static, NeoConfig> {
+	NEOCONFIG.lock().unwrap_or_else(|e| {
+		tracing::warn!("NEOCONFIG mutex poisoned; recovering inner state");
+		e.into_inner()
+	})
 }
 
 impl Hash for NeoConfig {

@@ -3,11 +3,11 @@ name: Release
 on:
   push:
     tags:
-      - 'v*.*.*'
+      - "v*.*.*"
   workflow_dispatch:
     inputs:
       version:
-        description: 'Version to release (e.g., v0.5.0)'
+        description: "Version to release (e.g., v0.5.0)"
         required: true
         type: string
 
@@ -27,29 +27,29 @@ jobs:
     timeout-minutes: 10
     outputs:
       version: ${{ steps.version.outputs.version }}
-      
+
     steps:
-    - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-    - name: Determine version
-      id: version
-      run: |
-        if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-          VERSION="${{ github.event.inputs.version }}"
-        else
-          VERSION="${GITHUB_REF#refs/tags/}"
-        fi
-        echo "version=${VERSION}" >> $GITHUB_OUTPUT
-        echo "Version: ${VERSION}"
+      - name: Determine version
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            VERSION="${{ github.event.inputs.version }}"
+          else
+            VERSION="${GITHUB_REF#refs/tags/}"
+          fi
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+          echo "Version: ${VERSION}"
 
-    - name: Verify Cargo.toml version
-      run: |
-        VERSION="${{ steps.version.outputs.version }}"
-        CARGO_VERSION="v$(grep '^version' Cargo.toml | head -1 | cut -d'"' -f2)"
-        if [ "$VERSION" != "$CARGO_VERSION" ]; then
-          echo "Error: Tag version ($VERSION) doesn't match Cargo.toml version ($CARGO_VERSION)"
-          exit 1
-        fi
+      - name: Verify Cargo.toml version
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          CARGO_VERSION="v$(grep '^version' Cargo.toml | head -1 | cut -d'"' -f2)"
+          if [ "$VERSION" != "$CARGO_VERSION" ]; then
+            echo "Error: Tag version ($VERSION) doesn't match Cargo.toml version ($CARGO_VERSION)"
+            exit 1
+          fi
 
   # Build release artifacts
   build:
@@ -70,113 +70,92 @@ jobs:
           - os: macos-latest
             target: x86_64-apple-darwin
             artifact: neorust-macos-amd64
-            
+
     steps:
-    - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-    - name: Setup Rust
-      uses: dtolnay/rust-toolchain@stable
-      with:
-        targets: ${{ matrix.target }}
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
 
-    - name: Build release binary
-      run: |
-        cargo build --release --target ${{ matrix.target }} --no-default-features --workspace
-        cargo build --release --target ${{ matrix.target }} -p neo-cli --bin neo-cli
+      - name: Build release binary
+        run: |
+          cargo build --release --target ${{ matrix.target }} --no-default-features --workspace
+          cargo build --release --target ${{ matrix.target }} -p neo-cli --bin neo-cli
 
-    - name: Package artifacts (Unix)
-      if: runner.os != 'Windows'
-      run: |
-        mkdir -p dist
-        if [ -f target/${{ matrix.target }}/release/neo-cli ]; then
-          cp target/${{ matrix.target }}/release/neo-cli dist/
-        fi
-        cp README.md LICENSE CHANGELOG.md dist/
-        tar -czf ${{ matrix.artifact }}.tar.gz -C dist .
+      - name: Package artifacts (Unix)
+        if: runner.os != 'Windows'
+        run: |
+          mkdir -p dist
+          if [ -f target/${{ matrix.target }}/release/neo-cli ]; then
+            cp target/${{ matrix.target }}/release/neo-cli dist/
+          fi
+          cp README.md LICENSE CHANGELOG.md dist/
+          tar -czf ${{ matrix.artifact }}.tar.gz -C dist .
 
-    - name: Package artifacts (Windows)
-      if: runner.os == 'Windows'
-      shell: pwsh
-      run: |
-        New-Item -ItemType Directory -Force -Path dist
-        if (Test-Path target\${{ matrix.target }}\release\neo-cli.exe) {
-          Copy-Item target\${{ matrix.target }}\release\neo-cli.exe dist\
-        }
-        Copy-Item README.md, LICENSE, CHANGELOG.md dist\
-        Compress-Archive -Path dist\* -DestinationPath ${{ matrix.artifact }}.zip
+      - name: Package artifacts (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path dist
+          if (Test-Path target\${{ matrix.target }}\release\neo-cli.exe) {
+            Copy-Item target\${{ matrix.target }}\release\neo-cli.exe dist\
+          }
+          Copy-Item README.md, LICENSE, CHANGELOG.md dist\
+          Compress-Archive -Path dist\* -DestinationPath ${{ matrix.artifact }}.zip
 
-    - name: Upload artifacts
-      uses: actions/upload-artifact@v4
-      with:
-        name: ${{ matrix.artifact }}
-        path: |
-          *.tar.gz
-          *.zip
-
-  # Publish to crates.io
-  publish:
-    name: Publish to Crates.io
-    needs: [prepare, build]
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    if: github.event_name == 'push' || github.event.inputs.version != ''
-    
-    steps:
-    - uses: actions/checkout@v4
-
-    - name: Setup Rust
-      uses: dtolnay/rust-toolchain@stable
-
-    - name: Login to crates.io
-      run: cargo login ${{ secrets.CARGO_TOKEN }}
-
-    - name: Publish to crates.io
-      run: |
-        cargo publish
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: |
+            *.tar.gz
+            *.zip
 
   # Create GitHub release
   release:
     name: Create GitHub Release
-    needs: [prepare, build, publish]
+    needs: [prepare, build]
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    
+
     steps:
-    - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-    - name: Download all artifacts
-      uses: actions/download-artifact@v6
-      with:
-        path: artifacts
+      - name: Download all artifacts
+        uses: actions/download-artifact@v6
+        with:
+          path: artifacts
 
-    - name: Extract release notes
-      id: release-notes
-      run: |
-        VERSION="${{ needs.prepare.outputs.version }}"
-        VERSION_NUM="${VERSION#v}"
-        
-        # Extract release notes from CHANGELOG.md
-        awk "/## \[${VERSION_NUM}\]/{flag=1; next} /## \[/{flag=0} flag" CHANGELOG.md > release-notes.md
-        
-        # If no specific notes found, use a default message
-        if [ ! -s release-notes.md ]; then
-          echo "Release ${VERSION}" > release-notes.md
-          echo "" >> release-notes.md
-          echo "See [CHANGELOG.md](CHANGELOG.md) for details." >> release-notes.md
-        fi
-        
-        echo "Release notes:"
-        cat release-notes.md
+      - name: Extract release notes
+        id: release-notes
+        run: |
+          VERSION="${{ needs.prepare.outputs.version }}"
+          VERSION_NUM="${VERSION#v}"
 
-    - name: Create GitHub Release
-      uses: softprops/action-gh-release@v2
-      with:
-        tag_name: ${{ needs.prepare.outputs.version }}
-        name: NeoRust ${{ needs.prepare.outputs.version }}
-        body_path: release-notes.md
-        draft: false
-        prerelease: ${{ contains(needs.prepare.outputs.version, '-') }}
-        files: |
-          artifacts/**/*.tar.gz
-          artifacts/**/*.zip
-        token: ${{ secrets.GITHUB_TOKEN }}
+          # Extract release notes from CHANGELOG.md
+          awk "/## \[${VERSION_NUM}\]/{flag=1; next} /## \[/{flag=0} flag" CHANGELOG.md > release-notes.md
+
+          # If no specific notes found, use a default message
+          if [ ! -s release-notes.md ]; then
+            echo "Release ${VERSION}" > release-notes.md
+            echo "" >> release-notes.md
+            echo "See [CHANGELOG.md](CHANGELOG.md) for details." >> release-notes.md
+          fi
+
+          echo "Release notes:"
+          cat release-notes.md
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.prepare.outputs.version }}
+          name: NeoRust ${{ needs.prepare.outputs.version }}
+          body_path: release-notes.md
+          draft: false
+          prerelease: ${{ contains(needs.prepare.outputs.version, '-') }}
+          files: |
+            artifacts/**/*.tar.gz
+            artifacts/**/*.zip
+          token: ${{ secrets.GITHUB_TOKEN }}

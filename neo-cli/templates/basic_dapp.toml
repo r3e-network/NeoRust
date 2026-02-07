@@ -4,7 +4,7 @@
 [template]
 name = "basic-dapp"
 description = "Basic Neo N3 dApp with wallet and smart contract interaction"
-version = "1.0.3"
+version = "1.0.4"
 author = "NeoRust Team"
 
 [files]

@@ -4,7 +4,7 @@
 [template]
 name = "nep17-token"
 description = "NEP-17 compliant fungible token with full functionality"
-version = "1.0.3"
+version = "1.0.4"
 author = "NeoRust Team"
 
 [files]

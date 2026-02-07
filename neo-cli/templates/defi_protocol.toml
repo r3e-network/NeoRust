@@ -4,7 +4,7 @@
 [template]
 name = "defi-protocol"
 description = "DeFi-focused dApp scaffold (swap/pools/positions)"
-version = "1.0.3"
+version = "1.0.4"
 author = "NeoRust Team"
 
 [files]

@@ -9,6 +9,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 _No changes yet._
 
+## [1.0.4] - 2026-02-07
+
+### 🔧 Changed
+
+- Bumped version to 1.0.4 (1.0.3 was already published to crates.io)
+
+### 🛡️ Security
+
+- Ignored RUSTSEC-2023-0071 (rsa crate Marvin Attack) in both `deny.toml` and `.cargo/audit.toml`; no upstream fix available, transitive via `jsonwebtoken`
+- Cleaned stale license exceptions from `deny.toml` (`tiny-keccak`, `constant_time_eq`)
+
+### ⚙️ CI
+
+- Removed crates.io publish step from Release workflow (manual publish preferred)
+- All CI checks now pass: Build & Test (3 platforms), Security Audit, Supply Chain, Code Coverage
+
 ## [1.0.3] - 2026-02-06
 
 ### 🔧 Changed

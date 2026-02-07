@@ -33,7 +33,7 @@ impl LedgerDevice {
 	fn new() -> Self {
 		Self {
 			device_id: "ledger_nano_s_plus_001".to_string(),
-			neo_app_version: "1.0.3".to_string(),
+			neo_app_version: "1.0.4".to_string(),
 			connected: true,
 			unlocked: false,
 		}

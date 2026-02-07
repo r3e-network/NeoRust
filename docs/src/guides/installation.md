@@ -12,7 +12,7 @@ Add NeoRust to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-neo3 = "1.0.3"
+neo3 = "1.0.4"
 ```
 
 Note: The crate is published as `neo3` but is imported as `neo` in code:
@@ -36,14 +36,14 @@ Example of enabling specific features:
 
 ```toml
 [dependencies]
-neo3 = { version = "1.0.3", features = ["futures", "ws", "ledger"] }
+neo3 = { version = "1.0.4", features = ["futures", "ws", "ledger"] }
 ```
 
 You can disable default features with:
 
 ```toml
 [dependencies]
-neo3 = { version = "1.0.3", default-features = false, features = ["futures"] }
+neo3 = { version = "1.0.4", default-features = false, features = ["futures"] }
 ```
 
 ## Verifying Installation

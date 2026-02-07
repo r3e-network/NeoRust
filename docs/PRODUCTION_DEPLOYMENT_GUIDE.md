@@ -1,6 +1,6 @@
 # 🚀 NeoRust SDK Production Deployment Guide
 
-**Version**: v1.0.3  
+**Version**: v1.0.4  
 **Target Audience**: DevOps Engineers, Security Teams, Production Deployers  
 **Last Updated**: December 2024
 
@@ -484,7 +484,7 @@ spec:
     spec:
       containers:
       - name: neorust-app
-        image: neorust:v1.0.3
+        image: neorust:v1.0.4
         resources:
           requests:
             memory: "256Mi"

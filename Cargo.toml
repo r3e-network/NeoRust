@@ -100,7 +100,7 @@ exclude = [
 ]
 
 [dependencies]
-tungstenite = { version = "0.23.0", optional = true }
+tungstenite = { version = "0.28.0", optional = true }
 tokio-tungstenite = { version = "0.23.1", features = ["native-tls", "connect"], optional = true }
 futures = { version = "0.3.28", default-features = false, features = ["std"] }
 futures-util = "0.3.28"
@@ -108,7 +108,7 @@ futures-channel = "0.3.28"
 futures-timer = { version = "3.0.2", default-features = false, features = ["wasm-bindgen"] }
 pin-project = "1.1"
 reqwest = { version = "0.12.5", default-features = false, features = ["json", "blocking", "rustls-tls", "stream"] }
-url = { version = "2.4", default-features = false }
+url = { version = "2.5", default-features = false }
 
 # crypto
 elliptic-curve = { version = "0.13.5", default-features = false }
@@ -130,21 +130,21 @@ auto_impl = "1.1"
 # misc
 bytes = "1.4"
 hex = { package = "const-hex", version = "1.6", features = ["hex"] }
-hex-literal = "0.4"
+hex-literal = "1.1"
 once_cell = "1.18"
-rand = "0.8"
+rand = "0.9"
 rayon = "1.7"
-tempfile = "3.8"
+tempfile = "3.24"
 thiserror = "2.0.17"
 
 # tracing
-tracing = "0.1.37"
-tracing-subscriber = { version = "0.3.20", default-features = false, features = ["fmt", "std"] }
+tracing = "0.1.44"
+tracing-subscriber = { version = "0.3.22", default-features = false, features = ["fmt", "std"] }
 tracing-futures = "0.2.5"
 
 # wasm
 # instant = "0.1.12"  # REMOVED: Unmaintained (RUSTSEC-2024-0384)
-serde_with = "3.3.0"
+serde_with = "3.16.1"
 # For base64 encoding
 bs58 = "0.5.1"
 aes = "0.8.3"
@@ -161,42 +161,42 @@ p256 = "0.13.2"
 num-bigint = "0.4"
 # Byte array utils
 byte-slice-cast = "1.2"
-primitive-types = { version = "0.13.0", features = ["serde"] }
+primitive-types = { version = "0.14.0", features = ["serde"] }
 # Serialization
 # bincode = "1.3"
 # rust-crypto = "0.2"  # REMOVED: Vulnerable (RUSTSEC-2022-0011) - replaced with ring and other secure alternatives
 lazy_static = "1.4.0"
 num-traits = "0.2.16"
-chrono = { version = "0.4.31", features = ["serde"] }
-strum = "0.26.3"
-strum_macros = "0.26.4"
+chrono = { version = "0.4.43", features = ["serde"] }
+strum = "0.27.2"
+strum_macros = "0.27.2"
 num_enum =   "0.7.0"
-derive_more = { version = "1.0.0", features = ["full"] }
+derive_more = { version = "2.1.1", features = ["full"] }
 getset = "0.1.2"
 rustc-hash = { version = "2.1", optional = true }
 
 scrypt = "0.11.0"
 signature   = "2.1.0"
-rand_core = "0.6.4"
+rand_core = "0.9.3"
 #openssl = "0.10"
 
-log = "0.4.14"
+log = "0.4.29"
 ecb = "0.1.2"
-http = "1.1.0"
+http = "1.4.0"
 jsonwebtoken = { version = "10.3.0", default-features = false, features = ["rust_crypto"] }
 
 # ledger
-coins-ledger = { version = "0.12.0", default-features = false, optional = true }
+coins-ledger = { version = "0.13.0", default-features = false, optional = true }
 # yubi - conditional compilation for release builds
 yubihsm = { version = "0.42", features = ["http", "usb"], optional = true }
 
-bip39 = { version = "2.1.0", features = ["rand"] }
+bip39 = { version = "2.2.2", features = ["rand"] }
 
 # SGX dependencies (optional) - only available when building for SGX target
 # These are commented out by default as they require special SGX environment
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-tokio = { version = "1.45", features = ["full"] }
+tokio = { version = "1.49", features = ["full"] }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 # Tokio restricts supported features on wasm targets (including WASI).
@@ -209,13 +209,13 @@ tokio = { version = "1.45", default-features = false, features = ["sync", "macro
 
 
 [dev-dependencies]
-mockall = "0.13.0"
+mockall = "0.14.0"
 tracing = "0.1"
-tracing-subscriber = "0.3.18"
-criterion = { version = "0.5", features = ["html_reports"] }
-tempfile = "3.0"
-serial_test = "3.2.0"
-proptest = "1.5"
+tracing-subscriber = "0.3.22"
+criterion = { version = "0.8", features = ["html_reports"] }
+tempfile = "3.24"
+serial_test = "3.3.1"
+proptest = "1.10"
 env_logger = "0.11"
 
 [[bench]]

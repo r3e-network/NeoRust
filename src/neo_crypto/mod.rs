@@ -37,7 +37,7 @@
 //!
 //! ### Signing and verifying data
 //!
-//! ```ignore
+//! ```rust,no_run
 //! use neo3::neo_crypto::KeyPair;
 //!
 //! // Generate a key pair
@@ -46,12 +46,8 @@
 //! // Data to sign
 //! let data = b"Hello, Neo!";
 //!
-//! // Sign the data
-//! let signature = key_pair.sign(data).unwrap();
-//!
-//! // Verify the signature
-//! let is_valid = key_pair.verify_signature(data, &signature).unwrap();
-//! assert!(is_valid);
+//! // Sign the data using the private key
+//! let signature = key_pair.private_key_ref().sign_tx(data);
 //! ```
 //!
 //! ### Working with WIF format

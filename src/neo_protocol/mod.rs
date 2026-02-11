@@ -20,42 +20,32 @@
 //!
 //! ### Working with Neo N3 accounts
 //!
-//! ```ignore
+//! ```no_run
 //! use neo3::neo_protocol::{Account, AccountTrait};
 //!
 //! // Create a new account
 //! let account = Account::create().unwrap();
-//! println!("Address: {}", account.address());
-//! println!("Script Hash: {}", account.script_hash());
+//! println!("Address: {}", account.get_address());
+//! println!("Script Hash: {}", account.get_script_hash());
 //!
 //! // Create an account from a WIF (Wallet Import Format) string
 //! let wif = "your-private-key-wif";
 //! let account = Account::from_wif(wif).unwrap();
-//!
-//! // Sign a message
-//! let message = b"Hello, Neo!";
-//! let signature = account.sign(message).unwrap();
-//!
-//! // Verify the signature
-//! let is_valid = account.verify(message, &signature).unwrap();
-//! assert!(is_valid);
 //! ```
 //!
 //! ### Using NEP-2 password-protected keys
 //!
-//! ```ignore
-//! use neo3::neo_crypto::PrivateKey;
-//! use neo3::neo_protocol::nep2::{encrypt_to_nep2, decrypt_from_nep2};
+//! ```no_run
+//! use neo3::neo_crypto::KeyPair;
+//! use neo3::neo_protocol::NEP2;
 //!
-//! // Encrypt a private key with a password (NEP-2 format)
-//! let private_key = PrivateKey::from_slice(&[/* 32 bytes */]).unwrap();
+//! // Create a key pair and encrypt with NEP-2
+//! let key_pair = KeyPair::new_random();
 //! let password = "your_secure_password_here";
-//! let nep2_string = encrypt_to_nep2(&private_key, password).unwrap();
+//! let nep2_string = NEP2::encrypt(password, &key_pair).unwrap();
 //!
-//! // Decrypt a NEP-2 string back to a private key
-//! let nep2_string = "6PYVPVe1fQznphjbUxXP9KZJqPMVnVwCx5s5pr5axRJ8uHkMtZg97eT5kL";
-//! let password = "your_secure_password_here";
-//! let private_key = decrypt_from_nep2(nep2_string, password).unwrap();
+//! // Decrypt a NEP-2 string back to a key pair
+//! let decrypted = NEP2::decrypt(password, &nep2_string).unwrap();
 //! ```
 
 pub use account::*;

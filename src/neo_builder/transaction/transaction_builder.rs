@@ -874,7 +874,7 @@ impl<'a, P: JsonRpcProvider + 'static> TransactionBuilder<'a, P> {
 	///
 	/// # Examples
 	///
-	/// ```ignore
+	/// ```no_run
 	/// use neo3::neo_builder::{TransactionBuilder, ScriptBuilder, AccountSigner};
 	/// use neo3::neo_clients::{HttpProvider, RpcClient};
 	/// use neo3::neo_protocol::{Account, AccountTrait};
@@ -917,7 +917,7 @@ impl<'a, P: JsonRpcProvider + 'static> TransactionBuilder<'a, P> {
 	///     tx_builder.valid_until_block(client.get_block_count().await? + 5760)?; // Valid for ~1 day
 	///
 	///     // Sign the transaction
-	///     let signed_tx = tx_builder.sign().await?;
+	///     let mut signed_tx = tx_builder.sign().await?;
 	///     
 	///     // Send the transaction to the network
 	///     let tx_response = signed_tx.send_tx().await?;

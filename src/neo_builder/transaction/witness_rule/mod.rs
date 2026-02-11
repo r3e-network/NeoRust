@@ -25,12 +25,16 @@
 //!    let rule = WitnessRule::new(WitnessAction::Allow, condition);
 //!    ```
 //!
-//! 3. Use the rule in your transaction or smart contract:
-//!    ```rust,ignore
-//!    let mut tx_builder = TransactionBuilder::new();
-//!    tx_builder.add_witness_rule(rule);
-//!    // ... add other transaction details ...
-//!    let tx = tx_builder.build().unwrap();
+//! 3. Use the rule with a transaction signer:
+//!    ```rust
+//!    use neo3::neo_builder::{WitnessAction, WitnessCondition, WitnessRule};
+//!
+//!    // Create a witness rule
+//!    let condition = WitnessCondition::CalledByEntry;
+//!    let rule = WitnessRule::new(WitnessAction::Allow, condition);
+//!
+//!    // The rule can be attached to a signer when building transactions
+//!    assert_eq!(rule.action, WitnessAction::Allow);
 //!    ```
 //!
 //! 4. Serialize or deserialize witness rules as needed:

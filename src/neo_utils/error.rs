@@ -23,12 +23,13 @@ where
 ///
 /// # Examples
 ///
-/// ```ignore
+/// ```rust
 /// use neo3::prelude::*;
 /// use neo3::neo_utils::error::with_context;
 ///
 /// let result: Result<u32, NeoError> = Err(NeoError::Generic { message: "Original error".to_string() });
-/// let result_with_context = with_context(result, || "Additional context", |e| e);
+/// let result_with_context = with_context(result, || "Additional context", |msg| NeoError::Generic { message: msg });
+/// assert!(result_with_context.is_err());
 /// ```
 pub fn with_context<T, E, C, F, G>(
 	result: Result<T, E>,

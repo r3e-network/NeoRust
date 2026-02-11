@@ -57,18 +57,18 @@
 //!
 //! ### Working with stack items
 //!
-//! ```ignore
+//! ```rust
 //! use neo3::neo_types::StackItem;
-//! use serde_json::json;
 //!
 //! // Create stack items of various types
 //! let int_item = StackItem::Integer { value: 123 };
 //! let bool_item = StackItem::Boolean { value: true };
 //! let bytes_item = StackItem::new_byte_string(b"Neo".to_vec());
 //!
-//! // Convert between stack items and JSON values
-//! let json_value = int_item.to_json_value();
-//! assert_eq!(json_value, json!(123));
+//! // Access values from stack items
+//! assert_eq!(int_item.as_int(), Some(123));
+//! assert_eq!(bool_item.as_bool(), Some(true));
+//! assert_eq!(bytes_item.as_string(), Some("Neo".to_string()));
 //! ```
 
 use base64::{engine::general_purpose, Engine};

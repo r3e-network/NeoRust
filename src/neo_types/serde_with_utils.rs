@@ -21,7 +21,7 @@
 //!
 //! These helpers are typically used as field attributes on structs:
 //!
-//! ```rust,ignore
+//! ```rust,no_run
 //! use neo3::neo_types::serde_with_utils::{serialize_h160, deserialize_h160};
 //! use primitive_types::H160;
 //! use serde::{Serialize, Deserialize};
@@ -100,9 +100,16 @@ where
 ///
 /// An H160 value will be serialized as `"0x1234..."`.
 ///
-/// ```rust,ignore
-/// #[serde(serialize_with = "serialize_h160")]
-/// address: H160,
+/// ```rust
+/// use neo3::neo_types::serde_with_utils::{serialize_h160, deserialize_h160};
+/// use primitive_types::H160;
+/// use serde::{Serialize, Deserialize};
+///
+/// #[derive(Serialize, Deserialize)]
+/// struct Example {
+///     #[serde(serialize_with = "serialize_h160", deserialize_with = "deserialize_h160")]
+///     address: H160,
+/// }
 /// ```
 pub fn serialize_h160<S>(item: &H160, serializer: S) -> Result<S::Ok, S::Error>
 where
@@ -120,9 +127,16 @@ where
 /// Returns an error if the string is not a valid 40-character hex string
 /// representing 20 bytes.
 ///
-/// ```rust,ignore
-/// #[serde(deserialize_with = "deserialize_h160")]
-/// address: H160,
+/// ```rust
+/// use neo3::neo_types::serde_with_utils::{deserialize_h160};
+/// use primitive_types::H160;
+/// use serde::{Serialize, Deserialize};
+///
+/// #[derive(Serialize, Deserialize)]
+/// struct Example {
+///     #[serde(deserialize_with = "deserialize_h160")]
+///     address: H160,
+/// }
 /// ```
 pub fn deserialize_h160<'de, D>(deserializer: D) -> Result<H160, D::Error>
 where
@@ -185,9 +199,15 @@ where
 ///
 /// The byte vector `vec![0xAB, 0xCD]` will be serialized as `"0xabcd"`.
 ///
-/// ```rust,ignore
-/// #[serde(serialize_with = "serialize_bytes")]
-/// data: Vec<u8>,
+/// ```rust
+/// use neo3::neo_types::serde_with_utils::{serialize_bytes, deserialize_bytes};
+/// use serde::{Serialize, Deserialize};
+///
+/// #[derive(Serialize, Deserialize)]
+/// struct Example {
+///     #[serde(serialize_with = "serialize_bytes", deserialize_with = "deserialize_bytes")]
+///     data: Vec<u8>,
+/// }
 /// ```
 pub fn serialize_bytes<S>(item: &Vec<u8>, serializer: S) -> Result<S::Ok, S::Error>
 where
@@ -205,9 +225,15 @@ where
 ///
 /// Returns an error if the string contains invalid hex characters.
 ///
-/// ```rust,ignore
-/// #[serde(deserialize_with = "deserialize_bytes")]
-/// data: Vec<u8>,
+/// ```rust
+/// use neo3::neo_types::serde_with_utils::{serialize_bytes, deserialize_bytes};
+/// use serde::{Serialize, Deserialize};
+///
+/// #[derive(Serialize, Deserialize)]
+/// struct Example {
+///     #[serde(serialize_with = "serialize_bytes", deserialize_with = "deserialize_bytes")]
+///     data: Vec<u8>,
+/// }
 /// ```
 pub fn deserialize_bytes<'de, D>(deserializer: D) -> Result<Vec<u8>, D::Error>
 where
@@ -312,9 +338,16 @@ where
 ///
 /// A U256 value will be serialized as a decimal string like `"123456789"`.
 ///
-/// ```rust,ignore
-/// #[serde(serialize_with = "serialize_u256")]
-/// amount: U256,
+/// ```rust
+/// use neo3::neo_types::serde_with_utils::{serialize_u256, deserialize_u256};
+/// use primitive_types::U256;
+/// use serde::{Serialize, Deserialize};
+///
+/// #[derive(Serialize, Deserialize)]
+/// struct Example {
+///     #[serde(serialize_with = "serialize_u256", deserialize_with = "deserialize_u256")]
+///     amount: U256,
+/// }
 /// ```
 pub fn serialize_u256<S>(item: &U256, serializer: S) -> Result<S::Ok, S::Error>
 where
@@ -332,9 +365,16 @@ where
 ///
 /// Returns an error if the string cannot be parsed as a 256-bit unsigned integer.
 ///
-/// ```rust,ignore
-/// #[serde(deserialize_with = "deserialize_u256")]
-/// amount: U256,
+/// ```rust
+/// use neo3::neo_types::serde_with_utils::{serialize_u256, deserialize_u256};
+/// use primitive_types::U256;
+/// use serde::{Serialize, Deserialize};
+///
+/// #[derive(Serialize, Deserialize)]
+/// struct Example {
+///     #[serde(serialize_with = "serialize_u256", deserialize_with = "deserialize_u256")]
+///     amount: U256,
+/// }
 /// ```
 pub fn deserialize_u256<'de, D>(deserializer: D) -> Result<U256, D::Error>
 where
@@ -381,9 +421,15 @@ where
 ///
 /// The value `20` will be serialized as `"0x14"`.
 ///
-/// ```rust,ignore
-/// #[serde(serialize_with = "serialize_u32")]
-/// value: u32,
+/// ```rust
+/// use neo3::neo_types::serde_with_utils::{serialize_u32, deserialize_u32};
+/// use serde::{Serialize, Deserialize};
+///
+/// #[derive(Serialize, Deserialize)]
+/// struct Example {
+///     #[serde(serialize_with = "serialize_u32", deserialize_with = "deserialize_u32")]
+///     value: u32,
+/// }
 /// ```
 pub fn serialize_u32<S>(item: &u32, serializer: S) -> Result<S::Ok, S::Error>
 where
@@ -401,9 +447,15 @@ where
 ///
 /// Returns an error if the string cannot be parsed as a 32-bit unsigned integer.
 ///
-/// ```rust,ignore
-/// #[serde(deserialize_with = "deserialize_u32")]
-/// value: u32,
+/// ```rust
+/// use neo3::neo_types::serde_with_utils::{serialize_u32, deserialize_u32};
+/// use serde::{Serialize, Deserialize};
+///
+/// #[derive(Serialize, Deserialize)]
+/// struct Example {
+///     #[serde(serialize_with = "serialize_u32", deserialize_with = "deserialize_u32")]
+///     value: u32,
+/// }
 /// ```
 pub fn deserialize_u32<'de, D>(deserializer: D) -> Result<u32, D::Error>
 where
@@ -429,9 +481,15 @@ where
 ///
 /// The value `1000000` will be serialized as `"1000000"`.
 ///
-/// ```rust,ignore
-/// #[serde(serialize_with = "serialize_u64")]
-/// timestamp: u64,
+/// ```rust
+/// use neo3::neo_types::serde_with_utils::{serialize_u64, deserialize_u64};
+/// use serde::{Serialize, Deserialize};
+///
+/// #[derive(Serialize, Deserialize)]
+/// struct Example {
+///     #[serde(serialize_with = "serialize_u64", deserialize_with = "deserialize_u64")]
+///     timestamp: u64,
+/// }
 /// ```
 pub fn serialize_u64<S>(item: &u64, serializer: S) -> Result<S::Ok, S::Error>
 where
@@ -448,9 +506,15 @@ where
 ///
 /// Returns an error if the string cannot be parsed as a 64-bit unsigned integer.
 ///
-/// ```rust,ignore
-/// #[serde(deserialize_with = "deserialize_u64")]
-/// timestamp: u64,
+/// ```rust
+/// use neo3::neo_types::serde_with_utils::{serialize_u64, deserialize_u64};
+/// use serde::{Serialize, Deserialize};
+///
+/// #[derive(Serialize, Deserialize)]
+/// struct Example {
+///     #[serde(serialize_with = "serialize_u64", deserialize_with = "deserialize_u64")]
+///     timestamp: u64,
+/// }
 /// ```
 pub fn deserialize_u64<'de, D>(deserializer: D) -> Result<u64, D::Error>
 where
@@ -506,9 +570,16 @@ where
 ///
 /// The output is a hex string without the `0x` prefix.
 ///
-/// ```rust,ignore
-/// #[serde(serialize_with = "serialize_script_hash")]
-/// script_hash: ScriptHash,
+/// ```rust
+/// use neo3::neo_types::serde_with_utils::{serialize_script_hash, deserialize_script_hash};
+/// use neo3::neo_types::ScriptHash;
+/// use serde::{Serialize, Deserialize};
+///
+/// #[derive(Serialize, Deserialize)]
+/// struct Example {
+///     #[serde(serialize_with = "serialize_script_hash", deserialize_with = "deserialize_script_hash")]
+///     script_hash: ScriptHash,
+/// }
 /// ```
 pub fn serialize_script_hash<S>(item: &ScriptHash, serializer: S) -> Result<S::Ok, S::Error>
 where
@@ -707,9 +778,16 @@ where
 
 /// Serializes a Secp256r1PrivateKey to a hex string with `0x` prefix.
 ///
-/// ```rust,ignore
-/// #[serde(serialize_with = "serialize_private_key")]
-/// private_key: Secp256r1PrivateKey,
+/// ```rust,no_run
+/// use neo3::neo_types::serde_with_utils::serialize_private_key;
+/// use neo3::neo_crypto::Secp256r1PrivateKey;
+/// use serde::Serialize;
+///
+/// #[derive(Serialize)]
+/// struct Example {
+///     #[serde(serialize_with = "serialize_private_key")]
+///     private_key: Secp256r1PrivateKey,
+/// }
 /// ```
 pub fn serialize_private_key<S>(
 	item: &Secp256r1PrivateKey,
@@ -732,9 +810,16 @@ where
 /// Returns an error if the string is not valid hex or if the bytes cannot
 /// be used to create a valid public key.
 ///
-/// ```rust,ignore
-/// #[serde(deserialize_with = "deserialize_public_key")]
-/// public_key: Secp256r1PublicKey,
+/// ```rust,no_run
+/// use neo3::neo_types::serde_with_utils::deserialize_public_key;
+/// use neo3::neo_crypto::Secp256r1PublicKey;
+/// use serde::Deserialize;
+///
+/// #[derive(Deserialize)]
+/// struct Example {
+///     #[serde(deserialize_with = "deserialize_public_key")]
+///     public_key: Secp256r1PublicKey,
+/// }
 /// ```
 pub fn deserialize_public_key<'de, D>(deserializer: D) -> Result<Secp256r1PublicKey, D::Error>
 where
@@ -756,9 +841,16 @@ where
 ///
 /// The public key is encoded in compressed form.
 ///
-/// ```rust,ignore
-/// #[serde(serialize_with = "serialize_public_key")]
-/// public_key: Secp256r1PublicKey,
+/// ```rust,no_run
+/// use neo3::neo_types::serde_with_utils::serialize_public_key;
+/// use neo3::neo_crypto::Secp256r1PublicKey;
+/// use serde::Serialize;
+///
+/// #[derive(Serialize)]
+/// struct Example {
+///     #[serde(serialize_with = "serialize_public_key")]
+///     public_key: Secp256r1PublicKey,
+/// }
 /// ```
 pub fn serialize_public_key<S>(item: &Secp256r1PublicKey, serializer: S) -> Result<S::Ok, S::Error>
 where
@@ -923,9 +1015,16 @@ where
 ///
 /// An H256 value will be serialized as `"0x95ff99bcdac06fad4a141f06c5f9f1c65e71b188ff5978116a110c4170fd7355"`.
 ///
-/// ```rust,ignore
-/// #[serde(serialize_with = "serialize_h256")]
-/// tx_hash: H256,
+/// ```rust
+/// use neo3::neo_types::serde_with_utils::{serialize_h256, deserialize_h256};
+/// use primitive_types::H256;
+/// use serde::{Serialize, Deserialize};
+///
+/// #[derive(Serialize, Deserialize)]
+/// struct Example {
+///     #[serde(serialize_with = "serialize_h256", deserialize_with = "deserialize_h256")]
+///     tx_hash: H256,
+/// }
 /// ```
 pub fn serialize_h256<S>(item: &H256, serializer: S) -> Result<S::Ok, S::Error>
 where
@@ -943,9 +1042,16 @@ where
 /// Returns an error if the string is not a valid 64-character hex string
 /// representing 32 bytes.
 ///
-/// ```rust,ignore
-/// #[serde(deserialize_with = "deserialize_h256")]
-/// tx_hash: H256,
+/// ```rust
+/// use neo3::neo_types::serde_with_utils::{serialize_h256, deserialize_h256};
+/// use primitive_types::H256;
+/// use serde::{Serialize, Deserialize};
+///
+/// #[derive(Serialize, Deserialize)]
+/// struct Example {
+///     #[serde(serialize_with = "serialize_h256", deserialize_with = "deserialize_h256")]
+///     tx_hash: H256,
+/// }
 /// ```
 pub fn deserialize_h256<'de, D>(deserializer: D) -> Result<H256, D::Error>
 where
@@ -987,9 +1093,16 @@ where
 ///
 /// Each hash is serialized as a hex string with `0x` prefix.
 ///
-/// ```rust,ignore
-/// #[serde(serialize_with = "serialize_vec_h256")]
-/// tx_hashes: Vec<H256>,
+/// ```rust
+/// use neo3::neo_types::serde_with_utils::{serialize_vec_h256, deserialize_vec_h256};
+/// use primitive_types::H256;
+/// use serde::{Serialize, Deserialize};
+///
+/// #[derive(Serialize, Deserialize)]
+/// struct Example {
+///     #[serde(serialize_with = "serialize_vec_h256", deserialize_with = "deserialize_vec_h256")]
+///     tx_hashes: Vec<H256>,
+/// }
 /// ```
 pub fn serialize_vec_h256<S>(item: &Vec<H256>, serializer: S) -> Result<S::Ok, S::Error>
 where
@@ -1010,9 +1123,16 @@ where
 ///
 /// Returns an error if any element cannot be parsed as an H256 hash.
 ///
-/// ```rust,ignore
-/// #[serde(deserialize_with = "deserialize_vec_h256")]
-/// tx_hashes: Vec<H256>,
+/// ```rust
+/// use neo3::neo_types::serde_with_utils::{serialize_vec_h256, deserialize_vec_h256};
+/// use primitive_types::H256;
+/// use serde::{Serialize, Deserialize};
+///
+/// #[derive(Serialize, Deserialize)]
+/// struct Example {
+///     #[serde(serialize_with = "serialize_vec_h256", deserialize_with = "deserialize_vec_h256")]
+///     tx_hashes: Vec<H256>,
+/// }
 /// ```
 pub fn deserialize_vec_h256<'de, D>(deserializer: D) -> Result<Vec<H256>, D::Error>
 where

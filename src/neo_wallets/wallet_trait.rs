@@ -27,23 +27,17 @@ use primitive_types::H160;
 ///
 /// Implementing the `WalletTrait` for a simple wallet:
 ///
-/// ```ignore
-/// struct SimpleWallet {
-///     name: String,
-///     version: String,
-///     scrypt_params: ScryptParamsDef,
-///     accounts: Vec<Account>,
-///     default_account: H160,
-/// }
+/// ```rust,no_run
+/// use neo3::neo_wallets::WalletTrait;
+/// use neo3::neo_protocol::{Account, AccountTrait};
+/// use neo3::ScryptParamsDef;
+/// use primitive_types::H160;
 ///
-/// impl WalletTrait for SimpleWallet {
-///     type Account = Account;
-///
-///     fn name(&self) -> &String {
-///         &self.name
-///     }
-///
-///     // Implementations for other methods follow...
+/// // WalletTrait defines the interface for wallet implementations.
+/// // See the Wallet struct for a concrete implementation.
+/// fn example(wallet: &impl WalletTrait<Account = Account>) {
+///     println!("Wallet: {}", wallet.name());
+///     println!("Version: {}", wallet.version());
 /// }
 /// ```
 ///

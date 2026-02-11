@@ -366,7 +366,10 @@ impl StackItem {
 	/// as it avoids cloning the `Vec<StackItem>` and all its elements.
 	///
 	/// # Example
-	/// ```ignore
+	/// ```rust
+	/// use neo3::neo_types::StackItem;
+	///
+	/// let stack_item = StackItem::Array { value: vec![StackItem::Integer { value: 1 }] };
 	/// if let Some(arr) = stack_item.as_array_ref() {
 	///     for item in arr {
 	///         println!("{:?}", item);
@@ -416,7 +419,15 @@ impl StackItem {
 	/// Note that lookup by key is O(n) in the returned slice.
 	///
 	/// # Example
-	/// ```ignore
+	/// ```rust
+	/// use neo3::neo_types::{StackItem, MapEntry};
+	///
+	/// let stack_item = StackItem::Map {
+	///     value: vec![MapEntry {
+	///         key: StackItem::Integer { value: 1 },
+	///         value: StackItem::Boolean { value: true },
+	///     }],
+	/// };
 	/// if let Some(entries) = stack_item.as_map_entries() {
 	///     for entry in entries {
 	///         println!("{:?} -> {:?}", entry.key, entry.value);

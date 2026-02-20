@@ -25,7 +25,7 @@ cargo install neo3-cli
 
 # Verify installation
 neorust --version
-# Output: neorust 1.0.4
+# Output: neorust 1.0.5
 
 # Initialize configuration
 neorust config init

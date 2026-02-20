@@ -1,4 +1,5 @@
 use num_enum::{IntoPrimitive, TryFromPrimitive};
+use serde::{Deserialize, Serialize};
 use strum_macros::{AsRefStr, Display, EnumCount, EnumIter, EnumString, IntoStaticStr};
 
 #[derive(
@@ -13,6 +14,9 @@ use strum_macros::{AsRefStr, Display, EnumCount, EnumIter, EnumString, IntoStati
 	Debug,
 	PartialEq,
 	Eq,
+	Hash,
+	Serialize,
+	Deserialize,
 	TryFromPrimitive,
 	IntoPrimitive,
 )]

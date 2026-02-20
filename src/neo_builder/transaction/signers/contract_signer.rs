@@ -116,14 +116,14 @@ impl ContractSigner {
 		verify_params: Vec<ContractParameter>,
 	) -> Self {
 		Self {
-			signer_hash: Default::default(),
-			scopes: vec![],
+			signer_hash: contract_hash,
+			scopes: vec![scope],
 			allowed_contracts: vec![],
 			allowed_groups: vec![],
 			rules: vec![],
 			verify_params,
 			contract_hash,
-			scope,
+			scope: WitnessScope::None, // deprecated field, scopes vec is authoritative
 		}
 	}
 
@@ -152,7 +152,7 @@ impl NeoSerializable for ContractSigner {
 	type Error = TransactionError;
 
 	fn size(&self) -> usize {
-		let mut size: usize = NeoConstants::HASH160_SIZE as usize;
+		let mut size: usize = NeoConstants::HASH160_SIZE as usize + 1; // +1 for scope byte
 		if self.scopes.contains(&WitnessScope::CustomContracts) {
 			size += self.allowed_contracts.var_size();
 		}
@@ -247,7 +247,7 @@ impl NeoSerializable for ContractSigner {
 			allowed_groups,
 			rules,
 			verify_params: vec![],
-			contract_hash: Default::default(),
+			contract_hash: signer_hash,
 			scope: WitnessScope::None,
 		})
 	}

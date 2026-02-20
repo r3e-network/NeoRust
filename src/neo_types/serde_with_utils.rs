@@ -585,10 +585,12 @@ pub fn serialize_script_hash<S>(item: &ScriptHash, serializer: S) -> Result<S::O
 where
 	S: Serializer,
 {
-	// let item_str = encode_string_h160(item);
-	let binding = encode_string_h160(item);
-	let item_str = binding.trim_start_matches("0x");
-	serializer.serialize_str(item_str)
+	// Output big-endian hex with 0x prefix (Neo display format)
+	// This matches what deserialize_script_hash/parse_address expects
+	let mut bytes = item.as_bytes().to_vec();
+	bytes.reverse();
+	let item_str = format!("0x{}", hex::encode(bytes));
+	serializer.serialize_str(&item_str)
 }
 
 pub fn deserialize_address_or_script_hash<'de, D>(

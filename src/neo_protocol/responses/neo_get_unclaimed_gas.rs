@@ -11,9 +11,9 @@ impl Add for UnclaimedGas {
 	type Output = Self;
 
 	fn add(self, other: Self) -> Self {
-		// Parse the unclaimed values as f64 for addition
-		let self_unclaimed = self.unclaimed.parse::<f64>().unwrap_or(0.0);
-		let other_unclaimed = other.unclaimed.parse::<f64>().unwrap_or(0.0);
+		// Parse as i128 to avoid floating-point precision loss on GAS amounts
+		let self_unclaimed = self.unclaimed.parse::<i128>().unwrap_or(0);
+		let other_unclaimed = other.unclaimed.parse::<i128>().unwrap_or(0);
 
 		UnclaimedGas {
 			unclaimed: (self_unclaimed + other_unclaimed).to_string(),

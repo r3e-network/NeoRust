@@ -21,7 +21,7 @@ pub trait NonFungibleTokenTrait<'a, P: JsonRpcProvider>: TokenTrait<'a, P> + Sen
 
 	// Token methods
 
-	async fn balance_of(&mut self, owner: H160) -> Result<i32, ContractError> {
+	async fn balance_of(&mut self, owner: H160) -> Result<i64, ContractError> {
 		self.call_function_returning_int(
 			<NftContract<P> as NonFungibleTokenTrait<P>>::BALANCE_OF,
 			vec![owner.into()],
@@ -298,7 +298,7 @@ pub trait NonFungibleTokenTrait<'a, P: JsonRpcProvider>: TokenTrait<'a, P> + Sen
 		&mut self,
 		owner: H160,
 		token_id: Bytes,
-	) -> Result<i32, ContractError> {
+	) -> Result<i64, ContractError> {
 		self.throw_if_non_divisible_nft().await?;
 
 		self.call_function_returning_int(

@@ -117,7 +117,7 @@ where
 		R: DeserializeOwned + Send,
 	{
 		match method {
-			"neo_sendTransaction" | "neo_sendRawTransaction" => {
+			"sendrawtransaction" | "submitblock" => {
 				self.w.fetch(method, params).await.map_err(RwClientError::Write)
 			},
 			_ => self.r.fetch(method, params).await.map_err(RwClientError::Read),

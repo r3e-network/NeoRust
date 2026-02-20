@@ -14,7 +14,7 @@ pub struct TransactionResult {
 	pub hash: H256,
 	pub size: i32,
 	pub version: i32,
-	pub nonce: i32,
+	pub nonce: u32,
 	pub sender: String,
 	#[serde(rename = "sysfee")]
 	pub sys_fee: String,

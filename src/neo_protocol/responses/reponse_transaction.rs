@@ -21,7 +21,7 @@ pub struct RTransaction {
 
 	#[serde(rename = "nonce")]
 	#[getset(get = "pub", set = "pub")]
-	pub nonce: u64,
+	pub nonce: u32,
 
 	#[serde(rename = "sender")]
 	#[getset(get = "pub", set = "pub")]
@@ -77,7 +77,7 @@ impl RTransaction {
 		hash: H256,
 		size: u64,
 		version: u8,
-		nonce: u64,
+		nonce: u32,
 		sender: String,
 		sys_fee: String,
 		net_fee: String,

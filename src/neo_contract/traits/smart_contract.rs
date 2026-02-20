@@ -94,7 +94,7 @@ pub trait SmartContractTrait<'a>: Send + Sync {
 		&self,
 		function: &str,
 		params: Vec<ContractParameter>,
-	) -> Result<i32, ContractError> {
+	) -> Result<i64, ContractError> {
 		let output = self.call_invoke_function(function, params, vec![]).await?;
 		self.throw_if_fault_state(&output)?;
 
@@ -102,7 +102,7 @@ pub trait SmartContractTrait<'a>: Send + Sync {
 			.get_first_stack_item()
 			.map_err(|e| ContractError::InvalidResponse(e.to_string()))?;
 		match item.as_int() {
-			Some(i) => Ok(i as i32),
+			Some(i) => Ok(i),
 			None => Err(ContractError::UnexpectedReturnType("Int".to_string())),
 		}
 	}
@@ -265,22 +265,13 @@ pub trait SmartContractTrait<'a>: Send + Sync {
 		Self::calc_contract_hash(H160::zero(), 0, contract_name)
 	}
 
-	/// Calculates a native contract hash, but never panics.
+	/// Calculates a native contract hash, panicking on failure.
 	///
 	/// This is intended for use with known-good constants like `NeoToken`, `GasToken`, etc.,
 	/// where the only failure mode would be an empty name (a programming error).
 	fn calc_native_contract_hash_unchecked(contract_name: &str) -> H160 {
-		match Self::calc_native_contract_hash(contract_name) {
-			Ok(hash) => hash,
-			Err(e) => {
-				tracing::warn!(
-					error = %e,
-					contract_name,
-					"Failed to calculate native contract hash; using zero hash"
-				);
-				H160::zero()
-			},
-		}
+		Self::calc_native_contract_hash(contract_name)
+			.unwrap_or_else(|e| panic!("BUG: failed to compute native contract hash for '{}': {}", contract_name, e))
 	}
 
 	fn calc_contract_hash(

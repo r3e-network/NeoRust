@@ -636,7 +636,7 @@ impl ExtendedPrivateKey {
 	/// Create from seed
 	fn from_seed(seed: &[u8]) -> Result<Self, NeoError> {
 		let mut mac =
-			Hmac::<Sha512>::new_from_slice(b"Bitcoin seed").map_err(|e| NeoError::Wallet {
+			Hmac::<Sha512>::new_from_slice(b"Nist256p1 seed").map_err(|e| NeoError::Wallet {
 				message: format!("Failed to create HMAC: {}", e),
 				source: None,
 				recovery: ErrorRecovery::new(),
@@ -658,12 +658,25 @@ impl ExtendedPrivateKey {
 				recovery: ErrorRecovery::new(),
 			})?;
 
-		// For now we use hardened-style derivation for all levels to avoid needing public keys.
-		let hardened_index = if index >= 0x80000000 { index } else { 0x80000000 + index };
-
-		mac.update(&[0x00]);
-		mac.update(&self.key);
-		mac.update(&hardened_index.to_be_bytes());
+		if index >= 0x80000000 {
+			// Hardened child: HMAC-SHA512(Key = chain_code, Data = 0x00 || key || index)
+			mac.update(&[0x00]);
+			mac.update(&self.key);
+		} else {
+			// Normal child: HMAC-SHA512(Key = chain_code, Data = public_key || index)
+			// For secp256r1 (NIST P-256), derive the compressed public key from the private key
+			let secret_key = p256::SecretKey::from_slice(&self.key).map_err(|e| {
+				NeoError::Wallet {
+					message: format!("Invalid private key for public key derivation: {}", e),
+					source: None,
+					recovery: ErrorRecovery::new(),
+				}
+			})?;
+			let public_key = secret_key.public_key();
+			let compressed = public_key.to_sec1_bytes();
+			mac.update(&compressed);
+		}
+		mac.update(&index.to_be_bytes());
 		let result = mac.finalize();
 		let bytes = result.into_bytes();
 

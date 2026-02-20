@@ -177,14 +177,15 @@ impl<'de, 'a, P: JsonRpcProvider + 'static> Deserialize<'de> for Transaction<'a,
 			.and_then(|v| v.as_i64())
 			.ok_or(DeError::custom("Missing or invalid size field"))? as i32;
 
+		// Neo N3 RPC returns fees as strings (e.g. "9007810"), not JSON integers
 		let sys_fee = value
 			.get("sysfee")
-			.and_then(|v| v.as_i64())
+			.and_then(|v| v.as_str().and_then(|s| s.parse::<i64>().ok()).or_else(|| v.as_i64()))
 			.ok_or(DeError::custom("Missing or invalid sysfee field"))?;
 
 		let net_fee = value
 			.get("netfee")
-			.and_then(|v| v.as_i64())
+			.and_then(|v| v.as_str().and_then(|s| s.parse::<i64>().ok()).or_else(|| v.as_i64()))
 			.ok_or(DeError::custom("Missing or invalid netfee field"))?;
 
 		Ok(Transaction {
@@ -236,9 +237,9 @@ impl<'a, T: JsonRpcProvider + 'static> Transaction<'a, T> {
 
 		let mut encoder = Encoder::new();
 		self.serialize_without_witnesses(&mut encoder);
-		let mut data = encoder.to_bytes().hash256();
+		let mut data = encoder.to_bytes().double_sha256();
 		let network_value = network.network().await?;
-		data.splice(0..0, network_value.to_be_bytes());
+		data.splice(0..0, network_value.to_le_bytes());
 
 		Ok(data)
 	}
@@ -246,7 +247,7 @@ impl<'a, T: JsonRpcProvider + 'static> Transaction<'a, T> {
 	fn get_tx_id(&self) -> Result<primitive_types::H256, TransactionError> {
 		let mut encoder = Encoder::new();
 		self.serialize_without_witnesses(&mut encoder);
-		let data = encoder.to_bytes().hash256();
+		let data = encoder.to_bytes().double_sha256();
 		let reversed_data = data.iter().rev().cloned().collect::<Vec<u8>>();
 		Ok(primitive_types::H256::from_slice(&reversed_data))
 	}

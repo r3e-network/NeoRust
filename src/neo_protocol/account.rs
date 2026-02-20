@@ -480,13 +480,12 @@ impl AccountTrait for Account {
 			"The account does not hold a decrypted private key.".to_string(),
 		))?;
 
-		let encrypted_private_key = get_nep2_from_private_key(
-			&key_pair.private_key.to_raw_bytes().to_hex_string(),
-			password,
-		)
-		.map_err(|e| Self::Error::IllegalState(format!("Failed to encrypt private key: {e}")))?;
+		let mut hex_key = key_pair.private_key.to_raw_bytes().to_hex_string();
+		let encrypted_private_key = get_nep2_from_private_key(&hex_key, password)
+			.map_err(|e| Self::Error::IllegalState(format!("Failed to encrypt private key: {e}")));
+		hex_key.zeroize(); // Clear sensitive data
 
-		self.encrypted_private_key = Some(encrypted_private_key);
+		self.encrypted_private_key = Some(encrypted_private_key?);
 		self.key_pair = None;
 		Ok(())
 	}
@@ -507,7 +506,7 @@ impl AccountTrait for Account {
 	fn get_nr_of_participants(&self) -> Result<u32, Self::Error> {
 		self.nr_of_participants.ok_or_else(|| {
 			Self::Error::IllegalState(format!(
-				"Cannot get signing threshold from account {}",
+				"Cannot get number of participants from account {}",
 				self.address_or_scripthash().address()
 			))
 		})

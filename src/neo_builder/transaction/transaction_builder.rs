@@ -85,7 +85,7 @@ use crate::neo_protocol::Account;
 
 use super::init_logger;
 
-#[derive(Getters, Setters, MutGetters, CopyGetters, Default)]
+#[derive(Getters, Setters, MutGetters, CopyGetters)]
 pub struct TransactionBuilder<'a, P: JsonRpcProvider + 'static> {
 	pub(crate) client: Option<&'a RpcClient<P>>,
 	version: u8,
@@ -175,6 +175,12 @@ impl<'a, P: JsonRpcProvider + 'static> Hash for TransactionBuilder<'a, P> {
 	}
 }
 
+impl<'a, P: JsonRpcProvider + 'static> Default for TransactionBuilder<'a, P> {
+	fn default() -> Self {
+		Self::new()
+	}
+}
+
 pub static GAS_TOKEN_HASH: Lazy<ScriptHash> = Lazy::new(|| {
 	// Compile-time validated hex string (avoids runtime parsing and panics).
 	ScriptHash::from(hex!("d2a4cff31913016155e38e474a2c06d08be276cf"))
@@ -204,7 +210,7 @@ impl<'a, P: JsonRpcProvider + 'static> TransactionBuilder<'a, P> {
 		Self {
 			client: None,
 			version: 0,
-			nonce: 0,
+			nonce: rand::random::<u32>(),
 			valid_until_block: None,
 			signers: Vec::new(),
 			additional_network_fee: 0,
@@ -241,7 +247,7 @@ impl<'a, P: JsonRpcProvider + 'static> TransactionBuilder<'a, P> {
 		Self {
 			client: Some(client),
 			version: 0,
-			nonce: 0,
+			nonce: rand::random::<u32>(),
 			valid_until_block: None,
 			signers: Vec::new(),
 			additional_network_fee: 0,
@@ -549,8 +555,16 @@ impl<'a, P: JsonRpcProvider + 'static> TransactionBuilder<'a, P> {
 		// Perform pre-flight validation (checks signers, script, client, etc.)
 		self.validate()?;
 
-		// Dedup signers (validate() already checked for duplicates via HashSet)
-		self.signers.dedup();
+		// Dedup signers — remove all duplicates, not just consecutive ones
+		let mut seen = Vec::with_capacity(self.signers.len());
+		self.signers.retain(|s| {
+			if seen.iter().any(|prev| prev == s) {
+				false
+			} else {
+				seen.push(s.clone());
+				true
+			}
+		});
 
 		// Client is guaranteed to be Some after validate()
 		let client = self.client.expect("Client validated in validate()");

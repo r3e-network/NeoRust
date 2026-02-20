@@ -337,17 +337,10 @@ impl ScriptBuilder {
 				);
 			}
 		} else {
-			let mut bytes = i.to_signed_bytes_le();
-
-			// Remove unnecessary zero padding for positive numbers
-			// BigInt::to_signed_bytes_le() adds extra zero bytes for positive numbers
-			// to ensure they're not interpreted as negative
-			// For positive numbers, we can remove trailing zeros if the previous byte doesn't have the sign bit set
-			// OR if the number is positive and we have a trailing zero
-			while bytes.len() > 1 && bytes[bytes.len() - 1] == 0 && !i.is_negative() {
-				bytes.pop();
-			}
-
+			// to_signed_bytes_le() returns minimal two's complement representation.
+			// Do NOT strip trailing zero bytes — they may be required to preserve the
+			// sign bit (e.g. 128 = [0x80, 0x00]; stripping the 0x00 yields -128).
+			let bytes = i.to_signed_bytes_le();
 			let len = bytes.len();
 
 			// bytes.reverse();
@@ -581,7 +574,8 @@ impl ScriptBuilder {
 	) -> Result<Bytes, BuilderError> {
 		let mut sb = ScriptBuilder::new();
 		sb.push_integer(BigInt::from(threshold));
-		pubkeys.sort_by(|a, b| a.get_encoded(true).cmp(&b.get_encoded(true)));
+		// Canonical Neo N3 sort: by compressed encoded bytes (via Ord impl)
+		pubkeys.sort();
 		for pk in pubkeys.iter() {
 			sb.push_data(pk.get_encoded(true));
 		}

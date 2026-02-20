@@ -127,13 +127,14 @@ impl<'a, P: JsonRpcProvider> SmartContractTrait<'a> for RoleManagement<'a, P> {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u8)]
 pub enum Role {
-	Oracle,
-	Policy,
-	Validator,
-	StateRootValidator,
-	PriceFeedOracle,
-	FeeCollector,
-	ComplianceOfficer,
+	/// State validation node.
+	StateValidator = 4,
+	/// Oracle node.
+	Oracle = 8,
+	/// NeoFS alphabet node.
+	NeoFSAlphabetNode = 16,
+	/// P2P notary node (available after HF_Echidna).
+	P2PNotary = 32,
 }
 
 impl Role {

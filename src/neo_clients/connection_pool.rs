@@ -246,19 +246,29 @@ impl ConnectionPool {
 
 	/// Perform health checks on idle connections
 	pub async fn health_check(&self) {
-		let mut connections = self.connections.write().await;
-		let mut healthy_connections = VecDeque::new();
+		// Drain connections while holding the lock briefly
+		let pending: VecDeque<PooledConnection> = {
+			let mut connections = self.connections.write().await;
+			std::mem::take(&mut *connections)
+		};
 
-		while let Some(mut conn) = connections.pop_front() {
+		// Run health checks without holding the pool lock
+		let mut healthy_connections = VecDeque::new();
+		for mut conn in pending {
 			if conn.health_check().await {
 				healthy_connections.push_back(conn);
 			}
 		}
 
-		*connections = healthy_connections;
+		// Re-acquire lock to store healthy connections
+		let idle_count = healthy_connections.len();
+		{
+			let mut connections = self.connections.write().await;
+			*connections = healthy_connections;
+		}
 
 		let mut stats = self.stats.write().await;
-		stats.current_idle_connections = connections.len();
+		stats.current_idle_connections = idle_count;
 	}
 
 	/// Get current pool statistics

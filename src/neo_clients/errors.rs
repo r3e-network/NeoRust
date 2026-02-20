@@ -64,10 +64,14 @@ pub enum ProviderError {
 impl PartialEq for ProviderError {
 	fn eq(&self, other: &Self) -> bool {
 		match (self, other) {
+			(ProviderError::NnsError(a), ProviderError::NnsError(b)) => a == b,
+			(ProviderError::NnsNotOwned(a), ProviderError::NnsNotOwned(b)) => a == b,
 			(ProviderError::SerdeJson(a), ProviderError::SerdeJson(b)) => {
 				a.to_string() == b.to_string()
 			},
+			(ProviderError::HexError(a), ProviderError::HexError(b)) => a == b,
 			(ProviderError::HTTPError(a), ProviderError::HTTPError(b)) => a.status() == b.status(),
+			(ProviderError::JsonRpcError(a), ProviderError::JsonRpcError(b)) => a == b,
 			(ProviderError::CustomError(a), ProviderError::CustomError(b)) => a == b,
 			(ProviderError::UnsupportedRPC, ProviderError::UnsupportedRPC) => true,
 			(ProviderError::UnsupportedNodeClient, ProviderError::UnsupportedNodeClient) => true,
@@ -77,6 +81,10 @@ impl PartialEq for ProviderError {
 			(ProviderError::CryptoError(a), ProviderError::CryptoError(b)) => a == b,
 			(ProviderError::TypeError(a), ProviderError::TypeError(b)) => a == b,
 			(ProviderError::InvalidPassword, ProviderError::InvalidPassword) => true,
+			(ProviderError::ParseError(a), ProviderError::ParseError(b)) => a == b,
+			(ProviderError::LockError, ProviderError::LockError) => true,
+			(ProviderError::ProtocolNotFound, ProviderError::ProtocolNotFound) => true,
+			(ProviderError::NetworkNotFound, ProviderError::NetworkNotFound) => true,
 			_ => false,
 		}
 	}

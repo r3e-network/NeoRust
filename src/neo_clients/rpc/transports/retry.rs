@@ -206,25 +206,19 @@ pub enum RetryClientError {
 	#[error(transparent)]
 	ProviderError(ProviderError),
 	/// Timeout while making requests
+	#[error("request timed out")]
 	TimeoutError,
 	/// (De)Serialization error
 	#[error(transparent)]
 	SerdeJson(serde_json::Error),
 }
 
-impl std::fmt::Display for RetryClientError {
-	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-		write!(f, "{self:?}")
-	}
-}
-
 impl From<RetryClientError> for ProviderError {
 	fn from(src: RetryClientError) -> Self {
 		match src {
 			RetryClientError::ProviderError(err) => err,
-			// RetryClientError::TimeoutError => ProviderError::JsonRpcClientError(Box::new(src)),
 			RetryClientError::SerdeJson(err) => err.into(),
-			_ => ProviderError::CustomError(src.to_string()),
+			RetryClientError::TimeoutError => ProviderError::CustomError(src.to_string()),
 		}
 	}
 }
@@ -258,7 +252,7 @@ where
 			RetryParams::Value(params)
 		};
 
-		let ahead_in_queue = self.requests_enqueued.fetch_add(1, Ordering::SeqCst) as u64;
+		let ahead_in_queue = u64::from(self.requests_enqueued.fetch_add(1, Ordering::SeqCst));
 
 		let mut rate_limit_retry_number: u32 = 0;
 		let mut timeout_retries: u32 = 0;
@@ -290,12 +284,12 @@ where
 					return Err(RetryClientError::TimeoutError);
 				}
 
-				let current_queued_requests = self.requests_enqueued.load(Ordering::SeqCst) as u64;
+				let current_queued_requests = u64::from(self.requests_enqueued.load(Ordering::SeqCst));
 
 				// try to extract the requested backoff from the error or compute the next backoff
 				// based on retry count
 				let mut next_backoff = self.policy.backoff_hint(&err).unwrap_or_else(|| {
-					Duration::from_millis(self.initial_backoff.as_millis() as u64)
+					Duration::from_millis(u64::try_from(self.initial_backoff.as_millis()).unwrap_or(u64::MAX))
 				});
 
 				// requests are usually weighted and can vary from 10 CU to several 100 CU, cheaper
@@ -365,13 +359,10 @@ impl RetryPolicy<ClientError> for HttpRateLimitRetryPolicy {
 				return true;
 			}
 
-			match message.as_str() {
-				// Transient gateway/load-balancer error observed in the wild.
-				"header not found" => true,
-				// Daily quota/rate limit message observed in the wild.
-				"daily request count exceeded, request rate limited" => true,
-				_ => false,
-			}
+			matches!(
+				message.as_str(),
+				"header not found" | "daily request count exceeded, request rate limited"
+			)
 		}
 
 		match error {
@@ -403,7 +394,7 @@ impl RetryPolicy<ClientError> for HttpRateLimitRetryPolicy {
 				return Some(Duration::from_secs(seconds));
 			}
 			if let Some(seconds) = backoff_seconds.as_f64() {
-				return Some(Duration::from_secs(seconds as u64 + 1));
+				return Some(Duration::from_secs(seconds.max(0.0).ceil() as u64));
 			}
 		}
 

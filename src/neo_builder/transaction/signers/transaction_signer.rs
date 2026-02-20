@@ -71,8 +71,9 @@ impl TransactionSigner {
 	///
 	/// * `account` - The account hash of the signer.
 	/// * `scopes` - The witness scopes for this signer.
-	pub fn new(account: H160, scopes: Vec<WitnessScope>) -> Self {
-		Self { account, scopes, allowed_contracts: None, allowed_groups: None, rules: None }
+	pub fn new(account: H160, scopes: Vec<WitnessScope>) -> Result<Self, BuilderError> {
+		WitnessScope::validate(&scopes)?;
+		Ok(Self { account, scopes, allowed_contracts: None, allowed_groups: None, rules: None })
 	}
 
 	/// Creates a new `TransactionSigner` with full information.
@@ -90,14 +91,15 @@ impl TransactionSigner {
 		allowed_contracts: Vec<H160>,
 		allowed_groups: Vec<Secp256r1PublicKey>,
 		rules: Vec<WitnessRule>,
-	) -> Self {
-		Self {
+	) -> Result<Self, BuilderError> {
+		WitnessScope::validate(&scopes)?;
+		Ok(Self {
 			account,
 			scopes,
 			allowed_contracts: Some(allowed_contracts),
 			allowed_groups: Some(allowed_groups),
 			rules: Some(rules),
-		}
+		})
 	}
 }
 
@@ -225,6 +227,7 @@ impl NeoSerializable for TransactionSigner {
 		let mut signer = TransactionSigner::default();
 		signer.set_signer_hash(reader.read_serializable()?);
 		let scopes = WitnessScope::split(reader.read_u8_safe()?);
+		WitnessScope::validate(&scopes)?;
 		signer.set_scopes(scopes);
 		if signer.get_scopes().contains(&WitnessScope::CustomContracts) {
 			signer.allowed_contracts = Some(read_bounded_list::<H160>(

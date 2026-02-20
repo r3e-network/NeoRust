@@ -186,13 +186,8 @@ impl Secp256r1PublicKey {
 			return Err(CryptoError::InvalidPublicKey);
 		}
 
-		let point = if bytes.len() == 33 {
-			// Compressed format
-			EncodedPoint::from_bytes(bytes).map_err(|_| CryptoError::InvalidPublicKey)?
-		} else {
-			// Uncompressed format
-			EncodedPoint::from_bytes(bytes).map_err(|_| CryptoError::InvalidPublicKey)?
-		};
+		let point =
+			EncodedPoint::from_bytes(bytes).map_err(|_| CryptoError::InvalidPublicKey)?;
 
 		let public_key_option: Option<PublicKey> = PublicKey::from_encoded_point(&point).into();
 		public_key_option
@@ -310,7 +305,7 @@ impl Secp256r1PrivateKey {
 	///
 	/// - Returns: A 32-byte array representing the private key.
 	pub fn to_raw_bytes(&self) -> [u8; 32] {
-		let bytes = self.inner.clone().to_bytes();
+		let bytes = self.inner.to_bytes();
 		let mut out = [0u8; 32];
 		out.copy_from_slice(bytes.as_slice());
 		out
@@ -340,8 +335,7 @@ impl Secp256r1PrivateKey {
 	///
 	/// - Returns: A `Result` with the `Secp256r1Signature` or a `CryptoError`.
 	pub fn sign_tx(&self, message: &[u8]) -> Result<Secp256r1Signature, CryptoError> {
-		let signing_key = SigningKey::from_slice(self.inner.to_bytes().as_slice())
-			.map_err(|_| CryptoError::InvalidPrivateKey)?;
+		let signing_key = SigningKey::from(&self.inner);
 		let (signature, _) =
 			signing_key.try_sign(message).map_err(|_| CryptoError::SigningError)?;
 
@@ -356,8 +350,7 @@ impl Secp256r1PrivateKey {
 	/// - Note: The message should be prehashed using a secure hash function before calling this method.
 	///   The signature is generated using the ECDSA algorithm.
 	pub fn sign_prehash(&self, message: &[u8]) -> Result<Secp256r1Signature, CryptoError> {
-		let signing_key = SigningKey::from_slice(self.inner.to_bytes().as_slice())
-			.map_err(|_| CryptoError::InvalidPrivateKey)?;
+		let signing_key = SigningKey::from(&self.inner);
 		let (signature, _) =
 			signing_key.sign_prehash(message).map_err(|_| CryptoError::SigningError)?;
 
@@ -548,7 +541,8 @@ impl Ord for Secp256r1PublicKey {
 
 impl Hash for Secp256r1PublicKey {
 	fn hash<H: Hasher>(&self, state: &mut H) {
-		self.get_encoded(false).hash(state);
+		// Use compressed encoding, consistent with PartialEq and Ord
+		self.get_encoded(true).hash(state);
 	}
 }
 
@@ -566,7 +560,9 @@ impl Hash for Secp256r1Signature {
 
 impl PartialEq for Secp256r1PrivateKey {
 	fn eq(&self, other: &Self) -> bool {
-		self.to_raw_bytes() == other.to_raw_bytes()
+		// SECURITY: Use constant-time comparison to prevent timing side-channel attacks
+		use p256::elliptic_curve::subtle::ConstantTimeEq;
+		self.to_raw_bytes().ct_eq(&other.to_raw_bytes()).into()
 	}
 }
 
@@ -576,10 +572,11 @@ impl PartialEq for Secp256r1Signature {
 	}
 }
 
-impl From<Vec<u8>> for Secp256r1PublicKey {
-	#[track_caller]
-	fn from(bytes: Vec<u8>) -> Self {
-		Secp256r1PublicKey::from_bytes(&bytes).expect("Invalid secp256r1 public key bytes")
+impl TryFrom<Vec<u8>> for Secp256r1PublicKey {
+	type Error = CryptoError;
+
+	fn try_from(bytes: Vec<u8>) -> Result<Self, Self::Error> {
+		Secp256r1PublicKey::from_bytes(&bytes)
 	}
 }
 

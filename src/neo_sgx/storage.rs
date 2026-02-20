@@ -23,6 +23,12 @@ struct SealedItem {
 	timestamp: u64,
 }
 
+impl Default for SecureStorage {
+	fn default() -> Self {
+		Self::new()
+	}
+}
+
 impl SecureStorage {
 	/// Create new secure storage instance
 	pub fn new() -> Self {
@@ -118,7 +124,7 @@ impl SecureStorage {
 	#[cfg(not(feature = "sgx"))]
 	pub fn retrieve(&self, _key_id: &[u8; 32]) -> Result<Vec<u8>, SgxError> {
 		// Secure storage requires SGX - return error in non-SGX builds
-		Err(SgxError::StorageError(
+		Err(SgxError::MemoryError(
 			"Secure storage retrieval requires SGX. Use SGX-enabled build for production.".into(),
 		))
 	}

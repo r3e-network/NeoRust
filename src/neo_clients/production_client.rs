@@ -80,7 +80,7 @@ impl ProductionRpcClient {
 	/// Create a new production RPC client
 	pub fn new(endpoint: String, config: ProductionClientConfig) -> Self {
 		let pool = ConnectionPool::new(endpoint, config.pool_config.clone());
-		let cache = Cache::new(config.cache_config.clone());
+		let cache = Cache::new(config.cache_config);
 		let circuit_breaker = CircuitBreaker::new(config.circuit_breaker_config.clone());
 
 		Self {

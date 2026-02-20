@@ -187,7 +187,12 @@ where
 		where
 			E: serde::de::Error,
 		{
-			Ok(value as i64)
+			i64::try_from(value).map_err(|_| {
+				serde::de::Error::custom(format!(
+					"u64 value {} overflows i64",
+					value
+				))
+			})
 		}
 	}
 
@@ -273,7 +278,7 @@ impl StackItem {
 	pub fn as_bool(&self) -> Option<bool> {
 		match self {
 			StackItem::Boolean { value } => Some(*value),
-			StackItem::Integer { value } => Some(value != &0),
+			StackItem::Integer { value } => Some(*value != 0),
 			_ => None,
 		}
 	}
@@ -284,7 +289,7 @@ impl StackItem {
 			StackItem::ByteString { value } | StackItem::Buffer { value } => {
 				let bytes =
 					base64::engine::general_purpose::STANDARD.decode(value.trim_end()).ok()?;
-				Some(String::from_utf8_lossy(&bytes).to_string())
+				Some(String::from_utf8_lossy(&bytes).into_owned())
 			},
 			StackItem::Integer { value } => Some(value.to_string()),
 			StackItem::Boolean { value } => Some(value.to_string()),
@@ -339,9 +344,25 @@ impl StackItem {
 			},
 			//Some(value.trim_end().as_bytes().to_vec()),
 			StackItem::Integer { value } => {
-				let mut bytes = value.to_be_bytes().to_vec();
-				bytes.reverse();
-				Some(bytes)
+				let bytes = value.to_le_bytes();
+				let mut result = bytes.to_vec();
+				// Trim to minimal two's complement representation
+				if *value >= 0 {
+					while result.len() > 1 && *result.last().unwrap() == 0 {
+						if result[result.len() - 2] & 0x80 != 0 {
+							break;
+						}
+						result.pop();
+					}
+				} else {
+					while result.len() > 1 && *result.last().unwrap() == 0xFF {
+						if result[result.len() - 2] & 0x80 == 0 {
+							break;
+						}
+						result.pop();
+					}
+				}
+				Some(result)
 			},
 			_ => None,
 		}
@@ -533,13 +554,17 @@ impl StackItem {
 
 impl From<String> for StackItem {
 	fn from(value: String) -> Self {
-		StackItem::ByteString { value }
+		StackItem::ByteString {
+			value: base64::engine::general_purpose::STANDARD.encode(value.as_bytes()),
+		}
 	}
 }
 
 impl From<H160> for StackItem {
 	fn from(value: H160) -> Self {
-		StackItem::ByteString { value: ToString::to_string(&value) }
+		StackItem::ByteString {
+			value: base64::engine::general_purpose::STANDARD.encode(value.as_bytes()),
+		}
 	}
 }
 
@@ -581,11 +606,20 @@ impl From<i32> for StackItem {
 
 impl From<u64> for StackItem {
 	fn from(value: u64) -> Self {
-		StackItem::Integer { value: value as i64 }
+		if let Ok(v) = i64::try_from(value) {
+			StackItem::Integer { value: v }
+		} else {
+			StackItem::ByteString {
+				value: base64::engine::general_purpose::STANDARD
+					.encode(value.to_le_bytes()),
+			}
+		}
 	}
 }
 impl From<&str> for StackItem {
 	fn from(value: &str) -> Self {
-		StackItem::ByteString { value: value.to_string() }
+		StackItem::ByteString {
+			value: base64::engine::general_purpose::STANDARD.encode(value.as_bytes()),
+		}
 	}
 }

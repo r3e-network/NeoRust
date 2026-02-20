@@ -53,7 +53,7 @@ impl<'a, P: JsonRpcProvider + 'static> NeoToken<'a, P> {
 	pub async fn unclaimed_gas(
 		&self,
 		account: &Account,
-		block_height: i32,
+		block_height: u32,
 	) -> Result<i64, ContractError> {
 		self.unclaimed_gas_contract(&account.get_script_hash(), block_height).await
 	}
@@ -61,7 +61,7 @@ impl<'a, P: JsonRpcProvider + 'static> NeoToken<'a, P> {
 	pub async fn unclaimed_gas_contract(
 		&self,
 		script_hash: &H160,
-		block_height: i32,
+		block_height: u32,
 	) -> Result<i64, ContractError> {
 		Ok(self
 			.call_function_returning_int(
@@ -163,24 +163,24 @@ impl<'a, P: JsonRpcProvider + 'static> NeoToken<'a, P> {
 
 	// Network Settings
 
-	pub async fn get_gas_per_block(&self) -> Result<i32, ContractError> {
+	pub async fn get_gas_per_block(&self) -> Result<i64, ContractError> {
 		self.call_function_returning_int("getGasPerBlock", vec![]).await
 	}
 
 	pub async fn set_gas_per_block(
 		&self,
-		gas_per_block: i32,
+		gas_per_block: i64,
 	) -> Result<TransactionBuilder<'_, P>, ContractError> {
 		self.invoke_function("setGasPerBlock", vec![gas_per_block.into()]).await
 	}
 
-	pub async fn get_register_price(&self) -> Result<i32, ContractError> {
+	pub async fn get_register_price(&self) -> Result<i64, ContractError> {
 		self.call_function_returning_int("getRegisterPrice", vec![]).await
 	}
 
 	pub async fn set_register_price(
 		&self,
-		register_price: i32,
+		register_price: i64,
 	) -> Result<TransactionBuilder<'_, P>, ContractError> {
 		self.invoke_function("setRegisterPrice", vec![register_price.into()]).await
 	}
@@ -233,8 +233,7 @@ impl<'a, P: JsonRpcProvider + 'static> NeoToken<'a, P> {
 
 		let result = result
 			.get_first_stack_item()
-			.map_err(|e| ContractError::InvalidResponse(e.to_string()))?
-			.clone();
+			.map_err(|e| ContractError::InvalidResponse(e.to_string()))?;
 
 		match result {
 			StackItem::Any => Ok(AccountState::with_no_balance()),
@@ -245,12 +244,10 @@ impl<'a, P: JsonRpcProvider + 'static> NeoToken<'a, P> {
 					)
 				})?;
 				let update_height = items[1].as_int();
-				let public_key = items[2].clone();
-
 				// Neo 3.9+ includes last_gas_per_vote as the 4th element
 				let last_gas_per_vote = if items.len() >= 4 { items[3].as_int() } else { None };
 
-				if let StackItem::Any = public_key {
+				if matches!(items[2], StackItem::Any) {
 					Ok(AccountState {
 						balance,
 						balance_height: update_height,
@@ -258,7 +255,7 @@ impl<'a, P: JsonRpcProvider + 'static> NeoToken<'a, P> {
 						last_gas_per_vote,
 					})
 				} else {
-					let bytes = public_key.as_bytes().ok_or_else(|| {
+					let bytes = items[2].as_bytes().ok_or_else(|| {
 						ContractError::InvalidResponse(
 							"Account state public key is not a byte array".to_string(),
 						)
@@ -374,7 +371,7 @@ impl<'a, P: JsonRpcProvider> FungibleTokenTrait<'a, P> for NeoToken<'a, P> {}
 
 pub struct Candidate {
 	pub public_key: Secp256r1PublicKey,
-	pub votes: i32,
+	pub votes: i64,
 }
 
 impl Candidate {
@@ -384,7 +381,7 @@ impl Candidate {
 		})?;
 		let votes = items.get(1).and_then(StackItem::as_int).ok_or_else(|| {
 			ContractError::InvalidResponse("Candidate votes is missing or invalid".to_string())
-		})? as i32;
+		})?;
 		Ok(Self { public_key: key, votes })
 	}
 }

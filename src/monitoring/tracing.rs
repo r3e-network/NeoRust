@@ -4,12 +4,11 @@
 use opentelemetry::{
     global,
     sdk::{
-        export::trace::stdout,
         propagation::TraceContextPropagator,
         trace::{self, RandomIdGenerator, Sampler},
         Resource,
     },
-    trace::{Span, SpanKind, Status, TraceContextExt, Tracer},
+    trace::{Span, SpanKind},
     KeyValue,
 };
 use opentelemetry_otlp::{Protocol, WithExportConfig};

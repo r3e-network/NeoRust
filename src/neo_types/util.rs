@@ -70,7 +70,8 @@ pub fn parse_string_u256(u256_str: &str) -> Result<U256, TypeError> {
 /// // Note: This is a simplified example for demonstration
 /// ```
 pub fn parse_address(address: &str) -> Result<ScriptHash, TypeError> {
-	let bytes = hex::decode(address.trim_start_matches("0x")).map_err(|e| {
+	let has_0x = address.starts_with("0x");
+	let mut bytes = hex::decode(address.trim_start_matches("0x")).map_err(|e| {
 		TypeError::InvalidFormat(format!("Failed to decode address hex '{}': {}", address, e))
 	})?;
 
@@ -79,6 +80,11 @@ pub fn parse_address(address: &str) -> Result<ScriptHash, TypeError> {
 			"Address hex is too long: {} bytes (max 20 bytes)",
 			bytes.len()
 		)));
+	}
+
+	// 0x-prefixed hashes are big-endian display format; reverse to little-endian internal format
+	if has_0x {
+		bytes.reverse();
 	}
 
 	let mut padded_bytes = [0_u8; 20];

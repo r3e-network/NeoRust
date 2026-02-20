@@ -51,6 +51,7 @@ impl VerificationScript {
 		// Build multi-sig script
 		let mut builder = ScriptBuilder::new();
 		builder.push_integer(BigInt::from(threshold));
+		// Canonical Neo N3 sort: by compressed encoded bytes (via Ord impl)
 		public_keys.sort();
 		for key in public_keys.iter() {
 			builder.push_data(key.get_encoded(true));
@@ -322,9 +323,9 @@ mod tests {
 			hex!("03ac81ec17f2f15fd6d193182f927c5971559c2a32b9408a06fec9e711fb7ca02e").to_vec();
 
 		let mut pubkeys = vec![
-			Secp256r1PublicKey::from(key1.clone()),
-			Secp256r1PublicKey::from(key2.clone()),
-			Secp256r1PublicKey::from(key3.clone()),
+			Secp256r1PublicKey::try_from(key1.clone()).unwrap(),
+			Secp256r1PublicKey::try_from(key2.clone()).unwrap(),
+			Secp256r1PublicKey::try_from(key3.clone()).unwrap(),
 		];
 
 		let script = VerificationScript::from_multi_sig(&mut pubkeys, 2);

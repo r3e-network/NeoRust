@@ -166,7 +166,7 @@ pub enum OpCode {
 	Reverse3 = 0x53,
 	#[strum(serialize = "Reverse4")]
 	Reverse4 = 0x54,
-	#[strum(serialize = "Reverse5")]
+	#[strum(serialize = "ReverseN")]
 	ReverseN = 0x55,
 
 	#[strum(serialize = "InitSSlot")]

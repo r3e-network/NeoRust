@@ -182,6 +182,8 @@ pub trait APITrait: Sync + Send + Debug {
 
 	async fn get_wallet_unclaimed_gas(&self) -> Result<String, Self::Error>;
 
+	async fn get_wallet_height(&self) -> Result<u32, Self::Error>;
+
 	async fn import_priv_key(&self, priv_key: String) -> Result<NeoAddress, Self::Error>;
 
 	async fn calculate_network_fee(&self, hex: String) -> Result<NeoNetworkFee, Self::Error>;

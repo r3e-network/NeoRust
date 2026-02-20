@@ -344,7 +344,7 @@ where
 	// updates will observe the end of their subscription streams.
 	fn close_all_subscriptions(&self) {
 		error!("Tearing down subscriptions");
-		for (_, sub) in self.subscriptions.iter() {
+		for sub in self.subscriptions.values() {
 			sub.close_channel();
 		}
 	}

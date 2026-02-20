@@ -4,6 +4,7 @@ use sha2::{Sha256, Sha512};
 
 pub trait HashableForVec {
 	fn hash256(&self) -> Vec<u8>;
+	fn double_sha256(&self) -> Vec<u8>;
 	fn ripemd160(&self) -> Vec<u8>;
 	fn sha256_ripemd160(&self) -> Vec<u8>;
 	fn hmac_sha512(&self, key: &[u8]) -> Vec<u8>;
@@ -14,6 +15,10 @@ impl HashableForVec for [u8] {
 		let mut hasher = Sha256::new();
 		hasher.update(self);
 		hasher.finalize().to_vec()
+	}
+
+	fn double_sha256(&self) -> Vec<u8> {
+		self.hash256().hash256()
 	}
 
 	fn ripemd160(&self) -> Vec<u8> {
@@ -51,6 +56,10 @@ impl HashableForVec for [u8] {
 impl HashableForVec for Vec<u8> {
 	fn hash256(&self) -> Vec<u8> {
 		self.as_slice().hash256()
+	}
+
+	fn double_sha256(&self) -> Vec<u8> {
+		self.as_slice().double_sha256()
 	}
 
 	fn ripemd160(&self) -> Vec<u8> {

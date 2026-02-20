@@ -113,13 +113,9 @@ impl AddressOrScriptHash {
 	/// ```
 	pub fn script_hash(&self) -> H160 {
 		match self {
-			AddressOrScriptHash::Address(a) => match H160::from_address(a) {
-				Ok(hash) => hash,
-				Err(e) => {
-					tracing::warn!(error = %e, address = %a, "Invalid address; using zero ScriptHash");
-					H160::zero()
-				},
-			},
+			AddressOrScriptHash::Address(a) => H160::from_address(a).unwrap_or_else(|e| {
+				panic!("BUG: AddressOrScriptHash::Address contains invalid address '{}': {}", a, e)
+			}),
 			AddressOrScriptHash::ScriptHash(s) => *s,
 		}
 	}

@@ -8,7 +8,7 @@ use std::{
 use tokio::sync::RwLock;
 
 /// Cache configuration
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub struct CacheConfig {
 	/// Maximum number of entries in the cache
 	pub max_entries: usize,
@@ -267,7 +267,7 @@ where
 	/// Start background cleanup task
 	pub fn start_cleanup_task(&self) -> tokio::task::JoinHandle<()> {
 		let cache = Cache {
-			config: self.config.clone(),
+			config: self.config,
 			entries: Arc::clone(&self.entries),
 			stats: Arc::clone(&self.stats),
 		};

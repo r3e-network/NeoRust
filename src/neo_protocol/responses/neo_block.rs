@@ -23,9 +23,9 @@ pub struct NeoBlock {
 	#[serde(deserialize_with = "deserialize_h256")]
 	#[serde(rename = "merkleroot")]
 	pub merkle_root_hash: H256,
-	pub time: i32,
+	pub time: u64,
 	pub nonce: String,
-	pub index: i32,
+	pub index: u32,
 	pub primary: Option<i32>,
 	#[serde(rename = "nextconsensus")]
 	pub next_consensus: String,

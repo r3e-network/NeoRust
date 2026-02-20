@@ -245,7 +245,7 @@ impl NEP6Account {
 			address_or_scripthash: AddressOrScriptHash::ScriptHash(script_hash),
 			label: self.label.clone(),
 			verification_script,
-			is_default: false,
+			is_default: self.is_default,
 			is_locked: self.lock,
 			encrypted_private_key: self.key.clone(),
 			signing_threshold: signing_threshold.map(|s| s as u32),

@@ -222,7 +222,11 @@ impl From<u32> for ContractParameter {
 
 impl From<u64> for ContractParameter {
 	fn from(value: u64) -> Self {
-		Self::integer(value as i64)
+		if let Ok(v) = i64::try_from(value) {
+			Self::integer(v)
+		} else {
+			Self::byte_array(value.to_le_bytes().to_vec())
+		}
 	}
 }
 
@@ -246,7 +250,11 @@ impl From<&str> for ContractParameter {
 
 impl From<usize> for ContractParameter {
 	fn from(value: usize) -> Self {
-		Self::integer(value as i64)
+		if let Ok(v) = i64::try_from(value) {
+			Self::integer(v)
+		} else {
+			Self::byte_array(value.to_le_bytes().to_vec())
+		}
 	}
 }
 

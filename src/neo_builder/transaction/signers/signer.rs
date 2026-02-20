@@ -455,14 +455,16 @@ impl Into<TransactionSigner> for Signer {
 				account_signer.get_allowed_contracts().to_vec(),
 				account_signer.get_allowed_groups().to_vec(),
 				account_signer.get_rules().to_vec(),
-			),
+			)
+			.expect("Signer already has valid scopes"),
 			Signer::ContractSigner(contract_signer) => TransactionSigner::new_full(
 				*contract_signer.get_signer_hash(),
 				contract_signer.get_scopes().to_vec(),
 				contract_signer.get_allowed_contracts().to_vec(),
 				contract_signer.get_allowed_groups().to_vec(),
 				contract_signer.get_rules().to_vec(),
-			),
+			)
+			.expect("Signer already has valid scopes"),
 			Signer::TransactionSigner(transaction_signer) => transaction_signer,
 		}
 	}
@@ -477,14 +479,16 @@ impl Into<TransactionSigner> for &Signer {
 				account_signer.get_allowed_contracts().to_vec(),
 				account_signer.get_allowed_groups().to_vec(),
 				account_signer.get_rules().to_vec(),
-			),
+			)
+			.expect("Signer already has valid scopes"),
 			Signer::ContractSigner(contract_signer) => TransactionSigner::new_full(
 				*contract_signer.get_signer_hash(),
 				contract_signer.get_scopes().to_vec(),
 				contract_signer.get_allowed_contracts().to_vec(),
 				contract_signer.get_allowed_groups().to_vec(),
 				contract_signer.get_rules().to_vec(),
-			),
+			)
+			.expect("Signer already has valid scopes"),
 			// Signer::Account(_account_signer) =>
 			// 	panic!("Cannot convert AccountSigner into TransactionSigner"),
 			// Signer::Contract(_contract_signer) =>
@@ -503,14 +507,16 @@ impl Into<TransactionSigner> for &mut Signer {
 				account_signer.get_allowed_contracts().to_vec(),
 				account_signer.get_allowed_groups().to_vec(),
 				account_signer.get_rules().to_vec(),
-			),
+			)
+			.expect("Signer already has valid scopes"),
 			Signer::ContractSigner(contract_signer) => TransactionSigner::new_full(
 				*contract_signer.get_signer_hash(),
 				contract_signer.get_scopes().to_vec(),
 				contract_signer.get_allowed_contracts().to_vec(),
 				contract_signer.get_allowed_groups().to_vec(),
 				contract_signer.get_rules().to_vec(),
-			),
+			)
+			.expect("Signer already has valid scopes"),
 			Signer::TransactionSigner(transaction_signer) => transaction_signer.clone(),
 		}
 	}
@@ -584,12 +590,7 @@ impl NeoSerializable for Signer {
 	where
 		Self: Sized,
 	{
-		match reader.read_u8_safe()? {
-			0 => Ok(Signer::AccountSigner(AccountSigner::decode(reader)?)),
-			1 => Ok(Signer::ContractSigner(ContractSigner::decode(reader)?)),
-			//_ => Ok(Signer::Transaction(TransactionSigner::decode(reader)?)),
-			_ => Err(TransactionError::InvalidTransaction),
-		}
+		Ok(Signer::TransactionSigner(TransactionSigner::decode(reader)?))
 	}
 
 	fn to_array(&self) -> Vec<u8> {
@@ -930,8 +931,7 @@ mod tests {
 				&GROUP_PUB_KEY1.get_encoded_compressed_hex().trim_start_matches("0x").to_string(),
 			);
 		}
-		let mut data = hex::decode(&serialized).unwrap();
-		data.insert(0, 1);
+		let data = hex::decode(&serialized).unwrap();
 
 		let err = Signer::from_bytes(&data).unwrap_err();
 
@@ -949,8 +949,7 @@ mod tests {
 			serialized.push_str("28");
 			serialized.push_str(&hex::encode(SCRIPT_HASH1.as_bytes()));
 		}
-		let mut data = hex::decode(&serialized).unwrap();
-		data.insert(0, 1);
+		let data = hex::decode(&serialized).unwrap();
 
 		let err = Signer::from_bytes(&data).unwrap_err();
 
@@ -1136,8 +1135,7 @@ mod tests {
 			"28",
 			hex::encode(SCRIPT_HASH1.as_bytes())
 		);
-		let mut serialized = hex::decode(&data_str).unwrap();
-		serialized.insert(0, 1);
+		let serialized = hex::decode(&data_str).unwrap();
 
 		let signer = Signer::from_bytes(&serialized).unwrap();
 

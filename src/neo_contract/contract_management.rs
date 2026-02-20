@@ -21,7 +21,14 @@ pub struct ContractManagement<'a, P: JsonRpcProvider> {
 }
 
 impl<'a, P: JsonRpcProvider + 'static> ContractManagement<'a, P> {
-	pub fn new(script_hash: H160, provider: Option<&'a RpcClient<P>>) -> Self {
+	pub const NAME: &'static str = "ContractManagement";
+
+	pub fn new(provider: Option<&'a RpcClient<P>>) -> Self {
+		Self { script_hash: Self::calc_native_contract_hash_unchecked(Self::NAME), provider }
+	}
+
+	/// Creates a ContractManagement with an explicit script hash (for non-native usage).
+	pub fn with_script_hash(script_hash: H160, provider: Option<&'a RpcClient<P>>) -> Self {
 		Self { script_hash, provider }
 	}
 
@@ -41,22 +48,11 @@ impl<'a, P: JsonRpcProvider + 'static> ContractManagement<'a, P> {
 		})
 	}
 
-	pub async fn set_minimum_deployment_fee(&self, fee: u64) -> Result<u64, ContractError> {
-		let output = self
-			.call_invoke_function("setMinimumDeploymentFee", vec![fee.into()], vec![])
-			.await?;
-		self.throw_if_fault_state(&output)?;
-
-		let item = output
-			.get_first_stack_item()
-			.map_err(|e| ContractError::InvalidResponse(e.to_string()))?;
-		let value = item
-			.as_int()
-			.ok_or_else(|| ContractError::UnexpectedReturnType("Int".to_string()))?;
-
-		u64::try_from(value).map_err(|_| {
-			ContractError::InvalidResponse("Minimum deployment fee cannot be negative".to_string())
-		})
+	pub async fn set_minimum_deployment_fee(
+		&self,
+		fee: u64,
+	) -> Result<TransactionBuilder<'_, P>, ContractError> {
+		self.invoke_function("setMinimumDeploymentFee", vec![fee.into()]).await
 	}
 
 	pub async fn get_contract(&self, hash: H160) -> Result<ContractState, ContractError> {
@@ -66,12 +62,12 @@ impl<'a, P: JsonRpcProvider + 'static> ContractManagement<'a, P> {
 		Ok(provider.get_contract_state(hash).await?)
 	}
 
-	pub async fn get_contract_by_id(&self, id: u32) -> Result<ContractState, ContractError> {
+	pub async fn get_contract_by_id(&self, id: i32) -> Result<ContractState, ContractError> {
 		let hash = self.get_contract_hash_by_id(id).await?;
 		self.get_contract(hash).await
 	}
 
-	pub async fn get_contract_hash_by_id(&self, id: u32) -> Result<ScriptHash, ContractError> {
+	pub async fn get_contract_hash_by_id(&self, id: i32) -> Result<ScriptHash, ContractError> {
 		let result = self.call_invoke_function("getContractById", vec![id.into()], vec![]).await?;
 		self.throw_if_fault_state(&result)?;
 
@@ -129,6 +125,20 @@ impl<'a, P: JsonRpcProvider + 'static> ContractManagement<'a, P> {
 	) -> Result<TransactionBuilder<'_, P>, ContractError> {
 		let params = vec![nef.into(), manifest.into(), data.unwrap_or_else(ContractParameter::any)];
 		self.invoke_function("deploy", params).await
+	}
+
+	pub async fn update(
+		&self,
+		nef: &NefFile,
+		manifest: &[u8],
+		data: Option<ContractParameter>,
+	) -> Result<TransactionBuilder<'_, P>, ContractError> {
+		let params = vec![nef.into(), manifest.into(), data.unwrap_or_else(ContractParameter::any)];
+		self.invoke_function("update", params).await
+	}
+
+	pub async fn destroy(&self) -> Result<TransactionBuilder<'_, P>, ContractError> {
+		self.invoke_function("destroy", vec![]).await
 	}
 }
 

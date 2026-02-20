@@ -62,10 +62,10 @@ pub trait TokenTrait<'a, P: JsonRpcProvider>: SmartContractTrait<'a, P = P> {
 		Ok(symbol)
 	}
 
-	fn to_fractions(&self, amount: u64, decimals: u32) -> Result<i32, ContractError> {
+	fn to_fractions(&self, amount: u64, decimals: u32) -> Result<i64, ContractError> {
 		let scaled = Decimal::from(amount) * Decimal::from(10i32.pow(decimals));
-		scaled.trunc().to_i32().ok_or_else(|| {
-			ContractError::RuntimeError("Amount is too large to fit into i32 fractions".to_string())
+		scaled.trunc().to_i64().ok_or_else(|| {
+			ContractError::RuntimeError("Amount is too large to fit into i64 fractions".to_string())
 		})
 	}
 

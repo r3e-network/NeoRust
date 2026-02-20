@@ -46,14 +46,26 @@ impl Witness {
 
 	pub fn create_multi_sig_witness(
 		signing_threshold: u8,
-		signatures: Vec<Secp256r1Signature>,
+		signatures: Vec<(Secp256r1PublicKey, Secp256r1Signature)>,
 		mut public_keys: Vec<Secp256r1PublicKey>,
 	) -> Result<Self, BuilderError> {
 		let verification_script =
 			VerificationScript::from_multi_sig(public_keys.as_mut_slice(), signing_threshold);
-		Self::create_multi_sig_witness_script(signatures, verification_script)
+		// public_keys is now sorted by from_multi_sig; reorder signatures to match
+		let mut ordered_sigs = Vec::new();
+		for pk in &public_keys {
+			if let Some((_, sig)) = signatures.iter().find(|(k, _)| k == pk) {
+				ordered_sigs.push(sig.clone());
+			}
+		}
+		Self::create_multi_sig_witness_script(ordered_sigs, verification_script)
 	}
 
+	/// Creates a multi-sig witness from pre-ordered signatures and a verification script.
+	///
+	/// **Important:** Signatures must be ordered to match the public key order in the
+	/// verification script. The Neo N3 VM requires this correspondence for
+	/// `System.Crypto.CheckMultiSig` to succeed.
 	pub fn create_multi_sig_witness_script(
 		signatures: Vec<Secp256r1Signature>,
 		verification_script: VerificationScript,

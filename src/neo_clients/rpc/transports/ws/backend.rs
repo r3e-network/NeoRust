@@ -76,7 +76,7 @@ impl WsBackend {
 	) -> Result<(Self, BackendDriver), WsClientError> {
 		let wsio = WsMeta::connect(details.url, None)
 			.await
-			.expect_throw("Could not create websocket")
+			.map_err(WsClientError::from)?
 			.1
 			.fuse();
 

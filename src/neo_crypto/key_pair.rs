@@ -17,7 +17,7 @@ use crate::{
 	builder::VerificationScript,
 	crypto::{
 		private_key_from_wif, wif_from_private_key, CryptoError, PublicKeyExtension,
-		Secp256r1PrivateKey, Secp256r1PublicKey,
+		Secp256r1PrivateKey, Secp256r1PublicKey, Secp256r1Signature,
 	},
 	neo_types::{ScriptHash, ScriptHashExtension},
 };
@@ -31,6 +31,10 @@ pub struct KeyPair {
 
 	/// The public key component of the key pair.
 	pub public_key: Secp256r1PublicKey,
+
+	/// Whether this key pair contains a real private key.
+	/// `false` when created via `from_public_key()`, which uses a placeholder.
+	pub has_private_key: bool,
 }
 
 impl KeyPair {
@@ -41,7 +45,7 @@ impl KeyPair {
 	/// * `private_key` - A `Secp256r1PrivateKey` representing the private key.
 	/// * `public_key` - A `Secp256r1PublicKey` representing the public key.
 	pub fn new(private_key: Secp256r1PrivateKey, public_key: Secp256r1PublicKey) -> Self {
-		Self { private_key, public_key }
+		Self { private_key, public_key, has_private_key: true }
 	}
 
 	/// Returns a clone of the private key.
@@ -111,6 +115,26 @@ impl KeyPair {
 
 		buf
 	}
+
+	/// Signs a message using this key pair's private key.
+	///
+	/// Returns an error if this key pair was created via `from_public_key()`
+	/// and does not contain a real private key.
+	pub fn sign(&self, message: &[u8]) -> Result<Secp256r1Signature, CryptoError> {
+		if !self.has_private_key {
+			return Err(CryptoError::SigningError);
+		}
+		self.private_key.sign_tx(message)
+	}
+
+	/// Verifies a signature against a message using this key pair's public key.
+	pub fn verify(
+		&self,
+		message: &[u8],
+		signature: &Secp256r1Signature,
+	) -> Result<bool, CryptoError> {
+		self.public_key.verify(message, signature).map(|_| true)
+	}
 }
 
 impl KeyPair {
@@ -146,20 +170,19 @@ impl KeyPair {
 		Ok(Self::from_secret_key(&private_key))
 	}
 
-	/// Creates a `KeyPair` from a given uncompressed public key (x || y, 64 bytes).
-	/// This will use a dummy private key internally.
+	/// WARNING: Creates a KeyPair with a PLACEHOLDER private key.
+	/// This KeyPair CANNOT be used for signing. It exists only for
+	/// public-key-only operations like address derivation.
 	///
 	/// # Arguments
 	///
 	/// * `public_key` - The 64-byte uncompressed public key (x || y, without the 0x04 prefix).
 	pub fn from_public_key(public_key: &[u8; 64]) -> Result<Self, CryptoError> {
 		let public_key = Secp256r1PublicKey::from_slice(public_key)?;
-		// NOTE: This creates a placeholder private key because we only have a public key.
-		// It is not suitable for signing and exists only to satisfy the `KeyPair` API.
 		let mut placeholder_private_key = [0u8; 32];
 		placeholder_private_key[31] = 1; // secp256r1 private keys must be in the range [1, n-1]
 		let secret_key = Secp256r1PrivateKey::from_bytes(&placeholder_private_key)?;
-		Ok(Self::new(secret_key, public_key))
+		Ok(Self { private_key: secret_key, public_key, has_private_key: false })
 	}
 
 	/// Exports the key pair as a Wallet Import Format (WIF) string
@@ -181,7 +204,9 @@ impl KeyPair {
 
 impl PartialEq for KeyPair {
 	fn eq(&self, other: &Self) -> bool {
-		self.private_key == other.private_key && self.public_key == other.public_key
+		self.private_key == other.private_key
+			&& self.public_key == other.public_key
+			&& self.has_private_key == other.has_private_key
 	}
 }
 

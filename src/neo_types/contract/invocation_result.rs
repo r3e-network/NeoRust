@@ -38,7 +38,7 @@ pub struct InvocationResult {
 }
 
 fn default_gas_consumed() -> String {
-	"1234567".to_string()
+	"0".to_string()
 }
 
 #[derive(Serialize, EnumString, AsRefStr, Debug, PartialEq, Eq, Clone, Hash, Default)]
@@ -50,10 +50,6 @@ pub enum NeoVMStateType {
 	Halt,
 	Fault,
 	Break,
-	StepInto,
-	StepOut,
-	StepOver,
-	Exception,
 }
 
 // Custom deserialization logic
@@ -74,10 +70,6 @@ impl<'de> Deserialize<'de> for NeoVMStateType {
 			"halt" => Ok(NeoVMStateType::Halt),
 			"fault" => Ok(NeoVMStateType::Fault),
 			"break" => Ok(NeoVMStateType::Break),
-			"stepInto" => Ok(NeoVMStateType::StepInto),
-			"stepOut" => Ok(NeoVMStateType::StepOut),
-			"stepOver" => Ok(NeoVMStateType::StepOver),
-			"exception" => Ok(NeoVMStateType::Exception),
 			_ => Err(de::Error::invalid_value(
 				Unexpected::Str(&value),
 				&"a valid NeoVMStateType string",
@@ -288,8 +280,5 @@ pub enum NotificationState {
 	Success,
 	Halt,
 	Fault,
-	StepInto,
-	StepOut,
-	StepOver,
 	Break,
 }

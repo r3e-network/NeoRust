@@ -78,10 +78,10 @@ impl<'a> Decoder<'a> {
 	///
 	/// # Panics
 	///
-	/// Panics in debug mode if the buffer has no more bytes to read.
+	/// Panics if the buffer has no more bytes to read.
 	/// For a fallible alternative, use [`Self::read_bool_safe`].
 	pub fn read_bool(&mut self) -> bool {
-		debug_assert!(self.pointer < self.data.len(), "read_bool: buffer underflow");
+		assert!(self.pointer < self.data.len(), "read_bool: buffer underflow");
 		let val = self.data[self.pointer] == 1;
 		self.pointer += 1;
 		val
@@ -91,10 +91,10 @@ impl<'a> Decoder<'a> {
 	///
 	/// # Panics
 	///
-	/// Panics in debug mode if the buffer has no more bytes to read.
+	/// Panics if the buffer has no more bytes to read.
 	/// For a fallible alternative, use [`Self::read_u8_safe`].
 	pub fn read_u8(&mut self) -> u8 {
-		debug_assert!(self.pointer < self.data.len(), "read_u8: buffer underflow");
+		assert!(self.pointer < self.data.len(), "read_u8: buffer underflow");
 		let val = self.data[self.pointer];
 		self.pointer += 1;
 		val
@@ -181,11 +181,17 @@ impl<'a> Decoder<'a> {
 		Ok(BigInt::from_bytes_le(sign, &bytes))
 	}
 
-	/// Reads an encoded EC point from the byte slice.
+	/// Reads an encoded EC point (33 bytes: 1-byte prefix + 32-byte X coordinate) from the byte slice.
 	pub fn read_encoded_ec_point(&mut self) -> Result<Vec<u8>, CodecError> {
-		let byte = self.read_u8_safe()?;
-		match byte {
-			0x02 | 0x03 => self.read_bytes(32),
+		let prefix = self.read_u8_safe()?;
+		match prefix {
+			0x02 | 0x03 => {
+				let coord = self.read_bytes(32)?;
+				let mut point = Vec::with_capacity(33);
+				point.push(prefix);
+				point.extend_from_slice(&coord);
+				Ok(point)
+			},
 			_ => Err(CodecError::InvalidEncoding("Invalid encoded EC point".to_string())),
 		}
 	}
@@ -228,14 +234,39 @@ impl<'a> Decoder<'a> {
 	}
 
 	/// Reads a variable-length integer from the byte slice.
+	///
+	/// Validates canonical (minimal) encoding: multi-byte forms must not be used
+	/// for values that fit in a shorter form.
 	pub fn read_var_int(&mut self) -> Result<i64, CodecError> {
 		let first = self.read_u8_safe()?;
 		match first {
-			0xfd => self.read_u16().map(|v| v as i64),
-			0xfe => self.read_u32().map(|v| v as i64),
+			0xfd => {
+				let v = self.read_u16()?;
+				if v < 0xFD {
+					return Err(CodecError::InvalidEncoding(
+						"Non-canonical VarInt: 3-byte form used for value < 0xFD".to_string(),
+					));
+				}
+				Ok(v as i64)
+			},
+			0xfe => {
+				let v = self.read_u32()?;
+				if v < 0x10000 {
+					return Err(CodecError::InvalidEncoding(
+						"Non-canonical VarInt: 5-byte form used for value < 0x10000".to_string(),
+					));
+				}
+				Ok(v as i64)
+			},
 			0xff => {
-				let value = self.read_u64()?;
-				i64::try_from(value).map_err(|_| {
+				let v = self.read_u64()?;
+				if v < 0x100000000 {
+					return Err(CodecError::InvalidEncoding(
+						"Non-canonical VarInt: 9-byte form used for value < 0x100000000"
+							.to_string(),
+					));
+				}
+				i64::try_from(v).map_err(|_| {
 					CodecError::InvalidEncoding("VarInt value too large for i64".to_string())
 				})
 			},
@@ -308,7 +339,7 @@ impl<'a> Decoder<'a> {
 		};
 
 		let bytes = self.read_bytes(count)?;
-		Ok(BigInt::from_signed_bytes_be(&bytes))
+		Ok(BigInt::from_signed_bytes_le(&bytes))
 	}
 
 	/// Reads a push string from the byte slice.
@@ -409,7 +440,7 @@ impl<'a> Decoder<'a> {
 	}
 
 	pub fn available(&self) -> usize {
-		self.data.len() - self.pointer
+		self.data.len().saturating_sub(self.pointer)
 	}
 }
 

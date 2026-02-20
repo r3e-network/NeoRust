@@ -51,7 +51,7 @@
 //!     // 2. Create a transaction signer
 //!     let script_hash = ScriptHash::from_str("0x1234567890123456789012345678901234567890")?;
 //!     let _signer = Signer::TransactionSigner(
-//!         TransactionSigner::new(script_hash, vec![WitnessScope::CalledByEntry])
+//!         TransactionSigner::new(script_hash, vec![WitnessScope::CalledByEntry])?
 //!     );
 //!     
 //!     // 3. Example contract call
@@ -80,17 +80,3 @@ mod script;
 mod transaction;
 mod utils;
 
-pub fn add(left: usize, right: usize) -> usize {
-	left + right
-}
-
-#[cfg(test)]
-mod tests {
-	use super::*;
-
-	#[test]
-	fn it_works() {
-		let result = add(2, 2);
-		assert_eq!(result, 4);
-	}
-}

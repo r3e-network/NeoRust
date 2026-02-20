@@ -138,14 +138,46 @@ impl ExternBase64 for String {
 }
 
 // ScryptParams
-#[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
+// Custom serde: JSON "n" field holds the actual N value (2^log_n) per NEP-6.
+// Internally we store log_n since the Rust scrypt crate expects it.
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub struct ScryptParamsDef {
-	#[serde(rename = "n")]
 	pub log_n: u8,
-	#[serde(rename = "r")]
 	pub r: u32,
-	#[serde(rename = "p")]
 	pub p: u32,
+}
+
+impl Serialize for ScryptParamsDef {
+	fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+		use serde::ser::SerializeStruct;
+		let mut s = serializer.serialize_struct("ScryptParamsDef", 3)?;
+		s.serialize_field("n", &(1u64 << self.log_n))?;
+		s.serialize_field("r", &self.r)?;
+		s.serialize_field("p", &self.p)?;
+		s.end()
+	}
+}
+
+impl<'de> Deserialize<'de> for ScryptParamsDef {
+	fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+		#[derive(Deserialize)]
+		struct Raw {
+			n: u64,
+			r: u32,
+			p: u32,
+		}
+		let raw = Raw::deserialize(deserializer)?;
+		// NEP-6 stores the actual N value (a power of 2, e.g. 16384).
+		// Convert to log_n for the scrypt crate.
+		let log_n = if raw.n > 0 && (raw.n & (raw.n - 1)) == 0 {
+			// Perfect power of 2 — compute log2
+			(raw.n as f64).log2().round() as u8
+		} else {
+			// Fallback: treat as literal log_n (non-standard but defensive)
+			raw.n as u8
+		};
+		Ok(Self { log_n, r: raw.r, p: raw.p })
+	}
 }
 
 impl Default for ScryptParamsDef {

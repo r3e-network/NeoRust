@@ -192,7 +192,8 @@ mod tests {
 			.get_unsigned_tx()
 			.await
 			.unwrap();
-		assert_eq!(*tx.nonce(), 0);
+		// Nonce is auto-generated as a random u32 for replay protection
+		assert_ne!(*tx.nonce(), 0);
 	}
 
 	#[tokio::test]

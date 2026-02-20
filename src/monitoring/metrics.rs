@@ -8,7 +8,6 @@ use prometheus::{
 };
 use std::net::SocketAddr;
 use std::sync::Arc;
-use tokio::runtime::Handle;
 use warp::Filter;
 
 static METRICS_REGISTRY: OnceCell<Arc<MetricsRegistry>> = OnceCell::new();

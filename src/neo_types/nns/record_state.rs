@@ -1,25 +1,16 @@
 use std::hash::Hash;
 
-use num_enum::TryFromPrimitive;
 use serde::{Deserialize, Serialize};
 
-use neo3::prelude::StackItem;
+use crate::neo_types::StackItem;
+
+use super::RecordType;
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Hash)]
 pub struct RecordState {
 	pub name: String,
 	pub record_type: RecordType,
 	pub data: String,
-}
-
-#[allow(clippy::upper_case_acronyms)]
-#[derive(Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, Debug, TryFromPrimitive)]
-#[repr(u8)]
-pub enum RecordType {
-	A = 0x01,
-	AAAA = 0x02,
-	CNAME = 0x04,
-	Delete = 0x08,
 }
 
 impl RecordState {

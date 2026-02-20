@@ -591,34 +591,14 @@ impl<P: JsonRpcProvider> APITrait for RpcClient<P> {
 		params: Vec<ContractParameter>,
 		signers: Option<Vec<Signer>>,
 	) -> Result<InvocationResult, ProviderError> {
-		match signers {
-			Some(signers) => {
-				let signers: Vec<TransactionSigner> = signers.iter().map(|f| f.into()).collect();
-				self.request(
-					"invokefunction",
-					json!([contract_hash.to_hex(), method, params, signers,]),
-				)
-				.await
-			},
-			None => {
-				let signers: Vec<TransactionSigner> = vec![];
-				self.request(
-					"invokefunction",
-					json!([
-						//ScriptHashExtension::to_hex_big_endian(contract_hash),
-						contract_hash.to_hex(),
-						method,
-						params,
-						signers
-					]), // 	ScriptHashExtension::to_hex_big_endian(contract_hash),
-					    // 	method,
-					    // 	params,
-					    // 	signers
-					    // ]),
-				)
-				.await
-			},
-		}
+		let signers: Vec<TransactionSigner> = signers
+			.map(|s| s.iter().map(|f| f.into()).collect())
+			.unwrap_or_default();
+		self.request(
+			"invokefunction",
+			json!([contract_hash.to_hex(), method, params, signers]),
+		)
+		.await
 	}
 
 	/// Invokes a script.
@@ -691,6 +671,12 @@ impl<P: JsonRpcProvider> APITrait for RpcClient<P> {
 	/// - Returns: The request object
 	async fn get_wallet_unclaimed_gas(&self) -> Result<String, ProviderError> {
 		self.request("getwalletunclaimedgas", Vec::<String>::new()).await
+	}
+
+	/// Gets the current wallet height.
+	/// - Returns: The request object
+	async fn get_wallet_height(&self) -> Result<u32, ProviderError> {
+		self.request("getwalletheight", Vec::<u32>::new()).await
 	}
 
 	/// Imports a private key to the wallet.
@@ -1055,11 +1041,11 @@ impl<P: JsonRpcProvider> APITrait for RpcClient<P> {
 	) -> Result<NeoBlock, ProviderError> {
 		// let full_tx = if full_tx { 1 } else { 0 };
 		// self.request("getblock", vec![index.to_value(), 1.to_value()]).await
-		return Ok(if full_tx {
+		Ok(if full_tx {
 			self.request("getblock", vec![index.to_value(), 1.to_value()]).await?
 		} else {
 			self.get_block_header_by_index(index).await?
-		});
+		})
 	}
 
 	async fn get_raw_block_by_index(&self, index: u32) -> Result<String, ProviderError> {

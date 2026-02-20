@@ -28,7 +28,7 @@ pub enum TransactionAttribute {
 	Conflicts { hash: H256 },
 
 	#[serde(rename = "NotaryAssisted")]
-	NotaryAssisted { n: u16 },
+	NotaryAssisted { n: u8 },
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Hash, Debug, Clone)]
@@ -85,7 +85,12 @@ impl NeoSerializable for TransactionAttribute {
 				response_code: _,
 				result,
 			}) => {
-				let len = result.len() as u64;
+				// Decode base64 to get actual byte length (encode() writes decoded bytes)
+				let decoded_len = result
+					.from_base64_string()
+					.map(|b| b.len())
+					.unwrap_or(result.len());
+				let len = decoded_len as u64;
 				let var_int_size = if len < 0xfd {
 					1
 				} else if len <= 0xffff {
@@ -95,11 +100,11 @@ impl NeoSerializable for TransactionAttribute {
 				} else {
 					9
 				};
-				1 + 8 + 1 + var_int_size + result.len()
+				1 + 8 + 1 + var_int_size + decoded_len
 			},
 			TransactionAttribute::NotValidBefore { height: _ } => 1 + 4,
 			TransactionAttribute::Conflicts { hash: _ } => 1 + 32,
-			TransactionAttribute::NotaryAssisted { n: _ } => 1 + 2,
+			TransactionAttribute::NotaryAssisted { n: _ } => 1 + 1,
 		}
 	}
 
@@ -139,7 +144,7 @@ impl NeoSerializable for TransactionAttribute {
 			},
 			TransactionAttribute::NotaryAssisted { n } => {
 				writer.write_u8(0x22);
-				writer.write_u16(*n);
+				writer.write_u8(*n);
 			},
 		}
 	}
@@ -199,12 +204,7 @@ impl NeoSerializable for TransactionAttribute {
 				Ok(TransactionAttribute::Conflicts { hash })
 			},
 			0x22 => {
-				let n = reader.read_u16().map_err(|e| {
-					TransactionError::TransactionConfiguration(format!(
-						"Failed to read NotaryAssisted n: {}",
-						e
-					))
-				})?;
+				let n = reader.read_u8_safe()?;
 				Ok(TransactionAttribute::NotaryAssisted { n })
 			},
 			t => Err(TransactionError::TransactionConfiguration(format!(

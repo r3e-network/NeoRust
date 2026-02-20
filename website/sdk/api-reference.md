@@ -1,6 +1,6 @@
 # API Reference
 
-Complete API documentation for NeoRust SDK v1.0.4.
+Complete API documentation for NeoRust SDK v1.0.5.
 
 ## Full Documentation
 

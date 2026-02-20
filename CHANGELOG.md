@@ -9,6 +9,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 _No changes yet._
 
+## [1.0.5] - 2026-02-20
+
+### 🔧 Changed
+
+- Systematic code audit (R132-R231): 58 files, 582 insertions, 382 deletions
+  - **Error Handling**: Eliminated unsafe .unwrap()/.expect() across all production code paths
+  - **Type Safety**: Widened neo_token fields from i32 to i64/u32, replaced unsafe `as` casts with `try_from`
+  - **Bug Fixes**: Fixed PartialEq for ProviderError (7 missing match arms), unreachable deserializer arms in invocation_result, non-existent SgxError::StorageError variant
+  - **Performance**: Replaced redundant .clone() on Copy types, .to_string() with .into_owned() on Cow<str>, to_be_bytes+reverse with to_le_bytes
+  - **Clippy**: matches!() macro, .values() iterator, needless return removal, lossless integer casts via From trait
+  - **Safety**: Replaced wasm expect_throw with recoverable map_err, safer float-to-u64 ceiling
+- Fixed 33 ignored doctests across 11 files
+- Bumped version to 1.0.5
+
 ## [1.0.4] - 2026-02-07
 
 ### 🔧 Changed

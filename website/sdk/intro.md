@@ -34,7 +34,7 @@ Add NeoRust to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-neo3 = "1.0.4"
+neo3 = "1.0.5"
 ```
 
 ### Basic Usage
@@ -69,7 +69,7 @@ Customize your installation with feature flags:
 
 ```toml
 [dependencies]
-neo3 = { version = "1.0.4", features = ["futures", "ledger", "aws"] }
+neo3 = { version = "1.0.5", features = ["futures", "ledger", "aws"] }
 ```
 
 **Available Features:**
@@ -688,8 +688,8 @@ async fn enterprise_asset_management() -> Result<(), Box<dyn std::error::Error>>
 - **[Quick Start](./quick-start)**: Get up and running in 5 minutes
 - **[Examples](./examples)**: Real-world usage examples
 - **[API Reference](https://docs.rs/neo3)**: Complete API documentation
-- **[Performance Guide](https://github.com/R3E-Network/NeoRust/blob/v1.0.4/PERFORMANCE_ANALYSIS.md)**: Optimization techniques
-- **[Security Best Practices](https://github.com/R3E-Network/NeoRust/blob/v1.0.4/SECURITY_AUDIT_v1.0.4.md)**: Keep your applications secure
+- **[Performance Guide](https://github.com/R3E-Network/NeoRust/blob/v1.0.5/PERFORMANCE_ANALYSIS.md)**: Optimization techniques
+- **[Security Best Practices](https://github.com/R3E-Network/NeoRust/blob/v1.0.5/SECURITY_AUDIT_v1.0.5.md)**: Keep your applications secure
 
 ---
 

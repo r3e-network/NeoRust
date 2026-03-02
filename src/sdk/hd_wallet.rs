@@ -665,13 +665,12 @@ impl ExtendedPrivateKey {
 		} else {
 			// Normal child: HMAC-SHA512(Key = chain_code, Data = public_key || index)
 			// For secp256r1 (NIST P-256), derive the compressed public key from the private key
-			let secret_key = p256::SecretKey::from_slice(&self.key).map_err(|e| {
-				NeoError::Wallet {
+			let secret_key =
+				p256::SecretKey::from_slice(&self.key).map_err(|e| NeoError::Wallet {
 					message: format!("Invalid private key for public key derivation: {}", e),
 					source: None,
 					recovery: ErrorRecovery::new(),
-				}
-			})?;
+				})?;
 			let public_key = secret_key.public_key();
 			let compressed = public_key.to_sec1_bytes();
 			mac.update(&compressed);

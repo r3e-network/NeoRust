@@ -186,8 +186,7 @@ impl Secp256r1PublicKey {
 			return Err(CryptoError::InvalidPublicKey);
 		}
 
-		let point =
-			EncodedPoint::from_bytes(bytes).map_err(|_| CryptoError::InvalidPublicKey)?;
+		let point = EncodedPoint::from_bytes(bytes).map_err(|_| CryptoError::InvalidPublicKey)?;
 
 		let public_key_option: Option<PublicKey> = PublicKey::from_encoded_point(&point).into();
 		public_key_option

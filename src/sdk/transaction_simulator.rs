@@ -442,9 +442,7 @@ impl TransactionSimulator {
 		let gas_consumed = result
 			.gas_consumed
 			.parse::<u64>()
-			.unwrap_or_else(|_| {
-				result.gas_consumed.parse::<f64>().map(|v| v as u64).unwrap_or(0)
-			});
+			.unwrap_or_else(|_| result.gas_consumed.parse::<f64>().map(|v| v as u64).unwrap_or(0));
 		let system_fee = self.calculate_system_fee(gas_consumed);
 		let network_fee = self.calculate_network_fee(script.len(), signers.len());
 

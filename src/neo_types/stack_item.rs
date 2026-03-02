@@ -187,12 +187,8 @@ where
 		where
 			E: serde::de::Error,
 		{
-			i64::try_from(value).map_err(|_| {
-				serde::de::Error::custom(format!(
-					"u64 value {} overflows i64",
-					value
-				))
-			})
+			i64::try_from(value)
+				.map_err(|_| serde::de::Error::custom(format!("u64 value {} overflows i64", value)))
 		}
 	}
 
@@ -610,8 +606,7 @@ impl From<u64> for StackItem {
 			StackItem::Integer { value: v }
 		} else {
 			StackItem::ByteString {
-				value: base64::engine::general_purpose::STANDARD
-					.encode(value.to_le_bytes()),
+				value: base64::engine::general_purpose::STANDARD.encode(value.to_le_bytes()),
 			}
 		}
 	}

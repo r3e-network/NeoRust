@@ -24,38 +24,38 @@ neofs = []
 
 [dependencies]
 neo3 = { path = "..", version = "1.0.6", features = ["futures", "ledger", "ws"] }
-tokio = { version = "1.45", features = ["full"] }
-clap = { version = "4.0", features = ["derive"] }
+tokio = { version = "1.50", features = ["full"] }
+clap = { version = "4.5", features = ["derive"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-toml = "0.8"
-colored = "2.0"
-comfy-table = "7.0"
-dirs = "5.0"
+toml = "0.9"
+colored = "3.1"
+comfy-table = "7.2"
+dirs = "6.0"
 chrono = { version = "0.4", features = ["serde"] }
 base64 = "0.22.1"
 hex = "0.4"
-rand = "0.8"
-url = "2.4"
-dialoguer = "0.11"
+rand = "0.9"
+url = "2.5"
+dialoguer = "0.12"
 anyhow = "1.0"
 thiserror = "2.0.17"
-primitive-types = "0.13"
+primitive-types = "0.14"
 num-traits = "0.2"
 reqwest = { version = "0.12", features = ["json"] }
 sha2 = "0.10"
 ripemd = "0.1"
-env_logger = "0.11.6"
+env_logger = "0.11.9"
 log = "0.4"
 mime_guess = "2.0"
-uuid = { version = "1.6", features = ["v4"] }
+uuid = { version = "1.22", features = ["v4"] }
 aes-gcm = "0.10"
-bip39 = { version = "2.1", default-features = false, features = ["std", "rand"] }
+bip39 = { version = "2.2", default-features = false, features = ["std", "rand"] }
 
 [target.'cfg(target_os = "macos")'.dependencies]
-security-framework = "2.11.0"
+security-framework = "3.6.0"
 
 [dev-dependencies]
-tempfile = "3.10.0"
-assert_cmd = "2.0.13"
-predicates = "3.1.0"
+tempfile = "3.26.0"
+assert_cmd = "2.1.2"
+predicates = "3.1.4"

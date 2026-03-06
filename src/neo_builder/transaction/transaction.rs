@@ -845,7 +845,7 @@ mod tests {
 		prelude::Base64Encode,
 	};
 	use primitive_types::{H160, H256};
-	use std::{collections::HashSet, sync::Arc};
+	use std::sync::Arc;
 	use tokio::sync::Mutex;
 
 	fn transaction_with_attribute(
@@ -880,10 +880,14 @@ mod tests {
 
 		assert_ne!(tx1, tx2);
 
-		let mut set = HashSet::new();
-		set.insert(tx1);
-		set.insert(tx2);
-		assert_eq!(set.len(), 2);
+		use std::collections::hash_map::DefaultHasher;
+
+		let mut tx1_hasher = DefaultHasher::new();
+		tx1.hash(&mut tx1_hasher);
+		let mut tx2_hasher = DefaultHasher::new();
+		tx2.hash(&mut tx2_hasher);
+
+		assert_ne!(tx1_hasher.finish(), tx2_hasher.finish());
 	}
 
 	#[test]

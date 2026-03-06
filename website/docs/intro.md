@@ -2,7 +2,7 @@
 
 <div className="hero hero--primary">
   <div className="container">
-    <h1 className="hero__title">🚀 NeoRust v1.0.5</h1>
+    <h1 className="hero__title">🚀 NeoRust v1.0.6</h1>
     <p className="hero__subtitle">
       Production-Ready Neo N3 Development Suite with 135 Passing Doc Tests
     </p>
@@ -125,7 +125,7 @@ cargo build --release
 
 ```toml
 [dependencies]
-neo3 = "1.0.5"
+neo3 = "1.0.6"
 ```
 
 ```rust
@@ -191,9 +191,9 @@ This documentation is organized into several sections:
 - **Documentation**: [Comprehensive guides and API docs](https://neorust.netlify.app)
 
 ### 🤝 **Contributing**
-- **[Contributing Guide](https://github.com/R3E-Network/NeoRust/blob/v1.0.5/CONTRIBUTING.md)**: How to contribute to NeoRust
-- **[System Architecture](https://github.com/R3E-Network/NeoRust/blob/v1.0.5/SYSTEM_ARCHITECTURE_DESIGN.md)**: Core architecture and components
-- **[API Guidelines](https://github.com/R3E-Network/NeoRust/blob/v1.0.5/API_GUIDELINES.md)**: API design standards and guidance
+- **[Contributing Guide](https://github.com/R3E-Network/NeoRust/blob/v1.0.6/CONTRIBUTING.md)**: How to contribute to NeoRust
+- **[System Architecture](https://github.com/R3E-Network/NeoRust/blob/v1.0.6/SYSTEM_ARCHITECTURE_DESIGN.md)**: Core architecture and components
+- **[API Guidelines](https://github.com/R3E-Network/NeoRust/blob/v1.0.6/API_GUIDELINES.md)**: API design standards and guidance
 
 ### 🔗 **Links**
 - **Website**: [https://neorust.netlify.app](https://neorust.netlify.app)

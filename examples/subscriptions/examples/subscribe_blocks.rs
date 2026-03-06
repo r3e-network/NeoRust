@@ -197,7 +197,7 @@ impl<'a> BlockMonitor<'a> {
 		index: u64,
 	) -> Option<BlockInfo> {
 		let hash = format!("{:?}", block_data.hash);
-		let timestamp = block_data.time as u64;
+		let timestamp = block_data.time;
 		let merkle_root = format!("{:?}", block_data.merkle_root_hash);
 		// Use a default transaction count since the field structure changed
 		let transaction_count = 0; // In real implementation, count actual transactions
@@ -209,7 +209,7 @@ impl<'a> BlockMonitor<'a> {
 	fn update_statistics_from_neo_block(&mut self, block_data: &neo3::neo_protocol::NeoBlock) {
 		self.statistics.blocks_processed += 1;
 
-		let timestamp = block_data.time as u64;
+		let timestamp = block_data.time;
 		if self.statistics.first_block_time.is_none() {
 			self.statistics.first_block_time = Some(timestamp);
 		}

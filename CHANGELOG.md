@@ -9,6 +9,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 _No changes yet._
 
+## [1.0.6] - 2026-03-06
+
+### 🔧 Changed
+
+- Hardened SDK fallback conversions across builder, RPC, transaction, wallet, and serialization layers.
+- Added safe, fallible conversion paths for address/script-hash handling and multi-signature script-hash helpers while keeping compatibility wrappers for existing callers.
+- Replaced several placeholder or silent-fallback behaviors with validated conversions and structured JSON serialization.
+- Bumped version to 1.0.6.
+
+### 🧪 Testing
+
+- Added focused coverage for safe address/hash conversions, multi-signature threshold validation, and invalid Oracle response attribute handling.
+- Verified `cargo test -p neo3 --lib --quiet` and `cargo fmt --check`.
+
 ## [1.0.5] - 2026-02-20
 
 ### 🔧 Changed

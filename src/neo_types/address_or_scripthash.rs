@@ -160,7 +160,7 @@ mod tests {
 
 	#[test]
 	fn test_try_from_bytes_rejects_invalid_length() {
-		let result = AddressOrScriptHash::try_from_script_hash_bytes(&vec![0u8; 19]);
+		let result = AddressOrScriptHash::try_from_script_hash_bytes(&[0u8; 19]);
 		assert!(result.is_err());
 	}
 

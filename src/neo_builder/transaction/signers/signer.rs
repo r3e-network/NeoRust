@@ -187,26 +187,11 @@ pub enum Signer {
 
 impl PartialEq for Signer {
 	fn eq(&self, other: &Self) -> bool {
-		match self {
-			Signer::AccountSigner(account_signer) => match other {
-				Signer::AccountSigner(other_account_signer) => {
-					account_signer.get_signer_hash() == other_account_signer.get_signer_hash()
-				},
-				_ => false,
-			},
-			Signer::ContractSigner(contract_signer) => match other {
-				Signer::ContractSigner(other_contract_signer) => {
-					contract_signer.get_signer_hash() == other_contract_signer.get_signer_hash()
-				},
-				_ => false,
-			},
-			Signer::TransactionSigner(transaction_signer) => match other {
-				Signer::TransactionSigner(other_transaction_signer) => {
-					transaction_signer.get_signer_hash()
-						== other_transaction_signer.get_signer_hash()
-				},
-				_ => false,
-			},
+		match (self, other) {
+			(Signer::AccountSigner(left), Signer::AccountSigner(right)) => left == right,
+			(Signer::ContractSigner(left), Signer::ContractSigner(right)) => left == right,
+			(Signer::TransactionSigner(left), Signer::TransactionSigner(right)) => left == right,
+			_ => false,
 		}
 	}
 }
@@ -319,6 +304,52 @@ impl SignerTrait for Signer {
 	}
 }
 
+fn validate_serializable_subitems(count: usize, item_name: &str) -> Result<(), TransactionError> {
+	if count > NeoConstants::MAX_SIGNER_SUBITEMS as usize {
+		return Err(TransactionError::TransactionConfiguration(format!(
+			"A signer's scope can only contain {} {}. The signer contains {} {}.",
+			NeoConstants::MAX_SIGNER_SUBITEMS,
+			item_name,
+			count,
+			item_name
+		)));
+	}
+
+	Ok(())
+}
+
+pub(crate) fn validate_signer_serialization<S: SignerTrait>(
+	signer: &S,
+) -> Result<(), TransactionError> {
+	if signer.get_scopes().contains(&WitnessScope::CustomContracts) {
+		validate_serializable_subitems(signer.get_allowed_contracts().len(), "allowed contracts")?;
+	}
+
+	if signer.get_scopes().contains(&WitnessScope::CustomGroups) {
+		validate_serializable_subitems(
+			signer.get_allowed_groups().len(),
+			"allowed contract groups",
+		)?;
+	}
+
+	if signer.get_scopes().contains(&WitnessScope::WitnessRules) {
+		validate_serializable_subitems(signer.get_rules().len(), "rules")?;
+		for rule in signer.get_rules() {
+			signer
+				.check_depth(&rule.condition, WitnessCondition::MAX_NESTING_DEPTH as i8)
+				.map_err(|err| TransactionError::TransactionConfiguration(err.to_string()))?;
+			rule.condition.validate_serialization().map_err(|err| {
+				TransactionError::TransactionConfiguration(format!(
+					"Invalid witness condition: {}",
+					err
+				))
+			})?;
+		}
+	}
+
+	Ok(())
+}
+
 impl Signer {
 	/// Creates a `Signer` from a byte array.
 	///
@@ -404,6 +435,22 @@ impl Signer {
 				"Cannot convert TransactionSigner into ContractSigner".to_string(),
 			)),
 		}
+	}
+
+	pub fn try_encode(&self, writer: &mut Encoder) -> Result<(), TransactionError> {
+		validate_signer_serialization(self)?;
+		match self {
+			Signer::AccountSigner(account_signer) => account_signer.encode(writer),
+			Signer::ContractSigner(contract_signer) => contract_signer.encode(writer),
+			Signer::TransactionSigner(transaction_signer) => transaction_signer.encode(writer),
+		}
+		Ok(())
+	}
+
+	pub fn try_to_array(&self) -> Result<Vec<u8>, TransactionError> {
+		let mut writer = Encoder::new();
+		self.try_encode(&mut writer)?;
+		Ok(writer.to_bytes())
 	}
 }
 
@@ -611,8 +658,8 @@ mod tests {
 
 	use crate::{
 		builder::{
-			AccountSigner, BuilderError, ContractSigner, SignerTrait, WitnessAction,
-			WitnessCondition, WitnessRule, WitnessScope,
+			AccountSigner, BuilderError, ContractSigner, SignerTrait, TransactionError,
+			TransactionSigner, WitnessAction, WitnessCondition, WitnessRule, WitnessScope,
 		},
 		codec::{Encoder, NeoSerializable},
 		config::NeoConstants,
@@ -824,6 +871,73 @@ mod tests {
 				NeoConstants::MAX_SIGNER_SUBITEMS
 			))
 		);
+	}
+
+	#[test]
+	fn test_account_signer_try_to_array_rejects_too_many_allowed_contracts() {
+		let mut signer = AccountSigner::none(&SCRIPT_HASH.deref().into()).unwrap();
+		signer.set_scopes(vec![WitnessScope::CustomContracts]);
+		signer
+			.get_allowed_contracts_mut()
+			.extend((0..=NeoConstants::MAX_SIGNER_SUBITEMS).map(|_| H160::zero()));
+
+		assert!(matches!(
+			signer.try_to_array(),
+			Err(TransactionError::TransactionConfiguration(message))
+				if message.contains("allowed contracts")
+		));
+	}
+
+	#[test]
+	fn test_contract_signer_try_to_array_rejects_too_many_allowed_groups() {
+		let mut signer = ContractSigner::called_by_entry(*SCRIPT_HASH, &[]);
+		signer.set_scopes(vec![WitnessScope::CustomGroups]);
+		signer
+			.get_allowed_groups_mut()
+			.extend((0..=NeoConstants::MAX_SIGNER_SUBITEMS).map(|_| GROUP_PUB_KEY1.clone()));
+
+		assert!(matches!(
+			signer.try_to_array(),
+			Err(TransactionError::TransactionConfiguration(message))
+				if message.contains("allowed contract groups")
+		));
+	}
+
+	#[test]
+	fn test_transaction_signer_try_to_array_rejects_rule_with_too_many_expressions() {
+		let mut signer =
+			TransactionSigner::new(*SCRIPT_HASH, vec![WitnessScope::WitnessRules]).unwrap();
+		signer.get_rules_mut().push(WitnessRule::new(
+			WitnessAction::Allow,
+			WitnessCondition::And(
+				(0..=NeoConstants::MAX_SIGNER_SUBITEMS)
+					.map(|_| WitnessCondition::Boolean(true))
+					.collect(),
+			),
+		));
+
+		assert!(matches!(
+			signer.try_to_array(),
+			Err(TransactionError::TransactionConfiguration(message))
+				if message.contains("witness condition")
+		));
+	}
+
+	#[test]
+	fn test_transaction_signer_try_to_array_rejects_too_many_rules() {
+		let mut signer =
+			TransactionSigner::new(*SCRIPT_HASH, vec![WitnessScope::WitnessRules]).unwrap();
+		let rule =
+			WitnessRule::new(WitnessAction::Allow, WitnessCondition::ScriptHash(*SCRIPT_HASH));
+		signer
+			.get_rules_mut()
+			.extend((0..=NeoConstants::MAX_SIGNER_SUBITEMS).map(|_| rule.clone()));
+
+		assert!(matches!(
+			signer.try_to_array(),
+			Err(TransactionError::TransactionConfiguration(message))
+				if message.contains("rules")
+		));
 	}
 
 	#[test]

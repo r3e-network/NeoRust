@@ -152,11 +152,21 @@ mod tests {
 		let result = n3_address.to_string().address_to_script_hash();
 		assert!(result.is_err());
 	}
+
+	#[test]
+	fn test_from_script_hash() {
+		let script_hash = <ScriptHash as ScriptHashExtension>::from_slice(
+			&hex::decode("87c06be672d5600dce4a260e7b2d497112c0ac50")
+				.expect("script hash hex should decode"),
+		)
+		.expect("script hash bytes should be valid");
+
+		let address =
+			from_script_hash(&script_hash).expect("script hash should convert to address");
+		assert_eq!(address, "NTGYC16CN5QheM4ZwfhUp9JKq8bMjWtcAp");
+	}
 }
 
-pub fn from_script_hash(_script_hash: &H160) -> Result<String, NeoError> {
-	Err(NeoError::UnsupportedOperation(
-		"Address conversion from script hash requires comprehensive cryptographic implementation"
-			.to_string(),
-	))
+pub fn from_script_hash(script_hash: &H160) -> Result<String, NeoError> {
+	Ok(script_hash.to_address())
 }

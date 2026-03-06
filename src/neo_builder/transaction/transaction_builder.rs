@@ -71,7 +71,6 @@ use crate::neo_builder::{
 // Import other modules
 use crate::{
 	neo_clients::{APITrait, JsonRpcProvider, RpcClient},
-	neo_codec::NeoSerializable,
 	neo_config::{NeoConstants, NEOCONFIG},
 	neo_crypto::{utils::ToHexString, Secp256r1PublicKey},
 	neo_protocol::AccountTrait,
@@ -768,7 +767,13 @@ impl<'a, P: JsonRpcProvider + 'static> TransactionBuilder<'a, P> {
 			return Err(TransactionError::TransactionConfiguration("A transaction requires at least one signing account (i.e. an AccountSigner). None was provided.".to_string()));
 		}
 
-		let fee = client.calculate_network_fee(tx.to_array().to_hex_string()).await?;
+		let tx_hex = tx.try_to_array().map(|bytes| bytes.to_hex_string()).map_err(|err| {
+			TransactionError::TransactionConfiguration(format!(
+				"Failed to serialize transaction for network fee calculation: {}",
+				err
+			))
+		})?;
+		let fee = client.calculate_network_fee(tx_hex).await?;
 		Ok(fee.network_fee)
 	}
 

@@ -86,8 +86,13 @@ pub fn interval(duration: Duration) -> impl stream::Stream<Item = ()> + Send + U
 }
 
 // A generic function to serialize any data structure that implements Serialize trait
+pub fn try_serialize<T: serde::Serialize>(t: &T) -> Result<serde_json::Value, serde_json::Error> {
+	serde_json::to_value(t)
+}
+
+// A generic function to serialize any data structure that implements Serialize trait
 pub fn serialize<T: serde::Serialize>(t: &T) -> serde_json::Value {
-	serde_json::to_value(t).unwrap_or_else(|e| {
+	try_serialize(t).unwrap_or_else(|e| {
 		tracing::warn!(error = %e, "Failed to serialize value; returning null");
 		serde_json::Value::Null
 	})
@@ -184,4 +189,39 @@ pub fn address_to_hex(address: &str) -> Result<String, ProviderError> {
 pub fn hex_to_address(hex: &str) -> Result<String, ProviderError> {
 	let script_hash = H160::from_str(hex).map_err(|_| ProviderError::InvalidAddress)?;
 	Ok(script_hash.to_address())
+}
+
+#[cfg(test)]
+mod tests {
+	use super::*;
+	use serde::{ser::Error as _, Serialize, Serializer};
+	use serde_json::Value;
+
+	struct AlwaysFails;
+
+	impl Serialize for AlwaysFails {
+		fn serialize<S>(&self, _serializer: S) -> Result<S::Ok, S::Error>
+		where
+			S: Serializer,
+		{
+			Err(S::Error::custom("boom"))
+		}
+	}
+
+	#[test]
+	fn test_try_serialize_matches_serde_json_for_valid_value() {
+		let value = vec!["neo", "rust"];
+		assert_eq!(try_serialize(&value).unwrap(), serde_json::to_value(&value).unwrap());
+	}
+
+	#[test]
+	fn test_try_serialize_returns_error_on_serialization_failure() {
+		let error = try_serialize(&AlwaysFails).unwrap_err();
+		assert!(error.to_string().contains("boom"));
+	}
+
+	#[test]
+	fn test_serialize_returns_null_on_serialization_failure() {
+		assert_eq!(serialize(&AlwaysFails), Value::Null);
+	}
 }

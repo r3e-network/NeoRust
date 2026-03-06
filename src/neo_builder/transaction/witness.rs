@@ -99,6 +99,18 @@ impl Witness {
 			verification: VerificationScript::new(),
 		})
 	}
+
+	pub fn try_encode(&self, writer: &mut Encoder) -> Result<(), BuilderError> {
+		self.invocation.try_encode(writer)?;
+		self.verification.try_encode(writer)?;
+		Ok(())
+	}
+
+	pub fn try_to_array(&self) -> Result<Vec<u8>, BuilderError> {
+		let mut writer = Encoder::new();
+		self.try_encode(&mut writer)?;
+		Ok(writer.to_bytes())
+	}
 }
 
 impl NeoSerializable for Witness {
@@ -109,8 +121,14 @@ impl NeoSerializable for Witness {
 	}
 
 	fn encode(&self, writer: &mut Encoder) {
-		self.invocation.encode(writer);
-		self.verification.encode(writer);
+		if let Err(err) = self.try_encode(writer) {
+			tracing::warn!(
+				error = ?err,
+				"Failed to serialize witness via safe path; falling back to legacy encoder"
+			);
+			self.invocation.encode(writer);
+			self.verification.encode(writer);
+		}
 	}
 
 	fn decode(reader: &mut Decoder) -> Result<Self, Self::Error> {
@@ -119,8 +137,15 @@ impl NeoSerializable for Witness {
 		Ok(Self { invocation, verification })
 	}
 	fn to_array(&self) -> Vec<u8> {
-		let mut writer = Encoder::new();
-		self.encode(&mut writer);
-		writer.to_bytes()
+		self.try_to_array().unwrap_or_else(|err| {
+			tracing::warn!(
+				error = ?err,
+				"Failed to serialize witness via safe path; falling back to legacy encoder"
+			);
+			let mut writer = Encoder::new();
+			self.invocation.encode(&mut writer);
+			self.verification.encode(&mut writer);
+			writer.to_bytes()
+		})
 	}
 }

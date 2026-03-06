@@ -125,29 +125,41 @@ mod rx;
 /// Crate utilities and type aliases
 mod utils;
 
-lazy_static! {
-	pub static ref HTTP_PROVIDER: RpcClient<Http> = {
-		let url_str =
-			std::env::var("ENDPOINT").unwrap_or_else(|_| NeoConstants::SEED_1.to_string());
-		let url = url::Url::parse(&url_str).unwrap_or_else(|e| {
-			tracing::warn!(
-				error = %e,
-				endpoint = %url_str,
-				"Failed to parse ENDPOINT; falling back to default seed URL"
-			);
-			url::Url::parse(NeoConstants::SEED_1).expect("NeoConstants::SEED_1 must be a valid URL")
-		});
-		let http_provider = Http::new(url).unwrap_or_else(|e| {
-			tracing::warn!(
-				error = %e,
-				"Failed to create HTTP provider; falling back to default seed URL"
-			);
-			let url = url::Url::parse(NeoConstants::SEED_1)
-				.expect("NeoConstants::SEED_1 must be a valid URL");
-			Http::new(url).expect("Should be able to create HTTP provider for default seed URL")
-		});
-		RpcClient::new(http_provider)
+fn rpc_client_from_parsed_url(url: url::Url) -> RpcClient<Http> {
+	let http_provider = match Http::new(url) {
+		Ok(provider) => provider,
+		Err(never) => match never {},
 	};
+	RpcClient::new(http_provider)
+}
+
+fn default_http_provider_client() -> RpcClient<Http> {
+	let url =
+		url::Url::parse(NeoConstants::SEED_1).expect("NeoConstants::SEED_1 must be a valid URL");
+	rpc_client_from_parsed_url(url)
+}
+
+pub fn try_http_provider_from_endpoint(endpoint: &str) -> Result<RpcClient<Http>, ProviderError> {
+	let url = url::Url::parse(endpoint).map_err(|e| {
+		ProviderError::ParseError(format!("Failed to parse endpoint URL '{}': {}", endpoint, e))
+	})?;
+	Ok(rpc_client_from_parsed_url(url))
+}
+
+pub fn try_http_provider_from_env() -> Result<RpcClient<Http>, ProviderError> {
+	let endpoint = std::env::var("ENDPOINT").unwrap_or_else(|_| NeoConstants::SEED_1.to_string());
+	try_http_provider_from_endpoint(&endpoint)
+}
+
+lazy_static! {
+	pub static ref HTTP_PROVIDER: RpcClient<Http> =
+		try_http_provider_from_env().unwrap_or_else(|err| {
+			tracing::warn!(
+				error = %err,
+				"Failed to create HTTP provider from ENDPOINT; falling back to default seed URL"
+			);
+			default_http_provider_client()
+		});
 }
 
 #[allow(missing_docs)]
@@ -209,25 +221,14 @@ mod test_provider {
 
 		pub fn provider(&self) -> RpcClient<Http> {
 			let url_str = self.url();
-			let url = url::Url::parse(&url_str).unwrap_or_else(|e| {
+			try_http_provider_from_endpoint(&url_str).unwrap_or_else(|err| {
 				tracing::warn!(
-					error = %e,
+					error = %err,
 					endpoint = %url_str,
-					"Failed to parse endpoint URL; falling back to default seed URL"
-				);
-				url::Url::parse(NeoConstants::SEED_1)
-					.expect("NeoConstants::SEED_1 must be a valid URL")
-			});
-			let http_provider = Http::new(url).unwrap_or_else(|e| {
-				tracing::warn!(
-					error = %e,
 					"Failed to create HTTP provider; falling back to default seed URL"
 				);
-				let url = url::Url::parse(NeoConstants::SEED_1)
-					.expect("NeoConstants::SEED_1 must be a valid URL");
-				Http::new(url).expect("Should be able to create HTTP provider for default seed URL")
-			});
-			RpcClient::new(http_provider)
+				default_http_provider_client()
+			})
 		}
 
 		#[cfg(feature = "ws")]
@@ -262,5 +263,24 @@ mod test_provider {
 
 			RpcClient::connect(url.as_str()).await
 		}
+	}
+}
+
+#[cfg(test)]
+mod tests {
+	use super::*;
+
+	#[test]
+	fn test_try_http_provider_from_endpoint_rejects_invalid_url() {
+		assert!(matches!(
+			try_http_provider_from_endpoint("not-a-url"),
+			Err(ProviderError::ParseError(message)) if message.contains("not-a-url")
+		));
+	}
+
+	#[test]
+	fn test_try_http_provider_from_endpoint_accepts_valid_url() {
+		let client = try_http_provider_from_endpoint("http://localhost:10332/").unwrap();
+		assert_eq!(client.url().as_str(), "http://localhost:10332/");
 	}
 }

@@ -298,23 +298,29 @@ impl WitnessCondition {
 		let mut reader = Decoder::new(bytes);
 		WitnessCondition::decode(&mut reader)
 	}
-}
 
-impl NeoSerializable for WitnessCondition {
-	type Error = TransactionError;
-
-	fn size(&self) -> usize {
+	pub(crate) fn validate_serialization(&self) -> Result<(), TransactionError> {
 		match self {
-			WitnessCondition::Boolean(_) => 2,
-			WitnessCondition::Not(exp) => 1 + exp.size(),
-			WitnessCondition::And(exp) | WitnessCondition::Or(exp) => 1 + exp.var_size(),
-			WitnessCondition::ScriptHash(_) | WitnessCondition::CalledByContract(_) => 1 + 20,
-			WitnessCondition::Group(_) | WitnessCondition::CalledByGroup(_) => 1 + 33,
-			WitnessCondition::CalledByEntry => 1,
+			WitnessCondition::Boolean(_)
+			| WitnessCondition::ScriptHash(_)
+			| WitnessCondition::Group(_)
+			| WitnessCondition::CalledByEntry
+			| WitnessCondition::CalledByContract(_)
+			| WitnessCondition::CalledByGroup(_) => Ok(()),
+			WitnessCondition::Not(exp) => exp.validate_serialization(),
+			WitnessCondition::And(expressions) | WitnessCondition::Or(expressions) => {
+				if expressions.len() > Self::MAX_SUBITEMS {
+					return Err(TransactionError::InvalidWitnessCondition);
+				}
+				for expression in expressions {
+					expression.validate_serialization()?;
+				}
+				Ok(())
+			},
 		}
 	}
 
-	fn encode(&self, writer: &mut Encoder) {
+	fn encode_legacy(&self, writer: &mut Encoder) {
 		match self {
 			WitnessCondition::Boolean(b) => {
 				writer.write_u8(WitnessCondition::BOOLEAN_BYTE);
@@ -355,6 +361,97 @@ impl NeoSerializable for WitnessCondition {
 				writer.write_u8(WitnessCondition::CALLED_BY_GROUP_BYTE);
 				writer.write_serializable_fixed(group);
 			},
+		}
+	}
+
+	pub fn try_encode(&self, writer: &mut Encoder) -> Result<(), TransactionError> {
+		self.validate_serialization()?;
+
+		match self {
+			WitnessCondition::Boolean(b) => {
+				writer.write_u8(WitnessCondition::BOOLEAN_BYTE);
+				writer.write_bool(*b);
+			},
+			WitnessCondition::Not(exp) => {
+				writer.write_u8(WitnessCondition::NOT_BYTE);
+				exp.try_encode(writer)?;
+			},
+			WitnessCondition::And(expressions) => {
+				writer.write_u8(WitnessCondition::AND_BYTE);
+				writer.write_var_int(expressions.len() as i64).map_err(|e| {
+					TransactionError::TransactionConfiguration(format!(
+						"Failed to encode AND witness condition: {}",
+						e
+					))
+				})?;
+				for expression in expressions {
+					expression.try_encode(writer)?;
+				}
+			},
+			WitnessCondition::Or(expressions) => {
+				writer.write_u8(WitnessCondition::OR_BYTE);
+				writer.write_var_int(expressions.len() as i64).map_err(|e| {
+					TransactionError::TransactionConfiguration(format!(
+						"Failed to encode OR witness condition: {}",
+						e
+					))
+				})?;
+				for expression in expressions {
+					expression.try_encode(writer)?;
+				}
+			},
+			WitnessCondition::ScriptHash(hash) => {
+				writer.write_u8(WitnessCondition::SCRIPT_HASH_BYTE);
+				writer.write_serializable_fixed(hash);
+			},
+			WitnessCondition::Group(group) => {
+				writer.write_u8(WitnessCondition::GROUP_BYTE);
+				writer.write_serializable_fixed(group);
+			},
+			WitnessCondition::CalledByEntry => {
+				writer.write_u8(WitnessCondition::CALLED_BY_ENTRY_BYTE);
+			},
+			WitnessCondition::CalledByContract(hash) => {
+				writer.write_u8(WitnessCondition::CALLED_BY_CONTRACT_BYTE);
+				writer.write_serializable_fixed(hash);
+			},
+			WitnessCondition::CalledByGroup(group) => {
+				writer.write_u8(WitnessCondition::CALLED_BY_GROUP_BYTE);
+				writer.write_serializable_fixed(group);
+			},
+		}
+
+		Ok(())
+	}
+
+	pub fn try_to_array(&self) -> Result<Vec<u8>, TransactionError> {
+		let mut writer = Encoder::new();
+		self.try_encode(&mut writer)?;
+		Ok(writer.to_bytes())
+	}
+}
+
+impl NeoSerializable for WitnessCondition {
+	type Error = TransactionError;
+
+	fn size(&self) -> usize {
+		match self {
+			WitnessCondition::Boolean(_) => 2,
+			WitnessCondition::Not(exp) => 1 + exp.size(),
+			WitnessCondition::And(exp) | WitnessCondition::Or(exp) => 1 + exp.var_size(),
+			WitnessCondition::ScriptHash(_) | WitnessCondition::CalledByContract(_) => 1 + 20,
+			WitnessCondition::Group(_) | WitnessCondition::CalledByGroup(_) => 1 + 33,
+			WitnessCondition::CalledByEntry => 1,
+		}
+	}
+
+	fn encode(&self, writer: &mut Encoder) {
+		if let Err(err) = self.try_encode(writer) {
+			tracing::warn!(
+				error = ?err,
+				"Failed to serialize witness condition via safe path; falling back to legacy encoder"
+			);
+			self.encode_legacy(writer);
 		}
 	}
 
@@ -409,8 +506,14 @@ impl NeoSerializable for WitnessCondition {
 	}
 
 	fn to_array(&self) -> Vec<u8> {
-		let mut writer = Encoder::new();
-		self.encode(&mut writer);
-		writer.to_bytes()
+		self.try_to_array().unwrap_or_else(|err| {
+			tracing::warn!(
+				error = ?err,
+				"Failed to serialize witness condition via safe path; falling back to legacy encoder"
+			);
+			let mut writer = Encoder::new();
+			self.encode_legacy(&mut writer);
+			writer.to_bytes()
+		})
 	}
 }

@@ -290,7 +290,13 @@ impl From<&Vec<ContractParameter>> for ContractParameter {
 
 impl From<&NefFile> for ContractParameter {
 	fn from(value: &NefFile) -> Self {
-		Self::byte_array(value.to_array())
+		Self::try_from_nef_file(value).unwrap_or_else(|err| {
+			tracing::warn!(
+				error = %err,
+				"Failed to convert NEF file to contract parameter via safe path; falling back to legacy serializer"
+			);
+			Self::byte_array(value.to_array())
+		})
 	}
 }
 
@@ -342,6 +348,10 @@ impl From<Value> for ContractParameter {
 }
 
 impl ContractParameter {
+	pub fn try_from_nef_file(value: &NefFile) -> Result<Self, crate::neo_types::TypeError> {
+		Ok(Self::byte_array(value.try_to_array()?))
+	}
+
 	/// Creates a ContractParameter from a JSON value
 	///
 	/// # Arguments
@@ -443,11 +453,9 @@ impl From<Vec<Value>> for ContractParameter {
 
 impl ValueExtension for ContractParameter {
 	fn to_value(&self) -> Value {
-		match serde_json::to_string(self) {
-			Ok(s) => Value::String(s),
+		match serde_json::to_value(self) {
+			Ok(value) => value,
 			Err(e) => {
-				// Professional error handling with logging for debugging purposes
-				// Since the trait doesn't allow for Result, we'll log the error and return a null value
 				tracing::warn!(error = %e, "Error serializing ContractParameter");
 				Value::Null
 			},
@@ -809,8 +817,59 @@ impl ParameterValue {
 mod tests {
 	use primitive_types::{H160, H256};
 
-	use crate::{crypto::Secp256r1PublicKey, neo_types::ContractParameterMap};
+	use crate::{
+		crypto::Secp256r1PublicKey, neo_types::ContractParameterMap, NefFile, ValueExtension,
+	};
 	use neo3::prelude::{ContractParameter, ContractParameterType};
+
+	#[test]
+	fn test_try_from_nef_file_ref_rejects_invalid_nef() {
+		let nef = NefFile::new(Some("x".repeat(65)), String::new(), vec![1, 2, 3], vec![0; 4]);
+
+		assert!(matches!(
+			ContractParameter::try_from_nef_file(&nef),
+			Err(crate::neo_types::TypeError::InvalidEncoding(message))
+				if message.contains("compiler")
+		));
+	}
+
+	#[test]
+	fn test_from_nef_file_ref_repairs_checksum_via_legacy_wrapper() {
+		let mut nef = NefFile::new(
+			Some("test-compiler".to_string()),
+			String::new(),
+			vec![0x11, 0x40],
+			vec![0; 4],
+		);
+		nef.checksum = vec![0; 4];
+
+		let canonical_nef = NefFile::new(
+			Some("test-compiler".to_string()),
+			String::new(),
+			vec![0x11, 0x40],
+			vec![0; 4],
+		);
+
+		assert_eq!(
+			ContractParameter::from(&nef),
+			ContractParameter::byte_array(canonical_nef.try_to_array().unwrap())
+		);
+	}
+
+	#[test]
+	fn test_try_from_nef_file_owned_matches_legacy_for_valid_nef() {
+		let nef = NefFile::new(
+			Some("test-compiler".to_string()),
+			String::new(),
+			vec![0x11, 0x40],
+			vec![0; 4],
+		);
+
+		assert_eq!(
+			ContractParameter::try_from_nef_file(&nef).unwrap(),
+			ContractParameter::from(&nef)
+		);
+	}
 
 	#[test]
 	fn test_string_from_string() {
@@ -1238,6 +1297,12 @@ mod tests {
 				.expect("Should be able to convert to string"),
 			"key"
 		);
+	}
+
+	#[test]
+	fn contract_parameter_to_value_is_structured_json() {
+		let parameter = ContractParameter::string("neo".to_string());
+		assert_eq!(parameter.to_value(), serde_json::to_value(&parameter).unwrap());
 	}
 
 	#[test]

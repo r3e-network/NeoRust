@@ -6,6 +6,7 @@ use std::hash::{Hash, Hasher};
 use primitive_types::H160;
 use serde::{Deserialize, Serialize};
 
+use crate::neo_types::TypeError;
 use neo3::prelude::{Address, Bytes, ScriptHashExtension};
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -71,15 +72,34 @@ impl From<Bytes> for AddressOrScriptHash {
 	/// assert!(matches!(from_bytes, AddressOrScriptHash::ScriptHash(_)));
 	/// ```
 	fn from(s: Bytes) -> Self {
-		if s.len() != 20 {
-			tracing::warn!(len = s.len(), "Bytes length is not 20; using zero ScriptHash");
-			return Self::ScriptHash(H160::zero());
+		match Self::try_from_script_hash_bytes(&s) {
+			Ok(value) => value,
+			Err(err) => {
+				tracing::warn!(error = %err, "Bytes length is not 20; using zero ScriptHash");
+				Self::ScriptHash(H160::zero())
+			},
 		}
-		Self::ScriptHash(H160::from_slice(&s))
+	}
+}
+
+impl TryFrom<&[u8]> for AddressOrScriptHash {
+	type Error = TypeError;
+
+	fn try_from(value: &[u8]) -> Result<Self, Self::Error> {
+		Self::try_from_script_hash_bytes(value)
 	}
 }
 
 impl AddressOrScriptHash {
+	/// Creates an `AddressOrScriptHash` from script hash bytes, rejecting invalid lengths.
+	pub fn try_from_script_hash_bytes(bytes: &[u8]) -> Result<Self, TypeError> {
+		if bytes.len() != 20 {
+			return Err(TypeError::InvalidAddress);
+		}
+
+		Ok(Self::ScriptHash(H160::from_slice(bytes)))
+	}
+
 	/// Retrieves the `Address` representation. If the instance is a `ScriptHash`, converts it to an `Address`.
 	///
 	/// # Examples
@@ -101,6 +121,18 @@ impl AddressOrScriptHash {
 
 	/// Retrieves the `ScriptHash` representation. If the instance is an `Address`, converts it to a `ScriptHash`.
 	///
+	/// # Errors
+	///
+	/// Returns `TypeError::InvalidAddress` when the stored address is invalid.
+	pub fn try_script_hash(&self) -> Result<H160, TypeError> {
+		match self {
+			AddressOrScriptHash::Address(address) => H160::from_address(address),
+			AddressOrScriptHash::ScriptHash(script_hash) => Ok(*script_hash),
+		}
+	}
+
+	/// Retrieves the `ScriptHash` representation. If the instance is an `Address`, converts it to a `ScriptHash`.
+	///
 	/// # Examples
 	///
 	/// ```
@@ -112,11 +144,30 @@ impl AddressOrScriptHash {
 	/// assert!(script_hash != H160::zero());
 	/// ```
 	pub fn script_hash(&self) -> H160 {
-		match self {
-			AddressOrScriptHash::Address(a) => H160::from_address(a).unwrap_or_else(|e| {
-				panic!("BUG: AddressOrScriptHash::Address contains invalid address '{}': {}", a, e)
-			}),
-			AddressOrScriptHash::ScriptHash(s) => *s,
-		}
+		self.try_script_hash().unwrap_or_else(|e| {
+			panic!(
+				"BUG: AddressOrScriptHash::Address contains invalid address '{}': {}",
+				self.address(),
+				e
+			)
+		})
+	}
+}
+
+#[cfg(test)]
+mod tests {
+	use super::*;
+
+	#[test]
+	fn test_try_from_bytes_rejects_invalid_length() {
+		let result = AddressOrScriptHash::try_from_script_hash_bytes(&vec![0u8; 19]);
+		assert!(result.is_err());
+	}
+
+	#[test]
+	fn test_try_script_hash_rejects_invalid_address() {
+		let value = AddressOrScriptHash::Address("invalid-address".to_string());
+		let result = value.try_script_hash();
+		assert!(result.is_err());
 	}
 }

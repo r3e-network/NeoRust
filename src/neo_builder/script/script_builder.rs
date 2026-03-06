@@ -301,7 +301,9 @@ impl ScriptBuilder {
 	///
 	/// The integer is encoded in its two's complement representation and little-endian byte order.
 	///
-	/// The integer can be up to 32 bytes in length. Values larger than 32 bytes will return an error.
+	/// The integer can be up to 32 bytes in length. Values larger than 32 bytes can be
+	/// handled explicitly with [`ScriptBuilder::try_push_integer`]. This legacy method keeps
+	/// compatibility by truncating oversized values to 32 bytes and logging a warning.
 	///
 	/// # Arguments
 	///
@@ -321,62 +323,69 @@ impl ScriptBuilder {
 	/// builder.push_integer(BigInt::from(42));
 	/// ```
 	pub fn push_integer(&mut self, i: BigInt) -> &mut Self {
-		if i >= BigInt::from(-1) && i <= BigInt::from(16) {
-			let Some(i32_value) = i.to_i32() else {
-				tracing::warn!(value = %i, "Failed to convert small integer to i32; skipping push");
-				return self;
-			};
-
-			let opcode_u8 = i32_value as u8 + OpCode::Push0 as u8;
-			if let Ok(opcode) = OpCode::try_from(opcode_u8) {
-				self.op_code(&[opcode]);
-			} else {
-				tracing::warn!(
-					opcode = opcode_u8,
-					"Invalid opcode for small integer push; skipping"
-				);
-			}
-		} else {
-			// to_signed_bytes_le() returns minimal two's complement representation.
-			// Do NOT strip trailing zero bytes — they may be required to preserve the
-			// sign bit (e.g. 128 = [0x80, 0x00]; stripping the 0x00 yields -128).
+		if let Err(err) = self.try_push_integer(i.clone()) {
 			let bytes = i.to_signed_bytes_le();
-			let len = bytes.len();
-
-			// bytes.reverse();
-
-			match len {
-				1 => self.push_opcode_bytes(OpCode::PushInt8, bytes),
-				2 => self.push_opcode_bytes(OpCode::PushInt16, bytes),
-				len if len <= 4 => self.push_opcode_bytes(
-					OpCode::PushInt32,
-					Self::pad_right(&bytes, 4, i.is_negative()),
-				),
-				len if len <= 8 => self.push_opcode_bytes(
-					OpCode::PushInt64,
-					Self::pad_right(&bytes, 8, i.is_negative()),
-				),
-				len if len <= 16 => self.push_opcode_bytes(
-					OpCode::PushInt128,
-					Self::pad_right(&bytes, 16, i.is_negative()),
-				),
-				len if len <= 32 => self.push_opcode_bytes(
-					OpCode::PushInt256,
-					Self::pad_right(&bytes, 32, i.is_negative()),
-				),
-				_ => {
-					// Instead of panicking, we'll truncate to 32 bytes and log a warning
-					// This is safer than crashing the application
-					tracing::warn!("Integer too large, truncating to 32 bytes");
-					self.push_opcode_bytes(
-						OpCode::PushInt256,
-						Self::pad_right(&bytes[..32.min(bytes.len())], 32, i.is_negative()),
-					)
-				},
-			};
+			tracing::warn!(error = %err, "Integer too large, truncating to 32 bytes");
+			self.push_opcode_bytes(
+				OpCode::PushInt256,
+				Self::pad_right(&bytes[..32.min(bytes.len())], 32, i.is_negative()),
+			);
 		}
 
 		self
+	}
+
+	/// Adds a push operation with the given integer to the script, returning an error
+	/// instead of truncating values that exceed the Neo VM 32-byte integer limit.
+	///
+	/// This method preserves Neo VM signed integer semantics. For example, `255` is encoded
+	/// as `PushInt16` with bytes `[0xff, 0x00]` rather than `PushInt8`, because `PushInt8`
+	/// operands are interpreted as signed 8-bit two's-complement integers.
+	pub fn try_push_integer(&mut self, i: BigInt) -> Result<&mut Self, BuilderError> {
+		if i >= BigInt::from(-1) && i <= BigInt::from(16) {
+			let Some(i32_value) = i.to_i32() else {
+				return Err(BuilderError::IllegalState(
+					"failed to convert small integer to i32".to_string(),
+				));
+			};
+
+			let opcode_u8 = i32_value as u8 + OpCode::Push0 as u8;
+			let opcode = OpCode::try_from(opcode_u8).map_err(|_| {
+				BuilderError::IllegalState(format!(
+					"invalid opcode for small integer push: {opcode_u8}",
+				))
+			})?;
+
+			self.op_code(&[opcode]);
+			return Ok(self);
+		}
+
+		let bytes = i.to_signed_bytes_le();
+		let len = bytes.len();
+
+		match len {
+			1 => self.push_opcode_bytes(OpCode::PushInt8, bytes),
+			2 => self.push_opcode_bytes(OpCode::PushInt16, bytes),
+			len if len <= 4 => self
+				.push_opcode_bytes(OpCode::PushInt32, Self::pad_right(&bytes, 4, i.is_negative())),
+			len if len <= 8 => self
+				.push_opcode_bytes(OpCode::PushInt64, Self::pad_right(&bytes, 8, i.is_negative())),
+			len if len <= 16 => self.push_opcode_bytes(
+				OpCode::PushInt128,
+				Self::pad_right(&bytes, 16, i.is_negative()),
+			),
+			len if len <= 32 => self.push_opcode_bytes(
+				OpCode::PushInt256,
+				Self::pad_right(&bytes, 32, i.is_negative()),
+			),
+			_ => {
+				return Err(BuilderError::IllegalArgument(
+					"integer exceeds Neo VM 32-byte limit".to_string(),
+				));
+			},
+		};
+
+		Ok(self)
 	}
 
 	/// Append opcodes to the script in the provided order.
@@ -808,14 +817,34 @@ mod tests {
 		builder.push_integer(BigInt::from(16));
 		assert_builder(&builder, &[OpCode::Push16 as u8]);
 
-		// Test larger integers
+		// Test larger positive integers near sign boundaries
+		let mut builder = ScriptBuilder::new();
+		builder.push_integer(BigInt::from(127));
+		assert_builder(&builder, &[OpCode::PushInt8 as u8, 0x7f]);
+
+		let mut builder = ScriptBuilder::new();
+		builder.push_integer(BigInt::from(128));
+		assert_builder(&builder, &[OpCode::PushInt16 as u8, 0x80, 0x00]);
+
 		let mut builder = ScriptBuilder::new();
 		builder.push_integer(BigInt::from(255));
-		assert_builder(&builder, &[OpCode::PushInt8 as u8, 0xff]);
+		assert_builder(&builder, &[OpCode::PushInt16 as u8, 0xff, 0x00]);
+
+		let mut builder = ScriptBuilder::new();
+		builder.push_integer(BigInt::from(256));
+		assert_builder(&builder, &[OpCode::PushInt16 as u8, 0x00, 0x01]);
+
+		let mut builder = ScriptBuilder::new();
+		builder.push_integer(BigInt::from(32767));
+		assert_builder(&builder, &[OpCode::PushInt16 as u8, 0xff, 0x7f]);
+
+		let mut builder = ScriptBuilder::new();
+		builder.push_integer(BigInt::from(32768));
+		assert_builder(&builder, &[OpCode::PushInt32 as u8, 0x00, 0x80, 0x00, 0x00]);
 
 		let mut builder = ScriptBuilder::new();
 		builder.push_integer(BigInt::from(65535));
-		assert_builder(&builder, &[OpCode::PushInt16 as u8, 0xff, 0xff]);
+		assert_builder(&builder, &[OpCode::PushInt32 as u8, 0xff, 0xff, 0x00, 0x00]);
 
 		// Test negative integers - update expectations to match our more efficient implementation
 		let mut builder = ScriptBuilder::new();
@@ -835,6 +864,30 @@ mod tests {
 		let padded_pos = ScriptBuilder::pad_right(&pos_bytes, 8, false);
 		expected_pos.extend(padded_pos);
 		assert_builder(&builder, &expected_pos);
+	}
+
+	#[test]
+	fn test_try_push_integer_rejects_values_larger_than_32_bytes() {
+		let mut builder = ScriptBuilder::new();
+		let too_large = BigInt::from(1u8) << 256;
+
+		let result = builder.try_push_integer(too_large);
+		assert!(result.is_err());
+	}
+
+	#[test]
+	fn test_try_push_integer_matches_legacy_encoding_for_supported_values() {
+		let value = BigInt::from(255);
+
+		let mut legacy = ScriptBuilder::new();
+		legacy.push_integer(value.clone());
+
+		let mut fallible = ScriptBuilder::new();
+		fallible
+			.try_push_integer(value)
+			.expect("supported integer should encode successfully");
+
+		assert_eq!(legacy.to_bytes().to_vec(), fallible.to_bytes().to_vec());
 	}
 
 	#[test]

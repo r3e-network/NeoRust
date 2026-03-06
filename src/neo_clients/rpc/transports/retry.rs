@@ -284,12 +284,15 @@ where
 					return Err(RetryClientError::TimeoutError);
 				}
 
-				let current_queued_requests = u64::from(self.requests_enqueued.load(Ordering::SeqCst));
+				let current_queued_requests =
+					u64::from(self.requests_enqueued.load(Ordering::SeqCst));
 
 				// try to extract the requested backoff from the error or compute the next backoff
 				// based on retry count
 				let mut next_backoff = self.policy.backoff_hint(&err).unwrap_or_else(|| {
-					Duration::from_millis(u64::try_from(self.initial_backoff.as_millis()).unwrap_or(u64::MAX))
+					Duration::from_millis(
+						u64::try_from(self.initial_backoff.as_millis()).unwrap_or(u64::MAX),
+					)
 				});
 
 				// requests are usually weighted and can vary from 10 CU to several 100 CU, cheaper

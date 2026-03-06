@@ -59,7 +59,7 @@
 use crate::{
 	config::NeoConstants,
 	crypto::{
-		base58check_decode, base58check_encode, HashableForVec, KeyPair, Nep2Error,
+		base58check_encode, try_base58check_decode, HashableForVec, KeyPair, Nep2Error,
 		Secp256r1PublicKey,
 	},
 	neo_clients::public_key_to_address,
@@ -281,8 +281,8 @@ impl NEP2 {
 		}
 
 		// Decode the NEP2 string
-		let decoded_bytes = base58check_decode(nep2)
-			.ok_or_else(|| Nep2Error::Base58Error("Base58Check decoding failed".into()))?;
+		let decoded_bytes =
+			try_base58check_decode(nep2).map_err(|err| Nep2Error::Base58Error(err.to_string()))?;
 
 		// Validate the decoded data
 		if decoded_bytes.len() != Self::NEP2_PRIVATE_KEY_LENGTH {

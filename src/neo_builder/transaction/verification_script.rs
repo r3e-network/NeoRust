@@ -262,6 +262,27 @@ impl VerificationScript {
 			Err(e) => Err(e),
 		}
 	}
+
+	pub fn try_encode(&self, writer: &mut Encoder) -> Result<(), BuilderError> {
+		if self.script.len() > NeoConstants::MAX_TRANSACTION_SIZE as usize {
+			return Err(BuilderError::InvalidScript(format!(
+				"verification script exceeds maximum transaction size of {} bytes",
+				NeoConstants::MAX_TRANSACTION_SIZE
+			)));
+		}
+
+		writer.write_var_bytes(&self.script).map_err(|err| {
+			BuilderError::InvalidScript(format!("Failed to encode verification script: {}", err))
+		})?;
+
+		Ok(())
+	}
+
+	pub fn try_to_array(&self) -> Result<Vec<u8>, BuilderError> {
+		let mut writer = Encoder::new();
+		self.try_encode(&mut writer)?;
+		Ok(writer.to_bytes())
+	}
 }
 
 impl NeoSerializable for VerificationScript {
@@ -272,8 +293,14 @@ impl NeoSerializable for VerificationScript {
 	}
 
 	fn encode(&self, writer: &mut Encoder) {
-		if let Err(e) = writer.write_var_bytes(&self.script) {
-			tracing::warn!(error = %e, "Failed to encode verification script");
+		if let Err(err) = self.try_encode(writer) {
+			tracing::warn!(
+				error = ?err,
+				"Failed to serialize verification script via safe path; falling back to legacy encoder"
+			);
+			if let Err(legacy_err) = writer.write_var_bytes(&self.script) {
+				tracing::warn!(error = %legacy_err, "Failed to encode verification script");
+			}
 		}
 	}
 
@@ -282,9 +309,17 @@ impl NeoSerializable for VerificationScript {
 		Ok(Self { script })
 	}
 	fn to_array(&self) -> Vec<u8> {
-		let mut writer = Encoder::new();
-		self.encode(&mut writer);
-		writer.to_bytes()
+		self.try_to_array().unwrap_or_else(|err| {
+			tracing::warn!(
+				error = ?err,
+				"Failed to serialize verification script via safe path; falling back to legacy encoder"
+			);
+			let mut writer = Encoder::new();
+			if let Err(legacy_err) = writer.write_var_bytes(&self.script) {
+				tracing::warn!(error = %legacy_err, "Failed to encode verification script");
+			}
+			writer.to_bytes()
+		})
 	}
 }
 
@@ -697,5 +732,17 @@ mod tests {
 		);
 
 		Ok(())
+	}
+
+	#[test]
+	fn test_try_to_array_rejects_oversized_script() {
+		let script =
+			VerificationScript::from(vec![0_u8; NeoConstants::MAX_TRANSACTION_SIZE as usize + 1]);
+
+		assert!(matches!(
+			script.try_to_array(),
+			Err(BuilderError::InvalidScript(message))
+				if message.contains("verification script exceeds maximum transaction size")
+		));
 	}
 }

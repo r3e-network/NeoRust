@@ -508,6 +508,8 @@ pub use crate::neo_types::{
 	ScryptParamsDef,
 	StackItem,
 	StringExt,
+	TryBase64Encode,
+	TryStringExt,
 	TypeError,
 	VMState,
 };

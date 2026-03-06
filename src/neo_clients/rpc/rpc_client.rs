@@ -25,14 +25,19 @@ use crate::{
 
 use crate::{
 	builder::{Signer, Transaction, TransactionSendToken},
-	codec::NeoSerializable,
 	config::NEOCONFIG,
 	neo_protocol::*,
 	neo_types::ScriptHashExtension,
-	prelude::Base64Encode,
+	prelude::{Base64Encode, TryBase64Encode},
 	Address, ContractManifest, ContractParameter, ContractState, InvocationResult,
 	NativeContractState, NefFile, StackItem, ValueExtension,
 };
+
+fn encode_hex_parameter_as_base64(value: &str, field_name: &str) -> Result<String, ProviderError> {
+	value
+		.try_to_base64()
+		.map_err(|err| ProviderError::ParseError(format!("Invalid {field_name}: {err}")))
+}
 
 /// Node Clients
 #[derive(Copy, Clone)]
@@ -328,7 +333,7 @@ impl<P: JsonRpcProvider> APITrait for RpcClient<P> {
 	/// - Returns: The request object
 	async fn get_storage(&self, contract_hash: H160, key: &str) -> Result<String, ProviderError> {
 		let params: [String; 2] =
-			[contract_hash.to_hex(), Base64Encode::to_base64(&key.to_string())];
+			[contract_hash.to_hex(), encode_hex_parameter_as_base64(key, "storage key")?];
 		self.request("getstorage", params.to_vec()).await
 	}
 
@@ -347,7 +352,7 @@ impl<P: JsonRpcProvider> APITrait for RpcClient<P> {
 		//let params = [contract_hash.to_hex(), Base64Encode::to_base64(&prefix_hex_string.to_string()), start_index.to_value()];
 		let params = json!([
 			contract_hash.to_hex(),
-			Base64Encode::to_base64(&prefix_hex_string.to_string()),
+			encode_hex_parameter_as_base64(prefix_hex_string, "storage prefix")?,
 			start_index
 		]);
 		self.request("findstorage", params).await
@@ -368,7 +373,7 @@ impl<P: JsonRpcProvider> APITrait for RpcClient<P> {
 		//let params = [contract_hash.to_hex(), Base64Encode::to_base64(&prefix_hex_string.to_string()), start_index.to_value()];
 		let params = json!([
 			contract_id,
-			Base64Encode::to_base64(&prefix_hex_string.to_string()),
+			encode_hex_parameter_as_base64(prefix_hex_string, "storage prefix")?,
 			start_index
 		]);
 		self.request("findstorage", params).await
@@ -416,7 +421,11 @@ impl<P: JsonRpcProvider> APITrait for RpcClient<P> {
 	/// - Parameter rawTransactionHex: The raw transaction in hexadecimal
 	/// - Returns: The request object
 	async fn send_raw_transaction(&self, hex: String) -> Result<RawTransaction, ProviderError> {
-		self.request("sendrawtransaction", vec![Base64Encode::to_base64(&hex)]).await
+		self.request(
+			"sendrawtransaction",
+			vec![encode_hex_parameter_as_base64(&hex, "raw transaction")?],
+		)
+		.await
 	}
 
 	/// Sends a transaction to the network
@@ -429,7 +438,9 @@ impl<P: JsonRpcProvider> APITrait for RpcClient<P> {
 	///
 	/// A `Result` containing the transaction hash or a `ProviderError`
 	async fn send_transaction<'a>(&self, tx: Transaction<'a, P>) -> Result<H256, ProviderError> {
-		let tx_hex = hex::encode(tx.to_array());
+		let tx_hex = hex::encode(tx.try_to_array().map_err(|e| {
+			ProviderError::ParseError(format!("Failed to serialize transaction: {}", e))
+		})?);
 		let result = self.send_raw_transaction(tx_hex).await?;
 
 		// Convert the transaction hash to H256
@@ -502,7 +513,9 @@ impl<P: JsonRpcProvider> APITrait for RpcClient<P> {
 		manifest: ContractManifest,
 		_signers: Vec<Signer>,
 	) -> Result<TransactionBuilder<P>, ProviderError> {
-		let nef_bytes = nef.to_array();
+		let nef_bytes = nef
+			.try_to_array()
+			.map_err(|e| ProviderError::ParseError(format!("Failed to serialize NEF: {}", e)))?;
 		let manifest_json = serde_json::to_string(&manifest).map_err(|e| {
 			ProviderError::ParseError(format!("Failed to serialize manifest: {}", e))
 		})?;
@@ -530,7 +543,9 @@ impl<P: JsonRpcProvider> APITrait for RpcClient<P> {
 		manifest: ContractManifest,
 		_signers: Vec<Signer>,
 	) -> Result<TransactionBuilder<P>, ProviderError> {
-		let nef_bytes = nef.to_array();
+		let nef_bytes = nef
+			.try_to_array()
+			.map_err(|e| ProviderError::ParseError(format!("Failed to serialize NEF: {}", e)))?;
 		let manifest_json = serde_json::to_string(&manifest).map_err(|e| {
 			ProviderError::ParseError(format!("Failed to serialize manifest: {}", e))
 		})?;
@@ -591,14 +606,10 @@ impl<P: JsonRpcProvider> APITrait for RpcClient<P> {
 		params: Vec<ContractParameter>,
 		signers: Option<Vec<Signer>>,
 	) -> Result<InvocationResult, ProviderError> {
-		let signers: Vec<TransactionSigner> = signers
-			.map(|s| s.iter().map(|f| f.into()).collect())
-			.unwrap_or_default();
-		self.request(
-			"invokefunction",
-			json!([contract_hash.to_hex(), method, params, signers]),
-		)
-		.await
+		let signers: Vec<TransactionSigner> =
+			signers.map(|s| s.iter().map(|f| f.into()).collect()).unwrap_or_default();
+		self.request("invokefunction", json!([contract_hash.to_hex(), method, params, signers]))
+			.await
 	}
 
 	/// Invokes a script.
@@ -694,8 +705,11 @@ impl<P: JsonRpcProvider> APITrait for RpcClient<P> {
 		&self,
 		tx_base64: String,
 	) -> Result<NeoNetworkFee, ProviderError> {
-		self.request("calculatenetworkfee", vec![Base64Encode::to_base64(&tx_base64)])
-			.await
+		self.request(
+			"calculatenetworkfee",
+			vec![encode_hex_parameter_as_base64(&tx_base64, "transaction")?],
+		)
+		.await
 	}
 
 	/// Lists all the addresses in the current wallet.
@@ -938,7 +952,7 @@ impl<P: JsonRpcProvider> APITrait for RpcClient<P> {
 			json!([
 				hex::encode(root_hash.0),
 				contract_hash.to_hex(),
-				Base64Encode::to_base64(&key.to_string())
+				encode_hex_parameter_as_base64(key, "storage key")?
 			]),
 		)
 		.await
@@ -950,7 +964,8 @@ impl<P: JsonRpcProvider> APITrait for RpcClient<P> {
 	///   - proof: The proof data of the state root
 	/// - Returns: The request object
 	async fn verify_proof(&self, root_hash: H256, proof: &str) -> Result<String, ProviderError> {
-		let params = json!([hex::encode(root_hash.0), Base64Encode::to_base64(&proof.to_string())]);
+		let params =
+			json!([hex::encode(root_hash.0), encode_hex_parameter_as_base64(proof, "proof")?,]);
 		self.request("verifyproof", params).await
 	}
 
@@ -977,7 +992,7 @@ impl<P: JsonRpcProvider> APITrait for RpcClient<P> {
 			json!([
 				hex::encode(root_hash.0),
 				contract_hash.to_hex(),
-				Base64Encode::to_base64(&key.to_string())
+				encode_hex_parameter_as_base64(key, "storage key")?
 			]), //key.to_base64()],
 		)
 		.await
@@ -1001,24 +1016,22 @@ impl<P: JsonRpcProvider> APITrait for RpcClient<P> {
 		start_key: Option<&str>,
 		count: Option<u32>,
 	) -> Result<States, ProviderError> {
-		let mut params = json!([
-			hex::encode(root_hash.0),
-			contract_hash.to_hex(),
-			Base64Encode::to_base64(&key_prefix.to_string())
-		]);
+		let key_prefix_base64 = encode_hex_parameter_as_base64(key_prefix, "key prefix")?;
+		let mut params =
+			json!([hex::encode(root_hash.0), contract_hash.to_hex(), key_prefix_base64]);
 		if let (Some(start_key), Some(count)) = (start_key, count) {
 			params = json!([
 				hex::encode(root_hash.0),
 				contract_hash.to_hex(),
-				Base64Encode::to_base64(&key_prefix.to_string()),
-				Base64Encode::to_base64(&start_key.to_string()),
+				key_prefix_base64.clone(),
+				encode_hex_parameter_as_base64(start_key, "start key")?,
 				count,
 			]);
 		} else if let Some(count) = count {
 			params = json!([
 				hex::encode(root_hash.0),
 				contract_hash.to_hex(),
-				Base64Encode::to_base64(&key_prefix.to_string()),
+				key_prefix_base64.clone(),
 				"".to_string(),
 				count,
 			]);
@@ -1026,8 +1039,8 @@ impl<P: JsonRpcProvider> APITrait for RpcClient<P> {
 			params = json!([
 				hex::encode(root_hash.0),
 				contract_hash.to_hex(),
-				Base64Encode::to_base64(&key_prefix.to_string()),
-				Base64Encode::to_base64(&start_key.to_string()),
+				key_prefix_base64.clone(),
+				encode_hex_parameter_as_base64(start_key, "start key")?,
 			]);
 		}
 
@@ -1239,5 +1252,123 @@ where
 	/// Creates a new [RpcClient] with a [RwClient]
 	pub fn rw(r: Read, w: Write) -> Self {
 		Self::new(RwClient::new(r, w))
+	}
+}
+
+#[cfg(test)]
+mod tests {
+	use super::*;
+	use crate::{
+		neo_builder::{OracleResponse, OracleResponseCode, TransactionAttribute},
+		neo_clients::{APITrait, MockProvider},
+	};
+	fn assert_parse_error(err: ProviderError, expected_fragment: &str) {
+		match err {
+			ProviderError::ParseError(message) => {
+				assert!(
+					message.contains(expected_fragment),
+					"expected parse error containing '{expected_fragment}', got '{message}'"
+				);
+			},
+			other => panic!("expected parse error, got {other:?}"),
+		}
+	}
+
+	#[tokio::test]
+	async fn get_storage_rejects_invalid_hex_key_before_request() {
+		let provider = MockProvider::new();
+		let client = RpcClient::new(provider.clone());
+
+		let err = client.get_storage(H160::zero(), "not-hex").await.unwrap_err();
+		assert_parse_error(err, "storage key");
+		assert!(provider.take_requests().is_empty());
+	}
+
+	#[tokio::test]
+	async fn send_raw_transaction_rejects_invalid_hex_before_request() {
+		let provider = MockProvider::new();
+		let client = RpcClient::new(provider.clone());
+
+		let err = client.send_raw_transaction("not-hex".to_string()).await.unwrap_err();
+		assert_parse_error(err, "raw transaction");
+		assert!(provider.take_requests().is_empty());
+	}
+
+	#[tokio::test]
+	async fn verify_proof_rejects_invalid_hex_proof_before_request() {
+		let provider = MockProvider::new();
+		let client = RpcClient::new(provider.clone());
+
+		let err = client.verify_proof(H256::zero(), "xyz").await.unwrap_err();
+		assert_parse_error(err, "proof");
+		assert!(provider.take_requests().is_empty());
+	}
+
+	fn encodable_test_nef() -> NefFile {
+		NefFile::new(Some("test-compiler".to_string()), "", vec![0x11, 0x40], vec![0; 4])
+	}
+
+	#[tokio::test]
+	async fn create_contract_deployment_transaction_rejects_invalid_nef_before_request() {
+		let provider = MockProvider::new();
+		let client = RpcClient::new(provider.clone());
+		let mut nef = encodable_test_nef();
+		nef.compiler = Some("x".repeat(65));
+
+		let err = client
+			.create_contract_deployment_transaction(nef, ContractManifest::default(), vec![])
+			.await
+			.unwrap_err();
+		assert_parse_error(err, "NEF");
+		assert!(provider.take_requests().is_empty());
+	}
+
+	#[tokio::test]
+	async fn create_contract_update_transaction_rejects_invalid_nef_before_request() {
+		let provider = MockProvider::new();
+		let client = RpcClient::new(provider.clone());
+		let mut nef = encodable_test_nef();
+		nef.compiler = Some("x".repeat(65));
+
+		let err = client
+			.create_contract_update_transaction(
+				H160::zero(),
+				nef,
+				ContractManifest::default(),
+				vec![],
+			)
+			.await
+			.unwrap_err();
+		assert_parse_error(err, "NEF");
+		assert!(provider.take_requests().is_empty());
+	}
+
+	#[tokio::test]
+	async fn send_transaction_rejects_invalid_transaction_before_request() {
+		let provider = MockProvider::new();
+		let client = RpcClient::new(provider.clone());
+		let mut tx = Transaction::<MockProvider>::new();
+		tx.attributes = vec![TransactionAttribute::OracleResponse(OracleResponse {
+			id: 1,
+			response_code: OracleResponseCode::Success,
+			result: "not-base64".to_string(),
+		})];
+
+		let err = client.send_transaction(tx).await.unwrap_err();
+		assert_parse_error(err, "transaction");
+		assert!(provider.take_requests().is_empty());
+	}
+
+	#[tokio::test]
+	async fn find_states_rejects_invalid_start_key_before_request() {
+		let provider = MockProvider::new();
+		let client = RpcClient::new(provider.clone());
+
+		let err = client
+			.find_states(H256::zero(), H160::zero(), "01", Some("xyz"), None)
+			.await
+			.unwrap_err();
+		assert_parse_error(err, "start key");
+		assert!(provider.take_requests().is_empty());
 	}
 }

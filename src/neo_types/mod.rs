@@ -191,6 +191,27 @@ pub trait Base64Encode {
 	fn to_base64(&self) -> String;
 }
 
+pub trait TryBase64Encode {
+	fn try_to_base64(&self) -> Result<String, TypeError>;
+}
+
+impl TryBase64Encode for str {
+	fn try_to_base64(&self) -> Result<String, TypeError> {
+		let hex_str = self.trim_start_matches("0x");
+		hex::decode(hex_str)
+			.map(|bytes| general_purpose::STANDARD.encode(bytes))
+			.map_err(|err| {
+				TypeError::InvalidFormat(format!("invalid hex string for base64 encoding: {err}"))
+			})
+	}
+}
+
+impl TryBase64Encode for String {
+	fn try_to_base64(&self) -> Result<String, TypeError> {
+		self.as_str().try_to_base64()
+	}
+}
+
 impl Base64Encode for Vec<u8> {
 	fn to_base64(&self) -> String {
 		base64::engine::general_purpose::STANDARD.encode(self)
@@ -205,20 +226,14 @@ impl Base64Encode for &[u8] {
 
 impl Base64Encode for String {
 	fn to_base64(&self) -> String {
-		let hex_str = self.trim_start_matches("0x");
-		match hex::decode(hex_str) {
-			Ok(bytes) => general_purpose::STANDARD.encode(&bytes),
-			Err(err) => {
-				// If hex decoding fails, return an empty string
-				// Avoid logging raw input to prevent leaking sensitive data
-				tracing::warn!(
-					len = self.len(),
-					error = %err,
-					"Failed to decode hex string for base64 encoding"
-				);
-				String::new()
-			},
-		}
+		self.try_to_base64().unwrap_or_else(|err| {
+			tracing::warn!(
+				len = self.len(),
+				error = %err,
+				"Failed to decode hex string for base64 encoding"
+			);
+			String::new()
+		})
 	}
 }
 
@@ -299,6 +314,19 @@ mod tests {
 
 		assert_eq!(decoded_hex, expected);
 	}
+
+	#[test]
+	fn test_try_string_to_base64() {
+		assert_eq!("010203".try_to_base64().unwrap(), "AQID");
+	}
+
+	#[test]
+	fn test_try_string_to_base64_invalid_hex() {
+		let err = "not-hex".try_to_base64().unwrap_err();
+		assert!(
+			matches!(err, TypeError::InvalidFormat(message) if message.contains("invalid hex string"))
+		);
+	}
 }
 
 // Re-export serialization functions from serde_with_utils
@@ -316,5 +344,5 @@ pub use serde_value::ValueExtension;
 pub use address::NameOrAddress;
 
 // Other re-exports
-pub use string::StringExt;
+pub use string::{StringExt, TryStringExt};
 pub use vm_state::VMState;

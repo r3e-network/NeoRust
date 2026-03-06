@@ -17,6 +17,18 @@ impl WitnessRule {
 	pub fn new(action: WitnessAction, condition: WitnessCondition) -> Self {
 		Self { action, condition }
 	}
+
+	pub fn try_encode(&self, writer: &mut Encoder) -> Result<(), TransactionError> {
+		writer.write_u8(self.action as u8);
+		self.condition.try_encode(writer)?;
+		Ok(())
+	}
+
+	pub fn try_to_array(&self) -> Result<Vec<u8>, TransactionError> {
+		let mut writer = Encoder::new();
+		self.try_encode(&mut writer)?;
+		Ok(writer.to_bytes())
+	}
 }
 
 impl NeoSerializable for WitnessRule {
@@ -27,8 +39,14 @@ impl NeoSerializable for WitnessRule {
 	}
 
 	fn encode(&self, writer: &mut Encoder) {
-		writer.write_u8(self.action as u8);
-		writer.write_serializable_fixed(&self.condition);
+		if let Err(err) = self.try_encode(writer) {
+			tracing::warn!(
+				error = ?err,
+				"Failed to serialize witness rule via safe path; falling back to legacy encoder"
+			);
+			writer.write_u8(self.action as u8);
+			writer.write_serializable_fixed(&self.condition);
+		}
 	}
 
 	fn decode(reader: &mut Decoder) -> Result<Self, Self::Error> {
@@ -39,9 +57,16 @@ impl NeoSerializable for WitnessRule {
 		Ok(Self { action, condition })
 	}
 	fn to_array(&self) -> Vec<u8> {
-		let mut writer = Encoder::new();
-		self.encode(&mut writer);
-		writer.to_bytes()
+		self.try_to_array().unwrap_or_else(|err| {
+			tracing::warn!(
+				error = ?err,
+				"Failed to serialize witness rule via safe path; falling back to legacy encoder"
+			);
+			let mut writer = Encoder::new();
+			writer.write_u8(self.action as u8);
+			writer.write_serializable_fixed(&self.condition);
+			writer.to_bytes()
+		})
 	}
 }
 
@@ -50,9 +75,9 @@ mod tests {
 	use primitive_types::H160;
 
 	use crate::{
-		builder::{WitnessCondition, WitnessRule},
+		builder::{TransactionError, WitnessAction, WitnessCondition, WitnessRule},
 		codec::{Encoder, NeoSerializable},
-		config::TestConstants,
+		config::{NeoConstants, TestConstants},
 		crypto::Secp256r1PublicKey,
 		neo_types::ScriptHashExtension,
 	};
@@ -314,6 +339,31 @@ mod tests {
 			.expect("Failed to decode WitnessRule JSON with CalledByContract condition");
 
 		assert!(matches!(rule.condition, WitnessCondition::CalledByContract(_),));
+	}
+
+	#[test]
+	fn test_condition_try_to_array_rejects_too_many_expressions() {
+		let condition = WitnessCondition::And(
+			(0..=NeoConstants::MAX_SIGNER_SUBITEMS)
+				.map(|_| WitnessCondition::Boolean(true))
+				.collect(),
+		);
+
+		assert_eq!(condition.try_to_array(), Err(TransactionError::InvalidWitnessCondition));
+	}
+
+	#[test]
+	fn test_witness_rule_try_to_array_rejects_invalid_condition() {
+		let rule = WitnessRule::new(
+			WitnessAction::Allow,
+			WitnessCondition::Or(
+				(0..=NeoConstants::MAX_SIGNER_SUBITEMS)
+					.map(|_| WitnessCondition::Boolean(false))
+					.collect(),
+			),
+		);
+
+		assert_eq!(rule.try_to_array(), Err(TransactionError::InvalidWitnessCondition));
 	}
 
 	#[test]

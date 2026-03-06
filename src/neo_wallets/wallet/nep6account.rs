@@ -181,6 +181,11 @@ impl NEP6Account {
 
 	/// Converts a `NEP6Account` into an `Account`.
 	///
+	/// Accounts with an address or contract verification script are converted directly.
+	/// Encrypted-key-only accounts are also accepted and use a placeholder script hash until
+	/// [`AccountTrait::decrypt_private_key`] derives the real single-signature state. Truly
+	/// incomplete accounts without address, contract script, or encrypted key return an error.
+	///
 	/// # Errors
 	///
 	/// Returns a `WalletError` if there is an issue converting the account.
@@ -227,11 +232,12 @@ impl NEP6Account {
 		let script_hash = if self.address.is_empty() {
 			if let Some(script) = verification_script.as_ref() {
 				H160::from_script(script.script())
-			} else {
-				tracing::warn!(
-					"NEP6Account has empty address and no verification script; using zero script hash"
-				);
+			} else if self.key.is_some() {
 				H160::zero()
+			} else {
+				return Err(WalletError::AccountState(
+					"NEP6 account is missing both address and verification script".to_string(),
+				));
 			}
 		} else {
 			let address = self.address.clone();
@@ -297,10 +303,7 @@ mod tests {
 
 	#[test]
 	fn test_decrypt_with_standard_scrypt_params() {
-		use crate::{
-			crypto::{KeyPair, PrivateKeyExtension},
-			neo_protocol::NEP2,
-		};
+		use crate::{crypto::KeyPair, neo_protocol::NEP2};
 
 		let private_key = Secp256r1PrivateKey::from_bytes(
 			&hex::decode(TestConstants::DEFAULT_ACCOUNT_PRIVATE_KEY)
@@ -346,6 +349,34 @@ mod tests {
 				.private_key,
 			private_key
 		);
+	}
+
+	#[test]
+	fn test_decrypt_encrypted_only_account_repairs_script_hash() {
+		use crate::{crypto::KeyPair, neo_protocol::NEP2};
+
+		let private_key = Secp256r1PrivateKey::from_bytes(
+			&hex::decode(TestConstants::DEFAULT_ACCOUNT_PRIVATE_KEY)
+				.expect("Should be able to decode valid hex in test"),
+		)
+		.expect("Should be able to create private key from valid bytes in test");
+
+		let key_pair = KeyPair::from_secret_key(&private_key);
+		let encrypted_key = NEP2::encrypt(TestConstants::DEFAULT_ACCOUNT_PASSWORD, &key_pair)
+			.expect("Should be able to encrypt key pair");
+
+		let nep6_account =
+			NEP6Account::new(String::new(), None, true, false, Some(encrypted_key), None, None);
+
+		let mut account = nep6_account
+			.to_account()
+			.expect("Should be able to convert encrypted-only NEP6Account to Account in test");
+
+		account
+			.decrypt_private_key(TestConstants::DEFAULT_ACCOUNT_PASSWORD)
+			.expect("Should be able to decrypt private key with correct password in test");
+
+		assert_eq!(account.get_script_hash(), key_pair.get_script_hash());
 	}
 
 	#[test]
@@ -440,6 +471,14 @@ mod tests {
 			TestConstants::DEFAULT_ACCOUNT_ADDRESS
 		);
 		assert!(nep6_account.extra().is_none());
+	}
+
+	#[test]
+	fn test_to_account_rejects_missing_address_and_contract_script() {
+		let nep6_account = NEP6Account::new(String::new(), None, false, false, None, None, None);
+
+		let result = nep6_account.to_account();
+		assert!(result.is_err());
 	}
 
 	#[test]

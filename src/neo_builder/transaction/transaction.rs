@@ -9,7 +9,7 @@ use serde_with::__private__::DeError;
 use tracing::info;
 
 use crate::{
-	builder::{init_logger, Signer, TransactionAttribute, TransactionError, Witness},
+	builder::{init_logger, BuilderError, Signer, TransactionAttribute, TransactionError, Witness},
 	codec::{Decoder, Encoder, NeoSerializable, VarSizeTrait},
 	config::NeoConstants,
 	crypto::HashableForVec,
@@ -209,7 +209,15 @@ impl<'de, 'a, P: JsonRpcProvider + 'static> Deserialize<'de> for Transaction<'a,
 
 impl<'a, P: JsonRpcProvider + 'static> Hash for Transaction<'a, P> {
 	fn hash<H: Hasher>(&self, state: &mut H) {
-		self.to_array().hash(state);
+		self.version.hash(state);
+		self.nonce.hash(state);
+		self.valid_until_block.hash(state);
+		self.signers.hash(state);
+		self.sys_fee.hash(state);
+		self.net_fee.hash(state);
+		self.attributes.hash(state);
+		self.script.hash(state);
+		self.witnesses.hash(state);
 	}
 }
 
@@ -236,7 +244,7 @@ impl<'a, T: JsonRpcProvider + 'static> Transaction<'a, T> {
 		})?;
 
 		let mut encoder = Encoder::new();
-		self.serialize_without_witnesses(&mut encoder);
+		self.try_serialize_without_witnesses(&mut encoder)?;
 		let mut data = encoder.to_bytes().double_sha256();
 		let network_value = network.network().await?;
 		data.splice(0..0, network_value.to_le_bytes());
@@ -246,7 +254,7 @@ impl<'a, T: JsonRpcProvider + 'static> Transaction<'a, T> {
 
 	fn get_tx_id(&self) -> Result<primitive_types::H256, TransactionError> {
 		let mut encoder = Encoder::new();
-		self.serialize_without_witnesses(&mut encoder);
+		self.try_serialize_without_witnesses(&mut encoder)?;
 		let data = encoder.to_bytes().double_sha256();
 		let reversed_data = data.iter().rev().cloned().collect::<Vec<u8>>();
 		Ok(primitive_types::H256::from_slice(&reversed_data))
@@ -274,6 +282,71 @@ impl<'a, T: JsonRpcProvider + 'static> Transaction<'a, T> {
 		if let Err(e) = writer.write_var_bytes(&self.script) {
 			tracing::warn!(error = %e, "Failed to encode transaction script");
 		}
+	}
+
+	fn try_serialize_without_witnesses(
+		&self,
+		writer: &mut Encoder,
+	) -> Result<(), TransactionError> {
+		writer.write_u8(self.version);
+		writer.write_u32(self.nonce);
+		writer.write_i64(self.sys_fee);
+		writer.write_i64(self.net_fee);
+		writer.write_u32(self.valid_until_block);
+		writer.write_var_int(self.signers.len() as i64).map_err(|e| {
+			TransactionError::TransactionConfiguration(format!(
+				"Failed to encode transaction signers length: {}",
+				e
+			))
+		})?;
+		for signer in &self.signers {
+			signer.try_encode(writer)?;
+		}
+		writer.write_var_int(self.attributes.len() as i64).map_err(|e| {
+			TransactionError::TransactionConfiguration(format!(
+				"Failed to encode transaction attributes length: {}",
+				e
+			))
+		})?;
+		for attribute in &self.attributes {
+			attribute.try_encode(writer)?;
+		}
+		writer.write_var_bytes(&self.script).map_err(|e| {
+			TransactionError::TransactionConfiguration(format!(
+				"Failed to encode transaction script: {}",
+				e
+			))
+		})?;
+		Ok(())
+	}
+
+	pub fn try_encode(&self, writer: &mut Encoder) -> Result<(), TransactionError> {
+		self.try_serialize_without_witnesses(writer)?;
+		writer.write_var_int(self.witnesses.len() as i64).map_err(|e| {
+			TransactionError::TransactionConfiguration(format!(
+				"Failed to encode transaction witnesses length: {}",
+				e
+			))
+		})?;
+		for witness in &self.witnesses {
+			witness.try_encode(writer).map_err(|err| {
+				let message = match err {
+					BuilderError::InvalidScript(message) => message,
+					other => other.to_string(),
+				};
+				TransactionError::TransactionConfiguration(format!(
+					"Failed to encode transaction witness: {}",
+					message
+				))
+			})?;
+		}
+		Ok(())
+	}
+
+	pub fn try_to_array(&self) -> Result<Vec<u8>, TransactionError> {
+		let mut writer = Encoder::new();
+		self.try_encode(&mut writer)?;
+		Ok(writer.to_bytes())
 	}
 
 	/// Sends the transaction to the Neo N3 network.
@@ -370,7 +443,12 @@ impl<'a, T: JsonRpcProvider + 'static> Transaction<'a, T> {
 				"The transaction exceeds the maximum transaction size.".to_string(),
 			));
 		}
-		let hex = hex::encode(self.to_array());
+		let hex = hex::encode(self.try_to_array().map_err(|err| {
+			TransactionError::TransactionConfiguration(format!(
+				"Failed to serialize transaction for sending: {}",
+				err
+			))
+		})?);
 		// self.throw()?;
 		self.block_count_when_sent = Some(network.get_block_count().await?);
 		network
@@ -649,7 +727,15 @@ impl<'a, P: JsonRpcProvider + 'static> Eq for Transaction<'a, P> {}
 
 impl<'a, P: JsonRpcProvider + 'static> PartialEq for Transaction<'a, P> {
 	fn eq(&self, other: &Self) -> bool {
-		self.to_array() == other.to_array()
+		self.version == other.version
+			&& self.nonce == other.nonce
+			&& self.valid_until_block == other.valid_until_block
+			&& self.signers == other.signers
+			&& self.sys_fee == other.sys_fee
+			&& self.net_fee == other.net_fee
+			&& self.attributes == other.attributes
+			&& self.script == other.script
+			&& self.witnesses == other.witnesses
 	}
 }
 
@@ -735,8 +821,172 @@ impl<'a, P: JsonRpcProvider + 'static> NeoSerializable for Transaction<'a, P> {
 	}
 
 	fn to_array(&self) -> Vec<u8> {
-		let mut writer = Encoder::new();
-		self.encode(&mut writer);
-		writer.to_bytes()
+		self.try_to_array().unwrap_or_else(|err| {
+			tracing::warn!(
+				error = %err,
+				"Failed to serialize transaction via safe path; falling back to legacy encoder"
+			);
+			let mut writer = Encoder::new();
+			self.encode(&mut writer);
+			writer.to_bytes()
+		})
+	}
+}
+
+#[cfg(test)]
+mod tests {
+	use super::*;
+	use crate::{
+		builder::{AccountSigner, SignerTrait, Witness, WitnessScope},
+		config::NeoConstants,
+		neo_builder::{OracleResponse, OracleResponseCode},
+		neo_clients::{MockClient, MockProvider},
+		neo_protocol::{Account, RawTransaction},
+		prelude::Base64Encode,
+	};
+	use primitive_types::{H160, H256};
+	use std::{collections::HashSet, sync::Arc};
+	use tokio::sync::Mutex;
+
+	fn transaction_with_attribute(
+		attribute: TransactionAttribute,
+	) -> Transaction<'static, MockProvider> {
+		let mut tx = Transaction::<MockProvider>::new();
+		tx.attributes = vec![attribute];
+		tx
+	}
+
+	fn transaction_with_signer(signer: Signer) -> Transaction<'static, MockProvider> {
+		let mut tx = Transaction::<MockProvider>::new();
+		tx.signers = vec![signer];
+		tx
+	}
+
+	fn transaction_with_witness(witness: Witness) -> Transaction<'static, MockProvider> {
+		let mut tx = Transaction::<MockProvider>::new();
+		tx.witnesses = vec![witness];
+		tx
+	}
+
+	#[test]
+	fn test_transaction_equality_distinguishes_hidden_signer_state() {
+		let signer = AccountSigner::none(&Account::from(H160::zero())).unwrap();
+		let tx1 = transaction_with_signer(signer.clone().into());
+		let mut tx2 = transaction_with_signer(signer.into());
+
+		if let Signer::AccountSigner(account_signer) = &mut tx2.signers[0] {
+			account_signer.get_allowed_contracts_mut().push(H160::zero());
+		}
+
+		assert_ne!(tx1, tx2);
+
+		let mut set = HashSet::new();
+		set.insert(tx1);
+		set.insert(tx2);
+		assert_eq!(set.len(), 2);
+	}
+
+	#[test]
+	fn test_try_to_array_rejects_oversized_witness_invocation_script() {
+		let tx = transaction_with_witness(Witness::from_scripts(
+			vec![0_u8; NeoConstants::MAX_TRANSACTION_SIZE as usize + 1],
+			vec![],
+		));
+
+		assert!(matches!(
+			tx.try_to_array(),
+			Err(TransactionError::TransactionConfiguration(message))
+				if message.contains("invocation script")
+		));
+	}
+
+	#[test]
+	fn test_try_to_array_rejects_invalid_oracle_response_attribute() {
+		let tx = transaction_with_attribute(TransactionAttribute::OracleResponse(OracleResponse {
+			id: 1,
+			response_code: OracleResponseCode::Success,
+			result: "not-base64".to_string(),
+		}));
+
+		assert!(matches!(
+			tx.try_to_array(),
+			Err(TransactionError::TransactionConfiguration(message))
+				if message.contains("valid base64")
+		));
+	}
+
+	#[test]
+	fn test_try_to_array_rejects_signer_with_too_many_allowed_contracts() {
+		let mut signer = AccountSigner::none(&Account::from(H160::zero())).unwrap();
+		signer.set_scopes(vec![WitnessScope::CustomContracts]);
+		signer
+			.get_allowed_contracts_mut()
+			.extend((0..=NeoConstants::MAX_SIGNER_SUBITEMS).map(|_| H160::zero()));
+
+		let tx = transaction_with_signer(signer.into());
+
+		assert!(matches!(
+			tx.try_to_array(),
+			Err(TransactionError::TransactionConfiguration(message))
+				if message.contains("allowed contracts")
+		));
+	}
+
+	#[tokio::test]
+	async fn test_send_tx_rejects_signer_with_too_many_allowed_contracts() {
+		let mock_provider = Arc::new(Mutex::new(MockClient::new().await));
+		let client: &'static _ = {
+			let mut mock_provider = mock_provider.lock().await;
+			mock_provider
+				.mock_get_block_count(1000)
+				.await
+				.mock_send_raw_transaction(RawTransaction { hash: H256::zero() })
+				.await
+				.mount_mocks()
+				.await;
+			Box::leak(Box::new(mock_provider.into_client()))
+		};
+
+		let mut signer = AccountSigner::none(&Account::from(H160::zero())).unwrap();
+		signer.set_scopes(vec![WitnessScope::CustomContracts]);
+		signer
+			.get_allowed_contracts_mut()
+			.extend((0..=NeoConstants::MAX_SIGNER_SUBITEMS).map(|_| H160::zero()));
+
+		let mut tx = transaction_with_signer(signer.into());
+		tx.network = Some(client);
+		tx.witnesses = vec![Witness::default()];
+
+		assert!(matches!(
+			tx.send_tx().await,
+			Err(TransactionError::TransactionConfiguration(message))
+				if message.contains("allowed contracts")
+		));
+	}
+
+	#[test]
+	fn test_tx_id_rejects_invalid_oracle_response_attribute() {
+		let tx = transaction_with_attribute(TransactionAttribute::OracleResponse(OracleResponse {
+			id: 1,
+			response_code: OracleResponseCode::Success,
+			result: "not-base64".to_string(),
+		}));
+
+		assert!(matches!(
+			tx.tx_id(),
+			Err(TransactionError::TransactionConfiguration(message))
+				if message.contains("valid base64")
+		));
+	}
+
+	#[test]
+	fn test_try_to_array_matches_legacy_for_valid_oracle_response_attribute() {
+		let tx = transaction_with_attribute(TransactionAttribute::OracleResponse(OracleResponse {
+			id: 7,
+			response_code: OracleResponseCode::Success,
+			result: vec![1_u8, 2, 3].to_base64(),
+		}));
+
+		assert_eq!(tx.try_to_array().unwrap(), tx.to_array());
 	}
 }

@@ -467,10 +467,23 @@ impl AccountTrait for Account {
 			Self::Error::IllegalState("Failed to convert private key to 32-byte array".to_string())
 		})?;
 
-		self.key_pair =
-			Some(KeyPair::from_private_key(&key_pair_array).map_err(|e| {
-				Self::Error::IllegalState(format!("Failed to create key pair: {e}"))
-			})?);
+		let key_pair = KeyPair::from_private_key(&key_pair_array)
+			.map_err(|e| Self::Error::IllegalState(format!("Failed to create key pair: {e}")))?;
+
+		// Repair watch/signing metadata for encrypted-only accounts that were loaded
+		// without an address or verification script in their NEP-6 representation.
+		if self.verification_script.is_none() {
+			self.verification_script =
+				Some(VerificationScript::from_public_key(&key_pair.public_key()));
+		}
+
+		if matches!(self.address_or_scripthash, AddressOrScriptHash::ScriptHash(hash) if hash == H160::zero())
+		{
+			self.address_or_scripthash =
+				AddressOrScriptHash::ScriptHash(key_pair.get_script_hash());
+		}
+
+		self.key_pair = Some(key_pair);
 
 		Ok(())
 	}
@@ -724,6 +737,8 @@ impl Account {
 			));
 		}
 
+		// Repair watch/signing metadata for encrypted-only accounts that were loaded
+		// without an address or verification script in their NEP-6 representation.
 		if self.verification_script.is_none() {
 			return Ok(NEP6Account::new(
 				self.address_or_scripthash.address().clone(),

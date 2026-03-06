@@ -124,6 +124,27 @@ impl InvocationScript {
 		}
 		Self { script: builder.to_bytes() }
 	}
+
+	pub fn try_encode(&self, writer: &mut Encoder) -> Result<(), BuilderError> {
+		if self.script.len() > NeoConstants::MAX_TRANSACTION_SIZE as usize {
+			return Err(BuilderError::InvalidScript(format!(
+				"invocation script exceeds maximum transaction size of {} bytes",
+				NeoConstants::MAX_TRANSACTION_SIZE
+			)));
+		}
+
+		writer.write_var_bytes(&self.script).map_err(|err| {
+			BuilderError::InvalidScript(format!("Failed to encode invocation script: {}", err))
+		})?;
+
+		Ok(())
+	}
+
+	pub fn try_to_array(&self) -> Result<Vec<u8>, BuilderError> {
+		let mut writer = Encoder::new();
+		self.try_encode(&mut writer)?;
+		Ok(writer.to_bytes())
+	}
 }
 
 impl InvocationScript {
@@ -168,8 +189,14 @@ impl NeoSerializable for InvocationScript {
 	}
 
 	fn encode(&self, writer: &mut Encoder) {
-		if let Err(e) = writer.write_var_bytes(&self.script) {
-			tracing::warn!(error = %e, "Failed to encode invocation script");
+		if let Err(err) = self.try_encode(writer) {
+			tracing::warn!(
+				error = ?err,
+				"Failed to serialize invocation script via safe path; falling back to legacy encoder"
+			);
+			if let Err(legacy_err) = writer.write_var_bytes(&self.script) {
+				tracing::warn!(error = %legacy_err, "Failed to encode invocation script");
+			}
 		}
 	}
 
@@ -178,9 +205,17 @@ impl NeoSerializable for InvocationScript {
 		Ok(Self { script })
 	}
 	fn to_array(&self) -> Vec<u8> {
-		let mut writer = Encoder::new();
-		self.encode(&mut writer);
-		writer.to_bytes()
+		self.try_to_array().unwrap_or_else(|err| {
+			tracing::warn!(
+				error = ?err,
+				"Failed to serialize invocation script via safe path; falling back to legacy encoder"
+			);
+			let mut writer = Encoder::new();
+			if let Err(legacy_err) = writer.write_var_bytes(&self.script) {
+				tracing::warn!(error = %legacy_err, "Failed to encode invocation script");
+			}
+			writer.to_bytes()
+		})
 	}
 }
 
@@ -263,5 +298,20 @@ mod tests {
 		let raw = hex::decode(&script).unwrap();
 		let deserialized = InvocationScript::from_serialized_script(raw.clone());
 		assert_eq!(deserialized.script, raw);
+	}
+
+	#[test]
+	fn test_try_to_array_rejects_oversized_script() {
+		let script = InvocationScript::new_with_script(vec![
+			0_u8;
+			NeoConstants::MAX_TRANSACTION_SIZE
+				as usize + 1
+		]);
+
+		assert!(matches!(
+			script.try_to_array(),
+			Err(BuilderError::InvalidScript(message))
+				if message.contains("invocation script exceeds maximum transaction size")
+		));
 	}
 }

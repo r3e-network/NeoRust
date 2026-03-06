@@ -24,8 +24,15 @@ pub trait SmartContractTrait<'a>: Send + Sync {
 	const DEFAULT_ITERATOR_COUNT: usize = 100;
 	type P: JsonRpcProvider;
 
+	async fn try_name(&self) -> Result<String, ContractError> {
+		Ok(self.try_get_manifest().await?.name.unwrap_or_default())
+	}
+
 	async fn name(&self) -> String {
-		self.get_manifest().await.name.clone().unwrap_or_default()
+		self.try_name().await.unwrap_or_else(|err| {
+			tracing::warn!(error = %err, "Failed to resolve contract name; returning empty string");
+			String::new()
+		})
 	}
 	fn set_name(&mut self, _name: String) {
 		// NNS contracts don't support setting names
@@ -270,8 +277,9 @@ pub trait SmartContractTrait<'a>: Send + Sync {
 	/// This is intended for use with known-good constants like `NeoToken`, `GasToken`, etc.,
 	/// where the only failure mode would be an empty name (a programming error).
 	fn calc_native_contract_hash_unchecked(contract_name: &str) -> H160 {
-		Self::calc_native_contract_hash(contract_name)
-			.unwrap_or_else(|e| panic!("BUG: failed to compute native contract hash for '{}': {}", contract_name, e))
+		Self::calc_native_contract_hash(contract_name).unwrap_or_else(|e| {
+			panic!("BUG: failed to compute native contract hash for '{}': {}", contract_name, e)
+		})
 	}
 
 	fn calc_contract_hash(
@@ -293,18 +301,128 @@ pub trait SmartContractTrait<'a>: Send + Sync {
 		Ok(ScriptHash::from_script(&script.to_bytes()))
 	}
 
-	async fn get_manifest(&self) -> ContractManifest {
-		let Some(provider) = self.provider() else {
-			tracing::warn!("Provider not set; returning default contract manifest");
-			return ContractManifest::default();
-		};
+	async fn try_get_manifest(&self) -> Result<ContractManifest, ContractError> {
+		let provider = self.provider().ok_or_else(|| {
+			ContractError::ProviderNotSet(
+				"Provider is required to fetch contract manifest".to_string(),
+			)
+		})?;
 
-		match provider.get_contract_state(self.script_hash()).await {
-			Ok(state) => state.manifest,
-			Err(err) => {
-				tracing::warn!(error = %err, "Failed to fetch contract manifest; returning default");
-				ContractManifest::default()
-			},
+		let state = provider.get_contract_state(self.script_hash()).await?;
+		Ok(state.manifest)
+	}
+
+	async fn get_manifest(&self) -> ContractManifest {
+		self.try_get_manifest().await.unwrap_or_else(|err| {
+			tracing::warn!(error = %err, "Failed to fetch contract manifest; returning default");
+			ContractManifest::default()
+		})
+	}
+}
+
+#[cfg(test)]
+mod tests {
+	use super::*;
+	use crate::{
+		neo_clients::{MockProvider, RpcClient},
+		neo_contract::ContractError,
+		neo_types::{ContractManifest, ContractNef, ContractState},
+	};
+	use async_trait::async_trait;
+	use primitive_types::H160;
+	use serde_json::json;
+
+	#[derive(Clone)]
+	struct TestContract {
+		script_hash: H160,
+		provider: Option<RpcClient<MockProvider>>,
+	}
+
+	impl TestContract {
+		fn without_provider(script_hash: H160) -> Self {
+			Self { script_hash, provider: None }
 		}
+
+		fn with_provider(script_hash: H160, provider: RpcClient<MockProvider>) -> Self {
+			Self { script_hash, provider: Some(provider) }
+		}
+	}
+
+	#[async_trait]
+	impl<'a> SmartContractTrait<'a> for TestContract {
+		type P = MockProvider;
+
+		fn script_hash(&self) -> H160 {
+			self.script_hash
+		}
+
+		fn provider(&self) -> Option<&RpcClient<Self::P>> {
+			self.provider.as_ref()
+		}
+	}
+
+	fn test_manifest(name: &str) -> ContractManifest {
+		ContractManifest::new(
+			Some(name.to_string()),
+			vec![],
+			None,
+			vec![],
+			None,
+			vec![],
+			vec![],
+			None,
+		)
+	}
+
+	fn test_contract_state(hash: H160, manifest: ContractManifest) -> ContractState {
+		ContractState::new(1, 0, hash, ContractNef::default(), manifest)
+	}
+
+	#[tokio::test]
+	async fn test_try_get_manifest_returns_provider_not_set_without_provider() {
+		let contract = TestContract::without_provider(H160::repeat_byte(0x11));
+
+		assert!(matches!(
+			contract.try_get_manifest().await,
+			Err(ContractError::ProviderNotSet(message))
+				if message.contains("contract manifest")
+		));
+	}
+
+	#[tokio::test]
+	async fn test_try_get_manifest_returns_manifest_from_provider() {
+		let hash = H160::repeat_byte(0x22);
+		let manifest = test_manifest("TestContract");
+		let provider = MockProvider::new();
+		provider.push_result_with_params(
+			"getcontractstate",
+			json!([hash.to_hex()]),
+			serde_json::to_value(test_contract_state(hash, manifest.clone())).unwrap(),
+		);
+		let contract = TestContract::with_provider(hash, RpcClient::new(provider));
+
+		let fetched = contract.try_get_manifest().await.unwrap();
+		assert_eq!(fetched.name.as_deref(), Some("TestContract"));
+	}
+
+	#[tokio::test]
+	async fn test_try_name_returns_manifest_name() {
+		let hash = H160::repeat_byte(0x33);
+		let manifest = test_manifest("FriendlyName");
+		let provider = MockProvider::new();
+		provider.push_result_with_params(
+			"getcontractstate",
+			json!([hash.to_hex()]),
+			serde_json::to_value(test_contract_state(hash, manifest)).unwrap(),
+		);
+		let contract = TestContract::with_provider(hash, RpcClient::new(provider));
+
+		assert_eq!(contract.try_name().await.unwrap(), "FriendlyName");
+	}
+
+	#[tokio::test]
+	async fn test_get_manifest_returns_default_without_provider() {
+		let contract = TestContract::without_provider(H160::repeat_byte(0x44));
+		assert_eq!(contract.get_manifest().await.name, None);
 	}
 }

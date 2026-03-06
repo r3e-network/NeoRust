@@ -21,7 +21,7 @@ mod tests {
 		},
 		config::{NeoConstants, TestConstants},
 		crypto::{KeyPair, Secp256r1PrivateKey},
-		neo_builder::GAS_TOKEN_HASH,
+		neo_builder::{OracleResponse, OracleResponseCode, GAS_TOKEN_HASH},
 		neo_clients::{APITrait, MockClient, MockProvider, RpcClient},
 		neo_crypto::utils::ToHexString,
 		neo_protocol::{
@@ -2455,6 +2455,50 @@ mod tests {
 		assert!(matches!(tx, Err(TransactionError::TransactionConfiguration(_))));
 		if let Err(TransactionError::TransactionConfiguration(msg)) = tx {
 			assert!(msg.contains("The vm exited due to the following exception: "));
+		}
+	}
+
+	#[tokio::test]
+	async fn test_get_unsigned_tx_rejects_invalid_oracle_response_attribute() {
+		let mock_provider = Arc::new(Mutex::new(MockClient::new().await));
+
+		let client = {
+			let mut mock_provider = mock_provider.lock().await;
+			mock_provider
+				.mock_response_with_file_ignore_param(
+					"invokescript",
+					"invokescript_symbol_neo.json",
+				)
+				.await
+				.mock_response_with_file_ignore_param(
+					"calculatenetworkfee",
+					"calculatenetworkfee.json",
+				)
+				.await
+				.mock_response_ignore_param("getversion", json!({}))
+				.await
+				.mount_mocks()
+				.await;
+			Arc::new(mock_provider.into_client())
+		};
+
+		let mut tb = TransactionBuilder::with_client(&client);
+		tb.set_script(Some(vec![1, 2, 3]))
+			.set_signers(vec![AccountSigner::none(ACCOUNT1.deref()).unwrap().into()])
+			.unwrap()
+			.valid_until_block(1000)
+			.unwrap();
+		tb.add_attributes(vec![TransactionAttribute::OracleResponse(OracleResponse {
+			id: 7,
+			response_code: OracleResponseCode::Success,
+			result: "not-valid-base64".to_string(),
+		})])
+		.unwrap();
+
+		let result = tb.get_unsigned_tx().await;
+		assert!(matches!(result, Err(TransactionError::TransactionConfiguration(_))));
+		if let Err(TransactionError::TransactionConfiguration(message)) = result {
+			assert!(message.contains("OracleResponse.result must be valid base64"));
 		}
 	}
 

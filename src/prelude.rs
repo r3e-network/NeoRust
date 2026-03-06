@@ -35,7 +35,7 @@ pub use crate::VERSION;
 // Basic blockchain types
 pub use crate::neo_types::{
 	Address, AddressOrScriptHash, Base64Encode, Bytes, NameOrAddress, ScriptHash,
-	ScriptHashExtension, StringExt, ToBase58,
+	ScriptHashExtension, StringExt, ToBase58, TryBase64Encode, TryStringExt,
 };
 
 // Contract-related types

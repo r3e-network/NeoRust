@@ -23,7 +23,7 @@ use crate::{
 			deserialize_hash_map_h160_account, deserialize_script_hash,
 			serialize_hash_map_h160_account, serialize_script_hash,
 		},
-		AddressExtension, ScryptParamsDef,
+		ScryptParamsDef,
 	},
 	neo_wallets::{NEP6Account, Nep6Wallet, WalletError, WalletTrait},
 };
@@ -194,32 +194,34 @@ impl Wallet {
 
 	/// Creates a wallet from a NEP6Wallet format.
 	pub fn from_nep6(nep6: Nep6Wallet) -> Result<Self, WalletError> {
-		let accounts =
-			nep6.accounts().iter().filter_map(|v| v.to_account().ok()).collect::<Vec<_>>();
+		let accounts = nep6
+			.accounts()
+			.iter()
+			.map(NEP6Account::to_account)
+			.collect::<Result<Vec<_>, _>>()?;
 
-		// Find default account or use first account
-		let default_account_address =
-			if let Some(account) = nep6.accounts().iter().find(|a| a.is_default) {
-				account.address().clone()
-			} else if let Some(account) = nep6.accounts().first() {
-				tracing::warn!("No default account found, using first account");
-				account.address().clone()
+		if accounts.is_empty() {
+			tracing::warn!("No accounts found in NEP6 wallet");
+			return Err(WalletError::NoAccounts);
+		}
+
+		let default_account =
+			if let Some(account) = accounts.iter().find(|account| account.is_default) {
+				account.get_script_hash()
 			} else {
-				tracing::warn!("No accounts found in NEP6 wallet");
-				String::new()
+				tracing::warn!("No default account found, using first account");
+				accounts[0].get_script_hash()
 			};
 
 		Ok(Self {
 			name: nep6.name().clone(),
 			version: nep6.version().clone(),
 			scrypt_params: nep6.scrypt().clone(),
-			accounts: accounts.into_iter().map(|a| (a.get_script_hash(), a)).collect(),
-			default_account: default_account_address.address_to_script_hash().map_err(|e| {
-				WalletError::AccountState(format!(
-					"Failed to convert address to script hash: {}",
-					e
-				))
-			})?,
+			accounts: accounts
+				.into_iter()
+				.map(|account| (account.get_script_hash(), account))
+				.collect(),
+			default_account,
 			extra: nep6.extra.clone(),
 		})
 	}
@@ -1097,7 +1099,7 @@ mod tests {
 	use crate::{
 		neo_config::TestConstants,
 		neo_protocol::{Account, AccountTrait},
-		neo_wallets::{Wallet, WalletTrait},
+		neo_wallets::{NEP6Account, Nep6Wallet, Wallet, WalletError, WalletTrait},
 		ScryptParamsDef,
 	};
 
@@ -1276,6 +1278,38 @@ mod tests {
 		// Verify new password works
 		assert!(!wallet.verify_password(old_password));
 		assert!(wallet.verify_password(new_password));
+	}
+
+	#[test]
+	fn test_from_nep6_rejects_empty_wallet() {
+		let nep6_wallet = Nep6Wallet::new(
+			"Empty".to_string(),
+			Wallet::CURRENT_VERSION.to_string(),
+			ScryptParamsDef::default(),
+			vec![],
+			None,
+		);
+
+		let err = Wallet::from_nep6(nep6_wallet).unwrap_err();
+		assert!(matches!(err, WalletError::NoAccounts));
+	}
+
+	#[test]
+	fn test_from_nep6_surfaces_invalid_account_errors() {
+		let nep6_wallet = Nep6Wallet::new(
+			"Invalid".to_string(),
+			Wallet::CURRENT_VERSION.to_string(),
+			ScryptParamsDef::default(),
+			vec![NEP6Account::new(String::new(), None, true, false, None, None, None)],
+			None,
+		);
+
+		let err = Wallet::from_nep6(nep6_wallet).unwrap_err();
+		assert!(matches!(
+			err,
+			WalletError::AccountState(message)
+				if message.contains("missing both address and verification script")
+		));
 	}
 
 	#[test]

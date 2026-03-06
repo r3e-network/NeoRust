@@ -1,3 +1,4 @@
+use super::signer::validate_signer_serialization;
 use crate::{
 	builder::{BuilderError, SignerTrait, SignerType, TransactionError, WitnessRule, WitnessScope},
 	codec::{Decoder, Encoder, NeoSerializable, VarSizeTrait},
@@ -146,6 +147,18 @@ impl ContractSigner {
 	pub fn global(contract_hash: H160, verify_params: &[ContractParameter]) -> Self {
 		Self::new(contract_hash, WitnessScope::Global, verify_params.to_vec())
 	}
+
+	pub fn try_encode(&self, writer: &mut Encoder) -> Result<(), TransactionError> {
+		validate_signer_serialization(self)?;
+		self.encode(writer);
+		Ok(())
+	}
+
+	pub fn try_to_array(&self) -> Result<Vec<u8>, TransactionError> {
+		let mut writer = Encoder::new();
+		self.try_encode(&mut writer)?;
+		Ok(writer.to_bytes())
+	}
 }
 
 impl NeoSerializable for ContractSigner {
@@ -253,8 +266,14 @@ impl NeoSerializable for ContractSigner {
 	}
 
 	fn to_array(&self) -> Vec<u8> {
-		let mut writer = Encoder::new();
-		self.encode(&mut writer);
-		writer.to_bytes()
+		self.try_to_array().unwrap_or_else(|err| {
+			tracing::warn!(
+				error = %err,
+				"Failed to serialize contract signer via safe path; falling back to legacy encoder"
+			);
+			let mut writer = Encoder::new();
+			self.encode(&mut writer);
+			writer.to_bytes()
+		})
 	}
 }

@@ -1,4 +1,15 @@
 use sha2::{Digest, Sha256};
+use thiserror::Error;
+
+#[derive(Debug, Error, Clone, PartialEq, Eq)]
+pub enum Base58CheckError {
+	#[error("invalid base58 string: {0}")]
+	InvalidBase58(String),
+	#[error("base58check payload is missing checksum bytes")]
+	MissingChecksum,
+	#[error("base58check checksum mismatch")]
+	InvalidChecksum,
+}
 
 /// Encodes a byte slice into a base58check string.
 ///
@@ -14,10 +25,6 @@ use sha2::{Digest, Sha256};
 /// let encoded = base58check_encode(&bytes);
 /// ```
 pub fn base58check_encode(bytes: &[u8]) -> String {
-	if bytes.is_empty() {
-		return "".to_string();
-	}
-
 	let checksum = &calculate_checksum(bytes)[..4];
 	let bytes_with_checksum = [bytes, checksum].concat();
 	bs58::encode(bytes_with_checksum).into_string()
@@ -36,24 +43,27 @@ pub fn base58check_encode(bytes: &[u8]) -> String {
 /// let input = "Abc123";
 /// let decoded = base58check_decode(input);
 /// ```
-pub fn base58check_decode(input: &str) -> Option<Vec<u8>> {
-	let bytes_with_checksum = match bs58::decode(input).into_vec() {
-		Ok(bytes) => bytes,
-		Err(_) => return None,
-	};
+pub fn try_base58check_decode(input: &str) -> Result<Vec<u8>, Base58CheckError> {
+	let bytes_with_checksum = bs58::decode(input)
+		.into_vec()
+		.map_err(|err| Base58CheckError::InvalidBase58(err.to_string()))?;
 
 	if bytes_with_checksum.len() < 4 {
-		return None;
+		return Err(Base58CheckError::MissingChecksum);
 	}
 
 	let (bytes, checksum) = bytes_with_checksum.split_at(bytes_with_checksum.len() - 4);
 	let expected_checksum = calculate_checksum(bytes);
 
 	if checksum != &expected_checksum[..4] {
-		return None;
+		return Err(Base58CheckError::InvalidChecksum);
 	}
 
-	Some(bytes.to_vec())
+	Ok(bytes.to_vec())
+}
+
+pub fn base58check_decode(input: &str) -> Option<Vec<u8>> {
+	try_base58check_decode(input).ok()
 }
 
 /// Calculates the checksum of a byte slice.
@@ -150,6 +160,33 @@ mod base58_tests {
 		];
 		let actual_output = base58check_decode(input_string);
 		assert_eq!(actual_output, Some(expected_output_data));
+	}
+
+	#[test]
+	fn test_try_base58check_decode_reports_invalid_characters() {
+		assert!(matches!(
+			try_base58check_decode("0oO1lL"),
+			Err(Base58CheckError::InvalidBase58(_))
+		));
+	}
+
+	#[test]
+	fn test_try_base58check_decode_reports_invalid_checksum() {
+		assert!(matches!(
+			try_base58check_decode("tz1Y3qqTg9HdrzZGbEjiCPmwuZ7fWVxpPtrW"),
+			Err(Base58CheckError::InvalidChecksum)
+		));
+	}
+
+	#[test]
+	fn test_try_base58check_decode_reports_missing_checksum_bytes() {
+		assert!(matches!(try_base58check_decode("1"), Err(Base58CheckError::MissingChecksum)));
+	}
+
+	#[test]
+	fn test_base58check_empty_roundtrip() {
+		let encoded = base58check_encode(&[]);
+		assert_eq!(base58check_decode(&encoded), Some(Vec::new()));
 	}
 
 	#[test]

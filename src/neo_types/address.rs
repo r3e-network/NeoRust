@@ -101,7 +101,7 @@ impl AddressExtension for String {
 	}
 
 	fn random() -> Self {
-		let mut rng = rand::thread_rng();
+		let mut rng = rand::rng();
 		let mut bytes = [0u8; 20];
 		rng.fill(&mut bytes);
 		let script_hash = bytes.sha256_ripemd160();

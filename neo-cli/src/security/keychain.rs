@@ -215,7 +215,7 @@ impl KeychainManager {
 
 		// Generate or derive encryption key
 		let mut key_bytes = [0u8; 32];
-		rand::thread_rng().fill_bytes(&mut key_bytes);
+		rand::rng().fill_bytes(&mut key_bytes);
 
 		let cipher = Aes256Gcm::new(&key_bytes.into());
 		let nonce = Nonce::from_slice(b"unique nonce");

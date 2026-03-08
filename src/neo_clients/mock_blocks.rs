@@ -11,14 +11,14 @@ impl MockBlocks {
 		SystemTime::now().duration_since(UNIX_EPOCH).unwrap_or_default().as_millis() as u64
 	}
 	pub(super) fn random_uint256() -> H256 {
-		let mut rng = rand::thread_rng();
+		let mut rng = rand::rng();
 		let mut data = [0u8; 32];
 		rng.fill(&mut data);
 		H256::from(data)
 	}
 
 	pub(super) fn random_uint160() -> H160 {
-		let mut rng = rand::thread_rng();
+		let mut rng = rand::rng();
 		let mut data = [0u8; 20];
 		rng.fill(&mut data);
 		H160::from(data)

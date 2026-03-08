@@ -213,7 +213,7 @@ impl SgxCrypto {
 		#[cfg(not(feature = "sgx"))]
 		{
 			use rand::RngCore;
-			rand::thread_rng().fill_bytes(&mut buffer);
+			rand::rng().fill_bytes(&mut buffer);
 		}
 
 		Ok(buffer)

@@ -93,7 +93,7 @@ impl Bip39Account {
 	/// let mnemonic = account.mnemonic().to_string();
 	/// ```
 	pub fn create(password: &str) -> Result<Self, Box<dyn std::error::Error>> {
-		let mut rng = bip39::rand::thread_rng();
+		let mut rng = bip39::rand::rng();
 		let mnemonic =
 			Mnemonic::generate_in_with(&mut rng, Language::English, 24).map_err(|e| {
 				Box::<dyn std::error::Error>::from(format!("Failed to generate mnemonic: {e}"))

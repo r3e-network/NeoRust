@@ -669,7 +669,7 @@ impl WebSocketClient {
 	/// Generate a unique subscription ID
 	fn generate_subscription_id(&self) -> String {
 		use rand::Rng;
-		let mut rng = rand::thread_rng();
+		let mut rng = rand::rng();
 		format!("sub_{:016x}", rng.gen::<u64>())
 	}
 

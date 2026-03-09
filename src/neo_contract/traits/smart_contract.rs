@@ -196,7 +196,7 @@ pub trait SmartContractTrait<'a>: Send + Sync {
 		&self,
 		function: &str,
 		params: Vec<ContractParameter>,
-		mapper: Arc<dyn Fn(StackItem) -> U + Send + Sync>,
+		mapper: Arc<dyn Fn(StackItem) -> Result<U, ContractError> + Send + Sync>,
 	) -> Result<NeoIterator<U, Self::P>, ContractError>
 	where
 		U: Send + Sync, // Adding this bound if necessary
@@ -232,7 +232,7 @@ pub trait SmartContractTrait<'a>: Send + Sync {
 		function: &str,
 		params: Vec<ContractParameter>,
 		_max_items: usize,
-		mapper: impl Fn(StackItem) -> U + Send,
+		mapper: impl Fn(StackItem) -> Result<U, ContractError> + Send,
 	) -> Result<Vec<U>, ContractError> {
 		let script = ScriptBuilder::build_contract_call_and_unwrap_iterator(
 			&self.script_hash(),
@@ -263,7 +263,7 @@ pub trait SmartContractTrait<'a>: Send + Sync {
 			.as_array()
 			.ok_or_else(|| ContractError::UnexpectedReturnType("Array".to_string()))?;
 
-		let items = array.into_iter().map(mapper).collect();
+		let items = array.into_iter().map(mapper).collect::<Result<Vec<_>, _>>()?;
 
 		Ok(items)
 	}

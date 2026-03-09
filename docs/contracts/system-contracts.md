@@ -91,27 +91,27 @@ async fn gas_token_example() -> Result<(), Box<dyn std::error::Error>> {
     let client = RpcClient::new(provider);
     
     // Create GasToken instance
-    let gas_token = GasToken::new(&client);
+    let mut gas_token = GasToken::new(Some(&client));
     
     // Get basic token information
-    let symbol = gas_token.symbol().await?;
-    let decimals = gas_token.decimals().await?;
-    let total_supply = gas_token.total_supply().await?;
+    let symbol = gas_token.get_symbol().await?;
+    let decimals = gas_token.get_decimals().await?;
+    let total_supply = gas_token.get_total_supply().await?;
     
     println!("Token: {} (Decimals: {})", symbol, decimals);
     println!("Total Supply: {}", total_supply);
     
     // Check GAS balance for an account
     let account_hash = ScriptHash::from_address("NUVPACTpQvd2HHmBgFjJJRWwVXJiR3uAEh")?;
-    let balance = gas_token.balance_of(&account_hash).await?;
+    let balance = gas_token.get_balance_of(&account_hash).await?;
     println!("GAS Balance: {}", balance);
     
     // Transfer GAS (requires account with GAS)
     // let account = Account::from_wif("your-wif-here")?;
     // let recipient = ScriptHash::from_address("NZNos2WqTbu5oCgyfss9kUJgBXJqhuYAaj")?;
     // let amount = 1_0000_0000; // 1 GAS (with 8 decimals)
-    // let tx_hash = gas_token.transfer(&account, &recipient, amount, None).await?;
-    // println!("Transfer transaction: {}", tx_hash);
+    // let tx_builder = gas_token.transfer_from_account(&account, &recipient, amount, None).await?;
+    // println!("Transfer transaction builder prepared");
     
     Ok(())
 }
@@ -133,7 +133,7 @@ async fn policy_contract_example() -> Result<(), Box<dyn std::error::Error>> {
     let client = RpcClient::new(provider);
     
     // Create PolicyContract instance
-    let policy = PolicyContract::new(&client);
+    let policy = PolicyContract::new(Some(&client));
     
     // Get blockchain fees
     let exec_fee_factor = policy.get_exec_fee_factor().await?;
@@ -178,7 +178,7 @@ async fn contract_management_example() -> Result<(), Box<dyn std::error::Error>>
     let client = RpcClient::new(provider);
     
     // Create ContractManagement instance
-    let contract_mgmt = ContractManagement::new(&client);
+    let contract_mgmt = ContractManagement::new(Some(&client));
     
     // Get contract details
     let contract_hash = ScriptHash::from_address("NUVPACTpQvd2HHmBgFjJJRWwVXJiR3uAEh")?;
@@ -229,11 +229,11 @@ async fn role_management_example() -> Result<(), Box<dyn std::error::Error>> {
     let client = RpcClient::new(provider);
     
     // Create RoleManagement instance
-    let role_mgmt = RoleManagement::new(&client);
+    let role_mgmt = RoleManagement::new(Some(&client));
     
     // Get nodes by role
-    let oracle_nodes = role_mgmt.get_designated_by_role(RoleType::Oracle, 0).await?;
-    let state_validators = role_mgmt.get_designated_by_role(RoleType::StateValidator, 0).await?;
+    let oracle_nodes = role_mgmt.get_designated_by_role(Role::Oracle, 0).await?;
+    let state_validators = role_mgmt.get_designated_by_role(Role::StateValidator, 0).await?;
     
     println!("Oracle Nodes: {}", oracle_nodes.len());
     for node in oracle_nodes {

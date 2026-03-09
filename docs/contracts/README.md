@@ -83,7 +83,7 @@ The `ContractManagement` interface allows you to deploy and manage smart contrac
 
 ```rust,no_run
 // Create contract management instance
-let contract_mgmt = ContractManagement::new(client.clone());
+let contract_mgmt = ContractManagement::new(Some(&client));
 
 // Deploy a new contract
 let result = contract_mgmt.deploy(

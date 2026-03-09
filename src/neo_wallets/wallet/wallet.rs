@@ -48,8 +48,8 @@ pub struct Wallet {
 impl Default for Wallet {
 	fn default() -> Self {
 		Self {
-			name: "NeoWallet".to_string(),
-			version: "1.0".to_string(),
+			name: Wallet::DEFAULT_WALLET_NAME.to_string(),
+			version: Wallet::CURRENT_VERSION.to_string(),
 			scrypt_params: ScryptParamsDef::default(),
 			accounts: HashMap::new(),
 			default_account: H160::default(),
@@ -95,19 +95,32 @@ impl WalletTrait for Wallet {
 
 	fn set_default_account(&mut self, default_account: H160) {
 		self.default_account = default_account;
-		if let Some(account) = self.accounts.get_mut(&self.default_account) {
-			account.is_default = true;
-		}
+		self.sync_default_account_flags();
 	}
 
 	fn add_account(&mut self, account: Self::Account) {
 		// let weak_self = Arc::new(&self);
 		// account.set_wallet(Some(Arc::downgrade(weak_self)));
-		self.accounts.insert(account.get_script_hash(), account);
+		let script_hash = account.get_script_hash();
+		let was_empty = self.accounts.is_empty();
+
+		self.accounts.insert(script_hash, account);
+		if was_empty {
+			self.default_account = script_hash;
+		}
+		self.sync_default_account_flags();
 	}
 
 	fn remove_account(&mut self, hash: &H160) -> Option<Self::Account> {
-		self.accounts.remove(hash)
+		let removed = self.accounts.remove(hash);
+		if removed.is_some() {
+			if self.default_account == *hash {
+				self.promote_default_account();
+			} else {
+				self.sync_default_account_flags();
+			}
+		}
+		removed
 	}
 }
 
@@ -116,6 +129,22 @@ impl Wallet {
 	pub const DEFAULT_WALLET_NAME: &'static str = "NeoWallet";
 	/// The current wallet version.
 	pub const CURRENT_VERSION: &'static str = "1.0";
+
+	fn sync_default_account_flags(&mut self) {
+		for (hash, account) in self.accounts.iter_mut() {
+			account.is_default = *hash == self.default_account;
+		}
+	}
+
+	fn promote_default_account(&mut self) {
+		self.default_account = self
+			.accounts
+			.keys()
+			.copied()
+			.min_by_key(|hash| hash.to_fixed_bytes())
+			.unwrap_or_default();
+		self.sync_default_account_flags();
+	}
 
 	fn effective_scrypt_params(&self) -> Params {
 		Params::new(self.scrypt_params.log_n, self.scrypt_params.r, self.scrypt_params.p, 32)
@@ -144,29 +173,33 @@ impl Wallet {
 	}
 
 	/// Creates a new wallet instance with a default account.
+	///
+	/// If the underlying account generation fails, this logs the error and returns
+	/// an empty default wallet. Use [`Wallet::try_new`] when you need the failure
+	/// surfaced to the caller.
 	pub fn new() -> Self {
-		let account = match Account::create() {
-			Ok(mut acc) => {
-				acc.is_default = true;
-				acc
-			},
-			Err(e) => {
-				tracing::error!(error = %e, "Failed to create account; returning default wallet");
-				return Self::default();
-			},
-		};
+		Self::try_new().unwrap_or_else(|e| {
+			tracing::error!(error = %e, "Failed to create account; returning default wallet");
+			Self::default()
+		})
+	}
+
+	/// Creates a new wallet instance with a generated default account.
+	pub fn try_new() -> Result<Self, WalletError> {
+		let mut account = Account::create().map_err(WalletError::ProviderError)?;
+		account.is_default = true;
 
 		let default_account_hash = account.address_or_scripthash.script_hash();
 		let mut accounts = HashMap::new();
-		accounts.insert(default_account_hash, account.clone());
-		Self {
-			name: "NeoWallet".to_string(),
-			version: "1.0".to_string(),
+		accounts.insert(default_account_hash, account);
+		Ok(Self {
+			name: Self::DEFAULT_WALLET_NAME.to_string(),
+			version: Self::CURRENT_VERSION.to_string(),
 			scrypt_params: ScryptParamsDef::default(),
 			accounts,
 			default_account: default_account_hash,
 			extra: None,
-		}
+		})
 	}
 
 	/// Converts the wallet to a NEP6Wallet format.
@@ -174,14 +207,8 @@ impl Wallet {
 		let accounts = self
 			.accounts
 			.values()
-			.filter_map(|account| match NEP6Account::from_account(account) {
-				Ok(nep6_account) => Some(nep6_account),
-				Err(e) => {
-					tracing::warn!(error = %e, "Failed to convert account to NEP6Account");
-					None
-				},
-			})
-			.collect::<Vec<NEP6Account>>();
+			.map(NEP6Account::from_account)
+			.collect::<Result<Vec<NEP6Account>, _>>()?;
 
 		Ok(Nep6Wallet {
 			name: self.name.clone(),
@@ -213,7 +240,7 @@ impl Wallet {
 				accounts[0].get_script_hash()
 			};
 
-		Ok(Self {
+		let mut wallet = Self {
 			name: nep6.name().clone(),
 			version: nep6.version().clone(),
 			scrypt_params: nep6.scrypt().clone(),
@@ -223,7 +250,9 @@ impl Wallet {
 				.collect(),
 			default_account,
 			extra: nep6.extra.clone(),
-		})
+		};
+		wallet.sync_default_account_flags();
+		Ok(wallet)
 	}
 
 	// pub async fn get_nep17_balances(&self) -> Result<HashMap<H160, u32>, WalletError> {
@@ -239,9 +268,8 @@ impl Wallet {
 	// }
 
 	pub fn from_account(account: &Account) -> Result<Wallet, WalletError> {
-		let mut wallet: Wallet = Wallet::new();
+		let mut wallet: Wallet = Wallet::default();
 		wallet.add_account(account.clone());
-		wallet.set_default_account(account.get_script_hash());
 		Ok(wallet)
 	}
 
@@ -316,7 +344,7 @@ impl Wallet {
 	}
 
 	pub fn remove_account(&mut self, script_hash: &H160) -> bool {
-		self.accounts.remove(script_hash).is_some()
+		WalletTrait::remove_account(self, script_hash).is_some()
 	}
 
 	pub fn encrypt_accounts(&mut self, password: &str) {
@@ -909,7 +937,7 @@ impl Wallet {
 	///
 	/// A `Result` containing the new wallet or a `WalletError`
 	pub fn create_wallet(path: &Path, password: &str) -> Result<Self, WalletError> {
-		let mut wallet = Wallet::new();
+		let mut wallet = Wallet::default();
 
 		// Create a new account for the wallet
 		let account = Account::create().map_err(WalletError::ProviderError)?;
@@ -1102,6 +1130,8 @@ mod tests {
 		neo_wallets::{NEP6Account, Nep6Wallet, Wallet, WalletError, WalletTrait},
 		ScryptParamsDef,
 	};
+	use primitive_types::H160;
+	use tempfile::tempdir;
 
 	fn apply_fast_scrypt(wallet: &mut Wallet) {
 		wallet.set_scrypt_params(ScryptParamsDef { log_n: 10, r: 8, p: 1 });
@@ -1143,6 +1173,15 @@ mod tests {
 	}
 
 	#[test]
+	fn test_try_new_creates_single_default_account() {
+		let wallet = Wallet::try_new().expect("Should create wallet with default account");
+
+		assert_eq!(wallet.accounts.len(), 1);
+		let account = wallet.default_account().expect("Wallet should have a default account");
+		assert!(account.is_default);
+	}
+
+	#[test]
 	fn test_create_wallet_with_accounts() {
 		let account1 = Account::create().expect("Should be able to create account in test");
 		let account2 = Account::create().expect("Should be able to create account in test");
@@ -1160,6 +1199,47 @@ mod tests {
 			.accounts
 			.values()
 			.any(|a| a.get_script_hash() == account2.address_or_scripthash.script_hash()));
+	}
+
+	#[test]
+	fn test_from_account_keeps_only_supplied_account() {
+		let account = Account::create().expect("Should be able to create account in test");
+
+		let wallet =
+			Wallet::from_account(&account).expect("Should be able to create wallet from account");
+
+		assert_eq!(wallet.accounts.len(), 1);
+		assert_eq!(wallet.default_account(), Some(&account));
+		assert_eq!(wallet.get_account(&account.get_script_hash()), Some(&account));
+	}
+
+	#[test]
+	fn test_add_account_to_empty_wallet_sets_default_account() {
+		let account = Account::create().expect("Should be able to create account in test");
+		let mut wallet = Wallet::default();
+
+		wallet.add_account(account.clone());
+
+		assert_eq!(wallet.default_account(), Some(&account));
+		assert!(
+			wallet
+				.get_account(&account.get_script_hash())
+				.expect("Account should exist")
+				.is_default
+		);
+	}
+
+	#[test]
+	fn test_set_default_account_with_unknown_hash_leaves_no_default() {
+		let account1 = Account::create().expect("Should be able to create account in test");
+		let account2 = Account::create().expect("Should be able to create account in test");
+		let mut wallet = Wallet::from_accounts(vec![account1.clone(), account2.clone()])
+			.expect("Should be able to create wallet from accounts in test");
+
+		wallet.set_default_account(H160::repeat_byte(0xff));
+
+		assert_eq!(wallet.default_account(), None);
+		assert!(!wallet.accounts.values().any(|account| account.is_default));
 	}
 
 	#[test]
@@ -1281,6 +1361,33 @@ mod tests {
 	}
 
 	#[test]
+	fn test_to_nep6_rejects_unencrypted_accounts_instead_of_dropping_them() {
+		let wallet = Wallet::try_new().expect("Should create wallet with default account");
+
+		let result = wallet.to_nep6();
+		assert!(matches!(
+			result,
+			Err(WalletError::AccountState(message))
+				if message.contains("not encrypted")
+		));
+	}
+
+	#[test]
+	fn test_save_to_file_rejects_unencrypted_wallet() {
+		let temp_dir = tempdir().expect("Should create temp dir");
+		let path = temp_dir.path().join("wallet.json");
+		let wallet = Wallet::try_new().expect("Should create wallet with default account");
+
+		let result = wallet.save_to_file(path.clone());
+		assert!(matches!(
+			result,
+			Err(WalletError::AccountState(message))
+				if message.contains("not encrypted")
+		));
+		assert!(!path.exists());
+	}
+
+	#[test]
 	fn test_from_nep6_rejects_empty_wallet() {
 		let nep6_wallet = Nep6Wallet::new(
 			"Empty".to_string(),
@@ -1313,6 +1420,22 @@ mod tests {
 	}
 
 	#[test]
+	fn test_create_wallet_creates_single_encrypted_default_account() {
+		let temp_dir = tempdir().expect("Should create temp dir");
+		let path = temp_dir.path().join("wallet.json");
+
+		let wallet =
+			Wallet::create_wallet(&path, "password123").expect("Should create wallet on disk");
+
+		assert!(path.exists());
+		assert_eq!(wallet.accounts.len(), 1);
+		let account = wallet.default_account().expect("Wallet should have a default account");
+		assert!(account.is_default);
+		assert!(account.key_pair().is_none());
+		assert!(account.encrypted_private_key().is_some());
+	}
+
+	#[test]
 	fn test_verify_password() {
 		let mut wallet = Wallet::new();
 		apply_fast_scrypt(&mut wallet);
@@ -1330,5 +1453,46 @@ mod tests {
 
 		// And fail with an incorrect password
 		assert!(!wallet.verify_password("wrong_password"));
+	}
+
+	#[test]
+	fn test_remove_default_account_promotes_deterministic_remaining_account() {
+		let account1 = Account::create().expect("Should be able to create account in test");
+		let account2 = Account::create().expect("Should be able to create account in test");
+		let account3 = Account::create().expect("Should be able to create account in test");
+		let mut wallet =
+			Wallet::from_accounts(vec![account1.clone(), account2.clone(), account3.clone()])
+				.expect("Should be able to create wallet from accounts in test");
+		let expected_hash = [account2.get_script_hash(), account3.get_script_hash()]
+			.into_iter()
+			.min_by_key(|hash| hash.to_fixed_bytes())
+			.expect("remaining accounts should not be empty");
+
+		assert!(wallet.remove_account(&account1.get_script_hash()));
+
+		assert_eq!(
+			wallet.default_account().map(|account| account.get_script_hash()),
+			Some(expected_hash)
+		);
+		assert!(wallet.get_account(&expected_hash).expect("Account should exist").is_default);
+	}
+
+	#[test]
+	fn test_remove_default_account_promotes_remaining_account() {
+		let account1 = Account::create().expect("Should be able to create account in test");
+		let account2 = Account::create().expect("Should be able to create account in test");
+		let mut wallet = Wallet::from_accounts(vec![account1.clone(), account2.clone()])
+			.expect("Should be able to create wallet from accounts in test");
+
+		assert!(wallet.remove_account(&account1.get_script_hash()));
+
+		assert_eq!(wallet.accounts.len(), 1);
+		assert_eq!(wallet.default_account(), Some(&account2));
+		assert!(
+			wallet
+				.get_account(&account2.get_script_hash())
+				.expect("Account should exist")
+				.is_default
+		);
 	}
 }

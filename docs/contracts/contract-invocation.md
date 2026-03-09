@@ -12,7 +12,7 @@ For common contracts like NEP-17 tokens or system contracts, the SDK provides de
 
 ```rust,no_run
 use neo3::prelude::*;
-use neo3::neo_contract::{FungibleTokenContract, GasToken, NeoToken};
+use neo3::neo_contract::{FungibleTokenContract, FungibleTokenTrait, GasToken, TokenTrait};
 use std::str::FromStr;
 
 async fn token_interaction() -> Result<(), Box<dyn std::error::Error>> {
@@ -21,17 +21,17 @@ async fn token_interaction() -> Result<(), Box<dyn std::error::Error>> {
     let client = RpcClient::new(provider);
     
     // Using the GasToken interface (system contract)
-    let gas_token = GasToken::new(&client);
-    let symbol = gas_token.symbol().await?;
-    let decimals = gas_token.decimals().await?;
+    let mut gas_token = GasToken::new(Some(&client));
+    let symbol = gas_token.get_symbol().await?;
+    let decimals = gas_token.get_decimals().await?;
     println!("GAS Token: {} with {} decimals", symbol, decimals);
     
     // Using the generic NEP-17 interface for any fungible token
     let flamingo_hash = ScriptHash::from_str("fb7f9d5188a8accb42fa8cacb4f5450cd5e0ac13")?;
-    let flamingo = FungibleTokenContract::new(flamingo_hash, client.clone());
+    let mut flamingo = FungibleTokenContract::new(&flamingo_hash, Some(&client));
     
-    let flm_symbol = flamingo.symbol().await?;
-    let flm_decimals = flamingo.decimals().await?;
+    let flm_symbol = flamingo.get_symbol().await?;
+    let flm_decimals = flamingo.get_decimals().await?;
     println!("Flamingo Token: {} with {} decimals", flm_symbol, flm_decimals);
     
     Ok(())
@@ -123,22 +123,24 @@ Read-only invocations don't modify blockchain state and don't require transactio
 
 ```rust,no_run
 use neo3::prelude::*;
-use neo3::neo_contract::NeoToken;
+use neo3::neo_contract::{FungibleTokenTrait, GasToken, TokenTrait};
+use std::str::FromStr;
 
 async fn read_only_example() -> Result<(), Box<dyn std::error::Error>> {
     // Connect to Neo N3
     let provider = HttpProvider::new("https://mainnet1.neo.org:443")?;
     let client = RpcClient::new(provider);
     
-    // Create NeoToken instance
-    let neo_token = NeoToken::new(&client);
+    // Create GasToken instance
+    let mut gas_token = GasToken::new(Some(&client));
+    let account_hash = ScriptHash::from_str("5c9c3a340f4c28262e7042b908b5f7e7a4bcd7e7")?;
     
     // Call read-only methods
-    let total_supply = neo_token.total_supply().await?;
-    let committee = neo_token.get_committee().await?;
+    let total_supply = gas_token.get_total_supply().await?;
+    let balance = gas_token.get_balance_of(&account_hash).await?;
     
-    println!("NEO Total Supply: {}", total_supply);
-    println!("Committee Members: {}", committee.len());
+    println!("GAS Total Supply: {}", total_supply);
+    println!("Account Balance: {}", balance);
     
     Ok(())
 }
@@ -150,7 +152,7 @@ State-changing invocations modify blockchain state, require transaction fees, an
 
 ```rust,no_run
 use neo3::prelude::*;
-use neo3::neo_contract::GasToken;
+use neo3::neo_contract::{FungibleTokenTrait, GasToken};
 use std::str::FromStr;
 
 async fn state_changing_example() -> Result<(), Box<dyn std::error::Error>> {
@@ -162,30 +164,18 @@ async fn state_changing_example() -> Result<(), Box<dyn std::error::Error>> {
     let account = Account::from_wif("your-private-key-wif")?;
     
     // Create GasToken instance
-    let gas_token = GasToken::new(&client);
+    let gas_token = GasToken::new(Some(&client));
     
     // Transfer GAS (state-changing operation)
     let recipient = ScriptHash::from_str("5c9c3a340f4c28262e7042b908b5f7e7a4bcd7e7")?;
     let amount = 1_0000_0000; // 1 GAS (with 8 decimals)
     
-    let tx_hash = gas_token.transfer(
-        &account,
-        &recipient,
-        amount,
-        None, // No data
-    ).await?;
+    let tx_builder = gas_token
+        .transfer_from_account(&account, &recipient, amount, None)
+        .await?;
     
-    println!("Transfer transaction sent: {}", tx_hash);
-    
-    // Wait for transaction confirmation
-    println!("Waiting for confirmation...");
-    let tx_info = client.get_transaction(&tx_hash).await?;
-    
-    // Display transaction details
-    println!("Transaction confirmed:");
-    println!("Block Index: {}", tx_info.block_index);
-    println!("System Fee: {}", tx_info.system_fee);
-    println!("Network Fee: {}", tx_info.network_fee);
+    println!("Transfer transaction builder prepared successfully");
+    let _ = tx_builder;
     
     Ok(())
 }

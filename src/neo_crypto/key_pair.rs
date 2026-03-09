@@ -11,7 +11,7 @@
 //! This type implements `ZeroizeOnDrop` to ensure that the private key is securely
 //! erased from memory when the key pair is dropped.
 
-use rand::rngs::OsRng;
+use rand_core::OsRng;
 
 use crate::{
 	builder::VerificationScript,

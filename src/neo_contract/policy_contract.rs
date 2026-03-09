@@ -225,7 +225,10 @@ impl<'a, P: JsonRpcProvider + 'static> PolicyContract<'a, P> {
 		self.call_function_returning_iterator(
 			"getBlockedAccounts",
 			vec![],
-			Arc::new(|item: StackItem| item.as_hash160().unwrap_or_default()),
+			Arc::new(|item: StackItem| {
+				item.as_hash160()
+					.ok_or_else(|| ContractError::UnexpectedReturnType("Hash160".to_string()))
+			}),
 		)
 		.await
 	}
@@ -343,8 +346,9 @@ impl<'a, P: JsonRpcProvider + 'static> PolicyContract<'a, P> {
 			"getWhitelistFeeContracts",
 			vec![],
 			Arc::new(|item: StackItem| {
-				WhitelistedContract::from_stack_item(&item)
-					.unwrap_or_else(|_| WhitelistedContract::new(H160::zero(), String::new(), 0, 0))
+				WhitelistedContract::from_stack_item(&item).map_err(|err| {
+					ContractError::UnexpectedReturnType(format!("WhitelistedContract: {err}"))
+				})
 			}),
 		)
 		.await
@@ -504,7 +508,29 @@ impl<'a, P: JsonRpcProvider> SmartContractTrait<'a> for PolicyContract<'a, P> {
 #[cfg(test)]
 mod tests {
 	use super::*;
-	use crate::neo_clients::MockProvider;
+	use crate::{
+		neo_clients::{MockProvider, RpcClient},
+		neo_types::{InvocationResult, NeoVMStateType, StackItem},
+	};
+	use serde_json::json;
+
+	fn iterator_invocation_result(session_id: &str, iterator_id: &str) -> InvocationResult {
+		InvocationResult::new(
+			String::new(),
+			NeoVMStateType::Halt,
+			"0".to_string(),
+			None,
+			None,
+			None,
+			vec![StackItem::InteropInterface {
+				id: iterator_id.to_string(),
+				interface: "IIterator".to_string(),
+			}],
+			None,
+			None,
+			Some(session_id.to_string()),
+		)
+	}
 
 	#[test]
 	fn test_policy_contract_constants() {
@@ -519,5 +545,59 @@ mod tests {
 	#[test]
 	fn test_policy_contract_name() {
 		assert_eq!(PolicyContract::<MockProvider>::NAME, "PolicyContract");
+	}
+
+	#[tokio::test]
+	async fn test_get_blocked_accounts_iterator_rejects_invalid_items() {
+		let provider = MockProvider::new();
+		let client = RpcClient::new(provider.clone());
+		let contract = PolicyContract::new(Some(&client));
+		let hash = contract.script_hash();
+
+		provider.push_result_with_params(
+			"invokefunction",
+			json!([hash.to_hex(), "getBlockedAccounts", [], []]),
+			serde_json::to_value(iterator_invocation_result("session-1", "iter-1")).unwrap(),
+		);
+		provider.push_result_with_params(
+			"traverseiterator",
+			json!(["session-1", "iter-1", 1]),
+			serde_json::to_value(vec![StackItem::Integer { value: 7 }]).unwrap(),
+		);
+
+		let iterator = contract.get_blocked_accounts().await.unwrap();
+		let result = iterator.traverse(1).await;
+		assert!(matches!(
+			result,
+			Err(ContractError::UnexpectedReturnType(message))
+				if message.contains("Hash160")
+		));
+	}
+
+	#[tokio::test]
+	async fn test_get_whitelist_fee_contracts_iterator_rejects_invalid_items() {
+		let provider = MockProvider::new();
+		let client = RpcClient::new(provider.clone());
+		let contract = PolicyContract::new(Some(&client));
+		let hash = contract.script_hash();
+
+		provider.push_result_with_params(
+			"invokefunction",
+			json!([hash.to_hex(), "getWhitelistFeeContracts", [], []]),
+			serde_json::to_value(iterator_invocation_result("session-2", "iter-2")).unwrap(),
+		);
+		provider.push_result_with_params(
+			"traverseiterator",
+			json!(["session-2", "iter-2", 1]),
+			serde_json::to_value(vec![StackItem::Integer { value: 11 }]).unwrap(),
+		);
+
+		let iterator = contract.get_whitelist_fee_contracts().await.unwrap();
+		let result = iterator.traverse(1).await;
+		assert!(matches!(
+			result,
+			Err(ContractError::UnexpectedReturnType(message))
+				if message.contains("WhitelistedContract")
+		));
 	}
 }

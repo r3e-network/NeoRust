@@ -106,7 +106,7 @@ impl<'a, P: JsonRpcProvider + 'static> NeoNameService<'a, P> {
 		self.call_function_returning_iterator(
 			Self::ROOTS,
 			args,
-			Arc::new(|item: StackItem| item.to_string()),
+			Arc::new(|item: StackItem| Ok(item.to_string())),
 		)
 		.await
 	}

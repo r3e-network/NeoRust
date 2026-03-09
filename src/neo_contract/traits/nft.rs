@@ -32,7 +32,10 @@ pub trait NonFungibleTokenTrait<'a, P: JsonRpcProvider>: TokenTrait<'a, P> + Sen
 	// NFT methods
 
 	async fn tokens_of(&mut self, owner: H160) -> Result<NeoIterator<Bytes, P>, ContractError> {
-		let mapper_fn = Arc::new(|item: StackItem| item.as_bytes().unwrap_or_default());
+		let mapper_fn = Arc::new(|item: StackItem| {
+			item.as_bytes()
+				.ok_or_else(|| ContractError::UnexpectedReturnType("ByteString".to_string()))
+		});
 		self.call_function_returning_iterator(
 			<NftContract<P> as NonFungibleTokenTrait<P>>::TOKENS_OF,
 			vec![owner.into()],
@@ -279,7 +282,10 @@ pub trait NonFungibleTokenTrait<'a, P: JsonRpcProvider>: TokenTrait<'a, P> + Sen
 		self.call_function_returning_iterator(
 			<NftContract<P> as NonFungibleTokenTrait<P>>::OWNER_OF,
 			vec![token_id.into()],
-			Arc::new(|item: StackItem| item.as_address().unwrap_or_default()),
+			Arc::new(|item: StackItem| {
+				item.as_address()
+					.ok_or_else(|| ContractError::UnexpectedReturnType("Address".to_string()))
+			}),
 		)
 		.await
 	}
@@ -314,7 +320,10 @@ pub trait NonFungibleTokenTrait<'a, P: JsonRpcProvider>: TokenTrait<'a, P> + Sen
 		self.call_function_returning_iterator(
 			<NftContract<P> as NonFungibleTokenTrait<P>>::TOKENS,
 			vec![],
-			Arc::new(|item: StackItem| item.as_bytes().unwrap_or_default()),
+			Arc::new(|item: StackItem| {
+				item.as_bytes()
+					.ok_or_else(|| ContractError::UnexpectedReturnType("ByteString".to_string()))
+			}),
 		)
 		.await
 	}

@@ -9,7 +9,7 @@ use neo3::prelude::*;
 pub struct NeoIterator<'a, T, P: JsonRpcProvider> {
 	session_id: String,
 	iterator_id: String,
-	mapper: Arc<dyn Fn(StackItem) -> T + Send + Sync>,
+	mapper: Arc<dyn Fn(StackItem) -> Result<T, ContractError> + Send + Sync>,
 	provider: Option<&'a RpcClient<P>>,
 }
 
@@ -28,7 +28,7 @@ impl<'a, T, P: JsonRpcProvider> NeoIterator<'a, T, P> {
 	pub fn new(
 		session_id: String,
 		iterator_id: String,
-		mapper: Arc<dyn Fn(StackItem) -> T + Send + Sync>,
+		mapper: Arc<dyn Fn(StackItem) -> Result<T, ContractError> + Send + Sync>,
 		provider: Option<&'a RpcClient<P>>,
 	) -> Self {
 		Self { session_id, iterator_id, mapper, provider }
@@ -48,7 +48,11 @@ impl<'a, T, P: JsonRpcProvider> NeoIterator<'a, T, P> {
 		let result = provider
 			.traverse_iterator(self.session_id.clone(), self.iterator_id.clone(), count as u32)
 			.await?;
-		let mapped = result.iter().map(|item| (self.mapper)(item.clone())).collect();
+		let mapped = result
+			.iter()
+			.cloned()
+			.map(|item| (self.mapper)(item))
+			.collect::<Result<Vec<_>, _>>()?;
 		Ok(mapped)
 	}
 

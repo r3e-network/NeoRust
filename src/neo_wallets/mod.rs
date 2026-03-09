@@ -25,7 +25,7 @@
 //!
 //! ### Creating and using a wallet
 //!
-//! ```rust
+//! ```rust,no_run
 //! use neo3::neo_wallets::Wallet;
 //! use std::path::PathBuf;
 //!
@@ -38,6 +38,9 @@
 //!     let account = wallet.create_new_account()?;
 //!     println!("New account address: {}", account.get_address());
 //!     
+//!     // Encrypt accounts before persisting to NEP-6 JSON.
+//!     wallet.encrypt_accounts("strong_password");
+//!
 //!     // Save the wallet to a file
 //!     // SECURITY: Wallet files can contain private keys. Do not commit them to version control.
 //!     wallet.save_to_file(PathBuf::from("my_wallet.json"))?;

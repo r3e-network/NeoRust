@@ -83,10 +83,8 @@
 //!
 //! ```no_run
 //! use neo3::neo_contract::ContractManagement;
-//! use neo3::neo_protocol::{Account, AccountTrait};
 //! use neo3::neo_types::NefFile;
 //! use neo3::neo_clients::{HttpProvider, RpcClient};
-//! use std::str::FromStr;
 //! use std::fs;
 //!
 //! async fn deploy_contract_example() -> Result<(), Box<dyn std::error::Error>> {
@@ -101,11 +99,8 @@
 //!     // Parse the NEF file
 //!     let nef = NefFile::deserialize(&nef_bytes)?;
 //!
-//!     // Create contract management instance with its script hash
-//!     let mgmt_hash = neo3::neo_types::ScriptHash::from_str(
-//!         "0xfffdc93764dbaddd97c48f252a53ea4643faa3d1"
-//!     )?;
-//!     let contract_mgmt = ContractManagement::new(mgmt_hash, Some(&client));
+//!     // Create a native ContractManagement instance
+//!     let contract_mgmt = ContractManagement::new(Some(&client));
 //!
 //!     // Deploy the contract
 //!     println!("Deploying contract...");

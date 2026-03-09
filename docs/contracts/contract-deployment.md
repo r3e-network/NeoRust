@@ -51,8 +51,8 @@ let client = RpcClient::new(provider);
 let account = Account::from_wif("your-private-key-wif")?;
 
 // Check GAS balance before deployment
-let gas_token = GasToken::new(&client);
-let gas_balance = gas_token.balance_of(&account.get_script_hash()).await?;
+let gas_token = GasToken::new(Some(&client));
+let gas_balance = gas_token.get_balance_of(&account.get_script_hash()).await?;
 println!("GAS Balance: {}", gas_balance);
 ```
 
@@ -64,7 +64,7 @@ Use the ContractManagement system contract to deploy your contract:
 use neo3::neo_contract::ContractManagement;
 
 // Create contract management instance
-let contract_mgmt = ContractManagement::new(&client);
+let contract_mgmt = ContractManagement::new(Some(&client));
 
 // Deploy the contract
 println!("Deploying contract...");
@@ -123,8 +123,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("Account loaded: {}", account.get_address());
     
     // Check GAS balance
-    let gas_token = GasToken::new(&client);
-    let gas_balance = gas_token.balance_of(&account.get_script_hash()).await?;
+    let gas_token = GasToken::new(Some(&client));
+    let gas_balance = gas_token.get_balance_of(&account.get_script_hash()).await?;
     println!("GAS Balance: {}", gas_balance);
     
     if gas_balance < 10_00000000 { // 10 GAS
@@ -147,7 +147,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("\nDeploying contract...");
     
     // Estimate deployment costs
-    let contract_mgmt = ContractManagement::new(&client);
+    let contract_mgmt = ContractManagement::new(Some(&client));
     let deployment_fee = contract_mgmt.estimate_deployment_fee(&nef, &manifest).await?;
     println!("Estimated deployment fee: {} GAS", deployment_fee as f64 / 100000000.0);
     

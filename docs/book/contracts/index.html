@@ -250,7 +250,7 @@ let tx_hash = nft.transfer(
 <pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>// Create contract management instance
-let contract_mgmt = ContractManagement::new(client.clone());
+let contract_mgmt = ContractManagement::new(Some(&amp;client));
 
 // Deploy a new contract
 let result = contract_mgmt.deploy(

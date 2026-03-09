@@ -259,27 +259,27 @@ async fn gas_token_example() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt
     let client = RpcClient::new(provider);
     
     // Create GasToken instance
-    let gas_token = GasToken::new(&amp;client);
+    let mut gas_token = GasToken::new(Some(&amp;client));
     
     // Get basic token information
-    let symbol = gas_token.symbol().await?;
-    let decimals = gas_token.decimals().await?;
-    let total_supply = gas_token.total_supply().await?;
+    let symbol = gas_token.get_symbol().await?;
+    let decimals = gas_token.get_decimals().await?;
+    let total_supply = gas_token.get_total_supply().await?;
     
     println!("Token: {} (Decimals: {})", symbol, decimals);
     println!("Total Supply: {}", total_supply);
     
     // Check GAS balance for an account
     let account_hash = ScriptHash::from_address("NUVPACTpQvd2HHmBgFjJJRWwVXJiR3uAEh")?;
-    let balance = gas_token.balance_of(&amp;account_hash).await?;
+    let balance = gas_token.get_balance_of(&amp;account_hash).await?;
     println!("GAS Balance: {}", balance);
     
     // Transfer GAS (requires account with GAS)
     // let account = Account::from_wif("your-wif-here")?;
     // let recipient = ScriptHash::from_address("NZNos2WqTbu5oCgyfss9kUJgBXJqhuYAaj")?;
     // let amount = 1_0000_0000; // 1 GAS (with 8 decimals)
-    // let tx_hash = gas_token.transfer(&amp;account, &amp;recipient, amount, None).await?;
-    // println!("Transfer transaction: {}", tx_hash);
+    // let tx_builder = gas_token.transfer_from_account(&amp;account, &amp;recipient, amount, None).await?;
+    // println!("Transfer transaction builder prepared");
     
     Ok(())
 }
@@ -298,7 +298,7 @@ async fn policy_contract_example() -&gt; Result&lt;(), Box&lt;dyn std::error::Er
     let client = RpcClient::new(provider);
     
     // Create PolicyContract instance
-    let policy = PolicyContract::new(&amp;client);
+    let policy = PolicyContract::new(Some(&amp;client));
     
     // Get blockchain fees
     let exec_fee_factor = policy.get_exec_fee_factor().await?;
@@ -340,7 +340,7 @@ async fn contract_management_example() -&gt; Result&lt;(), Box&lt;dyn std::error
     let client = RpcClient::new(provider);
     
     // Create ContractManagement instance
-    let contract_mgmt = ContractManagement::new(&amp;client);
+    let contract_mgmt = ContractManagement::new(Some(&amp;client));
     
     // Get contract details
     let contract_hash = ScriptHash::from_address("NUVPACTpQvd2HHmBgFjJJRWwVXJiR3uAEh")?;
@@ -388,11 +388,11 @@ async fn role_management_example() -&gt; Result&lt;(), Box&lt;dyn std::error::Er
     let client = RpcClient::new(provider);
     
     // Create RoleManagement instance
-    let role_mgmt = RoleManagement::new(&amp;client);
+    let role_mgmt = RoleManagement::new(Some(&amp;client));
     
     // Get nodes by role
-    let oracle_nodes = role_mgmt.get_designated_by_role(RoleType::Oracle, 0).await?;
-    let state_validators = role_mgmt.get_designated_by_role(RoleType::StateValidator, 0).await?;
+    let oracle_nodes = role_mgmt.get_designated_by_role(Role::Oracle, 0).await?;
+    let state_validators = role_mgmt.get_designated_by_role(Role::StateValidator, 0).await?;
     
     println!("Oracle Nodes: {}", oracle_nodes.len());
     for node in oracle_nodes {
@@ -502,7 +502,7 @@ async fn oracle_contract_example() -&gt; Result&lt;(), Box&lt;dyn std::error::Er
     
     // Create instances
     let neo_token = NeoToken::new(&amp;client);
-    let gas_token = GasToken::new(&amp;client);
+    let mut gas_token = GasToken::new(Some(&amp;client));
     let nns = NameService::new(&amp;client);
     
     // Resolve a domain and check balances

@@ -50,7 +50,7 @@
 //!
 //! #[tokio::main]
 //! async fn main() -> Result<(), Box<dyn std::error::Error>> {
-//!     let neo_x_provider = NeoXProvider::new("https://rpc.neo-x.org", None);
+//!     let neo_x_provider: NeoXProvider<'_, HttpProvider> = NeoXProvider::new("https://rpc.neo-x.org", None);
 //!     
 //!     // Create a random wallet or load from private key
 //!     let wallet = NeoXWallet::create_random();

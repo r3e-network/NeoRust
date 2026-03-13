@@ -730,8 +730,11 @@ impl<'a, P: JsonRpcProvider + 'static> TransactionBuilder<'a, P> {
 				Signer::AccountSigner(account_signer) => {
 					// Get the account from AccountSigner
 					let account = account_signer.account();
-					let verification_script = if account.is_multi_sig() {
-						// Create a placeholder multi-signature verification script for fee estimation
+					
+					// Use the actual verification script of the account if available
+					let verification_script = if let Some(vs) = account.verification_script() {
+						vs.clone()
+					} else if account.is_multi_sig() {
 						self.create_placeholder_multi_sig_verification_script(account).map_err(
 							|e| {
 								TransactionError::IllegalState(format!(
@@ -741,13 +744,18 @@ impl<'a, P: JsonRpcProvider + 'static> TransactionBuilder<'a, P> {
 							},
 						)?
 					} else {
-						// Create a placeholder single-signature verification script for fee estimation
-						self.create_placeholder_single_sig_verification_script().map_err(|e| {
-							TransactionError::IllegalState(format!(
-								"Failed to create single-sig verification script: {}",
-								e
-							))
-						})?
+						// For single sig, if we don't have a verification script, try to derive from public key
+						if let Some(key_pair) = account.key_pair() {
+							VerificationScript::from_public_key(&key_pair.public_key)
+						} else {
+							// Fallback to placeholder if no public key is available
+							self.create_placeholder_single_sig_verification_script().map_err(|e| {
+								TransactionError::IllegalState(format!(
+									"Failed to create single-sig verification script: {}",
+									e
+								))
+							})?
+						}
 					};
 
 					// Add a witness with an empty signature and the verification script

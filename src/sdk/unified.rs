@@ -8,6 +8,8 @@ use crate::sdk::Token;
 use crate::neo_wallets::wallet::Wallet as N3Wallet;
 use crate::neo_wallets::WalletTrait;
 use crate::neo_x::bridge::evm_bridge::NeoXBridgeContractEVM;
+use crate::neo_x::bridge::bridge_contract::NeoXBridgeContract;
+use crate::neo_types::ScriptHash;
 use std::str::FromStr;
 
 /// Unified Ecosystem Client that pairs a Provider with a Wallet for either Neo N3 or Neo X.
@@ -93,12 +95,31 @@ impl<'a> EcosystemClient<'a> {
 	/// If currently on Neo X, bridges to N3.
 	pub async fn bridge_to_other_chain(&self, destination_address: &str, amount: &str) -> Result<String, String> {
 		match self {
-			Self::N3 { provider: _, wallet: _ } => {
-				// We currently don't expose the raw RpcClient from `Neo` directly, 
-				// but in a production implementation, we would extract the client, 
-				// instantiate NeoXBridgeContract, and send the TX.
-				// This acts as the facade indicating how it routes.
-				Err("N3 bridge execution requires transaction signer implementation mapping to be fully implemented".into())
+			Self::N3 { provider, wallet } => {
+				let amount_f64 = amount.parse::<f64>().map_err(|e| e.to_string())?;
+				let amount_u64 = (amount_f64 * 100_000_000.0) as i64;
+				
+				let rpc_client = provider.client();
+				let bridge = NeoXBridgeContract::new(Some(rpc_client))
+					.map_err(|e| e.to_string())?;
+					
+				// Ensure wallet has a default account to sign with
+				let account = wallet.default_account().ok_or("No default account in wallet")?;
+
+				let gas_token = ScriptHash::from_str("d2a4cff31913016155e38e474a2c06d08be276cf")
+					.map_err(|e| e.to_string())?;
+					
+				let mut builder = bridge.deposit(
+					&gas_token,
+					amount_u64,
+					destination_address,
+					account
+				).await.map_err(|e| e.to_string())?;
+
+				// Sign and send the N3 transaction
+				let mut signed_tx = builder.sign().await.map_err(|e| e.to_string())?;
+				let tx_response = signed_tx.send_tx().await.map_err(|e| e.to_string())?;
+				Ok(format!("N3 -> Neo X Bridge Transaction Sent: {:?}", tx_response.hash))
 			},
 			Self::NeoX { client } => {
 				// Initialize Neo X -> N3 Bridge using EVM bindings
@@ -109,13 +130,28 @@ impl<'a> EcosystemClient<'a> {
 				let bridge = NeoXBridgeContractEVM::default_bridge(evm.clone());
 				
 				// Generate the ContractCall builder
-				let _call = bridge.withdraw(token_addr, amount_wei, destination_address.to_string());
+				let call = bridge.withdraw(token_addr, amount_wei, destination_address.to_string());
 				
-				// In a full implementation, we would extract the underlying tx from `call`
-				// and send it via the client's wallet.
-				// let tx = call.tx;
-				// client.send_transaction(tx).await;
-				Err("NeoX to N3 bridge method constructed but requires SignerMiddleware execution binding".into())
+				// Extract the underlying tx from `call` and map it to our unified type
+				let req = call.tx;
+				let data = req.data().map(|d| d.to_vec()).unwrap_or_default();
+				let value = req.value().map(|v| v.as_u64()).unwrap_or_default();
+				let to_addr = req.to().map(|to| match to {
+					ethers::types::NameOrAddress::Address(a) => primitive_types::H160::from(a.0),
+					_ => primitive_types::H160::zero(), // Name unsupported in this context
+				});
+				
+				let tx = NeoXTransaction::new(
+					to_addr,
+					data,
+					value,
+					200_000, // Estimate gas limit
+					1000000000, // 1 Gwei
+				);
+				
+				// Send the transaction using the NeoXClient wrapper
+				let receipt = client.send_transaction(tx).await?;
+				Ok(format!("Neo X -> N3 Bridge Transaction Sent: {:?}", receipt.transaction_hash))
 			}
 		}
 	}

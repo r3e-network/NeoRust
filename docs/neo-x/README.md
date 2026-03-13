@@ -2,106 +2,105 @@
 
 ## Overview
 
-Neo X is an EVM-compatible chain maintained by Neo, enabling developers to leverage Ethereum compatibility while benefiting from Neo's infrastructure and security. The Neo X module in NeoRust provides interfaces for interacting with this EVM-compatible environment.
+Neo X is an EVM-compatible chain maintained by Neo, enabling developers to leverage Ethereum compatibility while benefiting from Neo's infrastructure and security. The Neo X module in NeoRust provides interfaces for interacting with this EVM-compatible environment directly utilizing `ethers-rs`.
 
 ## Key Features
 
-- **EVM Compatibility Layer**: Interact with Neo X as an Ethereum-compatible chain
-- **Bridge Functionality**: Transfer tokens seamlessly between Neo N3 and Neo X
-- **Transaction Support**: Create, sign, and send transactions on Neo X
-- **Smart Contract Interaction**: Deploy and interact with EVM smart contracts
-- **Web3-Compatible API**: Use familiar Ethereum development patterns
+- **EVM Compatibility Layer**: Interact with Neo X as an Ethereum-compatible chain via `ethers-rs`
+- **Unified Ecosystem Client**: Seamlessly write code that operates across Neo N3 and Neo X
+- **Anti-MEV Protection**: Connect directly to obfuscated/protected mempools to prevent front-running
+- **Bridge Functionality**: Transfer tokens seamlessly between Neo N3 and Neo X natively
+- **Transaction Support**: Create, sign, and send EVM transactions on Neo X
 
 ## Components
 
-### Neo X Provider
+### Unified Ecosystem Client
 
-The Neo X Provider serves as the primary interface for connecting to Neo X nodes:
+The `EcosystemClient` is the recommended way to interact with Neo X. It provides a standard interface to both N3 and Neo X, reducing the need for duplicate logic when your application touches both ecosystems.
 
 ```rust,no_run
-let provider = NeoXProvider::new_http("https://rpc.neoX.io");
-let block_number = provider.get_block_number().await?;
+use neo3::sdk::unified::EcosystemClient;
+use neo3::neo_x::NeoXWallet;
+
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // Create a new randomized EVM Wallet (or load from PK)
+    let evm_wallet = NeoXWallet::create_random();
+
+    // Initialize an Anti-MEV protected EcosystemClient for Neo X
+    // This routes your transactions through a protected mempool endpoint
+    let client = EcosystemClient::new_neox_anti_mev(evm_wallet);
+
+    // Get Balance directly via the Unified Interface
+    let balance = client.get_balance().await?;
+    println!("Neo X Balance: {} Wei", balance);
+
+    Ok(())
+}
 ```
 
-### Transaction Management
+### Neo X Provider & Wallet
 
-Create, sign, and send transactions on Neo X:
-
-```rust,no_run
-let transaction = NeoXTransaction::new()
-    .to("0x1234567890123456789012345678901234567890")
-    .value(1_000_000_000_000_000_000u128) // 1 ETH in wei
-    .gas_price(20_000_000_000u64) // 20 Gwei
-    .gas_limit(21_000u64)
-    .nonce(provider.get_transaction_count(account.address().to_eth_address(), None).await?)
-    .chain_id(provider.get_chain_id().await?)
-    .build();
-
-let signed_tx = transaction.sign(account)?;
-let txid = provider.send_raw_transaction(&signed_tx).await?;
-```
-
-### Smart Contract Interaction
-
-Interact with EVM smart contracts deployed on Neo X:
+If you need deeper access, you can work directly with the `NeoXProvider` and `NeoXWallet`. The `NeoXProvider` wraps an `ethers::providers::Provider<Http>` for executing low-level EVM requests.
 
 ```rust,no_run
-let contract = NeoXContract::new(contract_address, provider.clone());
+use neo3::neo_clients::{HttpProvider, RpcClient};
+use neo3::neo_x::{NeoXProvider, NeoXWallet, NeoXClient};
 
-// Read-only call
-let balance = contract.call_read("balanceOf", &[account.address().to_eth_address()]).await?;
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let neo_x_provider: NeoXProvider<'_, HttpProvider> = NeoXProvider::new("https://rpc.neo-x.org", None);
+    
+    // Extract the raw ethers provider if you need native EVM interactions
+    let raw_evm = neo_x_provider.evm_provider().unwrap();
+    let chain_id = raw_evm.get_chainid().await.unwrap();
 
-// State-changing call
-let tx = contract.call_write(
-    account,
-    "transfer",
-    &[recipient, amount.to_string()],
-    None,
-).await?;
+    let wallet = NeoXWallet::create_random();
+    let client = NeoXClient::new(wallet, neo_x_provider);
+    
+    Ok(())
+}
 ```
 
 ### Neo X Bridge
 
-The bridge facilitates token transfers between Neo N3 and Neo X:
+The bridge facilitates token transfers between Neo N3 and Neo X. The unified client abstracts this complex process so you can trigger a cross-chain transfer directly:
 
 ```rust,no_run
-let bridge = NeoXBridgeContract::new(neo_provider.clone(), neox_provider.clone());
+use neo3::sdk::unified::EcosystemClient;
+use neo3::neo_x::NeoXWallet;
 
-// Bridge from Neo N3 to Neo X
-let txid = bridge.bridge_to_neox(
-    account,
-    BridgeToken::Gas,
-    amount,
-    account.address().to_eth_address(),
-).await?;
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let wallet = NeoXWallet::create_random();
+    let client = EcosystemClient::new_neox_anti_mev(wallet);
 
-// Bridge from Neo X to Neo N3
-let txid = bridge.bridge_to_neo(
-    account,
-    BridgeToken::Gas,
-    amount,
-    account.address(),
-).await?;
+    // Bridge funds from Neo X back to an N3 address
+    // Parameters: destination_address (N3), amount (Wei)
+    let tx_hash = client.bridge_to_other_chain("NXX...YourN3Address", "1000000000").await?;
+    println!("Bridge Tx: {}", tx_hash);
+
+    Ok(())
+}
 ```
 
 ## Integration with Ethereum Tools
 
 Neo X's EVM compatibility enables integration with popular Ethereum development tools:
 
-- **Metamask**: Connect Metamask to Neo X by adding it as a custom network
-- **Hardhat/Truffle**: Deploy Solidity contracts to Neo X
-- **Web3.js/ethers.js**: Interact with Neo X using JavaScript libraries
-- **OpenZeppelin**: Use standard contract implementations
+- **ethers-rs**: NeoRust utilizes `ethers-rs` under the hood for all EVM logic, providing maximum reliability and compatibility.
+- **Metamask**: Connect Metamask to Neo X by adding it as a custom network.
+- **Hardhat/Foundry**: Deploy Solidity contracts to Neo X.
+- **Web3.js/ethers.js**: Interact with Neo X using JavaScript libraries.
 
 ## Considerations
 
-- **Gas Costs**: Neo X uses a gas model similar to Ethereum
-- **Cross-Chain Operations**: Bridge operations may take several minutes to complete
-- **Asset Representation**: Assets bridged from Neo N3 are represented as ERC-20 tokens on Neo X
-- **Security**: Use hardware wallets when possible for high-value operations
+- **Gas Costs**: Neo X uses a gas model similar to Ethereum. Transactions cost native GAS token.
+- **Cross-Chain Operations**: Bridge operations require network confirmations and may take a few minutes to finalize.
+- **Security**: The Anti-MEV endpoint prevents sandwich attacks and front-running on decentralized exchanges deployed on Neo X.
 
 ## Related Documentation
 
-- [Neo X Tutorial](../src/tutorials/neo-x.md): Step-by-step guide to Neo X integration
-- [Bridge Operations](bridge.md): Detailed guide to cross-chain operations
-- [EVM Contracts](evm-contracts.md): Working with EVM contracts on Neo X
+- [Neo X EVM Code Examples](../../examples/neo_x/examples/)
+- [Bridge Operations](bridge.md)
+- [EVM Contracts](evm-contracts.md)

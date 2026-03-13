@@ -191,6 +191,7 @@ coins-ledger = { version = "0.12.0", default-features = false, optional = true }
 yubihsm = { version = "0.42", features = ["http", "usb"], optional = true }
 
 bip39 = { version = "2.1.0", features = ["rand"] }
+ethers = { version = "2.0.14", features = ["rustls"] }
 
 # SGX dependencies (optional) - only available when building for SGX target
 # These are commented out by default as they require special SGX environment

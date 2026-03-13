@@ -9,11 +9,13 @@
 //!
 //! - EVM compatibility layer for interacting with Neo X as an Ethereum-compatible chain
 //! - Bridge functionality for transferring tokens between Neo N3 and Neo X
+//! - EVM Wallet and client wrappers powered by `ethers-rs`
+//! - Anti-MEV RPC support
 //! - Transaction creation and signing for Neo X
 //! - Provider interfaces for connecting to Neo X nodes
 //!
 //! This module enables seamless integration between Neo N3 and EVM-compatible ecosystems,
-//! allowing developers to leverage both blockchain environments.
+//! allowing developers to leverage both blockchain environments natively.
 //!
 //! ## Examples
 //!
@@ -25,16 +27,38 @@
 //!
 //! #[tokio::main]
 //! async fn main() -> Result<(), Box<dyn std::error::Error>> {
-//!     // Connect to Neo N3
+//!     // Connect to Neo N3 (optional, for cross-chain ops)
 //!     let neo_provider = HttpProvider::new("https://mainnet1.neo.org:443")?;
 //!     let neo_client = RpcClient::new(neo_provider);
 //!
-//!     // Initialize the Neo X EVM provider
-//!     let neo_x_provider = NeoXProvider::new("https://rpc.neo-x.org", Some(&neo_client));
+//!     // Initialize the Neo X EVM provider (Standard or Anti-MEV)
+//!     let neo_x_provider = NeoXProvider::new_anti_mev(Some(&neo_client));
 //!
-//!     // Get the chain ID for Neo X
+//!     // Get the chain ID for Neo X natively via ethers-rs or fallback to N3 node
 //!     let chain_id = neo_x_provider.chain_id().await?;
 //!     println!("Neo X Chain ID: {}", chain_id);
+//!
+//!     Ok(())
+//! }
+//! ```
+//!
+//! ### Using NeoXWallet to check EVM balance
+//!
+//! ```no_run
+//! use neo3::neo_clients::{HttpProvider, RpcClient};
+//! use neo3::neo_x::{NeoXProvider, NeoXWallet, NeoXClient};
+//!
+//! #[tokio::main]
+//! async fn main() -> Result<(), Box<dyn std::error::Error>> {
+//!     let neo_x_provider = NeoXProvider::new("https://rpc.neo-x.org", None);
+//!     
+//!     // Create a random wallet or load from private key
+//!     let wallet = NeoXWallet::create_random();
+//!     println!("Generated EVM Address: {:?}", wallet.address());
+//!
+//!     let client = NeoXClient::new(wallet, neo_x_provider);
+//!     let balance = client.get_balance().await.unwrap();
+//!     println!("Balance: {}", balance);
 //!
 //!     Ok(())
 //! }

@@ -37,6 +37,48 @@ struct SgxSealedKey {
 }
 
 impl SgxCrypto {
+	/// Computes a shared secret using ECDH.
+	pub fn compute_shared_secret(
+		&self,
+		private_key: &[u8; 32],
+		public_key: &[u8; 64],
+	) -> Result<[u8; 32], SgxError> {
+		#[cfg(feature = "sgx")]
+		{
+			// Note: Actual SGX ECDH requires sgx_ecc_state_handle_t which isn't wrapped nicely.
+			// In typical SGX code, we'd use sgx_ecc256_compute_shared_dhkey.
+			// For now, let's keep the signature. This assumes we update it when we fully support SGX hardware build.
+			Err(SgxError::CryptoError("SGX ECDH not fully implemented yet".to_string()))
+		}
+
+		#[cfg(not(feature = "sgx"))]
+		{
+			use k256::elliptic_curve::sec1::FromEncodedPoint;
+			
+			// Build encoded point
+			let mut encoded_pub = vec![0x04];
+			encoded_pub.extend_from_slice(public_key);
+			
+			let point = EncodedPoint::from_bytes(&encoded_pub)
+				.map_err(|_| SgxError::CryptoError("Invalid public key".to_string()))?;
+			let verifying_key = PublicKey::from_encoded_point(&point)
+				.ok_or_else(|| SgxError::CryptoError("Invalid public key point".to_string()))?;
+
+			let signing_key = SigningKey::from_slice(private_key)
+				.map_err(|_| SgxError::CryptoError("Invalid private key".to_string()))?;
+
+			let shared_secret = k256::elliptic_curve::ecdh::diffie_hellman(
+				signing_key.as_nonzero_scalar(),
+				verifying_key.as_affine()
+			);
+
+			let bytes = shared_secret.raw_secret_bytes();
+			let mut result = [0u8; 32];
+			result.copy_from_slice(bytes.as_slice());
+			Ok(result)
+		}
+	}
+
 	/// Create a new SGX crypto instance
 	pub fn new() -> Result<Self, SgxError> {
 		#[cfg(feature = "sgx")]

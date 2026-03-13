@@ -1,10 +1,16 @@
+use ethers::providers::{Http, Middleware, Provider};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use std::convert::TryFrom;
+use std::sync::Arc;
 
 use crate::{
 	neo_clients::{JsonRpcProvider, RpcClient},
 	neo_contract::ContractError,
 };
+
+/// Known Anti-MEV endpoints for Neo X (placeholder/example for MEV-protected RPCs)
+pub const NEO_X_MAINNET_MEV_RPC: &str = "https://rpc.neo-x.org/mempool"; // Example URL
 
 /// Neo X EVM provider for interacting with the Neo X EVM-compatible chain
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -13,6 +19,8 @@ pub struct NeoXProvider<'a, P: JsonRpcProvider> {
 	#[serde(skip)]
 	#[allow(dead_code)]
 	provider: Option<&'a RpcClient<P>>,
+	#[serde(skip)]
+	evm_provider: Option<Arc<Provider<Http>>>,
 }
 
 impl<'a, P: JsonRpcProvider + 'static> NeoXProvider<'a, P> {
@@ -21,13 +29,20 @@ impl<'a, P: JsonRpcProvider + 'static> NeoXProvider<'a, P> {
 	/// # Arguments
 	///
 	/// * `rpc_url` - The RPC URL for the Neo X chain
-	/// * `provider` - An optional reference to an RPC client
+	/// * `provider` - An optional reference to an RPC client (Neo N3)
 	///
 	/// # Returns
 	///
 	/// A new NeoXProvider instance
 	pub fn new(rpc_url: &str, provider: Option<&'a RpcClient<P>>) -> Self {
-		Self { rpc_url: rpc_url.to_string(), provider }
+		let evm_provider = Provider::<Http>::try_from(rpc_url).map(Arc::new).ok();
+		Self { rpc_url: rpc_url.to_string(), provider, evm_provider }
+	}
+
+	/// Creates a new NeoXProvider instance configured for Anti-MEV
+	/// Uses a protected RPC endpoint that obfuscates transaction ordering.
+	pub fn new_anti_mev(provider: Option<&'a RpcClient<P>>) -> Self {
+		Self::new(NEO_X_MAINNET_MEV_RPC, provider)
 	}
 
 	/// Gets the RPC URL for the Neo X chain
@@ -46,6 +61,12 @@ impl<'a, P: JsonRpcProvider + 'static> NeoXProvider<'a, P> {
 	/// * `rpc_url` - The new RPC URL
 	pub fn set_rpc_url(&mut self, rpc_url: &str) {
 		self.rpc_url = rpc_url.to_string();
+		self.evm_provider = Provider::<Http>::try_from(rpc_url).map(Arc::new).ok();
+	}
+
+	/// Returns the underlying Ethers provider for advanced EVM operations
+	pub fn evm_provider(&self) -> Option<Arc<Provider<Http>>> {
+		self.evm_provider.clone()
 	}
 
 	/// Gets the chain ID for the Neo X chain
@@ -58,6 +79,13 @@ impl<'a, P: JsonRpcProvider + 'static> NeoXProvider<'a, P> {
 	///
 	/// Returns ContractError if the RPC call fails or if no provider is configured
 	pub async fn chain_id(&self) -> Result<u64, ContractError> {
+		// Prefer standard EVM RPC if evm_provider is available
+		if let Some(evm) = &self.evm_provider {
+			if let Ok(id) = evm.get_chainid().await {
+				return Ok(id.as_u64());
+			}
+		}
+
 		let provider = self.provider.ok_or_else(|| {
 			ContractError::ProviderNotSet(
 				"Provider is required to query Neo X chain ID".to_string(),
@@ -123,8 +151,7 @@ mod tests {
 
 	#[tokio::test]
 	async fn chain_id_requires_provider() {
-		let provider: NeoXProvider<'_, MockProvider> =
-			NeoXProvider::new("https://rpc.neo-x.org", None);
+		let provider: NeoXProvider<'_, MockProvider> = NeoXProvider::new("invalid://url", None);
 
 		let err = provider.chain_id().await.unwrap_err();
 		assert!(matches!(err, ContractError::ProviderNotSet(message) if message.contains("chain ID")));

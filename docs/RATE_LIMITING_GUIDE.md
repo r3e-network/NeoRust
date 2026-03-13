@@ -1,5 +1,5 @@
-# Rate Limiting Guide - NeoRust v1.0.7
-> Authored for v1.0.7; see the main README/crate docs for updates.
+# Rate Limiting Guide - NeoRust v1.0.8
+> Authored for v1.0.8; see the main README/crate docs for updates.
 
 ## Overview
 
@@ -509,7 +509,7 @@ async fn monitor_network(nodes: Vec<String>) -> Result<(), Box<dyn Error>> {
 
 ## Summary
 
-The rate limiting system in NeoRust v1.0.7 provides:
+The rate limiting system in NeoRust v1.0.8 provides:
 
 - **Automatic Protection**: All requests are automatically rate limited
 - **Flexible Configuration**: Presets for common scenarios or custom configs

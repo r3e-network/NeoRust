@@ -341,13 +341,15 @@ impl HDWallet {
 		let derivation_path = DerivationPath::from_string(path)?;
 		let derived_key = self.derive_key(&derivation_path)?;
 
-		// Convert to Neo account using WIF
-		// For now, we'll create an account from the derived key bytes
-		// In a full implementation, we'd use the proper Secp256r1 private key
-		// use crate::neo_crypto::wif_from_private_key;
+		use crate::neo_crypto::{wif_from_private_key, Secp256r1PrivateKey};
+		
+		let private_key = Secp256r1PrivateKey::from_bytes(&derived_key.key).map_err(|e| NeoError::Wallet {
+			message: format!("Invalid derived key: {}", e),
+			source: None,
+			recovery: ErrorRecovery::new(),
+		})?;
 
-		// Create a WIF from the derived key (simplified - in production use proper conversion)
-		let wif = self.key_to_wif(&derived_key.key)?;
+		let wif = wif_from_private_key(&private_key);
 		let account = Account::from_wif(&wif).map_err(|e| NeoError::Wallet {
 			message: format!("Failed to create account from derived key: {}", e),
 			source: None,
@@ -400,27 +402,6 @@ impl HDWallet {
 	}
 
 	/// Convert key bytes to WIF format
-	fn key_to_wif(&self, key_bytes: &[u8]) -> Result<String, NeoError> {
-		use crate::neo_crypto::base58check_encode;
-
-		if key_bytes.len() != 32 {
-			return Err(NeoError::Wallet {
-				message: format!("Invalid key length: {} (expected 32)", key_bytes.len()),
-				source: None,
-				recovery: ErrorRecovery::new(),
-			});
-		}
-
-		// Build WIF: 0x80 + key + 0x01 (for compressed)
-		// base58check_encode handles the checksum
-		let mut wif_bytes = Vec::with_capacity(34);
-		wif_bytes.push(0x80); // MainNet prefix
-		wif_bytes.extend_from_slice(key_bytes);
-		wif_bytes.push(0x01); // Compressed flag
-
-		Ok(base58check_encode(&wif_bytes))
-	}
-
 	/// Export wallet to encrypted JSON
 	pub fn export_encrypted(&self, password: &str) -> Result<String, NeoError> {
 		use aes::cipher::{block_padding::Pkcs7, BlockEncryptMut, KeyInit};

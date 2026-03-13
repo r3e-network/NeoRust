@@ -9,6 +9,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 _No changes yet._
 
+## [1.0.8] - 2026-03-13
+
+### 🔧 Changed
+
+- Republished crates.io package to include fully updated README documentation referencing the new version.
+
+## [1.0.7] - 2026-03-13
+
+### ✨ Added
+
+- **Neo X EVM Integration**: Added full EVM support via `ethers-rs` (v2.0.14) for Neo X compatibility, including `NeoXWallet`, `NeoXClient`, and `NeoXProvider` with built-in Anti-MEV support.
+- **Unified Ecosystem Client**: Introduced a seamless cross-chain `EcosystemClient` that unifies API patterns across both Neo N3 and Neo X networks.
+- **Native Bridge Contract**: Added robust abstractions for cross-chain transfers between NeoVM (N3) and EVM (Neo X) architectures using native ABIs.
+- **ECDH Shared Secret Computation**: Implemented cryptographic shared secret logic via `k256` to replace dummy placeholders for SGX networking.
+
+### 🔧 Changed
+
+- Hardened SDK fallback conversions across builder, RPC, transaction, wallet, and serialization layers.
+- Replaced multiple placeholder or silent-fallback behaviors with validated conversions and structured ABIs (e.g., dynamically utilizing actual `VerificationScript` for fee estimation instead of a dummy public key).
+- Updated `hd_wallet` derivation logic to generate WIF formats properly from natively instantiating `Secp256r1PrivateKey` objects.
+
 ## [1.0.6] - 2026-03-06
 
 ### 🔧 Changed

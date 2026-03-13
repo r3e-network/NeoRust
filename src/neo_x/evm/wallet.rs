@@ -42,8 +42,8 @@ impl NeoXWallet {
 
 /// A wrapper to easily send EVM transactions on Neo X using a NeoXWallet and NeoXProvider.
 pub struct NeoXClient<'a, P: JsonRpcProvider> {
-	wallet: NeoXWallet,
-	provider: NeoXProvider<'a, P>,
+	pub wallet: NeoXWallet,
+	pub provider: NeoXProvider<'a, P>,
 }
 
 impl<'a, P: JsonRpcProvider + 'static> NeoXClient<'a, P> {

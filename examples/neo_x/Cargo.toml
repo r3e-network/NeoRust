@@ -16,3 +16,7 @@ path = "examples/neo_x_bridge.rs"
 [[example]]
 name = "neo_x_evm"
 path = "examples/neo_x_evm.rs"
+
+[[example]]
+name = "unified_ecosystem"
+path = "examples/unified_ecosystem.rs"

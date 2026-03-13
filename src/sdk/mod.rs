@@ -6,6 +6,7 @@
 
 pub mod hd_wallet;
 pub mod transaction_simulator;
+pub mod unified;
 #[cfg(feature = "ws")]
 pub mod websocket;
 

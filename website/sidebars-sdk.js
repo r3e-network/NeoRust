@@ -37,6 +37,7 @@ const sdkSidebar = {
         'transactions',
         'contracts',
         'tokens',
+        'neox',
       ],
     },
 

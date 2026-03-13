@@ -35,6 +35,8 @@ A comprehensive, production-ready Rust SDK for the Neo N3 blockchain platform. N
 - 🌐 **Network Support** - Mainnet, Testnet, and custom network configurations
 
 ### New in v1.0.x 🚀
+- 🌉 **Neo X EVM Integration** - Full `ethers-rs` compatibility with unified cross-chain `EcosystemClient`
+- 🛡️ **Anti-MEV Support** - Built-in secure mempool routing for Neo X to prevent front-running
 - 🌐 **WebSocket Support** - Real-time blockchain events with auto-reconnection
 - 🔑 **HD Wallet (BIP-39/44)** - Hierarchical deterministic wallets with mnemonic phrases
 - 🔮 **Transaction Simulation** - Preview effects and estimate gas before submission
@@ -207,6 +209,29 @@ if result.success {
 } else {
     println!("Transaction would fail: {:?}", result.vm_state);
 }
+```
+
+### Neo X & EVM Integration
+
+NeoRust natively supports **Neo X** (the EVM-compatible sidechain) and bridges the gap between NeoVM and EVM environments via `ethers-rs`.
+
+```rust
+use neo3::sdk::unified::EcosystemClient;
+use neo3::neo_x::NeoXWallet;
+
+// Create a randomized secure EVM wallet
+let wallet = NeoXWallet::create_random();
+
+// Initialize an Anti-MEV protected EcosystemClient for Neo X
+let client = EcosystemClient::new_neox_anti_mev(wallet);
+
+// Query balance using standard ethers-rs providers underneath
+let balance = client.get_balance().await?;
+println!("EVM Balance: {} Wei", balance);
+
+// Easily bridge funds back to an N3 address
+let tx_hash = client.bridge_to_other_chain("NXX...YourN3Address", "1000000000").await?;
+println!("Bridge Tx: {}", tx_hash);
 ```
 
 ### Traditional API (still supported)

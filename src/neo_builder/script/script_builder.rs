@@ -302,8 +302,8 @@ impl ScriptBuilder {
 	/// The integer is encoded in its two's complement representation and little-endian byte order.
 	///
 	/// The integer can be up to 32 bytes in length. Values larger than 32 bytes can be
-	/// handled explicitly with [`ScriptBuilder::try_push_integer`]. This legacy method keeps
-	/// compatibility by truncating oversized values to 32 bytes and logging a warning.
+	/// handled explicitly with [`ScriptBuilder::try_push_integer`]. This convenience method
+	/// panics on oversized values instead of silently truncating them.
 	///
 	/// # Arguments
 	///
@@ -323,16 +323,12 @@ impl ScriptBuilder {
 	/// builder.push_integer(BigInt::from(42));
 	/// ```
 	pub fn push_integer(&mut self, i: BigInt) -> &mut Self {
-		if let Err(err) = self.try_push_integer(i.clone()) {
-			let bytes = i.to_signed_bytes_le();
-			tracing::warn!(error = %err, "Integer too large, truncating to 32 bytes");
-			self.push_opcode_bytes(
-				OpCode::PushInt256,
-				Self::pad_right(&bytes[..32.min(bytes.len())], 32, i.is_negative()),
-			);
-		}
-
-		self
+		self.try_push_integer(i).unwrap_or_else(|err| {
+			panic!(
+				"integer exceeds Neo VM 32-byte limit; use ScriptBuilder::try_push_integer for fallible handling: {}",
+				err
+			)
+		})
 	}
 
 	/// Adds a push operation with the given integer to the script, returning an error
@@ -873,6 +869,15 @@ mod tests {
 
 		let result = builder.try_push_integer(too_large);
 		assert!(result.is_err());
+	}
+
+	#[test]
+	#[should_panic(expected = "integer exceeds Neo VM 32-byte limit")]
+	fn test_push_integer_panics_on_values_larger_than_32_bytes() {
+		let mut builder = ScriptBuilder::new();
+		let too_large = BigInt::from(1u8) << 256;
+
+		builder.push_integer(too_large);
 	}
 
 	#[test]

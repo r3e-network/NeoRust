@@ -310,3 +310,48 @@ pub fn load_wallet_from_state(state: &mut CliState) -> Result<&mut Wallet, CliEr
 	}
 	Ok(state.wallet.as_mut().unwrap())
 }
+
+#[cfg(test)]
+mod tests {
+	use super::*;
+
+	fn test_rpc_client() -> RpcClient<HttpProvider> {
+		let provider = HttpProvider::new("http://localhost:10332").unwrap();
+		RpcClient::new(provider)
+	}
+
+	#[tokio::test]
+	async fn resolve_token_to_scripthash_accepts_known_symbol() {
+		let client = test_rpc_client();
+
+		let hash =
+			resolve_token_to_scripthash_with_network("NEO", &client, NetworkTypeCli::MainNet)
+				.await
+				.unwrap();
+
+		assert_eq!(
+			hash,
+			ScriptHash::from_str("ef4073a0f2b305a38ec4050e4d3d28bc40ea63f5").unwrap()
+		);
+	}
+
+	#[tokio::test]
+	async fn resolve_token_to_scripthash_rejects_unknown_symbol_without_panicking() {
+		let client = test_rpc_client();
+
+		let err = resolve_token_to_scripthash_with_network(
+			"definitely-not-a-token",
+			&client,
+			NetworkTypeCli::MainNet,
+		)
+		.await
+		.unwrap_err();
+
+		match err {
+			CliError::InvalidArgument(message, _) => {
+				assert!(message.contains("Could not resolve token"));
+			},
+			other => panic!("expected invalid argument error, got {other:?}"),
+		}
+	}
+}

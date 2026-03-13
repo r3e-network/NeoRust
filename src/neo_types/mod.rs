@@ -227,12 +227,10 @@ impl Base64Encode for &[u8] {
 impl Base64Encode for String {
 	fn to_base64(&self) -> String {
 		self.try_to_base64().unwrap_or_else(|err| {
-			tracing::warn!(
-				len = self.len(),
-				error = %err,
-				"Failed to decode hex string for base64 encoding"
-			);
-			String::new()
+			panic!(
+				"invalid hex string for base64 encoding; use TryBase64Encode::try_to_base64 for fallible handling: {}",
+				err
+			)
 		})
 	}
 }
@@ -326,6 +324,13 @@ mod tests {
 		assert!(
 			matches!(err, TypeError::InvalidFormat(message) if message.contains("invalid hex string"))
 		);
+	}
+
+	#[test]
+	#[should_panic(expected = "invalid hex string for base64 encoding")]
+	fn test_string_to_base64_panics_on_invalid_hex() {
+		let value = "not-hex".to_string();
+		let _ = Base64Encode::to_base64(&value);
 	}
 }
 

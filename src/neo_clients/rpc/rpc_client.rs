@@ -19,7 +19,7 @@ use url::Url;
 
 // Replace the generic import with specific imports
 use crate::{
-	neo_builder::{InteropService, ScriptBuilder, TransactionBuilder, TransactionSigner},
+	neo_builder::{BuilderError, InteropService, ScriptBuilder, TransactionBuilder, TransactionSigner},
 	neo_clients::{APITrait, Http, JsonRpcProvider, ProviderError, RwClient},
 };
 
@@ -37,6 +37,24 @@ fn encode_hex_parameter_as_base64(value: &str, field_name: &str) -> Result<Strin
 	value
 		.try_to_base64()
 		.map_err(|err| ProviderError::ParseError(format!("Invalid {field_name}: {err}")))
+}
+
+fn provider_error_from_builder(err: BuilderError) -> ProviderError {
+	match err {
+		BuilderError::ProviderError(err) => err,
+		other => ProviderError::IllegalState(other.to_string()),
+	}
+}
+
+fn try_transaction_signers<'a, I>(signers: I) -> Result<Vec<TransactionSigner>, ProviderError>
+where
+	I: IntoIterator<Item = &'a Signer>,
+{
+	signers
+		.into_iter()
+		.map(Signer::try_to_transaction_signer)
+		.collect::<Result<Vec<_>, _>>()
+		.map_err(provider_error_from_builder)
 }
 
 /// Node Clients
@@ -606,8 +624,10 @@ impl<P: JsonRpcProvider> APITrait for RpcClient<P> {
 		params: Vec<ContractParameter>,
 		signers: Option<Vec<Signer>>,
 	) -> Result<InvocationResult, ProviderError> {
-		let signers: Vec<TransactionSigner> =
-			signers.map(|s| s.iter().map(|f| f.into()).collect()).unwrap_or_default();
+		let signers = signers
+			.map(|s| try_transaction_signers(s.iter()))
+			.transpose()?
+			.unwrap_or_default();
 		self.request("invokefunction", json!([contract_hash.to_hex(), method, params, signers]))
 			.await
 	}
@@ -622,8 +642,7 @@ impl<P: JsonRpcProvider> APITrait for RpcClient<P> {
 		hex: String,
 		signers: Vec<Signer>,
 	) -> Result<InvocationResult, ProviderError> {
-		let signers: Vec<TransactionSigner> =
-			signers.into_iter().map(|signer| signer.into()).collect::<Vec<_>>();
+		let signers = try_transaction_signers(signers.iter())?;
 		let hex_bytes = hex::decode(&hex)
 			.map_err(|e| ProviderError::ParseError(format!("Failed to parse hex: {}", e)))?;
 		let script_base64 = serde_json::to_value(hex_bytes.to_base64())?;
@@ -1081,7 +1100,7 @@ impl<P: JsonRpcProvider> APITrait for RpcClient<P> {
 		params: Vec<ContractParameter>,
 		signers: Vec<Signer>,
 	) -> Result<InvocationResult, ProviderError> {
-		let signers: Vec<TransactionSigner> = signers.iter().map(|f| f.into()).collect();
+		let signers = try_transaction_signers(signers.iter())?;
 		let params = json!([contract_hash.to_hex(), function_name, params, signers, true]);
 		self.request("invokefunction", params).await
 	}
@@ -1098,8 +1117,7 @@ impl<P: JsonRpcProvider> APITrait for RpcClient<P> {
 		hex: String,
 		signers: Vec<Signer>,
 	) -> Result<InvocationResult, ProviderError> {
-		let signers: Vec<TransactionSigner> =
-			signers.into_iter().map(|signer| signer.into()).collect::<Vec<_>>();
+		let signers = try_transaction_signers(signers.iter())?;
 		let hex_bytes = hex::decode(&hex)
 			.map_err(|e| ProviderError::ParseError(format!("Failed to parse hex: {}", e)))?;
 		let script_base64 = serde_json::to_value(hex_bytes.to_base64())?;
@@ -1136,8 +1154,7 @@ impl<P: JsonRpcProvider> APITrait for RpcClient<P> {
 		params: Vec<ContractParameter>,
 		signers: Vec<Signer>,
 	) -> Result<InvocationResult, ProviderError> {
-		let signers: Vec<TransactionSigner> =
-			signers.into_iter().map(|signer| signer.into()).collect::<Vec<_>>();
+		let signers = try_transaction_signers(signers.iter())?;
 		let params = json!([hash.to_hex(), params, signers]);
 		self.request("invokecontractverify", params).await
 	}
@@ -1259,8 +1276,11 @@ where
 mod tests {
 	use super::*;
 	use crate::{
-		neo_builder::{OracleResponse, OracleResponseCode, TransactionAttribute},
+		neo_builder::{
+			AccountSigner, OracleResponse, OracleResponseCode, TransactionAttribute, WitnessScope,
+		},
 		neo_clients::{APITrait, MockProvider},
+		neo_protocol::Account,
 	};
 	fn assert_parse_error(err: ProviderError, expected_fragment: &str) {
 		match err {
@@ -1272,6 +1292,26 @@ mod tests {
 			},
 			other => panic!("expected parse error, got {other:?}"),
 		}
+	}
+
+	fn assert_illegal_state(err: ProviderError, expected_fragment: &str) {
+		match err {
+			ProviderError::IllegalState(message) => {
+				assert!(
+					message.contains(expected_fragment),
+					"expected illegal state containing '{expected_fragment}', got '{message}'"
+				);
+			},
+			other => panic!("expected illegal state, got {other:?}"),
+		}
+	}
+
+	fn invalid_signer() -> Signer {
+		let account =
+			Account::from_wif("Kzt94tAAiZSgH7Yt4i25DW6jJFprZFPSqTgLr5dWmWgKDKCjXMfZ").unwrap();
+		let mut signer = AccountSigner::called_by_entry(&account).unwrap();
+		signer.scopes = vec![WitnessScope::Global, WitnessScope::CalledByEntry];
+		Signer::from(signer)
 	}
 
 	#[tokio::test]
@@ -1369,6 +1409,37 @@ mod tests {
 			.await
 			.unwrap_err();
 		assert_parse_error(err, "start key");
+		assert!(provider.take_requests().is_empty());
+	}
+
+	#[tokio::test]
+	async fn invoke_script_rejects_invalid_signer_before_request() {
+		let provider = MockProvider::new();
+		let client = RpcClient::new(provider.clone());
+
+		let err = client
+			.invoke_script("0102".to_string(), vec![invalid_signer()])
+			.await
+			.unwrap_err();
+		assert_illegal_state(err, "Global scope cannot be combined with other scopes");
+		assert!(provider.take_requests().is_empty());
+	}
+
+	#[tokio::test]
+	async fn invoke_function_rejects_invalid_signer_before_request() {
+		let provider = MockProvider::new();
+		let client = RpcClient::new(provider.clone());
+
+		let err = client
+			.invoke_function(
+				&H160::zero(),
+				"symbol".to_string(),
+				vec![],
+				Some(vec![invalid_signer()]),
+			)
+			.await
+			.unwrap_err();
+		assert_illegal_state(err, "Global scope cannot be combined with other scopes");
 		assert!(provider.take_requests().is_empty());
 	}
 }

@@ -11,8 +11,8 @@ pub mod websocket;
 
 use crate::{
 	neo_clients::{APITrait, HttpProvider, RpcCache, RpcClient},
-	neo_error::unified::NeoError,
-	neo_types::{ContractParameter, ScriptHash, StackItem},
+	neo_error::unified::{ErrorRecovery, NeoError},
+	neo_types::{ContractParameter, ScriptHash, ScriptHashExtension, StackItem},
 	neo_wallets::wallet::Wallet,
 };
 use hex_literal::hex;
@@ -428,19 +428,17 @@ impl Neo {
 				.retryable(true),
 		})?;
 
-		// Parse balances
-		let stack_item_to_u64 = |item: &StackItem| -> Option<u64> {
-			let bytes = item.as_bytes()?;
-			let value = BigInt::from_signed_bytes_le(&bytes);
-			match value.sign() {
-				Sign::Minus => None,
-				_ => value.to_u64(),
-			}
-		};
+		let neo = neo_balance
+			.stack
+			.first()
+			.ok_or_else(|| invalid_balance_response("NEO", "missing stack item"))?;
+		let neo = parse_balance_stack_item_u64(neo, "NEO")?;
 
-		let neo = neo_balance.stack.first().and_then(stack_item_to_u64).unwrap_or_default();
-
-		let gas_raw = gas_balance.stack.first().and_then(stack_item_to_u64).unwrap_or_default();
+		let gas_raw = gas_balance
+			.stack
+			.first()
+			.ok_or_else(|| invalid_balance_response("GAS", "missing stack item"))?;
+		let gas_raw = parse_balance_stack_item_u64(gas_raw, "GAS")?;
 		let gas = DecimalAmount::from_raw(gas_raw.to_string(), 8); // GAS has 8 decimals
 
 		// Get other NEP-17 token balances
@@ -463,11 +461,10 @@ impl Neo {
 			.into_iter()
 			.filter(|b| b.asset_hash != neo_hash && b.asset_hash != gas_hash)
 			.map(|b| {
-				let decimals =
-					b.decimals.as_deref().and_then(|s| s.parse::<u8>().ok()).unwrap_or(0);
+				let decimals = parse_nep17_decimals(b.decimals.as_deref(), &b.asset_hash)?;
 				let amount = DecimalAmount::from_raw(b.amount, decimals);
 
-				TokenBalance {
+				Ok(TokenBalance {
 					contract: b.asset_hash,
 					symbol: b
 						.symbol
@@ -475,9 +472,9 @@ impl Neo {
 						.or_else(|| b.name.clone())
 						.unwrap_or_else(|| b.asset_hash.to_hex()),
 					amount,
-				}
+				})
 			})
-			.collect::<Vec<_>>();
+			.collect::<Result<Vec<_>, NeoError>>()?;
 
 		let balance = Balance { neo, gas, tokens };
 
@@ -1382,9 +1379,57 @@ impl Transfer {
 	}
 }
 
+fn invalid_balance_response(token: &str, detail: impl Into<String>) -> NeoError {
+	let detail = detail.into();
+	NeoError::Other {
+		message: format!("Invalid {token} balance response: {detail}"),
+		source: None,
+		recovery: ErrorRecovery::new()
+			.suggest("Retry against another RPC endpoint")
+			.suggest("Inspect the raw balance response from the node"),
+	}
+}
+
+fn parse_balance_stack_item_u64(item: &StackItem, token: &str) -> Result<u64, NeoError> {
+	let bytes = item
+		.as_bytes()
+		.ok_or_else(|| invalid_balance_response(token, "balance stack item is not byte-convertible"))?;
+	let value = BigInt::from_signed_bytes_le(&bytes);
+
+	match value.sign() {
+		Sign::Minus => Err(invalid_balance_response(token, "balance cannot be negative")),
+		_ => value
+			.to_u64()
+			.ok_or_else(|| invalid_balance_response(token, "balance does not fit into u64")),
+	}
+}
+
+fn parse_nep17_decimals(decimals: Option<&str>, asset_hash: &ScriptHash) -> Result<u8, NeoError> {
+	let raw = decimals.ok_or_else(|| NeoError::Other {
+		message: format!("Missing decimals for NEP-17 token {}", asset_hash.to_hex()),
+		source: None,
+		recovery: ErrorRecovery::new()
+			.suggest("Retry against another RPC endpoint")
+			.suggest("Verify the token metadata is available from the node"),
+	})?;
+
+	raw.parse::<u8>().map_err(|_| NeoError::Other {
+		message: format!(
+			"Invalid decimals '{}' for NEP-17 token {}",
+			raw,
+			asset_hash.to_hex()
+		),
+		source: None,
+		recovery: ErrorRecovery::new()
+			.suggest("Retry against another RPC endpoint")
+			.suggest("Verify the token contract returns a valid decimals value"),
+	})
+}
+
 #[cfg(test)]
 mod tests {
 	use super::*;
+	use crate::neo_types::StackItem;
 
 	#[test]
 	fn test_builder_configuration() {
@@ -1399,5 +1444,31 @@ mod tests {
 		assert_eq!(builder.config.retries, 5);
 		assert!(builder.config.cache_enabled);
 		assert!(!builder.config.metrics_enabled);
+	}
+
+	#[test]
+	fn test_parse_balance_stack_item_u64_rejects_negative_value() {
+		let item = StackItem::Integer { value: -1 };
+		let err = parse_balance_stack_item_u64(&item, "NEO").unwrap_err();
+
+		match err {
+			NeoError::Other { message, .. } => {
+				assert!(message.contains("balance cannot be negative"));
+			},
+			other => panic!("expected balance parsing error, got {other:?}"),
+		}
+	}
+
+	#[test]
+	fn test_parse_nep17_decimals_rejects_invalid_value() {
+		let asset_hash = ScriptHash::zero();
+		let err = parse_nep17_decimals(Some("not-a-u8"), &asset_hash).unwrap_err();
+
+		match err {
+			NeoError::Other { message, .. } => {
+				assert!(message.contains("Invalid decimals"));
+			},
+			other => panic!("expected decimals parsing error, got {other:?}"),
+		}
 	}
 }

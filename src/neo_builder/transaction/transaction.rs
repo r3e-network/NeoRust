@@ -166,9 +166,13 @@ impl<'de, 'a, P: JsonRpcProvider + 'static> Deserialize<'de> for Transaction<'a,
 		let witnesses: Vec<Witness> =
 			serde_json::from_value(value["witnesses"].clone()).map_err(DeError::custom)?;
 
-		// For bytes, assuming it's a Vec<u8> and stored as a base64 string in JSON
+		let script_value = value
+			.get("script")
+			.ok_or_else(|| DeError::missing_field("script"))?
+			.as_str()
+			.ok_or_else(|| DeError::custom("Missing or invalid script field"))?;
 		let script: Bytes = base64::engine::general_purpose::STANDARD
-			.decode(value["script"].as_str().unwrap_or_default())
+			.decode(script_value)
 			.map_err(DeError::custom)?;
 
 		// Complete field deserialization with comprehensive error handling
@@ -822,13 +826,10 @@ impl<'a, P: JsonRpcProvider + 'static> NeoSerializable for Transaction<'a, P> {
 
 	fn to_array(&self) -> Vec<u8> {
 		self.try_to_array().unwrap_or_else(|err| {
-			tracing::warn!(
-				error = %err,
-				"Failed to serialize transaction via safe path; falling back to legacy encoder"
-			);
-			let mut writer = Encoder::new();
-			self.encode(&mut writer);
-			writer.to_bytes()
+			panic!(
+				"failed to serialize transaction; use try_to_array for fallible handling: {}",
+				err
+			)
 		})
 	}
 }
@@ -920,6 +921,18 @@ mod tests {
 	}
 
 	#[test]
+	#[should_panic(expected = "failed to serialize transaction; use try_to_array for fallible handling")]
+	fn test_to_array_panics_on_invalid_oracle_response_attribute() {
+		let tx = transaction_with_attribute(TransactionAttribute::OracleResponse(OracleResponse {
+			id: 1,
+			response_code: OracleResponseCode::Success,
+			result: "not-base64".to_string(),
+		}));
+
+		let _ = tx.to_array();
+	}
+
+	#[test]
 	fn test_try_to_array_rejects_signer_with_too_many_allowed_contracts() {
 		let mut signer = AccountSigner::none(&Account::from(H160::zero())).unwrap();
 		signer.set_scopes(vec![WitnessScope::CustomContracts]);
@@ -934,6 +947,43 @@ mod tests {
 			Err(TransactionError::TransactionConfiguration(message))
 				if message.contains("allowed contracts")
 		));
+	}
+
+	#[test]
+	fn test_deserialize_rejects_missing_script_field() {
+		let value = serde_json::json!({
+			"version": 0,
+			"nonce": 1,
+			"validuntilblock": 1,
+			"signers": [],
+			"size": 0,
+			"sysfee": "0",
+			"netfee": "0",
+			"attributes": [],
+			"witnesses": []
+		});
+
+		let result = serde_json::from_value::<Transaction<'static, MockProvider>>(value);
+		assert!(result.is_err());
+	}
+
+	#[test]
+	fn test_deserialize_rejects_non_string_script_field() {
+		let value = serde_json::json!({
+			"version": 0,
+			"nonce": 1,
+			"validuntilblock": 1,
+			"signers": [],
+			"size": 0,
+			"sysfee": "0",
+			"netfee": "0",
+			"attributes": [],
+			"script": 123,
+			"witnesses": []
+		});
+
+		let result = serde_json::from_value::<Transaction<'static, MockProvider>>(value);
+		assert!(result.is_err());
 	}
 
 	#[tokio::test]

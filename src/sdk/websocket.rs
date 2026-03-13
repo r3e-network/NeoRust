@@ -594,42 +594,104 @@ impl WebSocketClient {
 	async fn parse_event(json: &serde_json::Value) -> Result<Option<EventData>, NeoError> {
 		let event_type = json.get("type").and_then(|t| t.as_str()).unwrap_or("");
 
+		let required_str = |field: &str| -> Result<String, NeoError> {
+			json.get(field)
+				.and_then(|v| v.as_str())
+				.map(str::to_string)
+				.ok_or_else(|| NeoError::Network {
+					message: format!("WebSocket event '{}' missing or invalid '{}' field", event_type, field),
+					source: None,
+					recovery: ErrorRecovery::new()
+						.suggest("Inspect the raw event payload from the node")
+						.suggest("Verify the node matches the expected WebSocket schema"),
+				})
+		};
+
+		let required_u32 = |field: &str| -> Result<u32, NeoError> {
+			json.get(field)
+				.and_then(|v| v.as_u64())
+				.and_then(|v| u32::try_from(v).ok())
+				.ok_or_else(|| NeoError::Network {
+					message: format!("WebSocket event '{}' missing or invalid '{}' field", event_type, field),
+					source: None,
+					recovery: ErrorRecovery::new()
+						.suggest("Inspect the raw event payload from the node")
+						.suggest("Verify the node matches the expected WebSocket schema"),
+				})
+		};
+
+		let required_u64 = |field: &str| -> Result<u64, NeoError> {
+			json.get(field).and_then(|v| v.as_u64()).ok_or_else(|| NeoError::Network {
+				message: format!("WebSocket event '{}' missing or invalid '{}' field", event_type, field),
+				source: None,
+				recovery: ErrorRecovery::new()
+					.suggest("Inspect the raw event payload from the node")
+					.suggest("Verify the node matches the expected WebSocket schema"),
+			})
+		};
+
 		let event_data = match event_type {
 			"block_added" => Some(EventData::NewBlock {
-				height: json.get("height").and_then(|h| h.as_u64()).unwrap_or(0) as u32,
-				hash: json.get("hash").and_then(|h| h.as_str()).unwrap_or("").to_string(),
-				timestamp: json.get("timestamp").and_then(|t| t.as_u64()).unwrap_or(0),
+				height: required_u32("height")?,
+				hash: required_str("hash")?,
+				timestamp: required_u64("timestamp")?,
 				transactions: json
 					.get("transactions")
 					.and_then(|t| t.as_array())
-					.map(|arr| arr.iter().filter_map(|v| v.as_str().map(String::from)).collect())
-					.unwrap_or_default(),
+					.ok_or_else(|| NeoError::Network {
+						message: "WebSocket event 'block_added' missing or invalid 'transactions' field"
+							.to_string(),
+						source: None,
+						recovery: ErrorRecovery::new()
+							.suggest("Inspect the raw event payload from the node")
+							.suggest("Verify the node matches the expected WebSocket schema"),
+					})?
+					.iter()
+					.map(|value| {
+						value.as_str().map(str::to_string).ok_or_else(|| NeoError::Network {
+							message: "WebSocket event 'block_added' contains non-string transaction id"
+								.to_string(),
+							source: None,
+							recovery: ErrorRecovery::new()
+								.suggest("Inspect the raw event payload from the node")
+								.suggest("Verify the node matches the expected WebSocket schema"),
+						})
+					})
+					.collect::<Result<Vec<_>, _>>()?,
 			}),
 			"transaction_added" => Some(EventData::NewTransaction {
-				hash: json.get("hash").and_then(|h| h.as_str()).unwrap_or("").to_string(),
-				sender: json.get("sender").and_then(|s| s.as_str()).unwrap_or("").to_string(),
-				size: json.get("size").and_then(|s| s.as_u64()).unwrap_or(0) as u32,
+				hash: required_str("hash")?,
+				sender: required_str("sender")?,
+				size: required_u32("size")?,
 				attributes: json
 					.get("attributes")
 					.and_then(|a| a.as_array())
 					.cloned()
-					.unwrap_or_default(),
+					.ok_or_else(|| NeoError::Network {
+						message: "WebSocket event 'transaction_added' missing or invalid 'attributes' field"
+							.to_string(),
+						source: None,
+						recovery: ErrorRecovery::new()
+							.suggest("Inspect the raw event payload from the node")
+							.suggest("Verify the node matches the expected WebSocket schema"),
+					})?,
 			}),
 			"transaction_confirmed" => Some(EventData::TransactionConfirmed {
-				hash: json.get("hash").and_then(|h| h.as_str()).unwrap_or("").to_string(),
-				block_height: json.get("block_height").and_then(|h| h.as_u64()).unwrap_or(0) as u32,
-				confirmations: json.get("confirmations").and_then(|c| c.as_u64()).unwrap_or(0)
-					as u32,
-				vm_state: json.get("vm_state").and_then(|v| v.as_str()).unwrap_or("").to_string(),
+				hash: required_str("hash")?,
+				block_height: required_u32("block_height")?,
+				confirmations: required_u32("confirmations")?,
+				vm_state: required_str("vm_state")?,
 			}),
 			"notification" => Some(EventData::Notification {
-				contract: json.get("contract").and_then(|c| c.as_str()).unwrap_or("").to_string(),
-				event_name: json
-					.get("event_name")
-					.and_then(|e| e.as_str())
-					.unwrap_or("")
-					.to_string(),
-				state: json.get("state").cloned().unwrap_or(serde_json::Value::Null),
+				contract: required_str("contract")?,
+				event_name: required_str("event_name")?,
+				state: json.get("state").cloned().ok_or_else(|| NeoError::Network {
+					message: "WebSocket event 'notification' missing 'state' field".to_string(),
+					source: None,
+					recovery: ErrorRecovery::new()
+						.suggest("Inspect the raw event payload from the node")
+						.suggest("Verify the node matches the expected WebSocket schema"),
+				})?,
 			}),
 			_ => None,
 		};
@@ -670,7 +732,7 @@ impl WebSocketClient {
 	fn generate_subscription_id(&self) -> String {
 		use rand::Rng;
 		let mut rng = rand::rng();
-		format!("sub_{:016x}", rng.gen::<u64>())
+		format!("sub_{:016x}", rng.random::<u64>())
 	}
 
 	/// Create subscription request message
@@ -969,5 +1031,32 @@ mod tests {
 			EventData::NewBlock { height, .. } => assert_eq!(height, 1),
 			other => panic!("unexpected event: {other:?}"),
 		}
+	}
+
+	#[tokio::test]
+	async fn parse_event_rejects_block_event_missing_required_fields() {
+		let json = serde_json::json!({
+			"type": "block_added",
+			"subscription": "sub_1",
+			"hash": "0x01",
+			"timestamp": 1,
+			"transactions": []
+		});
+
+		let result = WebSocketClient::parse_event(&json).await;
+		assert!(result.is_err());
+	}
+
+	#[tokio::test]
+	async fn parse_event_rejects_notification_missing_state() {
+		let json = serde_json::json!({
+			"type": "notification",
+			"subscription": "sub_1",
+			"contract": "0x01",
+			"event_name": "Transfer"
+		});
+
+		let result = WebSocketClient::parse_event(&json).await;
+		assert!(result.is_err());
 	}
 }

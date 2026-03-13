@@ -25,13 +25,21 @@ pub trait SmartContractTrait<'a>: Send + Sync {
 	type P: JsonRpcProvider;
 
 	async fn try_name(&self) -> Result<String, ContractError> {
-		Ok(self.try_get_manifest().await?.name.unwrap_or_default())
+		self.try_get_manifest()
+			.await?
+			.name
+			.ok_or_else(|| ContractError::InvalidResponse("Contract manifest is missing name".to_string()))
 	}
 
 	async fn name(&self) -> String {
 		self.try_name().await.unwrap_or_else(|err| {
-			tracing::warn!(error = %err, "Failed to resolve contract name; returning empty string");
-			String::new()
+			let fallback = self.script_hash().to_hex();
+			tracing::warn!(
+				error = %err,
+				fallback = %fallback,
+				"Failed to resolve contract name; returning contract hash"
+			);
+			fallback
 		})
 	}
 	fn set_name(&mut self, _name: String) {
@@ -421,8 +429,49 @@ mod tests {
 	}
 
 	#[tokio::test]
+	async fn test_try_name_rejects_missing_manifest_name() {
+		let hash = H160::repeat_byte(0x34);
+		let manifest = test_manifest("");
+		let provider = MockProvider::new();
+		provider.push_result_with_params(
+			"getcontractstate",
+			json!([hash.to_hex()]),
+			serde_json::to_value(test_contract_state(hash, ContractManifest { name: None, ..manifest }))
+				.unwrap(),
+		);
+		let contract = TestContract::with_provider(hash, RpcClient::new(provider));
+
+		assert!(matches!(
+			contract.try_name().await,
+			Err(ContractError::InvalidResponse(message))
+				if message.contains("missing name")
+		));
+	}
+
+	#[tokio::test]
+	async fn test_name_returns_contract_hash_when_manifest_name_missing() {
+		let hash = H160::repeat_byte(0x35);
+		let provider = MockProvider::new();
+		provider.push_result_with_params(
+			"getcontractstate",
+			json!([hash.to_hex()]),
+			serde_json::to_value(test_contract_state(hash, ContractManifest::default())).unwrap(),
+		);
+		let contract = TestContract::with_provider(hash, RpcClient::new(provider));
+
+		assert_eq!(contract.name().await, hash.to_hex());
+	}
+
+	#[tokio::test]
 	async fn test_get_manifest_returns_default_without_provider() {
 		let contract = TestContract::without_provider(H160::repeat_byte(0x44));
 		assert_eq!(contract.get_manifest().await.name, None);
+	}
+
+	#[tokio::test]
+	async fn test_name_returns_contract_hash_without_provider() {
+		let hash = H160::repeat_byte(0x55);
+		let contract = TestContract::without_provider(hash);
+		assert_eq!(contract.name().await, hash.to_hex());
 	}
 }

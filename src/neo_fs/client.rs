@@ -59,6 +59,58 @@ impl Default for NeoFSClient {
 }
 
 impl NeoFSClient {
+	fn parse_container_ids_response(response: &Value) -> NeoFSResult<Vec<ContainerId>> {
+		let containers = response
+			.get("containers")
+			.and_then(|v| v.as_array())
+			.ok_or_else(|| {
+				NeoFSError::UnexpectedResponse(
+					"Missing or invalid 'containers' field in response".to_string(),
+				)
+			})?;
+
+		containers
+			.iter()
+			.map(|value| {
+				let id = value
+					.get("containerId")
+					.and_then(|id| id.as_str())
+					.ok_or_else(|| {
+						NeoFSError::UnexpectedResponse(
+							"Missing or invalid containerId in response".to_string(),
+						)
+					})?;
+				Ok(ContainerId(id.to_string()))
+			})
+			.collect()
+	}
+
+	fn parse_object_ids_response(response: &Value) -> NeoFSResult<Vec<ObjectId>> {
+		let objects = response
+			.get("objects")
+			.and_then(|v| v.as_array())
+			.ok_or_else(|| {
+				NeoFSError::UnexpectedResponse(
+					"Missing or invalid 'objects' field in response".to_string(),
+				)
+			})?;
+
+		objects
+			.iter()
+			.map(|value| {
+				let id = value
+					.get("objectId")
+					.and_then(|id| id.as_str())
+					.ok_or_else(|| {
+						NeoFSError::UnexpectedResponse(
+							"Missing or invalid objectId in response".to_string(),
+						)
+					})?;
+				Ok(ObjectId(id.to_string()))
+			})
+			.collect()
+	}
+
 	/// Creates a new NeoFS client with the given configuration
 	pub fn new(config: NeoFSConfig) -> Self {
 		let http_client = {
@@ -329,16 +381,7 @@ impl NeoFSService for NeoFSClient {
 		let endpoint = format!("containers?ownerId={}", owner_id.0);
 		let response = self.make_request("GET", &endpoint, None).await?;
 
-		if let Some(containers) = response.get("containers").and_then(|v| v.as_array()) {
-			let container_ids = containers
-				.iter()
-				.filter_map(|v| v.get("containerId").and_then(|id| id.as_str()))
-				.map(|id| ContainerId(id.to_string()))
-				.collect();
-			Ok(container_ids)
-		} else {
-			Ok(vec![]) // Return empty list if no containers found
-		}
+		Self::parse_container_ids_response(&response)
 	}
 
 	async fn delete_container(&self, id: &ContainerId) -> NeoFSResult<bool> {
@@ -414,16 +457,7 @@ impl NeoFSService for NeoFSClient {
 		let endpoint = format!("objects/{}", container_id.0);
 		let response = self.make_request("GET", &endpoint, None).await?;
 
-		if let Some(objects) = response.get("objects").and_then(|v| v.as_array()) {
-			let object_ids = objects
-				.iter()
-				.filter_map(|v| v.get("objectId").and_then(|id| id.as_str()))
-				.map(|id| ObjectId(id.to_string()))
-				.collect();
-			Ok(object_ids)
-		} else {
-			Ok(vec![]) // Return empty list if no objects found
-		}
+		Self::parse_object_ids_response(&response)
 	}
 
 	async fn delete_object(
@@ -492,5 +526,62 @@ impl NeoFSService for NeoFSClient {
 	async fn abort_multipart_upload(&self, upload: &MultipartUpload) -> NeoFSResult<bool> {
 		self.abort_multipart_upload(upload).await?;
 		Ok(true)
+	}
+}
+
+#[cfg(test)]
+mod tests {
+	use super::*;
+
+	#[test]
+	fn parse_container_ids_response_rejects_missing_containers_field() {
+		let response = json!({});
+		let err = NeoFSClient::parse_container_ids_response(&response).unwrap_err();
+
+		match err {
+			NeoFSError::UnexpectedResponse(message) => {
+				assert!(message.contains("containers"));
+			},
+			other => panic!("expected unexpected response error, got {other:?}"),
+		}
+	}
+
+	#[test]
+	fn parse_container_ids_response_rejects_missing_container_id() {
+		let response = json!({ "containers": [{}] });
+		let err = NeoFSClient::parse_container_ids_response(&response).unwrap_err();
+
+		match err {
+			NeoFSError::UnexpectedResponse(message) => {
+				assert!(message.contains("containerId"));
+			},
+			other => panic!("expected unexpected response error, got {other:?}"),
+		}
+	}
+
+	#[test]
+	fn parse_object_ids_response_rejects_missing_objects_field() {
+		let response = json!({});
+		let err = NeoFSClient::parse_object_ids_response(&response).unwrap_err();
+
+		match err {
+			NeoFSError::UnexpectedResponse(message) => {
+				assert!(message.contains("objects"));
+			},
+			other => panic!("expected unexpected response error, got {other:?}"),
+		}
+	}
+
+	#[test]
+	fn parse_object_ids_response_rejects_missing_object_id() {
+		let response = json!({ "objects": [{}] });
+		let err = NeoFSClient::parse_object_ids_response(&response).unwrap_err();
+
+		match err {
+			NeoFSError::UnexpectedResponse(message) => {
+				assert!(message.contains("objectId"));
+			},
+			other => panic!("expected unexpected response error, got {other:?}"),
+		}
 	}
 }

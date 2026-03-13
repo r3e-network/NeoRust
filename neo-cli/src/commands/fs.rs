@@ -74,20 +74,24 @@ pub struct NetworkStatus {
 }
 
 impl NeoFSClientImpl {
-	fn default() -> Self {
-		Self {
-			grpc_endpoint: DEFAULT_MAINNET_ENDPOINT.to_string(),
-			http_gateway: DEFAULT_MAINNET_HTTP_GATEWAY.to_string(),
-			rest_endpoint: DEFAULT_MAINNET_REST_ENDPOINT.to_string(),
-			http_client: HttpClient::builder()
-				.timeout(Duration::from_secs(30))
-				.build()
-				.expect("Failed to create HTTP client"),
-			timeout: Duration::from_secs(30),
-		}
+	fn default() -> Result<Self, CliError> {
+		Self::with_endpoint(DEFAULT_MAINNET_ENDPOINT)
 	}
 
-	fn with_endpoint(endpoint: &str) -> Self {
+	fn build_http_client(builder: reqwest::ClientBuilder) -> Result<HttpClient, CliError> {
+		builder
+			.build()
+			.map_err(|e| CliError::Network(format!("Failed to create HTTP client: {}", e)))
+	}
+
+	fn with_endpoint(endpoint: &str) -> Result<Self, CliError> {
+		Self::with_endpoint_using(endpoint, Self::build_http_client)
+	}
+
+	fn with_endpoint_using<F>(endpoint: &str, build_http_client: F) -> Result<Self, CliError>
+	where
+		F: FnOnce(reqwest::ClientBuilder) -> Result<HttpClient, CliError>,
+	{
 		let (grpc, http, rest) = if endpoint.contains("testnet") {
 			(
 				DEFAULT_TESTNET_ENDPOINT.to_string(),
@@ -102,16 +106,15 @@ impl NeoFSClientImpl {
 			)
 		};
 
-		Self {
+		let http_client = build_http_client(HttpClient::builder().timeout(Duration::from_secs(30)))?;
+
+		Ok(Self {
 			grpc_endpoint: grpc,
 			http_gateway: http,
 			rest_endpoint: rest,
-			http_client: HttpClient::builder()
-				.timeout(Duration::from_secs(30))
-				.build()
-				.expect("Failed to create HTTP client"),
+			http_client,
 			timeout: Duration::from_secs(30),
-		}
+		})
 	}
 
 	async fn get_network_status(&self) -> Result<NetworkStatus, CliError> {
@@ -533,7 +536,7 @@ pub async fn handle_fs_command(args: FSArgs, state: &mut CliState) -> Result<(),
 	});
 
 	// Create a NeoFS client
-	let client = NeoFSClientImpl::with_endpoint(&endpoint);
+	let client = NeoFSClientImpl::with_endpoint(&endpoint)?;
 
 	match args.command {
 		FSCommands::Container { command } => {
@@ -1137,5 +1140,28 @@ async fn test_neofs_connection(endpoint: &str, endpoint_type: &str) -> Result<()
 			Ok(())
 		},
 		_ => Err(format!("Unsupported endpoint type: {}", endpoint_type)),
+	}
+}
+
+#[cfg(test)]
+mod tests {
+	use super::*;
+
+	#[test]
+	fn with_endpoint_uses_testnet_endpoints() {
+		let client = NeoFSClientImpl::with_endpoint(DEFAULT_TESTNET_ENDPOINT).unwrap();
+
+		assert_eq!(client.grpc_endpoint, DEFAULT_TESTNET_ENDPOINT);
+		assert_eq!(client.http_gateway, DEFAULT_TESTNET_HTTP_GATEWAY);
+		assert_eq!(client.rest_endpoint, DEFAULT_TESTNET_REST_ENDPOINT);
+	}
+
+	#[test]
+	fn with_endpoint_propagates_http_client_creation_error() {
+		let result = NeoFSClientImpl::with_endpoint_using("https://grpc.fs.neo.org", |_| {
+			Err(CliError::Network("boom".to_string()))
+		});
+
+		assert!(matches!(result, Err(CliError::Network(message)) if message == "boom"));
 	}
 }

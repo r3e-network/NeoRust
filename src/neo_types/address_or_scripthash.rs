@@ -4,12 +4,12 @@
 use std::hash::{Hash, Hasher};
 
 use primitive_types::H160;
-use serde::{Deserialize, Serialize};
+use serde::{de, Deserialize, Deserializer, Serialize};
 
 use crate::neo_types::TypeError;
 use neo3::prelude::{Address, Bytes, ScriptHashExtension};
 
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 /// An enum that can represent either a blockchain `Address` or a `ScriptHash`,
 /// offering flexibility for APIs that can work with either.
 pub enum AddressOrScriptHash {
@@ -52,10 +52,16 @@ impl From<Address> for AddressOrScriptHash {
 	///
 	/// ```
 	/// use neo3::neo_types::AddressOrScriptHash;
-	/// let from_address = AddressOrScriptHash::from("myAddress".to_string());
+	/// let from_address = AddressOrScriptHash::from("NNLi44dJNXtDNSBkofB48aTVYtb1zZrNEs".to_string());
 	/// assert!(matches!(from_address, AddressOrScriptHash::Address(_)));
 	/// ```
 	fn from(s: Address) -> Self {
+		H160::from_address(&s).unwrap_or_else(|err| {
+			panic!(
+				"invalid address; use AddressOrScriptHash::Address plus try_script_hash for fallible handling: {}",
+				err
+			)
+		});
 		Self::Address(s)
 	}
 }
@@ -72,13 +78,12 @@ impl From<Bytes> for AddressOrScriptHash {
 	/// assert!(matches!(from_bytes, AddressOrScriptHash::ScriptHash(_)));
 	/// ```
 	fn from(s: Bytes) -> Self {
-		match Self::try_from_script_hash_bytes(&s) {
-			Ok(value) => value,
-			Err(err) => {
-				tracing::warn!(error = %err, "Bytes length is not 20; using zero ScriptHash");
-				Self::ScriptHash(H160::zero())
-			},
-		}
+		Self::try_from_script_hash_bytes(&s).unwrap_or_else(|err| {
+			panic!(
+				"invalid script hash bytes; use AddressOrScriptHash::try_from for fallible handling: {}",
+				err
+			)
+		})
 	}
 }
 
@@ -87,6 +92,29 @@ impl TryFrom<&[u8]> for AddressOrScriptHash {
 
 	fn try_from(value: &[u8]) -> Result<Self, Self::Error> {
 		Self::try_from_script_hash_bytes(value)
+	}
+}
+
+#[derive(Deserialize)]
+enum AddressOrScriptHashRepr {
+	Address(Address),
+	ScriptHash(H160),
+}
+
+impl<'de> Deserialize<'de> for AddressOrScriptHash {
+	fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+	where
+		D: Deserializer<'de>,
+	{
+		match AddressOrScriptHashRepr::deserialize(deserializer)? {
+			AddressOrScriptHashRepr::Address(address) => {
+				H160::from_address(&address).map_err(|err| {
+					de::Error::custom(format!("invalid address '{}': {}", address, err))
+				})?;
+				Ok(Self::Address(address))
+			},
+			AddressOrScriptHashRepr::ScriptHash(script_hash) => Ok(Self::ScriptHash(script_hash)),
+		}
 	}
 }
 
@@ -169,5 +197,31 @@ mod tests {
 		let value = AddressOrScriptHash::Address("invalid-address".to_string());
 		let result = value.try_script_hash();
 		assert!(result.is_err());
+	}
+
+	#[test]
+	#[should_panic(expected = "invalid address")]
+	fn test_from_address_panics_on_invalid_address() {
+		let _ = AddressOrScriptHash::from("invalid-address".to_string());
+	}
+
+	#[test]
+	#[should_panic(expected = "invalid script hash bytes")]
+	fn test_from_bytes_panics_on_invalid_length_instead_of_zero_hash() {
+		let _ = AddressOrScriptHash::from(vec![0u8; 19]);
+	}
+
+	#[test]
+	fn test_deserialize_rejects_invalid_address_variant() {
+		let result: Result<AddressOrScriptHash, _> =
+			serde_json::from_str(r#"{"Address":"invalid-address"}"#);
+		assert!(result.is_err());
+	}
+
+	#[test]
+	fn test_deserialize_accepts_valid_address_variant() {
+		let result: AddressOrScriptHash =
+			serde_json::from_str(r#"{"Address":"NNLi44dJNXtDNSBkofB48aTVYtb1zZrNEs"}"#).unwrap();
+		assert!(matches!(result, AddressOrScriptHash::Address(_)));
 	}
 }

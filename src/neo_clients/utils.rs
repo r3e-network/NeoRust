@@ -93,8 +93,10 @@ pub fn try_serialize<T: serde::Serialize>(t: &T) -> Result<serde_json::Value, se
 // A generic function to serialize any data structure that implements Serialize trait
 pub fn serialize<T: serde::Serialize>(t: &T) -> serde_json::Value {
 	try_serialize(t).unwrap_or_else(|e| {
-		tracing::warn!(error = %e, "Failed to serialize value; returning null");
-		serde_json::Value::Null
+		panic!(
+			"failed to serialize value; use try_serialize for fallible handling: {}",
+			e
+		)
 	})
 }
 
@@ -195,7 +197,6 @@ pub fn hex_to_address(hex: &str) -> Result<String, ProviderError> {
 mod tests {
 	use super::*;
 	use serde::{ser::Error as _, Serialize, Serializer};
-	use serde_json::Value;
 
 	struct AlwaysFails;
 
@@ -221,7 +222,8 @@ mod tests {
 	}
 
 	#[test]
-	fn test_serialize_returns_null_on_serialization_failure() {
-		assert_eq!(serialize(&AlwaysFails), Value::Null);
+	#[should_panic(expected = "failed to serialize value; use try_serialize for fallible handling")]
+	fn test_serialize_panics_on_serialization_failure() {
+		let _ = serialize(&AlwaysFails);
 	}
 }

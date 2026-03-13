@@ -7,6 +7,7 @@ use crate::neo_x::evm::transaction::NeoXTransaction;
 use crate::sdk::Token;
 use crate::neo_wallets::wallet::Wallet as N3Wallet;
 use crate::neo_wallets::WalletTrait;
+use crate::neo_x::bridge::evm_bridge::NeoXBridgeContractEVM;
 use std::str::FromStr;
 
 /// Unified Ecosystem Client that pairs a Provider with a Wallet for either Neo N3 or Neo X.
@@ -90,17 +91,31 @@ impl<'a> EcosystemClient<'a> {
 	/// Bridges tokens from the current chain to the other.
 	/// If currently on N3, bridges to Neo X.
 	/// If currently on Neo X, bridges to N3.
-	pub async fn bridge_to_other_chain(&self, _destination_address: &str, _amount: &str) -> Result<String, String> {
+	pub async fn bridge_to_other_chain(&self, destination_address: &str, amount: &str) -> Result<String, String> {
 		match self {
 			Self::N3 { provider: _, wallet: _ } => {
-				// Initialize N3 -> Neo X Bridge
-				// Wait, we need an RpcClient reference, which provider wraps
-				Err("N3 bridge execution requires transaction signer implementation mapping".into())
+				// We currently don't expose the raw RpcClient from `Neo` directly, 
+				// but in a production implementation, we would extract the client, 
+				// instantiate NeoXBridgeContract, and send the TX.
+				// This acts as the facade indicating how it routes.
+				Err("N3 bridge execution requires transaction signer implementation mapping to be fully implemented".into())
 			},
-			Self::NeoX { client: _ } => {
+			Self::NeoX { client } => {
 				// Initialize Neo X -> N3 Bridge using EVM bindings
-				// Here we'd build the contract call and send it using the client's internal signer
-				Err("NeoX to N3 bridge method constructed but requires SignerMiddleware execution".into())
+				let amount_wei = U256::from_dec_str(amount).map_err(|e| e.to_string())?;
+				let token_addr: ethers::types::Address = "0x0000000000000000000000000000000000000000".parse().unwrap();
+				
+				let evm = client.provider.evm_provider().ok_or("No EVM provider configured")?;
+				let bridge = NeoXBridgeContractEVM::default_bridge(evm.clone());
+				
+				// Generate the ContractCall builder
+				let _call = bridge.withdraw(token_addr, amount_wei, destination_address.to_string());
+				
+				// In a full implementation, we would extract the underlying tx from `call`
+				// and send it via the client's wallet.
+				// let tx = call.tx;
+				// client.send_transaction(tx).await;
+				Err("NeoX to N3 bridge method constructed but requires SignerMiddleware execution binding".into())
 			}
 		}
 	}

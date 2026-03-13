@@ -437,6 +437,27 @@ impl Signer {
 		}
 	}
 
+	/// Safely converts any signer variant into a transaction signer.
+	pub fn try_to_transaction_signer(&self) -> Result<TransactionSigner, BuilderError> {
+		match self {
+			Signer::AccountSigner(account_signer) => try_build_transaction_signer(
+				account_signer.account.get_script_hash(),
+				account_signer.get_scopes(),
+				account_signer.get_allowed_contracts(),
+				account_signer.get_allowed_groups(),
+				account_signer.get_rules(),
+			),
+			Signer::ContractSigner(contract_signer) => try_build_transaction_signer(
+				*contract_signer.get_signer_hash(),
+				contract_signer.get_scopes(),
+				contract_signer.get_allowed_contracts(),
+				contract_signer.get_allowed_groups(),
+				contract_signer.get_rules(),
+			),
+			Signer::TransactionSigner(transaction_signer) => Ok(transaction_signer.clone()),
+		}
+	}
+
 	pub fn try_encode(&self, writer: &mut Encoder) -> Result<(), TransactionError> {
 		validate_signer_serialization(self)?;
 		match self {
@@ -476,8 +497,24 @@ impl From<ContractSigner> for Signer {
 	}
 }
 
-// Keep the existing Into implementations for backward compatibility
-// Note: These will panic if called with the wrong variant. Use to_account_signer()/to_contract_signer() for safe conversion.
+fn try_build_transaction_signer(
+	signer_hash: H160,
+	scopes: &[WitnessScope],
+	allowed_contracts: &[H160],
+	allowed_groups: &[Secp256r1PublicKey],
+	rules: &[WitnessRule],
+) -> Result<TransactionSigner, BuilderError> {
+	TransactionSigner::new_full(
+		signer_hash,
+		scopes.to_vec(),
+		allowed_contracts.to_vec(),
+		allowed_groups.to_vec(),
+		rules.to_vec(),
+	)
+}
+
+// Keep the existing Into implementations for backward compatibility.
+// Note: These will panic if called with the wrong variant. Use the fallible helpers for safe conversion.
 impl Into<AccountSigner> for Signer {
 	#[track_caller]
 	fn into(self) -> AccountSigner {
@@ -496,20 +533,20 @@ impl Into<AccountSigner> for Signer {
 impl Into<TransactionSigner> for Signer {
 	fn into(self) -> TransactionSigner {
 		match self {
-			Signer::AccountSigner(account_signer) => TransactionSigner::new_full(
+			Signer::AccountSigner(account_signer) => try_build_transaction_signer(
 				account_signer.account.get_script_hash(),
-				account_signer.get_scopes().to_vec(),
-				account_signer.get_allowed_contracts().to_vec(),
-				account_signer.get_allowed_groups().to_vec(),
-				account_signer.get_rules().to_vec(),
+				account_signer.get_scopes(),
+				account_signer.get_allowed_contracts(),
+				account_signer.get_allowed_groups(),
+				account_signer.get_rules(),
 			)
 			.expect("Signer already has valid scopes"),
-			Signer::ContractSigner(contract_signer) => TransactionSigner::new_full(
+			Signer::ContractSigner(contract_signer) => try_build_transaction_signer(
 				*contract_signer.get_signer_hash(),
-				contract_signer.get_scopes().to_vec(),
-				contract_signer.get_allowed_contracts().to_vec(),
-				contract_signer.get_allowed_groups().to_vec(),
-				contract_signer.get_rules().to_vec(),
+				contract_signer.get_scopes(),
+				contract_signer.get_allowed_contracts(),
+				contract_signer.get_allowed_groups(),
+				contract_signer.get_rules(),
 			)
 			.expect("Signer already has valid scopes"),
 			Signer::TransactionSigner(transaction_signer) => transaction_signer,
@@ -519,53 +556,13 @@ impl Into<TransactionSigner> for Signer {
 
 impl Into<TransactionSigner> for &Signer {
 	fn into(self) -> TransactionSigner {
-		match self {
-			Signer::AccountSigner(account_signer) => TransactionSigner::new_full(
-				account_signer.account.get_script_hash(),
-				account_signer.get_scopes().to_vec(),
-				account_signer.get_allowed_contracts().to_vec(),
-				account_signer.get_allowed_groups().to_vec(),
-				account_signer.get_rules().to_vec(),
-			)
-			.expect("Signer already has valid scopes"),
-			Signer::ContractSigner(contract_signer) => TransactionSigner::new_full(
-				*contract_signer.get_signer_hash(),
-				contract_signer.get_scopes().to_vec(),
-				contract_signer.get_allowed_contracts().to_vec(),
-				contract_signer.get_allowed_groups().to_vec(),
-				contract_signer.get_rules().to_vec(),
-			)
-			.expect("Signer already has valid scopes"),
-			// Signer::Account(_account_signer) =>
-			// 	panic!("Cannot convert AccountSigner into TransactionSigner"),
-			// Signer::Contract(_contract_signer) =>
-			// 	panic!("Cannot convert ContractSigner into AccountSigner"),
-			Signer::TransactionSigner(transaction_signer) => transaction_signer.clone(),
-		}
+		self.try_to_transaction_signer().expect("Signer already has valid scopes")
 	}
 }
 
 impl Into<TransactionSigner> for &mut Signer {
 	fn into(self) -> TransactionSigner {
-		match self {
-			Signer::AccountSigner(account_signer) => TransactionSigner::new_full(
-				account_signer.account.get_script_hash(),
-				account_signer.get_scopes().to_vec(),
-				account_signer.get_allowed_contracts().to_vec(),
-				account_signer.get_allowed_groups().to_vec(),
-				account_signer.get_rules().to_vec(),
-			)
-			.expect("Signer already has valid scopes"),
-			Signer::ContractSigner(contract_signer) => TransactionSigner::new_full(
-				*contract_signer.get_signer_hash(),
-				contract_signer.get_scopes().to_vec(),
-				contract_signer.get_allowed_contracts().to_vec(),
-				contract_signer.get_allowed_groups().to_vec(),
-				contract_signer.get_rules().to_vec(),
-			)
-			.expect("Signer already has valid scopes"),
-			Signer::TransactionSigner(transaction_signer) => transaction_signer.clone(),
-		}
+		self.try_to_transaction_signer().expect("Signer already has valid scopes")
 	}
 }
 
@@ -1198,6 +1195,89 @@ mod tests {
 		signer6.set_allowed_contracts(vec![*SCRIPT_HASH1, *SCRIPT_HASH2]).expect("");
 
 		assert_eq!(signer5, signer6);
+	}
+
+	#[test]
+	fn test_to_account_signer_accepts_account_variant() {
+		let account_signer = AccountSigner::called_by_entry(&SCRIPT_HASH.deref().into()).unwrap();
+		let signer = Signer::from(account_signer.clone());
+
+		let converted = signer.to_account_signer().unwrap();
+
+		assert_eq!(converted, account_signer);
+	}
+
+	#[test]
+	fn test_to_account_signer_rejects_other_variants() {
+		let contract_signer = Signer::from(ContractSigner::called_by_entry(*SCRIPT_HASH, &[]));
+
+		let err = contract_signer.to_account_signer().unwrap_err();
+
+		assert_eq!(
+			err,
+			BuilderError::IllegalState(
+				"Cannot convert ContractSigner into AccountSigner".to_string()
+			)
+		);
+	}
+
+	#[test]
+	fn test_to_contract_signer_accepts_contract_variant() {
+		let contract_signer = ContractSigner::called_by_entry(*SCRIPT_HASH, &[]);
+		let signer = Signer::from(contract_signer.clone());
+
+		let converted = signer.to_contract_signer().unwrap();
+
+		assert_eq!(converted, contract_signer);
+	}
+
+	#[test]
+	fn test_to_contract_signer_rejects_other_variants() {
+		let account_signer = Signer::from(AccountSigner::called_by_entry(&SCRIPT_HASH.deref().into()).unwrap());
+
+		let err = account_signer.to_contract_signer().unwrap_err();
+
+		assert_eq!(
+			err,
+			BuilderError::IllegalState(
+				"Cannot convert AccountSigner into ContractSigner".to_string()
+			)
+		);
+	}
+
+	#[test]
+	fn test_try_to_transaction_signer_preserves_signer_data() {
+		let mut signer = AccountSigner::called_by_entry(&SCRIPT_HASH.deref().into()).unwrap();
+		signer.set_allowed_contracts(vec![*SCRIPT_HASH1]).unwrap();
+		let expected_hash = signer.get_script_hash();
+		let expected_scopes = signer.get_scopes().clone();
+		let expected_contracts = signer.get_allowed_contracts().clone();
+		let signer = Signer::from(signer);
+
+		let converted = signer.try_to_transaction_signer().unwrap();
+
+		assert_eq!(converted.account, expected_hash);
+		assert_eq!(converted.scopes, expected_scopes);
+		assert_eq!(converted.allowed_contracts, Some(expected_contracts));
+		assert_eq!(converted.allowed_groups, Some(Vec::new()));
+		assert_eq!(converted.rules, Some(Vec::new()));
+	}
+
+	#[test]
+	fn test_try_to_transaction_signer_rejects_invalid_scopes() {
+		let account = Account::from_wif("Kzt94tAAiZSgH7Yt4i25DW6jJFprZFPSqTgLr5dWmWgKDKCjXMfZ").unwrap();
+		let mut account_signer = AccountSigner::called_by_entry(&account).unwrap();
+		account_signer.scopes = vec![WitnessScope::Global, WitnessScope::CalledByEntry];
+		let signer = Signer::from(account_signer);
+
+		let err = signer.try_to_transaction_signer().unwrap_err();
+
+		assert_eq!(
+			err,
+			BuilderError::SignerConfiguration(
+				"Global scope cannot be combined with other scopes".to_string()
+			)
+		);
 	}
 
 	#[test]

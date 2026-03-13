@@ -45,8 +45,8 @@ fn default_gas_consumed() -> String {
 #[strum(serialize_all = "UPPERCASE")]
 #[serde(rename_all = "UPPERCASE")]
 pub enum NeoVMStateType {
-	None,
 	#[default]
+	None,
 	Halt,
 	Fault,
 	Break,
@@ -108,7 +108,7 @@ impl InvocationResult {
 	}
 
 	pub fn has_state_fault(&self) -> bool {
-		matches!(self.state, NeoVMStateType::Fault)
+		!matches!(self.state, NeoVMStateType::Halt)
 	}
 
 	pub fn get_first_stack_item(&self) -> Result<&StackItem, TypeError> {
@@ -281,4 +281,40 @@ pub enum NotificationState {
 	Halt,
 	Fault,
 	Break,
+}
+
+#[cfg(test)]
+mod tests {
+	use super::*;
+
+	#[test]
+	fn deserialize_missing_state_defaults_to_none() {
+		let result: InvocationResult =
+			serde_json::from_str(r#"{"script":"00","gasconsumed":"1","stack":[]}"#).unwrap();
+		assert_eq!(result.state, NeoVMStateType::None);
+	}
+
+	#[test]
+	fn deserialize_empty_state_is_none() {
+		let result: InvocationResult = serde_json::from_str(
+			r#"{"script":"00","state":"","gasconsumed":"1","stack":[]}"#,
+		)
+		.unwrap();
+		assert_eq!(result.state, NeoVMStateType::None);
+	}
+
+	#[test]
+	fn non_halt_states_are_treated_as_faults() {
+		let mut result = InvocationResult { state: NeoVMStateType::None, ..Default::default() };
+		assert!(result.has_state_fault());
+
+		result.state = NeoVMStateType::Break;
+		assert!(result.has_state_fault());
+
+		result.state = NeoVMStateType::Fault;
+		assert!(result.has_state_fault());
+
+		result.state = NeoVMStateType::Halt;
+		assert!(!result.has_state_fault());
+	}
 }

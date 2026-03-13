@@ -52,7 +52,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 	let mut parts: Vec<Part> = Vec::new();
 	let mut remaining = total_size;
 	let mut part_no = 1;
-	let mut rng = rng();
+	let mut rng = thread_rng();
 
 	while remaining > 0 && (parts.len() as u64) < upload.max_parts {
 		let current_size = remaining.min(part_size);

@@ -144,8 +144,10 @@ impl StringExt for String {
 
 	fn reversed_hex(&self) -> String {
 		self.try_reversed_hex().unwrap_or_else(|e| {
-			tracing::warn!(len = self.len(), error = %e, "Invalid hex string; cannot reverse");
-			String::new()
+			panic!(
+				"invalid hex string; use try_reversed_hex for fallible handling: {}",
+				e
+			)
 		})
 	}
 }
@@ -208,5 +210,11 @@ mod tests {
 	fn test_try_reversed_hex_reverses_valid_hex() {
 		let input = "0a0b0c".to_string();
 		assert_eq!(input.try_reversed_hex().unwrap(), "0c0b0a");
+	}
+
+	#[test]
+	#[should_panic(expected = "invalid hex string; use try_reversed_hex")]
+	fn test_reversed_hex_panics_on_invalid_hex() {
+		let _ = "xyz".to_string().reversed_hex();
 	}
 }

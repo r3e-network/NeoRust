@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 
 use crate::{
 	neo_clients::{JsonRpcProvider, RpcClient},
@@ -57,20 +58,82 @@ impl<'a, P: JsonRpcProvider + 'static> NeoXProvider<'a, P> {
 	///
 	/// Returns ContractError if the RPC call fails or if no provider is configured
 	pub async fn chain_id(&self) -> Result<u64, ContractError> {
-		// Professional Neo X chain ID implementation with dynamic RPC support
-		// This implementation provides production-ready chain ID retrieval with fallback
-		// Supports both dynamic RPC queries and static configuration for reliability
-		//
-		// Dynamic implementation when provider is available:
-		// if let Some(provider) = &self.provider {
-		//     let chain_id = provider.eth_chain_id().await?;
-		//     Ok(chain_id)
-		// } else {
-		//     Err(ContractError::NoProvider)
-		// }
+		let provider = self.provider.ok_or_else(|| {
+			ContractError::ProviderNotSet(
+				"Provider is required to query Neo X chain ID".to_string(),
+			)
+		})?;
 
-		// Return the official Neo X MainNet chain ID
-		// This is the production chain ID for Neo X EVM-compatible sidechain
-		Ok(47763) // Neo X MainNet chain ID (official specification)
+		let value: Value = provider
+			.request("neo_chainId", ())
+			.await
+			.map_err(ContractError::from)?;
+
+		Self::parse_chain_id_value(value)
+	}
+
+	fn parse_chain_id_value(value: Value) -> Result<u64, ContractError> {
+		match value {
+			Value::String(raw) => {
+				let trimmed = raw.trim();
+				if let Some(hex) = trimmed.strip_prefix("0x").or_else(|| trimmed.strip_prefix("0X")) {
+					u64::from_str_radix(hex, 16).map_err(|_| {
+						ContractError::InvalidArgError(format!(
+							"Invalid Neo X chain ID hex value: {}",
+							trimmed
+						))
+					})
+				} else {
+					trimmed.parse::<u64>().map_err(|_| {
+						ContractError::InvalidArgError(format!(
+							"Invalid Neo X chain ID value: {}",
+							trimmed
+						))
+					})
+				}
+			},
+			Value::Number(number) => number.as_u64().ok_or_else(|| {
+				ContractError::InvalidArgError(
+					"Neo X chain ID number is not representable as u64".to_string(),
+				)
+			}),
+			other => Err(ContractError::InvalidArgError(format!(
+				"Unexpected Neo X chain ID response: {}",
+				other
+			))),
+		}
+	}
+}
+
+#[cfg(test)]
+mod tests {
+	use super::*;
+	use crate::neo_clients::{MockProvider, RpcClient};
+
+	#[tokio::test]
+	async fn chain_id_queries_provider() {
+		let provider = MockProvider::new();
+		provider.push_result("neo_chainId", Value::String("0xba93".to_string()));
+		let client = RpcClient::new(provider);
+		let provider = NeoXProvider::new("https://rpc.neo-x.org", Some(&client));
+
+		let chain_id = provider.chain_id().await.unwrap();
+		assert_eq!(chain_id, 47763);
+	}
+
+	#[tokio::test]
+	async fn chain_id_requires_provider() {
+		let provider: NeoXProvider<'_, MockProvider> =
+			NeoXProvider::new("https://rpc.neo-x.org", None);
+
+		let err = provider.chain_id().await.unwrap_err();
+		assert!(matches!(err, ContractError::ProviderNotSet(message) if message.contains("chain ID")));
+	}
+
+	#[test]
+	fn parse_chain_id_value_rejects_invalid_strings() {
+		let err = NeoXProvider::<MockProvider>::parse_chain_id_value(Value::String("wat".to_string()))
+			.unwrap_err();
+		assert!(matches!(err, ContractError::InvalidArgError(message) if message.contains("Invalid Neo X chain ID")));
 	}
 }

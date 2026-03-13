@@ -377,7 +377,7 @@ async fn handle_random_generation(bytes: usize, format: String) -> Result<(), Cl
 	print_section_header("Random Data Generation");
 
 	use rand::RngCore;
-	let mut rng = rand::rng();
+	let mut rng = rand::thread_rng();
 	let mut random_bytes = vec![0u8; bytes];
 	rng.fill_bytes(&mut random_bytes);
 

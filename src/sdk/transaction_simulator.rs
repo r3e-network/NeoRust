@@ -58,7 +58,7 @@ use crate::neo_builder::{ScriptBuilder, Signer};
 use crate::neo_clients::{APITrait, HttpProvider, RpcClient};
 use crate::neo_error::unified::{ErrorRecovery, NeoError};
 // use crate::neo_protocol::AccountTrait;
-use crate::neo_types::{ContractParameter, NeoVMStateType, ScriptHash, StackItem};
+use crate::neo_types::{ContractParameter, NeoVMStateType, ScriptHash, ScriptHashExtension, StackItem};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -437,12 +437,7 @@ impl TransactionSimulator {
 		let state_changes = self.analyze_state_changes(&result, script).await?;
 
 		// Calculate fees
-		// Neo RPC may return gas_consumed as an integer string or a decimal string.
-		// Try integer first, then fall back to parsing as f64 and truncating.
-		let gas_consumed = result
-			.gas_consumed
-			.parse::<u64>()
-			.unwrap_or_else(|_| result.gas_consumed.parse::<f64>().map(|v| v as u64).unwrap_or(0));
+		let gas_consumed = self.parse_gas_consumed(&result.gas_consumed)?;
 		let system_fee = self.calculate_system_fee(gas_consumed);
 		let network_fee = self.calculate_network_fee(script.len(), signers.len());
 
@@ -458,6 +453,26 @@ impl TransactionSimulator {
 			return_values: result.stack.clone(),
 			warnings: Vec::new(),
 			suggestions: Vec::new(),
+		})
+	}
+
+	fn parse_gas_consumed(&self, gas_consumed: &str) -> Result<u64, NeoError> {
+		if let Ok(value) = gas_consumed.parse::<u64>() {
+			return Ok(value);
+		}
+
+		if let Ok(value) = gas_consumed.parse::<f64>() {
+			if value.is_finite() && value >= 0.0 {
+				return Ok(value as u64);
+			}
+		}
+
+		Err(NeoError::Other {
+			message: format!("Invalid gas consumption value in simulation response: {gas_consumed}"),
+			source: None,
+			recovery: ErrorRecovery::new()
+				.suggest("Inspect the raw invocation result from the RPC node")
+				.suggest("Verify the connected node returns a numeric gasconsumed field"),
 		})
 	}
 
@@ -530,7 +545,7 @@ impl TransactionSimulator {
 		let token_symbol = self
 			.get_token_symbol(&notification.contract)
 			.await
-			.unwrap_or_else(|_| "UNKNOWN".to_string());
+			.unwrap_or_else(|_| notification.contract.to_hex());
 
 		// Parse the state JSON - in a real implementation this would properly parse the StackItem
 		// For now, return a simplified version
@@ -558,13 +573,25 @@ impl TransactionSimulator {
 				method: Some("symbol".to_string()),
 			})?;
 
-		// Parse the result - stack is not optional
-		if let Some(_item) = result.stack.first() {
-			// Convert stack item to string
-			return Ok("TOKEN".to_string()); // Simplified - parse actual value
-		}
+		Self::extract_token_symbol(&result)
+	}
 
-		Ok("UNKNOWN".to_string())
+	fn extract_token_symbol(result: &crate::neo_types::InvocationResult) -> Result<String, NeoError> {
+		let item = result.stack.first().ok_or_else(|| NeoError::Contract {
+			message: "Token symbol response stack is empty".to_string(),
+			source: None,
+			recovery: ErrorRecovery::new().suggest("Inspect the raw contract response"),
+			contract: None,
+			method: Some("symbol".to_string()),
+		})?;
+
+		item.as_string().ok_or_else(|| NeoError::Contract {
+			message: "Token symbol response is not a string-compatible stack item".to_string(),
+			source: None,
+			recovery: ErrorRecovery::new().suggest("Inspect the raw contract response"),
+			contract: None,
+			method: Some("symbol".to_string()),
+		})
 	}
 
 	/// Calculate system fee
@@ -817,6 +844,10 @@ impl TransactionSimulatorBuilder {
 #[cfg(test)]
 mod tests {
 	use super::*;
+	use crate::neo_clients::HttpProvider;
+	use crate::neo_types::InvocationResult;
+	use crate::neo_types::StackItem;
+	use std::sync::Arc;
 
 	#[test]
 	fn test_gas_estimate_creation() {
@@ -875,5 +906,51 @@ mod tests {
 
 		assert_eq!(info.level, WarningLevel::Info);
 		assert_eq!(warning.level, WarningLevel::Warning);
+	}
+
+	#[tokio::test]
+	async fn test_parse_invocation_result_rejects_invalid_gas_consumed() {
+		let client = Arc::new(RpcClient::new(HttpProvider::new("http://localhost:10332").unwrap()));
+		let simulator = TransactionSimulator::new(client);
+		let result = InvocationResult {
+			gas_consumed: "not-a-number".to_string(),
+			..Default::default()
+		};
+
+		let err = simulator.parse_invocation_result(result, &[], vec![]).await.unwrap_err();
+
+		match err {
+			NeoError::Other { message, .. } => {
+				assert!(message.contains("Invalid gas consumption value"));
+			},
+			other => panic!("expected generic parsing error, got {other:?}"),
+		}
+	}
+
+	#[test]
+	fn test_extract_token_symbol_reads_first_stack_item() {
+		let result = InvocationResult {
+			stack: vec![StackItem::ByteString { value: "R0FT".to_string() }],
+			..Default::default()
+		};
+
+		let symbol = TransactionSimulator::extract_token_symbol(&result).unwrap();
+		assert_eq!(symbol, "GAS");
+	}
+
+	#[test]
+	fn test_extract_token_symbol_rejects_non_string_items() {
+		let result = InvocationResult {
+			stack: vec![StackItem::Map { value: vec![] }],
+			..Default::default()
+		};
+
+		let err = TransactionSimulator::extract_token_symbol(&result).unwrap_err();
+		match err {
+			NeoError::Contract { message, .. } => {
+				assert!(message.contains("not a string-compatible"));
+			},
+			other => panic!("expected contract error, got {other:?}"),
+		}
 	}
 }

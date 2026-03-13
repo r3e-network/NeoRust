@@ -25,13 +25,12 @@ pub fn public_keys_to_scripthash(
 	public_keys: &mut [Secp256r1PublicKey],
 	threshold: usize,
 ) -> ScriptHash {
-	match try_public_keys_to_scripthash(public_keys, threshold) {
-		Ok(script_hash) => script_hash,
-		Err(err) => {
-			tracing::warn!(error = %err, "Failed to build multi-sig script; returning zero script hash");
-			ScriptHash::zero()
-		},
-	}
+	try_public_keys_to_scripthash(public_keys, threshold).unwrap_or_else(|err| {
+		panic!(
+			"invalid multi-sig input; use try_public_keys_to_scripthash for fallible handling: {}",
+			err
+		)
+	})
 }
 
 pub fn try_public_keys_to_scripthash(
@@ -77,8 +76,10 @@ pub trait VecValueExtension {
 
 fn serialize_to_value<T: Serialize>(value: &T, type_name: &str) -> Value {
 	serde_json::to_value(value).unwrap_or_else(|err| {
-		tracing::warn!(error = %err, item_type = type_name, "Failed to serialize value to JSON");
-		Value::Null
+		panic!(
+			"failed to serialize {type_name} to JSON; use a fallible serialization path: {}",
+			err
+		)
 	})
 }
 
@@ -134,6 +135,18 @@ mod tests {
 	use super::*;
 	use crate::{builder::WitnessScope, neo_crypto::KeyPair};
 	use primitive_types::{H160, H256};
+	use serde::{ser::Error as _, Serializer};
+
+	struct AlwaysFails;
+
+	impl Serialize for AlwaysFails {
+		fn serialize<S>(&self, _serializer: S) -> Result<S::Ok, S::Error>
+		where
+			S: Serializer,
+		{
+			Err(S::Error::custom("boom"))
+		}
+	}
 
 	#[test]
 	fn test_try_public_keys_to_scripthash_rejects_zero_threshold() {
@@ -151,6 +164,15 @@ mod tests {
 
 		let result = try_public_keys_to_scripthash(&mut public_keys, 2);
 		assert!(result.is_err());
+	}
+
+	#[test]
+	#[should_panic(expected = "invalid multi-sig input")]
+	fn test_public_keys_to_scripthash_panics_instead_of_returning_zero_hash() {
+		let key_pair = KeyPair::new_random();
+		let mut public_keys = vec![key_pair.public_key().clone()];
+
+		let _ = public_keys_to_scripthash(&mut public_keys, 0);
 	}
 
 	#[test]
@@ -174,5 +196,11 @@ mod tests {
 		);
 
 		assert_eq!(signer.to_value(), serde_json::to_value(&signer).unwrap());
+	}
+
+	#[test]
+	#[should_panic(expected = "failed to serialize AlwaysFails to JSON")]
+	fn test_serialize_to_value_panics_on_serialization_failure() {
+		let _ = serialize_to_value(&AlwaysFails, "AlwaysFails");
 	}
 }

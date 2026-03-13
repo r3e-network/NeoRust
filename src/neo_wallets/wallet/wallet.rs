@@ -174,19 +174,24 @@ impl Wallet {
 
 	/// Creates a new wallet instance with a default account.
 	///
-	/// If the underlying account generation fails, this logs the error and returns
-	/// an empty default wallet. Use [`Wallet::try_new`] when you need the failure
-	/// surfaced to the caller.
+	/// This convenience constructor panics if account generation fails.
+	/// Use [`Wallet::try_new`] when you need the failure surfaced to the caller.
 	pub fn new() -> Self {
-		Self::try_new().unwrap_or_else(|e| {
-			tracing::error!(error = %e, "Failed to create account; returning default wallet");
-			Self::default()
+		Self::try_new_with_account_factory(Account::create).unwrap_or_else(|e| {
+			panic!("failed to create default wallet; use Wallet::try_new for fallible handling: {e}")
 		})
 	}
 
 	/// Creates a new wallet instance with a generated default account.
 	pub fn try_new() -> Result<Self, WalletError> {
-		let mut account = Account::create().map_err(WalletError::ProviderError)?;
+		Self::try_new_with_account_factory(Account::create)
+	}
+
+	fn try_new_with_account_factory<F>(create_account: F) -> Result<Self, WalletError>
+	where
+		F: FnOnce() -> Result<Account, ProviderError>,
+	{
+		let mut account = create_account().map_err(WalletError::ProviderError)?;
 		account.is_default = true;
 
 		let default_account_hash = account.address_or_scripthash.script_hash();
@@ -1125,6 +1130,7 @@ impl Wallet {
 #[cfg(test)]
 mod tests {
 	use crate::{
+		neo_clients::ProviderError,
 		neo_config::TestConstants,
 		neo_protocol::{Account, AccountTrait},
 		neo_wallets::{NEP6Account, Nep6Wallet, Wallet, WalletError, WalletTrait},
@@ -1179,6 +1185,17 @@ mod tests {
 		assert_eq!(wallet.accounts.len(), 1);
 		let account = wallet.default_account().expect("Wallet should have a default account");
 		assert!(account.is_default);
+	}
+
+	#[test]
+	#[should_panic(expected = "failed to create default wallet; use Wallet::try_new for fallible handling")]
+	fn test_new_panics_when_account_creation_fails() {
+		let _ = Wallet::try_new_with_account_factory(|| {
+			Err(ProviderError::CustomError("boom".to_string()))
+		})
+		.unwrap_or_else(|e| {
+			panic!("failed to create default wallet; use Wallet::try_new for fallible handling: {e}")
+		});
 	}
 
 	#[test]

@@ -52,6 +52,7 @@ use thiserror::Error;
 /// }
 /// ```
 #[derive(Debug, Error)]
+#[non_exhaustive]
 pub enum SignerError {
 	/// Represents an error when an invalid passphrase is provided.
 	/// This could happen during the decryption of a private key or any operation

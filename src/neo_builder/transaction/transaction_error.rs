@@ -4,6 +4,7 @@ use crate::{
 use thiserror::Error;
 
 #[derive(Error, Debug, PartialEq, Clone)]
+#[non_exhaustive]
 pub enum TransactionError {
 	#[error("Script format error: {0}")]
 	ScriptFormat(String),
@@ -29,7 +30,7 @@ pub enum TransactionError {
 	EmptyScript,
 	#[error("Invalid sender")]
 	InvalidSender,
-	#[error("Invalid state:{0}")]
+	#[error("Invalid state: {0}")]
 	IllegalState(String),
 	#[error("Transaction too large")]
 	TxTooLarge,

@@ -584,7 +584,7 @@ async fn handle_create_address(
 	for _ in 0..count {
 		let (script_hash, address) = {
 			let account = wallet
-				.create_new_account()
+				.create_account()
 				.map_err(|e| CliError::WalletOperation(format!("Failed to create account: {e}")))?;
 			(account.get_script_hash(), account.get_address())
 		};
@@ -1099,10 +1099,10 @@ async fn handle_restore_wallet(path: PathBuf, state: &mut CliState) -> Result<()
 		);
 		print!("Continue? (y/N): ");
 		use std::io::Write;
-		std::io::stdout().flush().map_err(CliError::IoError)?;
+		std::io::stdout().flush().map_err(CliError::Io)?;
 
 		let mut input = String::new();
-		std::io::stdin().read_line(&mut input).map_err(CliError::IoError)?;
+		std::io::stdin().read_line(&mut input).map_err(CliError::Io)?;
 
 		if !input.trim().to_lowercase().starts_with('y') {
 			println!("Restore cancelled.");

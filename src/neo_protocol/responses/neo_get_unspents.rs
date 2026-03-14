@@ -38,7 +38,7 @@ impl Hash for Balance {
 		self.asset_hash.hash(state);
 		self.asset_name.hash(state);
 		self.asset_symbol.hash(state);
-		// self.amount.hash(state);
+		// Note: `amount` (f64) intentionally excluded — f64 does not implement Hash.
 	}
 }
 
@@ -59,7 +59,7 @@ impl PartialEq for UnspentTransaction {
 impl Hash for UnspentTransaction {
 	fn hash<H: Hasher>(&self, state: &mut H) {
 		self.tx_id.hash(state);
-		// self.index.hash(state);
-		// self.value.hash(state);
+		self.index.hash(state);
+		// Note: `value` (f64) intentionally excluded — f64 does not implement Hash.
 	}
 }

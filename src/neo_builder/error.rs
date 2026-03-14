@@ -4,8 +4,9 @@ use crate::{
 use thiserror::Error;
 
 #[derive(Debug, Error, PartialEq, Clone)]
+#[non_exhaustive]
 pub enum BuilderError {
-	#[error("Invalid operation")]
+	#[error("Invalid script: {0}")]
 	InvalidScript(String),
 	#[error("Invalid operation")]
 	InvalidOperation,

@@ -3087,7 +3087,7 @@ dependencies = [
 
 [[package]]
 name = "neo-cli"
-version = "1.0.8"
+version = "1.0.9"
 dependencies = [
  "aes-gcm",
  "anyhow",
@@ -3125,7 +3125,7 @@ dependencies = [
 
 [[package]]
 name = "neo3"
-version = "1.0.8"
+version = "1.0.9"
 dependencies = [
  "aes",
  "async-trait",
@@ -3157,7 +3157,6 @@ dependencies = [
  "jsonwebtoken 10.3.0",
  "k256",
  "lazy_static",
- "log",
  "mockall",
  "num-bigint",
  "num-traits",

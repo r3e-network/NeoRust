@@ -256,7 +256,7 @@ impl NeoFSClientImpl {
 	) -> Result<ObjectInfo, CliError> {
 		// Read file content
 		let file_content = std::fs::read(file_path)
-			.map_err(|e| CliError::FileError(format!("Failed to read file: {}", e)))?;
+			.map_err(|e| CliError::FileSystem(format!("Failed to read file: {}", e)))?;
 
 		let file_name = object_name.unwrap_or_else(|| {
 			file_path.file_name().unwrap_or_default().to_str().unwrap_or("unnamed")
@@ -316,7 +316,7 @@ impl NeoFSClientImpl {
 				.map_err(|e| CliError::Network(format!("Failed to read response: {}", e)))?;
 
 			std::fs::write(output_path, content)
-				.map_err(|e| CliError::FileError(format!("Failed to write file: {}", e)))?;
+				.map_err(|e| CliError::FileSystem(format!("Failed to write file: {}", e)))?;
 
 			Ok(())
 		} else {

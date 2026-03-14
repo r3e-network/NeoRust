@@ -59,6 +59,7 @@ use thiserror::Error;
 ///
 /// This approach allows for precise error handling and reporting, facilitating debugging and user feedback.
 #[derive(Error, Debug)]
+#[non_exhaustive]
 pub enum WalletError {
 	/// Error indicating an issue with the account's state, such as being locked or
 	/// insufficient funds. The contained message provides additional detail.

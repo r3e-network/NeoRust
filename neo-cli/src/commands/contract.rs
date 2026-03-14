@@ -187,7 +187,7 @@ async fn deploy_contract(
 			params.clone(),
 			Some(vec![Signer::from(
 				AccountSigner::called_by_entry(&account_obj)
-					.map_err(|e| CliError::TransactionBuilder(e.to_string()))?,
+					.map_err(|e| CliError::Builder(e.to_string()))?,
 			)]),
 		)
 		.await
@@ -205,7 +205,7 @@ async fn deploy_contract(
 
 	// Build transaction
 	let signer = AccountSigner::called_by_entry(&account_obj)
-		.map_err(|e| CliError::TransactionBuilder(e.to_string()))?;
+		.map_err(|e| CliError::Builder(e.to_string()))?;
 	let signers = vec![Signer::AccountSigner(signer)];
 
 	let mut tx_builder: TransactionBuilder<'_, neo3::neo_clients::HttpProvider> =
@@ -380,7 +380,7 @@ async fn update_contract(
 			params.clone(),
 			Some(vec![Signer::from(
 				AccountSigner::called_by_entry(&account_obj)
-					.map_err(|e| CliError::TransactionBuilder(e.to_string()))?,
+					.map_err(|e| CliError::Builder(e.to_string()))?,
 			)]),
 		)
 		.await
@@ -398,7 +398,7 @@ async fn update_contract(
 
 	// Build transaction
 	let signer = AccountSigner::called_by_entry(&account_obj)
-		.map_err(|e| CliError::TransactionBuilder(e.to_string()))?;
+		.map_err(|e| CliError::Builder(e.to_string()))?;
 	let signers = vec![Signer::AccountSigner(signer)];
 
 	let mut tx_builder: TransactionBuilder<'_, neo3::neo_clients::HttpProvider> =
@@ -574,7 +574,7 @@ async fn invoke_contract(
 				parameters.clone(),
 				Some(vec![Signer::from(
 					AccountSigner::called_by_entry(&account_obj)
-						.map_err(|e| CliError::TransactionBuilder(e.to_string()))?,
+						.map_err(|e| CliError::Builder(e.to_string()))?,
 				)]),
 			)
 			.await
@@ -592,7 +592,7 @@ async fn invoke_contract(
 
 		// Build transaction
 		let signer = AccountSigner::called_by_entry(&account_obj)
-			.map_err(|e| CliError::TransactionBuilder(e.to_string()))?;
+			.map_err(|e| CliError::Builder(e.to_string()))?;
 		let signers = vec![Signer::AccountSigner(signer)];
 
 		let mut tx_builder: TransactionBuilder<'_, neo3::neo_clients::HttpProvider> =

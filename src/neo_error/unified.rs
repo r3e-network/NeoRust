@@ -2,7 +2,7 @@
 //!
 //! This module provides a hierarchical error system with context,
 //! recovery suggestions, and better error messages.
-#![allow(dead_code)]
+
 
 use std::fmt;
 use thiserror::Error;
@@ -248,6 +248,7 @@ pub struct ErrorBuilder {
 }
 
 #[derive(Debug)]
+#[allow(dead_code)] // Variants used by ErrorBuilder; not all paths are wired up yet
 enum ErrorKind {
 	Network,
 	Wallet,
@@ -262,6 +263,7 @@ enum ErrorKind {
 }
 
 #[derive(Debug, Default)]
+#[allow(dead_code)] // Fields reserved for ErrorBuilder context; not all are consumed yet
 struct ErrorContext {
 	contract: Option<String>,
 	method: Option<String>,

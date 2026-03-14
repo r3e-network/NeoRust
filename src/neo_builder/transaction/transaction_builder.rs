@@ -82,7 +82,7 @@ use crate::neo_clients::public_key_to_script_hash;
 // Import Account from neo_protocol
 use crate::neo_protocol::Account;
 
-use super::init_logger;
+
 
 #[derive(Getters, Setters, MutGetters, CopyGetters)]
 pub struct TransactionBuilder<'a, P: JsonRpcProvider + 'static> {
@@ -954,7 +954,6 @@ impl<'a, P: JsonRpcProvider + 'static> TransactionBuilder<'a, P> {
 	/// }
 	/// ```
 	pub async fn sign(&mut self) -> Result<Transaction<'_, P>, BuilderError> {
-		init_logger();
 		let mut unsigned_tx = self.get_unsigned_tx().await?;
 		let tx_bytes = unsigned_tx.get_hash_data().await?;
 

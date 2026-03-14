@@ -9,7 +9,7 @@ use serde_with::__private__::DeError;
 use tracing::info;
 
 use crate::{
-	builder::{init_logger, BuilderError, Signer, TransactionAttribute, TransactionError, Witness},
+	builder::{BuilderError, Signer, TransactionAttribute, TransactionError, Witness},
 	codec::{Decoder, Encoder, NeoSerializable, VarSizeTrait},
 	config::NeoConstants,
 	crypto::HashableForVec,
@@ -707,7 +707,6 @@ impl<'a, T: JsonRpcProvider + 'static> Transaction<'a, T> {
 	where
 		P: APITrait,
 	{
-		init_logger();
 		if self.block_count_when_sent.is_none() {
 			return Err(TransactionError::IllegalState(
 				"Cannot get the application log before transaction has been sent.".to_string(),

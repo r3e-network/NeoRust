@@ -30,7 +30,7 @@ pub use neo_witness::*;
 pub use notification::*;
 pub use oracle_request::*;
 pub use populated_blocks::*;
-pub use reponse_transaction::*;
+pub use response_transaction::*;
 pub use response_transaction_attribute::*;
 pub use response_transaction_signer::*;
 
@@ -67,6 +67,6 @@ mod neo_witness;
 mod notification;
 mod oracle_request;
 mod populated_blocks;
-mod reponse_transaction;
+mod response_transaction;
 mod response_transaction_attribute;
 mod response_transaction_signer;

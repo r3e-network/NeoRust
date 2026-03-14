@@ -1,6 +1,6 @@
 #![allow(clippy::items_after_test_module)]
 
-//! # Neo Types (v1.0.6)
+//! # Neo Types (v1.0.9)
 //!
 //! Core data types for the Neo N3 blockchain.
 //!
@@ -72,7 +72,7 @@
 //! ```
 
 use base64::{engine::general_purpose, Engine};
-pub use log::*;
+// Note: tracing macros should be imported directly where needed, not re-exported.
 use primitive_types::H256;
 use serde::{Deserialize, Serialize};
 

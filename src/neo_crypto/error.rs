@@ -1,6 +1,7 @@
 use thiserror::Error;
 
 #[derive(Debug, Error, PartialEq, Clone)]
+#[non_exhaustive]
 pub enum CryptoError {
 	#[error("Invalid passphrase: {0}")]
 	InvalidPassphrase(String),
@@ -14,7 +15,7 @@ pub enum CryptoError {
 	InvalidPublicKey,
 	#[error("Invalid private key")]
 	InvalidPrivateKey,
-	#[error("Invalid private key")]
+	#[error("Elliptic curve error: {0}")]
 	P256Error(#[from] p256::elliptic_curve::Error),
 	#[error("Signing error")]
 	SigningError,
@@ -29,6 +30,7 @@ pub enum CryptoError {
 }
 
 #[derive(Error, Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum Nep2Error {
 	#[error("Invalid passphrase: {0}")]
 	InvalidPassphrase(String),
@@ -49,6 +51,7 @@ pub enum Nep2Error {
 }
 
 #[derive(Error, Debug, PartialEq, Eq, Hash, Clone)]
+#[non_exhaustive]
 pub enum SignError {
 	#[error("Header byte out of range: {0}")]
 	HeaderOutOfRange(u8),

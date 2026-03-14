@@ -9,6 +9,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 _No changes yet._
 
+## [1.0.9] - 2026-03-14
+
+### 🐛 Critical Fixes
+
+- **Removed `init_logger()` from production code**: `Transaction::get_application_log()` and `TransactionBuilder::sign()` were force-initializing the tracing subscriber at TRACE level. Library code must never initialize the subscriber — that's the caller's responsibility. The function now lives behind `#[cfg(test)]`.
+- **Fixed Hash/Eq contract violation**: `UnspentTransaction::Hash` excluded `index` (u32) while `PartialEq` included it, violating Rust's requirement that equal values must produce equal hashes. This could cause silent data corruption in HashMaps/HashSets.
+
+### 🔧 Changed
+
+- **Error Handling Hardening**: Added `#[non_exhaustive]` to all 15 public error enums for better semver compliance (`BuilderError`, `ProviderError`, `ContractError`, `CliError`, `TransactionError`, `WalletError`, `SignerError`, `CryptoError`, `Nep2Error`, `SignError`, `TypeError`, `ProtocolError`, `NeoFSError`, `CodecError`).
+- **Filename Fix**: Renamed `reponse_transaction.rs` → `response_transaction.rs` (typo in module name).
+- **Logging Standardization**: Replaced `log::*` macros with `tracing::*` macros in relevant modules; removed `log` dependency from the main SDK crate.
+- **Dependency Cleanup**: Moved `tempfile` to `dev-dependencies`; removed ambiguous `yubihsm` feature flag.
+- **API Consistency**: Deprecated duplicate `Wallet` methods (`create_new_account`, `import_from_wif`, `get_all_accounts`) in favor of canonical names.
+- Fixed duplicate error messages in `TypeError::Deserialization` and incorrect format string in `TransactionError::IllegalState`.
+- Fixed `CryptoError::P256Error` display message.
+
+### 🧹 Code Quality
+
+- Removed ~250+ lines of dead commented-out code across 8+ files (RpcClient, KeyPair, response_transaction, response_transaction_attribute, neo_submit_block, neo_get_unspents).
+- Replaced misleading `// self.amount.hash(state)` comments with proper explanations of intentional Hash exclusions for f64 fields.
+- CLI error variants consolidated: merged duplicate variants in `neo-cli/src/errors.rs`.
+
+### 📦 Dependencies
+
+- Removed `log` dependency from main SDK crate (kept for `neo-cli`).
+- Moved `tempfile` to `dev-dependencies`.
+
+### 🧪 Testing
+
+- All **522 tests passing**, 0 clippy warnings, 0 compile warnings.
+
 ## [1.0.8] - 2026-03-13
 
 ### 🔧 Changed

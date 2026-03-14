@@ -1,6 +1,13 @@
 use thiserror::Error;
 
+/// Unified error type for the Neo CLI.
+///
+/// Each variant represents a distinct error category. Previously there were
+/// duplicate pairs (e.g. `Network` / `NetworkError`, `Rpc` / `RpcError`,
+/// `Io` / `IoError`). These have been consolidated into single canonical
+/// variants to keep pattern matching unambiguous.
 #[derive(Error, Debug)]
+#[non_exhaustive]
 pub enum CliError {
 	#[error("Invalid argument: {0} - {1}")]
 	InvalidArgument(String, String),
@@ -11,17 +18,11 @@ pub enum CliError {
 	#[error("File system error: {0}")]
 	FileSystem(String),
 
-	#[error("File error: {0}")]
-	FileError(String),
-
 	#[error("JSON error: {0}")]
 	Json(String),
 
 	#[error("Network error: {0}")]
 	Network(String),
-
-	#[error("Network error: {0}")]
-	NetworkError(String),
 
 	#[error("Transaction error: {0}")]
 	Transaction(String),
@@ -44,9 +45,6 @@ pub enum CliError {
 	#[error("Timeout error: {0}")]
 	Timeout(String),
 
-	#[error("RPC error: {0}")]
-	RpcError(String),
-
 	#[error("Not implemented: {0}")]
 	NotImplemented(String),
 
@@ -58,9 +56,6 @@ pub enum CliError {
 
 	#[error("SDK error: {0}")]
 	Sdk(String),
-
-	#[error("Transaction builder error: {0}")]
-	TransactionBuilder(String),
 
 	#[error("Builder error: {0}")]
 	Builder(String),
@@ -107,9 +102,6 @@ pub enum CliError {
 	#[error("IO error: {0}")]
 	Io(#[from] std::io::Error),
 
-	#[error("IO error: {0}")]
-	IoError(std::io::Error),
-
 	#[error("Serde JSON error: {0}")]
 	SerdeJson(#[from] serde_json::Error),
 
@@ -136,34 +128,6 @@ impl From<&str> for CliError {
 		CliError::Other(error.to_string())
 	}
 }
-
-// Comment out the utils::error implementation to resolve the error
-/*
-// Implement From trait for utils::error::CliError
-impl From<crate::utils::error::CliError> for CliError {
-	fn from(error: crate::utils::error::CliError) -> Self {
-		match error {
-			crate::utils::error::CliError::Config(s) => CliError::Config(s),
-			crate::utils::error::CliError::Wallet(s) => CliError::Wallet(s),
-			crate::utils::error::CliError::Network(s) => CliError::Network(s),
-			crate::utils::error::CliError::Rpc(s) => CliError::Rpc(s),
-			crate::utils::error::CliError::Input(s) => CliError::Input(s),
-			crate::utils::error::CliError::Io(e) => CliError::Io(e),
-			crate::utils::error::CliError::Sdk(s) => CliError::Sdk(s),
-			crate::utils::error::CliError::Transaction(s) => CliError::Transaction(s),
-			crate::utils::error::CliError::TransactionBuilder(s) => CliError::TransactionBuilder(s),
-			crate::utils::error::CliError::Builder(s) => CliError::Builder(s),
-			crate::utils::error::CliError::Unknown(s) => CliError::Unknown(s),
-			crate::utils::error::CliError::Anyhow(s) => CliError::Other(s),
-			crate::utils::error::CliError::InvalidInput(s) => CliError::InvalidInput(s),
-			crate::utils::error::CliError::InvalidFormat(s) => CliError::InvalidFormat(s),
-			crate::utils::error::CliError::NotImplemented(s) => CliError::NotImplemented(s),
-			crate::utils::error::CliError::External(s) => CliError::External(s),
-			_ => CliError::Other(format!("Unknown error: {:?}", error)),
-		}
-	}
-}
-*/
 
 // Implement From trait for BuilderError
 impl From<neo3::neo_builder::BuilderError> for CliError {

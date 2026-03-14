@@ -109,13 +109,13 @@ impl NeoFSClient {
 						},
 					}
 				} else {
-					Err(CliError::NetworkError(format!(
+					Err(CliError::Network(format!(
 						"Failed to get network status: HTTP {}",
 						response.status()
 					)))
 				}
 			},
-			Err(e) => Err(CliError::NetworkError(format!("Connection error: {}", e))),
+			Err(e) => Err(CliError::Network(format!("Connection error: {}", e))),
 		}
 	}
 
@@ -150,13 +150,13 @@ impl NeoFSClient {
 						},
 					}
 				} else {
-					Err(CliError::NetworkError(format!(
+					Err(CliError::Network(format!(
 						"Failed to list containers: HTTP {}",
 						response.status()
 					)))
 				}
 			},
-			Err(e) => Err(CliError::NetworkError(format!("Connection error: {}", e))),
+			Err(e) => Err(CliError::Network(format!("Connection error: {}", e))),
 		}
 	}
 
@@ -181,13 +181,13 @@ impl NeoFSClient {
 						},
 					}
 				} else {
-					Err(CliError::NetworkError(format!(
+					Err(CliError::Network(format!(
 						"Container not found: HTTP {}",
 						response.status()
 					)))
 				}
 			},
-			Err(e) => Err(CliError::NetworkError(format!("Connection error: {}", e))),
+			Err(e) => Err(CliError::Network(format!("Connection error: {}", e))),
 		}
 	}
 
@@ -231,13 +231,13 @@ impl NeoFSClient {
 						},
 					}
 				} else {
-					Err(CliError::NetworkError(format!(
+					Err(CliError::Network(format!(
 						"Failed to list objects: HTTP {}",
 						response.status()
 					)))
 				}
 			},
-			Err(e) => Err(CliError::NetworkError(format!("Connection error: {}", e))),
+			Err(e) => Err(CliError::Network(format!("Connection error: {}", e))),
 		}
 	}
 
@@ -250,7 +250,7 @@ impl NeoFSClient {
 		// Read file content
 		let file_content = match std::fs::read(file_path) {
 			Ok(content) => content,
-			Err(e) => return Err(CliError::FileError(format!("Failed to read file: {}", e))),
+			Err(e) => return Err(CliError::FileSystem(format!("Failed to read file: {}", e))),
 		};
 
 		let file_name = file_path.file_name().unwrap_or_default().to_string_lossy();
@@ -282,13 +282,13 @@ impl NeoFSClient {
 						content_type: "application/octet-stream".to_string(),
 					})
 				} else {
-					Err(CliError::NetworkError(format!(
+					Err(CliError::Network(format!(
 						"Failed to upload object: HTTP {}",
 						response.status()
 					)))
 				}
 			},
-			Err(e) => Err(CliError::NetworkError(format!("Upload error: {}", e))),
+			Err(e) => Err(CliError::Network(format!("Upload error: {}", e))),
 		}
 	}
 
@@ -306,7 +306,7 @@ impl NeoFSClient {
 					let content = match response.bytes().await {
 						Ok(bytes) => bytes,
 						Err(e) => {
-							return Err(CliError::NetworkError(format!(
+							return Err(CliError::Network(format!(
 								"Failed to read response: {}",
 								e
 							)))
@@ -326,16 +326,16 @@ impl NeoFSClient {
 							));
 							Ok(())
 						},
-						Err(e) => Err(CliError::FileError(format!("Failed to write file: {}", e))),
+						Err(e) => Err(CliError::FileSystem(format!("Failed to write file: {}", e))),
 					}
 				} else {
-					Err(CliError::NetworkError(format!(
+					Err(CliError::Network(format!(
 						"Failed to download object: HTTP {}",
 						response.status()
 					)))
 				}
 			},
-			Err(e) => Err(CliError::NetworkError(format!("Download error: {}", e))),
+			Err(e) => Err(CliError::Network(format!("Download error: {}", e))),
 		}
 	}
 }
@@ -638,7 +638,7 @@ async fn handle_object_command(
 	match command {
 		ObjectCommands::Put { file, container, path } => {
 			if !file.exists() {
-				return Err(CliError::FileError(format!("File not found: {}", file.display())));
+				return Err(CliError::FileSystem(format!("File not found: {}", file.display())));
 			}
 
 			let default_filename =

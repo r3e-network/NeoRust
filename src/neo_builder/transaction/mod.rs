@@ -33,13 +33,21 @@ mod witness;
 mod witness_rule;
 mod witness_scope;
 
-use std::sync::Once;
-use tracing_subscriber;
 
-static INIT: Once = Once::new();
+#[cfg(test)]
+mod test_utils {
+	use std::sync::Once;
 
-pub fn init_logger() {
-	INIT.call_once(|| {
-		tracing_subscriber::fmt().with_max_level(tracing::Level::TRACE).init();
-	});
+	static INIT: Once = Once::new();
+
+	/// Initializes the tracing subscriber for test output.
+	/// Safe to call multiple times — only the first invocation takes effect.
+	pub fn init_logger() {
+		INIT.call_once(|| {
+			tracing_subscriber::fmt().with_max_level(tracing::Level::TRACE).init();
+		});
+	}
 }
+
+#[cfg(test)]
+pub use test_utils::init_logger;

@@ -172,9 +172,3 @@ impl PartialEq for RTransaction {
 			&& self.vmstate == other.vmstate
 	}
 }
-
-// impl PartialEq for Transaction {
-// 	fn eq(&self, other: &Self) -> bool {
-// 		self.to_array() == other.to_array()
-// 	}
-// }

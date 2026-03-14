@@ -260,17 +260,7 @@ impl Wallet {
 		Ok(wallet)
 	}
 
-	// pub async fn get_nep17_balances(&self) -> Result<HashMap<H160, u32>, WalletError> {
-	// 	let balances = HTTP_PROVIDER
-	// 		.get_nep17_balances(self.get_script_hash().clone())
-	// 		.await
-	// 		.map_err(|e| WalletError::RpcError(format!("Failed to get NEP17 balances: {}", e)))?;
-	// 	let mut nep17_balances = HashMap::new();
-	// 	for balance in balances.balances {
-	// 		nep17_balances.insert(balance.asset_hash, u32::from_str(&balance.amount).unwrap());
-	// 	}
-	// 	Ok(nep17_balances)
-	// }
+
 
 	pub fn from_account(account: &Account) -> Result<Wallet, WalletError> {
 		let mut wallet: Wallet = Wallet::default();
@@ -304,14 +294,7 @@ impl Wallet {
 	/// let mut wallet = wallets::Wallet::from_accounts(vec![account1, account2]).unwrap();
 	/// ```
 	pub fn from_accounts(accounts: Vec<Account>) -> Result<Wallet, WalletError> {
-		// for account in &accounts {
-		// 	if account.wallet().is_some() {
-		// 		return Err(WalletError::AccountState(format!(
-		// 			"The account {} is already contained in a wallet. Please remove this account from its containing wallet before adding it to another wallet.",
-		// 			account.address_or_scripthash.address()
-		// 		)));
-		// 	}
-		// }
+
 
 		let mut wallet: Wallet = Wallet::default();
 		for account in &accounts {
@@ -992,20 +975,20 @@ impl Wallet {
 		Ok(wallet)
 	}
 
-	/// Gets all accounts in the wallet.
+	/// Returns all accounts in the wallet.
 	///
-	/// # Returns
-	///
-	/// A vector of references to all accounts in the wallet
+	/// This is equivalent to [`get_accounts`](Self::get_accounts).
+	/// Prefer `get_accounts` for consistency.
+	#[deprecated(since = "1.0.8", note = "Use `get_accounts` instead")]
 	pub fn get_all_accounts(&self) -> Vec<&Account> {
 		self.accounts.values().collect()
 	}
 
 	/// Creates a new account in the wallet.
 	///
-	/// # Returns
-	///
-	/// A `Result` containing the new account or a `WalletError`
+	/// This is equivalent to [`create_account`](Self::create_account).
+	/// Prefer `create_account` for consistency.
+	#[deprecated(since = "1.0.8", note = "Use `create_account` instead")]
 	pub fn create_new_account(&mut self) -> Result<&Account, WalletError> {
 		let account = Account::create().map_err(WalletError::ProviderError)?;
 		let script_hash = account.address_or_scripthash.script_hash();
@@ -1016,15 +999,11 @@ impl Wallet {
 		})
 	}
 
-	/// Imports a private key into the wallet.
+	/// Imports a private key in WIF format.
 	///
-	/// # Arguments
-	///
-	/// * `private_key` - The private key to import
-	///
-	/// # Returns
-	///
-	/// A `Result` containing the imported account or a `WalletError`
+	/// This is equivalent to [`import_private_key`](Self::import_private_key).
+	/// Prefer `import_private_key` for consistency.
+	#[deprecated(since = "1.0.8", note = "Use `import_private_key` instead")]
 	pub fn import_from_wif(&mut self, private_key: &str) -> Result<&Account, WalletError> {
 		// Create a key pair from the private key
 		let key_pair = KeyPair::from_wif(private_key).map_err(WalletError::CryptoError)?;
@@ -1157,17 +1136,7 @@ mod tests {
 		assert!(wallet.get_account(&hash).expect("Account should exist in wallet").is_default);
 	}
 
-	// #[test]
-	// fn test_wallet_link() {
-	// 	let account = Account::from_address(TestConstants::DEFAULT_ACCOUNT_ADDRESS)
-	// 		.expect("Should be able to create account from valid address in test");
-	// 	let wallet = Wallet::create().unwrap();
-	//
-	// 	assert!(account.wallet.is_none());
-	//
-	// 	wallet.add_account(account).unwrap();
-	// 	assert_eq!(account.wallet.as_ref().unwrap().as_ptr(), wallet.as_ptr());
-	// }
+
 
 	#[test]
 	fn test_create_default_wallet() {

@@ -1,6 +1,7 @@
 use thiserror::Error;
 
 #[derive(Error, Debug)]
+#[non_exhaustive]
 pub enum ProtocolError {
 	#[error("RPC responses error: {error}")]
 	RpcResponse { error: String },

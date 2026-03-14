@@ -7,7 +7,7 @@
 #![allow(clippy::type_complexity)] // Nested generics in RPC futures are unavoidable without boxing
 #![allow(unexpected_cfgs)] // Feature flags checked at build time by downstream crates
 //! ![Neo Logo](https://neo.org/images/neo-logo/NEO-logo.svg)
-//! # NeoRust SDK v1.0.6
+//! # NeoRust SDK v1.0.9
 //!
 //! A production-ready Rust SDK for the Neo N3 blockchain with enterprise-grade features.
 //!
@@ -42,13 +42,13 @@
 //!
 //! ```toml
 //! [dependencies]
-//! neo3 = { version = "1.0.6", features = ["futures", "ledger"] }
+//! neo3 = { version = "1.0.9", features = ["futures", "ledger"] }
 //! ```
 //!
 //! You can disable default features with:
 //!
 //! ```toml
-//! neo3 = { version = "1.0.6", default-features = false, features = ["futures"] }
+//! neo3 = { version = "1.0.9", default-features = false, features = ["futures"] }
 //! ```
 //!
 //! ## Overview

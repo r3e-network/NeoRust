@@ -19,6 +19,7 @@ use thiserror::Error;
 
 /// Errors that can occur during NeoFS operations
 #[derive(Error, Debug)]
+#[non_exhaustive]
 pub enum NeoFSError {
 	/// Connection error
 	#[error("Connection error: {0}")]

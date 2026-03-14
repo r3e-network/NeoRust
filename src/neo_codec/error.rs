@@ -6,6 +6,7 @@ use thiserror::Error;
 use neo3::prelude::OpCode;
 
 #[derive(Error, Debug, PartialEq, Eq, Clone)]
+#[non_exhaustive]
 pub enum CodecError {
 	#[error("Invalid passphrase: {0}")]
 	InvalidPassphrase(String),

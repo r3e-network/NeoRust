@@ -4,6 +4,7 @@ use crate::{crypto::CryptoError, neo_clients::JsonRpcError, TypeError};
 use thiserror::Error;
 
 #[derive(Debug, Error)]
+#[non_exhaustive]
 /// An error thrown when making a call to the provider
 pub enum ProviderError {
 	/// An error during NNS name resolution

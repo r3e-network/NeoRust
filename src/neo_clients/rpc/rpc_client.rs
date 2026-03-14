@@ -105,8 +105,6 @@ pub struct RpcClient<P> {
 	interval: Option<Duration>,
 	from: Option<Address>,
 	_node_client: Arc<Mutex<Option<NeoVersion>>>,
-	// #[getset(get = "pub")]
-	// allow_transmission_on_fault: bool,
 }
 
 impl<P> AsRef<P> for RpcClient<P> {
@@ -124,7 +122,6 @@ impl<P: JsonRpcProvider> RpcClient<P> {
 			interval: None,
 			from: None,
 			_node_client: Arc::new(Mutex::new(None)),
-			// allow_transmission_on_fault: false,
 		}
 	}
 
@@ -159,10 +156,8 @@ impl<P: JsonRpcProvider> RpcClient<P> {
 			tracing::trace_span!("rpc", method = method, params_type = core::any::type_name::<T>());
 		// https://docs.rs/tracing/0.1.22/tracing/span/struct.Span.html#in-asynchronous-code
 		let res = async move {
-			// trace!("tx");
 			let fetched = self.provider.fetch(method, params).await;
 			let res: R = fetched.map_err(Into::into)?;
-			// debug!("Response: = {:?}", res);
 			trace!(rx_type = core::any::type_name::<R>());
 			Ok::<_, ProviderError>(res)
 		}
@@ -183,7 +178,6 @@ impl<P: JsonRpcProvider> APITrait for RpcClient<P> {
 	}
 
 	async fn network(&self) -> Result<u32, ProviderError> {
-		// trace!("network = {:?}", self.get_version().await.unwrap());
 		if NEOCONFIG.lock().map_err(|_| ProviderError::LockError)?.network.is_none() {
 			// Use the cached node version when available to avoid redundant getversion calls.
 			let version = self.node_client().await?;
@@ -367,7 +361,6 @@ impl<P: JsonRpcProvider> APITrait for RpcClient<P> {
 		prefix_hex_string: &str,
 		start_index: u64,
 	) -> Result<String, ProviderError> {
-		//let params = [contract_hash.to_hex(), Base64Encode::to_base64(&prefix_hex_string.to_string()), start_index.to_value()];
 		let params = json!([
 			contract_hash.to_hex(),
 			encode_hex_parameter_as_base64(prefix_hex_string, "storage prefix")?,
@@ -388,7 +381,6 @@ impl<P: JsonRpcProvider> APITrait for RpcClient<P> {
 		prefix_hex_string: &str,
 		start_index: u64,
 	) -> Result<String, ProviderError> {
-		//let params = [contract_hash.to_hex(), Base64Encode::to_base64(&prefix_hex_string.to_string()), start_index.to_value()];
 		let params = json!([
 			contract_id,
 			encode_hex_parameter_as_base64(prefix_hex_string, "storage prefix")?,
@@ -760,8 +752,6 @@ impl<P: JsonRpcProvider> APITrait for RpcClient<P> {
 		to: H160,
 		amount: u32,
 	) -> Result<RTransaction, ProviderError> {
-		// let params =
-		// 	[token_hash.to_value(), from.to_value(), to.to_value(), amount.to_value()].to_vec();
 		let params = json!([token_hash.to_hex(), from.to_address(), to.to_address(), amount,]);
 		self.request("sendfrom", params).await
 	}
@@ -780,7 +770,6 @@ impl<P: JsonRpcProvider> APITrait for RpcClient<P> {
 			Some(f) => json!([f.to_address(), send_tokens]),
 			None => json!([send_tokens]),
 		};
-		//let params = [from.unwrap().to_value(), send_tokens.to_value()].to_vec();
 		self.request("sendmany", params).await
 	}
 
@@ -806,7 +795,6 @@ impl<P: JsonRpcProvider> APITrait for RpcClient<P> {
 		signers: Vec<H160>,
 		extra_fee: Option<u64>,
 	) -> Result<RTransaction, ProviderError> {
-		//to be implemented
 		if signers.is_empty() {
 			return Err(ProviderError::CustomError("signers must not be empty".into()));
 		}
@@ -817,7 +805,6 @@ impl<P: JsonRpcProvider> APITrait for RpcClient<P> {
 			signer_addresses,
 			extra_fee.map_or("".to_string(), |fee| fee.to_string())
 		]);
-		// let params = [from.to_value(), vec![send_token.to_value()].into()].to_vec();
 		self.request("canceltransaction", params).await
 	}
 
@@ -857,7 +844,6 @@ impl<P: JsonRpcProvider> APITrait for RpcClient<P> {
 		script_hash: H160,
 		from: u64,
 	) -> Result<Nep17Transfers, ProviderError> {
-		// let params = [script_hash.to_value(), from.to_value()].to_vec();
 		self.request("getnep17transfers", json!([script_hash.to_address(), from])).await
 	}
 
@@ -1071,8 +1057,6 @@ impl<P: JsonRpcProvider> APITrait for RpcClient<P> {
 		index: u32,
 		full_tx: bool,
 	) -> Result<NeoBlock, ProviderError> {
-		// let full_tx = if full_tx { 1 } else { 0 };
-		// self.request("getblock", vec![index.to_value(), 1.to_value()]).await
 		Ok(if full_tx {
 			self.request("getblock", vec![index.to_value(), 1.to_value()]).await?
 		} else {
@@ -1195,7 +1179,6 @@ impl<P: JsonRpcProvider> APITrait for RpcClient<P> {
 		&self,
 		send_token: &TransactionSendToken,
 	) -> Result<RTransaction, ProviderError> {
-		// let params = [send_token.to_value()].to_vec();
 		let params = json!([send_token.token.to_hex(), send_token.address, send_token.value,]);
 		self.request("sendtoaddress", params).await
 	}
@@ -1211,7 +1194,6 @@ impl<P: JsonRpcProvider> APITrait for RpcClient<P> {
 			send_token.address,
 			send_token.value,
 		]);
-		// let params = [from.to_value(), vec![send_token.to_value()].into()].to_vec();
 		self.request("sendfrom", params).await
 	}
 }

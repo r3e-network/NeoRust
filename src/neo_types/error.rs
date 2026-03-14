@@ -3,10 +3,11 @@ use thiserror::Error;
 use crate::neo_codec::CodecError;
 
 #[derive(Error, Debug, PartialEq, Eq, Hash, Clone)]
+#[non_exhaustive]
 pub enum TypeError {
 	#[error("Illegal argument: {0}")]
 	IllegalArgument(String),
-	#[error("Illegal state: {0}")]
+	#[error("Deserialization error: {0}")]
 	Deserialization(String),
 	#[error("Illegal state: {0}")]
 	IllegalState(String),

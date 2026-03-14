@@ -3,6 +3,7 @@ use thiserror::Error;
 
 /// Custom error type for contract-related errors
 #[derive(Error, Debug)]
+#[non_exhaustive]
 pub enum ContractError {
 	/// Error indicating an invalid Neo name
 	#[error("Invalid NNS name {0}")]

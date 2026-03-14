@@ -125,7 +125,7 @@ impl RetryHandler {
 		match error {
 			CliError::Network(_) => true,
 			CliError::Timeout(_) => true,
-			CliError::RpcError(_) => true,
+			CliError::Rpc(_) => true,
 			CliError::Config(_) => false,
 			CliError::InvalidInput(_) => false,
 			CliError::Wallet(_) => false,

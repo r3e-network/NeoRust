@@ -31,7 +31,7 @@ mod tests {
 		ContractParameter, InvocationResult,
 	};
 	use lazy_static::lazy_static;
-	use log::info;
+	use tracing::info;
 	use neo3::{
 		builder::VerificationScript,
 		config::{NeoConfig, NEOCONFIG},

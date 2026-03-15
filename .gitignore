@@ -8,6 +8,7 @@ node_modules/
 .cache/
 .autopilot/
 .hive-mind/sessions/
+.worktrees/
 *.bak
 scripts/
 .claude/

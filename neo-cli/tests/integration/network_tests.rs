@@ -51,7 +51,7 @@ fn test_network_add_node() {
 		"network",
 		"add",
 		"--url",
-		"http://seed1.ngd.network:10332",
+		"http://seed2.ngd.network:10332",
 		"--name",
 		"test-node",
 	]);

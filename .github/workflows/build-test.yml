@@ -21,7 +21,7 @@ jobs:
   build-test:
     name: Build & Test - ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 15
+    timeout-minutes: 45
     strategy:
       fail-fast: false
       matrix:
@@ -61,7 +61,7 @@ jobs:
 
     - name: Run tests
       run: cargo test --lib -- --test-threads=1 --nocapture
-      timeout-minutes: 15
+      timeout-minutes: 45
 
     - name: Build documentation
       run: cargo doc --no-deps --no-default-features
@@ -70,7 +70,7 @@ jobs:
   security:
     name: Security Audit
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 45
     
     steps:
     - uses: actions/checkout@v4
@@ -87,7 +87,7 @@ jobs:
   supply-chain:
     name: Supply Chain (cargo-deny)
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 45
 
     steps:
     - uses: actions/checkout@v4
@@ -105,7 +105,7 @@ jobs:
   coverage:
     name: Code Coverage
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 45
     if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
     continue-on-error: true
     

@@ -92,10 +92,8 @@ impl<'a, P: JsonRpcProvider + 'static> NeoXProvider<'a, P> {
 			)
 		})?;
 
-		let value: Value = provider
-			.request("neo_chainId", ())
-			.await
-			.map_err(ContractError::from)?;
+		let value: Value =
+			provider.request("neo_chainId", ()).await.map_err(ContractError::from)?;
 
 		Self::parse_chain_id_value(value)
 	}
@@ -104,7 +102,8 @@ impl<'a, P: JsonRpcProvider + 'static> NeoXProvider<'a, P> {
 		match value {
 			Value::String(raw) => {
 				let trimmed = raw.trim();
-				if let Some(hex) = trimmed.strip_prefix("0x").or_else(|| trimmed.strip_prefix("0X")) {
+				if let Some(hex) = trimmed.strip_prefix("0x").or_else(|| trimmed.strip_prefix("0X"))
+				{
 					u64::from_str_radix(hex, 16).map_err(|_| {
 						ContractError::InvalidArgError(format!(
 							"Invalid Neo X chain ID hex value: {}",
@@ -154,13 +153,18 @@ mod tests {
 		let provider: NeoXProvider<'_, MockProvider> = NeoXProvider::new("invalid://url", None);
 
 		let err = provider.chain_id().await.unwrap_err();
-		assert!(matches!(err, ContractError::ProviderNotSet(message) if message.contains("chain ID")));
+		assert!(
+			matches!(err, ContractError::ProviderNotSet(message) if message.contains("chain ID"))
+		);
 	}
 
 	#[test]
 	fn parse_chain_id_value_rejects_invalid_strings() {
-		let err = NeoXProvider::<MockProvider>::parse_chain_id_value(Value::String("wat".to_string()))
-			.unwrap_err();
-		assert!(matches!(err, ContractError::InvalidArgError(message) if message.contains("Invalid Neo X chain ID")));
+		let err =
+			NeoXProvider::<MockProvider>::parse_chain_id_value(Value::String("wat".to_string()))
+				.unwrap_err();
+		assert!(
+			matches!(err, ContractError::InvalidArgError(message) if message.contains("Invalid Neo X chain ID"))
+		);
 	}
 }

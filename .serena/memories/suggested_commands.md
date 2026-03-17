@@ -1,0 +1,11 @@
+Useful commands for this repo:
+- `cargo build --no-default-features` : baseline build used by CI.
+- `cargo test --lib -- --test-threads=1 --nocapture` : baseline library test suite used by CI.
+- `cargo test --test python_sdk_compat_tests -- --nocapture` : focused compatibility facade verification.
+- `cargo fmt --all` : format the workspace.
+- `cargo clippy --all-targets --no-default-features -- -D warnings` : CI lint command.
+- `cargo doc --no-deps --no-default-features` : CI docs build.
+- `cargo deny check` : supply-chain / license verification.
+- `cargo audit -q` : security audit.
+- `git status --short --branch` : quick branch/worktree state.
+- `rg --files src tests docs` / `rg -n <pattern> src` : fast file and text search.

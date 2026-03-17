@@ -232,12 +232,14 @@ impl SecureChannel {
 
 			// Derive session key using ECDH
 			let crypto = SgxCrypto::new()?;
-			
+
 			// Compute shared secret using our private key and the remote public key
 			let shared_secret = if let Some(private_key) = &self.enclave_private_key {
 				crypto.compute_shared_secret(private_key, remote_public_key)?
 			} else {
-				return Err(SgxError::NetworkingError("Local enclave private key is missing".to_string()));
+				return Err(SgxError::NetworkingError(
+					"Local enclave private key is missing".to_string(),
+				));
 			};
 
 			let mut session_key = [0u8; 32];

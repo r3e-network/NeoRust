@@ -269,5 +269,4 @@ mod tests {
 		assert_eq!(uncompressed.len(), 65);
 		assert_eq!(&bytes[..], &uncompressed[1..]);
 	}
-
 }

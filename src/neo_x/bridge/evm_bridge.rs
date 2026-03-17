@@ -36,12 +36,20 @@ impl NeoXBridgeContractEVM {
 
 	/// Builds a transaction to withdraw tokens from Neo X back to Neo N3.
 	/// NOTE: This returns the method builder, which you can use to send or estimate gas.
-	pub fn withdraw(&self, token: Address, amount: U256, destination_n3_address: String) -> ethers::contract::ContractCall<Provider<Http>, ()> {
+	pub fn withdraw(
+		&self,
+		token: Address,
+		amount: U256,
+		destination_n3_address: String,
+	) -> ethers::contract::ContractCall<Provider<Http>, ()> {
 		self.contract.withdraw(token, amount, destination_n3_address)
 	}
 
 	/// Gets the required bridge fee for a given token
-	pub async fn get_fee(&self, token: Address) -> Result<U256, ethers::contract::ContractError<Provider<Http>>> {
+	pub async fn get_fee(
+		&self,
+		token: Address,
+	) -> Result<U256, ethers::contract::ContractError<Provider<Http>>> {
 		self.contract.get_fee(token).call().await
 	}
 }

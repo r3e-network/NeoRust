@@ -9,6 +9,7 @@ use tokio::sync::RwLock;
 
 /// Cache configuration
 #[derive(Debug, Clone, Copy)]
+#[non_exhaustive]
 pub struct CacheConfig {
 	/// Maximum number of entries in the cache
 	pub max_entries: usize,
@@ -18,6 +19,59 @@ pub struct CacheConfig {
 	pub cleanup_interval: Duration,
 	/// Enable LRU eviction when cache is full
 	pub enable_lru: bool,
+}
+
+impl CacheConfig {
+	/// Creates a new builder for the configuration
+	pub fn builder() -> CacheConfigBuilder {
+		CacheConfigBuilder::default()
+	}
+}
+
+/// Builder for `CacheConfig`
+#[derive(Debug, Default, Clone)]
+pub struct CacheConfigBuilder {
+	max_entries: Option<usize>,
+	default_ttl: Option<Duration>,
+	cleanup_interval: Option<Duration>,
+	enable_lru: Option<bool>,
+}
+
+impl CacheConfigBuilder {
+	/// Sets the maximum number of entries
+	pub fn max_entries(mut self, val: usize) -> Self {
+		self.max_entries = Some(val);
+		self
+	}
+
+	/// Sets the default TTL
+	pub fn default_ttl(mut self, val: Duration) -> Self {
+		self.default_ttl = Some(val);
+		self
+	}
+
+	/// Sets the cleanup interval
+	pub fn cleanup_interval(mut self, val: Duration) -> Self {
+		self.cleanup_interval = Some(val);
+		self
+	}
+
+	/// Enables or disables LRU eviction
+	pub fn enable_lru(mut self, val: bool) -> Self {
+		self.enable_lru = Some(val);
+		self
+	}
+
+	/// Builds the `CacheConfig`
+	pub fn build(self) -> CacheConfig {
+		let default = CacheConfig::default();
+		CacheConfig {
+			max_entries: self.max_entries.unwrap_or(default.max_entries),
+			default_ttl: self.default_ttl.unwrap_or(default.default_ttl),
+			cleanup_interval: self.cleanup_interval.unwrap_or(default.cleanup_interval),
+			enable_lru: self.enable_lru.unwrap_or(default.enable_lru),
+		}
+	}
 }
 
 impl Default for CacheConfig {

@@ -70,13 +70,13 @@ impl NeoXTransaction {
 			.value(U256::from(self.value))
 			.gas(U256::from(self.gas_limit))
 			.gas_price(U256::from(self.gas_price));
-		
+
 		if let Some(to) = self.to {
 			// Convert primitive_types::H160 to ethers::types::H160
 			let to_ethers = EthersH160::from_str(&format!("{:?}", to)).unwrap_or_default();
 			req = req.to(to_ethers);
 		}
-		
+
 		req
 	}
 }
@@ -93,14 +93,8 @@ mod tests {
 
 	#[test]
 	fn test_into_ethers_request() {
-		let tx = NeoXTransaction::new(
-			None,
-			vec![1, 2, 3],
-			1000,
-			21000,
-			1000000000,
-		);
-		
+		let tx = NeoXTransaction::new(None, vec![1, 2, 3], 1000, 21000, 1000000000);
+
 		let req = tx.into_ethers_request();
 		assert!(req.to.is_none());
 		assert_eq!(req.value.unwrap(), U256::from(1000));

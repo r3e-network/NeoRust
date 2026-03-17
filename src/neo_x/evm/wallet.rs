@@ -1,11 +1,11 @@
+use ethers::providers::Middleware;
 use ethers::signers::{LocalWallet, Signer, WalletError};
 use ethers::types::{TransactionRequest, H160 as EthersH160, U256};
-use ethers::providers::{Middleware};
 use std::str::FromStr;
 
+use crate::neo_clients::JsonRpcProvider;
 use crate::neo_x::evm::provider::NeoXProvider;
 use crate::neo_x::evm::transaction::NeoXTransaction;
-use crate::neo_clients::JsonRpcProvider;
 
 /// Neo X EVM Wallet for managing accounts and signing transactions on Neo X.
 /// This wraps an ethers-rs `LocalWallet` to provide seamless integration.
@@ -60,22 +60,27 @@ impl<'a, P: JsonRpcProvider + 'static> NeoXClient<'a, P> {
 	}
 
 	/// Sends a `NeoXTransaction` using the configured wallet and provider
-	pub async fn send_transaction(&self, tx: NeoXTransaction) -> Result<ethers::types::TransactionReceipt, String> {
+	pub async fn send_transaction(
+		&self,
+		tx: NeoXTransaction,
+	) -> Result<ethers::types::TransactionReceipt, String> {
 		let evm = self.provider.evm_provider().ok_or("No EVM provider configured")?;
-		
+
 		// Create a SignerMiddleware combining the provider and the wallet
 		let chain_id = self.provider.chain_id().await.map_err(|e| e.to_string())?;
 		let signer = self.wallet.inner.clone().with_chain_id(chain_id);
-		
+
 		let client = ethers::middleware::SignerMiddleware::new(evm, signer);
-		
+
 		let req: TransactionRequest = tx.into();
-		
+
 		let pending_tx = client.send_transaction(req, None).await.map_err(|e| e.to_string())?;
-		
-		let receipt = pending_tx.await.map_err(|e| e.to_string())?
+
+		let receipt = pending_tx
+			.await
+			.map_err(|e| e.to_string())?
 			.ok_or("Transaction dropped from mempool")?;
-			
+
 		Ok(receipt)
 	}
 }

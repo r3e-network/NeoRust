@@ -19,7 +19,9 @@ use url::Url;
 
 // Replace the generic import with specific imports
 use crate::{
-	neo_builder::{BuilderError, InteropService, ScriptBuilder, TransactionBuilder, TransactionSigner},
+	neo_builder::{
+		BuilderError, InteropService, ScriptBuilder, TransactionBuilder, TransactionSigner,
+	},
 	neo_clients::{APITrait, Http, JsonRpcProvider, ProviderError, RwClient},
 };
 
@@ -117,12 +119,7 @@ impl<P> AsRef<P> for RpcClient<P> {
 impl<P: JsonRpcProvider> RpcClient<P> {
 	/// Instantiate a new provider with a backend.
 	pub fn new(provider: P) -> Self {
-		Self {
-			provider,
-			interval: None,
-			from: None,
-			_node_client: Arc::new(Mutex::new(None)),
-		}
+		Self { provider, interval: None, from: None, _node_client: Arc::new(Mutex::new(None)) }
 	}
 
 	/// Returns the type of node we're connected to, while also caching the value for use

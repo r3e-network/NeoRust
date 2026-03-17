@@ -144,10 +144,7 @@ impl StringExt for String {
 
 	fn reversed_hex(&self) -> String {
 		self.try_reversed_hex().unwrap_or_else(|e| {
-			panic!(
-				"invalid hex string; use try_reversed_hex for fallible handling: {}",
-				e
-			)
+			panic!("invalid hex string; use try_reversed_hex for fallible handling: {}", e)
 		})
 	}
 }

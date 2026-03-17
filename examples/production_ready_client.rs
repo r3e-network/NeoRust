@@ -13,32 +13,38 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 	println!("============================================\n");
 
 	// Create production client configuration
-	let config = ProductionClientConfig {
-		pool_config: PoolConfig {
-			max_connections: 10,
-			min_idle: 2,
-			max_idle_time: Duration::from_secs(300),
-			connection_timeout: Duration::from_secs(30),
-			request_timeout: Duration::from_secs(60),
-			max_retries: 3,
-			retry_delay: Duration::from_millis(1000),
-		},
-		cache_config: CacheConfig {
-			max_entries: 1000,
-			default_ttl: Duration::from_secs(30),
-			cleanup_interval: Duration::from_secs(60),
-			enable_lru: true,
-		},
-		circuit_breaker_config: CircuitBreakerConfig {
-			failure_threshold: 5,
-			timeout: Duration::from_secs(60),
-			success_threshold: 3,
-			failure_window: Duration::from_secs(60),
-			half_open_max_requests: 3,
-		},
-		enable_logging: true,
-		enable_metrics: true,
-	};
+	let config = ProductionClientConfig::builder()
+		.pool_config(
+			PoolConfig::builder()
+				.max_connections(10)
+				.min_idle(2)
+				.max_idle_time(Duration::from_secs(300))
+				.connection_timeout(Duration::from_secs(30))
+				.request_timeout(Duration::from_secs(60))
+				.max_retries(3)
+				.retry_delay(Duration::from_millis(1000))
+				.build(),
+		)
+		.cache_config(
+			CacheConfig::builder()
+				.max_entries(1000)
+				.default_ttl(Duration::from_secs(30))
+				.cleanup_interval(Duration::from_secs(60))
+				.enable_lru(true)
+				.build(),
+		)
+		.circuit_breaker_config(
+			CircuitBreakerConfig::builder()
+				.failure_threshold(5)
+				.timeout(Duration::from_secs(60))
+				.success_threshold(3)
+				.failure_window(Duration::from_secs(60))
+				.half_open_max_requests(3)
+				.build(),
+		)
+		.enable_logging(true)
+		.enable_metrics(true)
+		.build();
 
 	// Create production client
 	let client = ProductionRpcClient::new("https://testnet.neo.org:443".to_string(), config);
@@ -239,11 +245,10 @@ mod tests {
 
 	#[tokio::test]
 	async fn test_production_client_configuration() {
-		let config = ProductionClientConfig {
-			pool_config: PoolConfig { max_connections: 5, ..Default::default() },
-			cache_config: CacheConfig { max_entries: 100, ..Default::default() },
-			..Default::default()
-		};
+		let config = ProductionClientConfig::builder()
+			.pool_config(PoolConfig::builder().max_connections(5).build())
+			.cache_config(CacheConfig::builder().max_entries(100).build())
+			.build();
 
 		let client = ProductionRpcClient::new("https://testnet.neo.org:443".to_string(), config);
 

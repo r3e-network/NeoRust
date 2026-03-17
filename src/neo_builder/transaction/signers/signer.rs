@@ -1233,7 +1233,8 @@ mod tests {
 
 	#[test]
 	fn test_to_contract_signer_rejects_other_variants() {
-		let account_signer = Signer::from(AccountSigner::called_by_entry(&SCRIPT_HASH.deref().into()).unwrap());
+		let account_signer =
+			Signer::from(AccountSigner::called_by_entry(&SCRIPT_HASH.deref().into()).unwrap());
 
 		let err = account_signer.to_contract_signer().unwrap_err();
 
@@ -1265,7 +1266,8 @@ mod tests {
 
 	#[test]
 	fn test_try_to_transaction_signer_rejects_invalid_scopes() {
-		let account = Account::from_wif("Kzt94tAAiZSgH7Yt4i25DW6jJFprZFPSqTgLr5dWmWgKDKCjXMfZ").unwrap();
+		let account =
+			Account::from_wif("Kzt94tAAiZSgH7Yt4i25DW6jJFprZFPSqTgLr5dWmWgKDKCjXMfZ").unwrap();
 		let mut account_signer = AccountSigner::called_by_entry(&account).unwrap();
 		account_signer.scopes = vec![WitnessScope::Global, WitnessScope::CalledByEntry];
 		let signer = Signer::from(account_signer);

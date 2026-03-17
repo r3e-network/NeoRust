@@ -25,10 +25,9 @@ pub trait SmartContractTrait<'a>: Send + Sync {
 	type P: JsonRpcProvider;
 
 	async fn try_name(&self) -> Result<String, ContractError> {
-		self.try_get_manifest()
-			.await?
-			.name
-			.ok_or_else(|| ContractError::InvalidResponse("Contract manifest is missing name".to_string()))
+		self.try_get_manifest().await?.name.ok_or_else(|| {
+			ContractError::InvalidResponse("Contract manifest is missing name".to_string())
+		})
 	}
 
 	async fn name(&self) -> String {
@@ -436,8 +435,11 @@ mod tests {
 		provider.push_result_with_params(
 			"getcontractstate",
 			json!([hash.to_hex()]),
-			serde_json::to_value(test_contract_state(hash, ContractManifest { name: None, ..manifest }))
-				.unwrap(),
+			serde_json::to_value(test_contract_state(
+				hash,
+				ContractManifest { name: None, ..manifest },
+			))
+			.unwrap(),
 		);
 		let contract = TestContract::with_provider(hash, RpcClient::new(provider));
 

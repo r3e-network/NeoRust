@@ -44,12 +44,12 @@
 //!     // Set this to the owner identifier used by the NeoFS gateway you're targeting.
 //!     let wallet_address = env::var("NEOFS_WALLET")?;
 //!
-//!     let config = NeoFSConfig {
-//!         endpoint: DEFAULT_TESTNET_REST_API.to_string(),
-//!         auth: Some(NeoFSAuth { wallet_address, private_key: None }),
-//!         timeout_sec: 10,
-//!         insecure: false,
-//!     };
+//!     let config = NeoFSConfig::builder()
+//!         .endpoint(DEFAULT_TESTNET_REST_API.to_string())
+//!         .auth(NeoFSAuth { wallet_address, private_key: None })
+//!         .timeout_sec(10)
+//!         .insecure(false)
+//!         .build();
 //!
 //!     let client = NeoFSClient::new(config);
 //!     let containers = client.list_containers().await?;
@@ -103,6 +103,7 @@ pub const DEFAULT_TESTNET_REST_API: &str = "https://rest.testnet.fs.neo.org";
 
 /// Represents a NeoFS service provider configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[non_exhaustive]
 pub struct NeoFSConfig {
 	/// The NeoFS service endpoint URL.
 	///
@@ -116,6 +117,59 @@ pub struct NeoFSConfig {
 	pub timeout_sec: u64,
 	/// Specifies whether to use insecure connections
 	pub insecure: bool,
+}
+
+impl NeoFSConfig {
+	/// Creates a new builder for the configuration
+	pub fn builder() -> NeoFSConfigBuilder {
+		NeoFSConfigBuilder::default()
+	}
+}
+
+/// Builder for `NeoFSConfig`
+#[derive(Debug, Default, Clone)]
+pub struct NeoFSConfigBuilder {
+	endpoint: Option<String>,
+	auth: Option<NeoFSAuth>,
+	timeout_sec: Option<u64>,
+	insecure: Option<bool>,
+}
+
+impl NeoFSConfigBuilder {
+	/// Sets the endpoint
+	pub fn endpoint(mut self, val: String) -> Self {
+		self.endpoint = Some(val);
+		self
+	}
+
+	/// Sets the authentication information
+	pub fn auth(mut self, val: NeoFSAuth) -> Self {
+		self.auth = Some(val);
+		self
+	}
+
+	/// Sets the timeout in seconds
+	pub fn timeout_sec(mut self, val: u64) -> Self {
+		self.timeout_sec = Some(val);
+		self
+	}
+
+	/// Sets whether to use insecure connections
+	pub fn insecure(mut self, val: bool) -> Self {
+		self.insecure = Some(val);
+		self
+	}
+
+	/// Builds the `NeoFSConfig`
+	pub fn build(self) -> NeoFSConfig {
+		let default = NeoFSConfig::default();
+		NeoFSConfig {
+			endpoint: self.endpoint.unwrap_or(default.endpoint),
+			auth: self.auth.or(default.auth),
+			timeout_sec: self.timeout_sec.unwrap_or(default.timeout_sec),
+			insecure: self.insecure.unwrap_or(default.insecure),
+		}
+	}
 }
 
 impl Default for NeoFSConfig {

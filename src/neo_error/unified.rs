@@ -3,7 +3,6 @@
 //! This module provides a hierarchical error system with context,
 //! recovery suggestions, and better error messages.
 
-
 use std::fmt;
 use thiserror::Error;
 
@@ -11,6 +10,7 @@ use thiserror::Error;
 ///
 /// Provides consistent error handling with context and recovery suggestions.
 #[derive(Debug, Error)]
+#[non_exhaustive]
 pub enum NeoError {
 	/// Network-related errors
 	#[error("Network error: {message}")]

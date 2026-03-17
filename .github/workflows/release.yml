@@ -24,7 +24,7 @@ jobs:
   prepare:
     name: Prepare Release
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 15
     outputs:
       version: ${{ steps.version.outputs.version }}
 
@@ -56,7 +56,7 @@ jobs:
     name: Build - ${{ matrix.os }}
     needs: prepare
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 45
+    timeout-minutes: 15
     strategy:
       fail-fast: false
       matrix:
@@ -118,7 +118,7 @@ jobs:
     name: Create GitHub Release
     needs: [prepare, build]
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 15
 
     steps:
       - uses: actions/checkout@v4

@@ -266,3 +266,7 @@ no_std = [
     "k256/arithmetic",
     "elliptic-curve/arithmetic",
 ]
+
+[profile.dev.package."*"]
+opt-level = 3
+

@@ -5,6 +5,7 @@ pub mod unified;
 
 /// Comprehensive error types for the Neo3 SDK
 #[derive(Error, Debug)]
+#[non_exhaustive]
 pub enum Neo3Error {
 	/// Cryptographic operation errors
 	#[error("Cryptographic error: {0}")]
@@ -98,6 +99,7 @@ pub enum WalletError {
 }
 
 #[derive(Error, Debug)]
+#[non_exhaustive]
 pub enum NetworkError {
 	#[error("Connection failed: {0}")]
 	ConnectionFailed(String),
@@ -146,6 +148,7 @@ pub enum TransactionError {
 }
 
 #[derive(Error, Debug)]
+#[non_exhaustive]
 pub enum ContractError {
 	#[error("Contract not found: {0}")]
 	NotFound(String),

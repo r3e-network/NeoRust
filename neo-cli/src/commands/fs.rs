@@ -106,7 +106,8 @@ impl NeoFSClientImpl {
 			)
 		};
 
-		let http_client = build_http_client(HttpClient::builder().timeout(Duration::from_secs(30)))?;
+		let http_client =
+			build_http_client(HttpClient::builder().timeout(Duration::from_secs(30)))?;
 
 		Ok(Self {
 			grpc_endpoint: grpc,
@@ -732,15 +733,15 @@ async fn handle_container_command(
 			let account = (*accounts[0]).clone();
 
 			// Create NeoFS client configuration
-			let config = NeoFSConfig {
-				endpoint: "https://rest.testnet.fs.neo.org".to_string(),
-				auth: Some(NeoFSAuth {
+			let config = NeoFSConfig::builder()
+				.endpoint("https://rest.testnet.fs.neo.org".to_string())
+				.auth(NeoFSAuth {
 					wallet_address: account.get_address(),
 					private_key: None, // We'll use the account directly
-				}),
-				timeout_sec: 30,
-				insecure: false,
-			};
+				})
+				.timeout_sec(30)
+				.insecure(false)
+				.build();
 
 			// Create NeoFS client
 			let neofs_client = NeoFSClient::new(config).with_account(account.clone());
@@ -778,12 +779,11 @@ async fn handle_container_command(
 			print_info(&format!("Getting container info: {}", id));
 
 			// Create a basic NeoFS client for read operations
-			let config = NeoFSConfig {
-				endpoint: "https://rest.testnet.fs.neo.org".to_string(),
-				auth: None,
-				timeout_sec: 30,
-				insecure: false,
-			};
+			let config = NeoFSConfig::builder()
+				.endpoint("https://rest.testnet.fs.neo.org".to_string())
+				.timeout_sec(30)
+				.insecure(false)
+				.build();
 			let neofs_client = NeoFSClient::new(config);
 			let container_id = ContainerId(id.clone());
 
@@ -820,12 +820,12 @@ async fn handle_container_command(
 			let account = (*accounts[0]).clone();
 
 			// Create NeoFS client
-			let config = NeoFSConfig {
-				endpoint: "https://rest.testnet.fs.neo.org".to_string(),
-				auth: Some(NeoFSAuth { wallet_address: account.get_address(), private_key: None }),
-				timeout_sec: 30,
-				insecure: false,
-			};
+			let config = NeoFSConfig::builder()
+				.endpoint("https://rest.testnet.fs.neo.org".to_string())
+				.auth(NeoFSAuth { wallet_address: account.get_address(), private_key: None })
+				.timeout_sec(30)
+				.insecure(false)
+				.build();
 			let neofs_client = NeoFSClient::new(config).with_account(account.clone());
 
 			match neofs_client.list_containers().await {
@@ -865,12 +865,12 @@ async fn handle_container_command(
 			let account = (*accounts[0]).clone();
 
 			// Create NeoFS client
-			let config = NeoFSConfig {
-				endpoint: "https://rest.testnet.fs.neo.org".to_string(),
-				auth: Some(NeoFSAuth { wallet_address: account.get_address(), private_key: None }),
-				timeout_sec: 30,
-				insecure: false,
-			};
+			let config = NeoFSConfig::builder()
+				.endpoint("https://rest.testnet.fs.neo.org".to_string())
+				.auth(NeoFSAuth { wallet_address: account.get_address(), private_key: None })
+				.timeout_sec(30)
+				.insecure(false)
+				.build();
 			let neofs_client = NeoFSClient::new(config).with_account(account.clone());
 			let container_id = ContainerId(id.clone());
 
@@ -913,12 +913,11 @@ async fn handle_object_command(
 				.map_err(|e| CliError::FileSystem(format!("Failed to read file: {}", e)))?;
 
 			// Create NeoFS client
-			let config = NeoFSConfig {
-				endpoint: "https://rest.testnet.fs.neo.org".to_string(),
-				auth: None,
-				timeout_sec: 60,
-				insecure: false,
-			};
+			let config = NeoFSConfig::builder()
+				.endpoint("https://rest.testnet.fs.neo.org".to_string())
+				.timeout_sec(60)
+				.insecure(false)
+				.build();
 			let neofs_client = NeoFSClient::new(config);
 
 			// Create object
@@ -960,12 +959,11 @@ async fn handle_object_command(
 			}
 
 			// Create NeoFS client
-			let config = NeoFSConfig {
-				endpoint: "https://rest.testnet.fs.neo.org".to_string(),
-				auth: None,
-				timeout_sec: 60,
-				insecure: false,
-			};
+			let config = NeoFSConfig::builder()
+				.endpoint("https://rest.testnet.fs.neo.org".to_string())
+				.timeout_sec(60)
+				.insecure(false)
+				.build();
 			let neofs_client = NeoFSClient::new(config);
 
 			let container_id = ContainerId(container.clone());
@@ -1001,12 +999,11 @@ async fn handle_object_command(
 			print_info(&format!("Listing objects in container {}", container));
 
 			// Create NeoFS client
-			let config = NeoFSConfig {
-				endpoint: "https://rest.testnet.fs.neo.org".to_string(),
-				auth: None,
-				timeout_sec: 30,
-				insecure: false,
-			};
+			let config = NeoFSConfig::builder()
+				.endpoint("https://rest.testnet.fs.neo.org".to_string())
+				.timeout_sec(30)
+				.insecure(false)
+				.build();
 			let neofs_client = NeoFSClient::new(config);
 			let container_id = ContainerId(container.clone());
 
@@ -1033,12 +1030,11 @@ async fn handle_object_command(
 			print_info(&format!("Deleting object {} from container {}", id, container));
 
 			// Create NeoFS client
-			let config = NeoFSConfig {
-				endpoint: "https://rest.testnet.fs.neo.org".to_string(),
-				auth: None,
-				timeout_sec: 30,
-				insecure: false,
-			};
+			let config = NeoFSConfig::builder()
+				.endpoint("https://rest.testnet.fs.neo.org".to_string())
+				.timeout_sec(30)
+				.insecure(false)
+				.build();
 			let neofs_client = NeoFSClient::new(config);
 
 			let container_id = ContainerId(container.clone());

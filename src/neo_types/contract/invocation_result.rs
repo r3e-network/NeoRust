@@ -296,10 +296,9 @@ mod tests {
 
 	#[test]
 	fn deserialize_empty_state_is_none() {
-		let result: InvocationResult = serde_json::from_str(
-			r#"{"script":"00","state":"","gasconsumed":"1","stack":[]}"#,
-		)
-		.unwrap();
+		let result: InvocationResult =
+			serde_json::from_str(r#"{"script":"00","state":"","gasconsumed":"1","stack":[]}"#)
+				.unwrap();
 		assert_eq!(result.state, NeoVMStateType::None);
 	}
 

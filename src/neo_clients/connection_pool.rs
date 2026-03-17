@@ -13,6 +13,7 @@ use tokio::sync::{RwLock, Semaphore};
 
 /// Configuration for connection pool
 #[derive(Debug, Clone)]
+#[non_exhaustive]
 pub struct PoolConfig {
 	/// Maximum number of concurrent connections
 	pub max_connections: usize,
@@ -28,6 +29,83 @@ pub struct PoolConfig {
 	pub max_retries: u32,
 	/// Delay between retries
 	pub retry_delay: Duration,
+}
+
+impl PoolConfig {
+	/// Creates a new builder for the configuration
+	pub fn builder() -> PoolConfigBuilder {
+		PoolConfigBuilder::default()
+	}
+}
+
+/// Builder for `PoolConfig`
+#[derive(Debug, Default, Clone)]
+pub struct PoolConfigBuilder {
+	max_connections: Option<usize>,
+	min_idle: Option<usize>,
+	max_idle_time: Option<Duration>,
+	connection_timeout: Option<Duration>,
+	request_timeout: Option<Duration>,
+	max_retries: Option<u32>,
+	retry_delay: Option<Duration>,
+}
+
+impl PoolConfigBuilder {
+	/// Sets the maximum number of concurrent connections
+	pub fn max_connections(mut self, val: usize) -> Self {
+		self.max_connections = Some(val);
+		self
+	}
+
+	/// Sets the minimum number of idle connections
+	pub fn min_idle(mut self, val: usize) -> Self {
+		self.min_idle = Some(val);
+		self
+	}
+
+	/// Sets the maximum idle time
+	pub fn max_idle_time(mut self, val: Duration) -> Self {
+		self.max_idle_time = Some(val);
+		self
+	}
+
+	/// Sets the connection timeout
+	pub fn connection_timeout(mut self, val: Duration) -> Self {
+		self.connection_timeout = Some(val);
+		self
+	}
+
+	/// Sets the request timeout
+	pub fn request_timeout(mut self, val: Duration) -> Self {
+		self.request_timeout = Some(val);
+		self
+	}
+
+	/// Sets the maximum number of retries
+	pub fn max_retries(mut self, val: u32) -> Self {
+		self.max_retries = Some(val);
+		self
+	}
+
+	/// Sets the retry delay
+	pub fn retry_delay(mut self, val: Duration) -> Self {
+		self.retry_delay = Some(val);
+		self
+	}
+
+	/// Builds the `PoolConfig`
+	pub fn build(self) -> PoolConfig {
+		let default = PoolConfig::default();
+		PoolConfig {
+			max_connections: self.max_connections.unwrap_or(default.max_connections),
+			min_idle: self.min_idle.unwrap_or(default.min_idle),
+			max_idle_time: self.max_idle_time.unwrap_or(default.max_idle_time),
+			connection_timeout: self.connection_timeout.unwrap_or(default.connection_timeout),
+			request_timeout: self.request_timeout.unwrap_or(default.request_timeout),
+			max_retries: self.max_retries.unwrap_or(default.max_retries),
+			retry_delay: self.retry_delay.unwrap_or(default.retry_delay),
+		}
+	}
 }
 
 impl Default for PoolConfig {

@@ -22,7 +22,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 		.as_ref()
 		.map(|addr| NeoFSAuth { wallet_address: addr.clone(), private_key: None });
 
-	let config = NeoFSConfig { endpoint, auth, timeout_sec: 10, insecure: false };
+	let mut config_builder =
+		NeoFSConfig::builder().endpoint(endpoint).timeout_sec(10).insecure(false);
+
+	if let Some(a) = auth {
+		config_builder = config_builder.auth(a);
+	}
+
+	let config = config_builder.build();
 	let client = NeoFSClient::new(config);
 
 	let container_id = ContainerId(Uuid::new_v4().to_string());

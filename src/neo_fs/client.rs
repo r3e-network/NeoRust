@@ -60,10 +60,8 @@ impl Default for NeoFSClient {
 
 impl NeoFSClient {
 	fn parse_container_ids_response(response: &Value) -> NeoFSResult<Vec<ContainerId>> {
-		let containers = response
-			.get("containers")
-			.and_then(|v| v.as_array())
-			.ok_or_else(|| {
+		let containers =
+			response.get("containers").and_then(|v| v.as_array()).ok_or_else(|| {
 				NeoFSError::UnexpectedResponse(
 					"Missing or invalid 'containers' field in response".to_string(),
 				)
@@ -72,40 +70,31 @@ impl NeoFSClient {
 		containers
 			.iter()
 			.map(|value| {
-				let id = value
-					.get("containerId")
-					.and_then(|id| id.as_str())
-					.ok_or_else(|| {
-						NeoFSError::UnexpectedResponse(
-							"Missing or invalid containerId in response".to_string(),
-						)
-					})?;
+				let id = value.get("containerId").and_then(|id| id.as_str()).ok_or_else(|| {
+					NeoFSError::UnexpectedResponse(
+						"Missing or invalid containerId in response".to_string(),
+					)
+				})?;
 				Ok(ContainerId(id.to_string()))
 			})
 			.collect()
 	}
 
 	fn parse_object_ids_response(response: &Value) -> NeoFSResult<Vec<ObjectId>> {
-		let objects = response
-			.get("objects")
-			.and_then(|v| v.as_array())
-			.ok_or_else(|| {
-				NeoFSError::UnexpectedResponse(
-					"Missing or invalid 'objects' field in response".to_string(),
-				)
-			})?;
+		let objects = response.get("objects").and_then(|v| v.as_array()).ok_or_else(|| {
+			NeoFSError::UnexpectedResponse(
+				"Missing or invalid 'objects' field in response".to_string(),
+			)
+		})?;
 
 		objects
 			.iter()
 			.map(|value| {
-				let id = value
-					.get("objectId")
-					.and_then(|id| id.as_str())
-					.ok_or_else(|| {
-						NeoFSError::UnexpectedResponse(
-							"Missing or invalid objectId in response".to_string(),
-						)
-					})?;
+				let id = value.get("objectId").and_then(|id| id.as_str()).ok_or_else(|| {
+					NeoFSError::UnexpectedResponse(
+						"Missing or invalid objectId in response".to_string(),
+					)
+				})?;
 				Ok(ObjectId(id.to_string()))
 			})
 			.collect()

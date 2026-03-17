@@ -20,6 +20,7 @@ pub struct ProductionRpcClient {
 
 /// Configuration for production RPC client
 #[derive(Debug, Clone)]
+#[non_exhaustive]
 pub struct ProductionClientConfig {
 	/// Connection pool configuration
 	pub pool_config: PoolConfig,
@@ -31,6 +32,69 @@ pub struct ProductionClientConfig {
 	pub enable_logging: bool,
 	/// Enable metrics collection
 	pub enable_metrics: bool,
+}
+
+impl ProductionClientConfig {
+	/// Creates a new builder for the configuration
+	pub fn builder() -> ProductionClientConfigBuilder {
+		ProductionClientConfigBuilder::default()
+	}
+}
+
+/// Builder for `ProductionClientConfig`
+#[derive(Debug, Default, Clone)]
+pub struct ProductionClientConfigBuilder {
+	pool_config: Option<PoolConfig>,
+	cache_config: Option<CacheConfig>,
+	circuit_breaker_config: Option<CircuitBreakerConfig>,
+	enable_logging: Option<bool>,
+	enable_metrics: Option<bool>,
+}
+
+impl ProductionClientConfigBuilder {
+	/// Sets the connection pool configuration
+	pub fn pool_config(mut self, config: PoolConfig) -> Self {
+		self.pool_config = Some(config);
+		self
+	}
+
+	/// Sets the cache configuration
+	pub fn cache_config(mut self, config: CacheConfig) -> Self {
+		self.cache_config = Some(config);
+		self
+	}
+
+	/// Sets the circuit breaker configuration
+	pub fn circuit_breaker_config(mut self, config: CircuitBreakerConfig) -> Self {
+		self.circuit_breaker_config = Some(config);
+		self
+	}
+
+	/// Enables or disables request/response logging
+	pub fn enable_logging(mut self, enable: bool) -> Self {
+		self.enable_logging = Some(enable);
+		self
+	}
+
+	/// Enables or disables metrics collection
+	pub fn enable_metrics(mut self, enable: bool) -> Self {
+		self.enable_metrics = Some(enable);
+		self
+	}
+
+	/// Builds the `ProductionClientConfig`
+	pub fn build(self) -> ProductionClientConfig {
+		let default = ProductionClientConfig::default();
+		ProductionClientConfig {
+			pool_config: self.pool_config.unwrap_or(default.pool_config),
+			cache_config: self.cache_config.unwrap_or(default.cache_config),
+			circuit_breaker_config: self
+				.circuit_breaker_config
+				.unwrap_or(default.circuit_breaker_config),
+			enable_logging: self.enable_logging.unwrap_or(default.enable_logging),
+			enable_metrics: self.enable_metrics.unwrap_or(default.enable_metrics),
+		}
+	}
 }
 
 impl Default for ProductionClientConfig {

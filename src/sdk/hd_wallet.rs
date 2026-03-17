@@ -342,12 +342,13 @@ impl HDWallet {
 		let derived_key = self.derive_key(&derivation_path)?;
 
 		use crate::neo_crypto::{wif_from_private_key, Secp256r1PrivateKey};
-		
-		let private_key = Secp256r1PrivateKey::from_bytes(&derived_key.key).map_err(|e| NeoError::Wallet {
-			message: format!("Invalid derived key: {}", e),
-			source: None,
-			recovery: ErrorRecovery::new(),
-		})?;
+
+		let private_key =
+			Secp256r1PrivateKey::from_bytes(&derived_key.key).map_err(|e| NeoError::Wallet {
+				message: format!("Invalid derived key: {}", e),
+				source: None,
+				recovery: ErrorRecovery::new(),
+			})?;
 
 		let wif = wif_from_private_key(&private_key);
 		let account = Account::from_wif(&wif).map_err(|e| NeoError::Wallet {

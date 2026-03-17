@@ -33,6 +33,8 @@ mod witness;
 mod witness_rule;
 mod witness_scope;
 
+#[cfg(test)]
+pub use test_utils::init_logger;
 
 #[cfg(test)]
 mod test_utils {
@@ -48,6 +50,3 @@ mod test_utils {
 		});
 	}
 }
-
-#[cfg(test)]
-pub use test_utils::init_logger;

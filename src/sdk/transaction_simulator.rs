@@ -58,7 +58,9 @@ use crate::neo_builder::{ScriptBuilder, Signer};
 use crate::neo_clients::{APITrait, HttpProvider, RpcClient};
 use crate::neo_error::unified::{ErrorRecovery, NeoError};
 // use crate::neo_protocol::AccountTrait;
-use crate::neo_types::{ContractParameter, NeoVMStateType, ScriptHash, ScriptHashExtension, StackItem};
+use crate::neo_types::{
+	ContractParameter, NeoVMStateType, ScriptHash, ScriptHashExtension, StackItem,
+};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -468,7 +470,9 @@ impl TransactionSimulator {
 		}
 
 		Err(NeoError::Other {
-			message: format!("Invalid gas consumption value in simulation response: {gas_consumed}"),
+			message: format!(
+				"Invalid gas consumption value in simulation response: {gas_consumed}"
+			),
 			source: None,
 			recovery: ErrorRecovery::new()
 				.suggest("Inspect the raw invocation result from the RPC node")
@@ -576,7 +580,9 @@ impl TransactionSimulator {
 		Self::extract_token_symbol(&result)
 	}
 
-	fn extract_token_symbol(result: &crate::neo_types::InvocationResult) -> Result<String, NeoError> {
+	fn extract_token_symbol(
+		result: &crate::neo_types::InvocationResult,
+	) -> Result<String, NeoError> {
 		let item = result.stack.first().ok_or_else(|| NeoError::Contract {
 			message: "Token symbol response stack is empty".to_string(),
 			source: None,
@@ -912,10 +918,8 @@ mod tests {
 	async fn test_parse_invocation_result_rejects_invalid_gas_consumed() {
 		let client = Arc::new(RpcClient::new(HttpProvider::new("http://localhost:10332").unwrap()));
 		let simulator = TransactionSimulator::new(client);
-		let result = InvocationResult {
-			gas_consumed: "not-a-number".to_string(),
-			..Default::default()
-		};
+		let result =
+			InvocationResult { gas_consumed: "not-a-number".to_string(), ..Default::default() };
 
 		let err = simulator.parse_invocation_result(result, &[], vec![]).await.unwrap_err();
 

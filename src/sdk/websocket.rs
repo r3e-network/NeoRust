@@ -595,16 +595,18 @@ impl WebSocketClient {
 		let event_type = json.get("type").and_then(|t| t.as_str()).unwrap_or("");
 
 		let required_str = |field: &str| -> Result<String, NeoError> {
-			json.get(field)
-				.and_then(|v| v.as_str())
-				.map(str::to_string)
-				.ok_or_else(|| NeoError::Network {
-					message: format!("WebSocket event '{}' missing or invalid '{}' field", event_type, field),
+			json.get(field).and_then(|v| v.as_str()).map(str::to_string).ok_or_else(|| {
+				NeoError::Network {
+					message: format!(
+						"WebSocket event '{}' missing or invalid '{}' field",
+						event_type, field
+					),
 					source: None,
 					recovery: ErrorRecovery::new()
 						.suggest("Inspect the raw event payload from the node")
 						.suggest("Verify the node matches the expected WebSocket schema"),
-				})
+				}
+			})
 		};
 
 		let required_u32 = |field: &str| -> Result<u32, NeoError> {
@@ -612,7 +614,10 @@ impl WebSocketClient {
 				.and_then(|v| v.as_u64())
 				.and_then(|v| u32::try_from(v).ok())
 				.ok_or_else(|| NeoError::Network {
-					message: format!("WebSocket event '{}' missing or invalid '{}' field", event_type, field),
+					message: format!(
+						"WebSocket event '{}' missing or invalid '{}' field",
+						event_type, field
+					),
 					source: None,
 					recovery: ErrorRecovery::new()
 						.suggest("Inspect the raw event payload from the node")
@@ -622,7 +627,10 @@ impl WebSocketClient {
 
 		let required_u64 = |field: &str| -> Result<u64, NeoError> {
 			json.get(field).and_then(|v| v.as_u64()).ok_or_else(|| NeoError::Network {
-				message: format!("WebSocket event '{}' missing or invalid '{}' field", event_type, field),
+				message: format!(
+					"WebSocket event '{}' missing or invalid '{}' field",
+					event_type, field
+				),
 				source: None,
 				recovery: ErrorRecovery::new()
 					.suggest("Inspect the raw event payload from the node")
@@ -639,8 +647,9 @@ impl WebSocketClient {
 					.get("transactions")
 					.and_then(|t| t.as_array())
 					.ok_or_else(|| NeoError::Network {
-						message: "WebSocket event 'block_added' missing or invalid 'transactions' field"
-							.to_string(),
+						message:
+							"WebSocket event 'block_added' missing or invalid 'transactions' field"
+								.to_string(),
 						source: None,
 						recovery: ErrorRecovery::new()
 							.suggest("Inspect the raw event payload from the node")
@@ -649,8 +658,9 @@ impl WebSocketClient {
 					.iter()
 					.map(|value| {
 						value.as_str().map(str::to_string).ok_or_else(|| NeoError::Network {
-							message: "WebSocket event 'block_added' contains non-string transaction id"
-								.to_string(),
+							message:
+								"WebSocket event 'block_added' contains non-string transaction id"
+									.to_string(),
 							source: None,
 							recovery: ErrorRecovery::new()
 								.suggest("Inspect the raw event payload from the node")
@@ -663,18 +673,18 @@ impl WebSocketClient {
 				hash: required_str("hash")?,
 				sender: required_str("sender")?,
 				size: required_u32("size")?,
-				attributes: json
-					.get("attributes")
-					.and_then(|a| a.as_array())
-					.cloned()
-					.ok_or_else(|| NeoError::Network {
+				attributes: json.get("attributes").and_then(|a| a.as_array()).cloned().ok_or_else(
+					|| {
+						NeoError::Network {
 						message: "WebSocket event 'transaction_added' missing or invalid 'attributes' field"
 							.to_string(),
 						source: None,
 						recovery: ErrorRecovery::new()
 							.suggest("Inspect the raw event payload from the node")
 							.suggest("Verify the node matches the expected WebSocket schema"),
-					})?,
+					}
+					},
+				)?,
 			}),
 			"transaction_confirmed" => Some(EventData::TransactionConfirmed {
 				hash: required_str("hash")?,

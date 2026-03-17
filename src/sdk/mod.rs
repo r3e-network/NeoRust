@@ -57,6 +57,7 @@ pub struct Neo {
 
 /// Network configuration
 #[derive(Debug, Clone)]
+#[non_exhaustive]
 pub enum Network {
 	/// Neo MainNet
 	MainNet,
@@ -68,6 +69,7 @@ pub enum Network {
 
 /// SDK configuration options
 #[derive(Debug, Clone)]
+#[non_exhaustive]
 pub struct SdkConfig {
 	/// Request timeout
 	pub timeout: Duration,
@@ -77,6 +79,59 @@ pub struct SdkConfig {
 	pub cache_enabled: bool,
 	/// Enable metrics collection
 	pub metrics_enabled: bool,
+}
+
+impl SdkConfig {
+	/// Creates a new builder for the configuration
+	pub fn builder() -> SdkConfigBuilder {
+		SdkConfigBuilder::default()
+	}
+}
+
+/// Builder for `SdkConfig`
+#[derive(Debug, Default, Clone)]
+pub struct SdkConfigBuilder {
+	timeout: Option<Duration>,
+	retries: Option<u32>,
+	cache_enabled: Option<bool>,
+	metrics_enabled: Option<bool>,
+}
+
+impl SdkConfigBuilder {
+	/// Sets the request timeout
+	pub fn timeout(mut self, val: Duration) -> Self {
+		self.timeout = Some(val);
+		self
+	}
+
+	/// Sets the number of retries
+	pub fn retries(mut self, val: u32) -> Self {
+		self.retries = Some(val);
+		self
+	}
+
+	/// Enables or disables caching
+	pub fn cache_enabled(mut self, val: bool) -> Self {
+		self.cache_enabled = Some(val);
+		self
+	}
+
+	/// Enables or disables metrics
+	pub fn metrics_enabled(mut self, val: bool) -> Self {
+		self.metrics_enabled = Some(val);
+		self
+	}
+
+	/// Builds the `SdkConfig`
+	pub fn build(self) -> SdkConfig {
+		let default = SdkConfig::default();
+		SdkConfig {
+			timeout: self.timeout.unwrap_or(default.timeout),
+			retries: self.retries.unwrap_or(default.retries),
+			cache_enabled: self.cache_enabled.unwrap_or(default.cache_enabled),
+			metrics_enabled: self.metrics_enabled.unwrap_or(default.metrics_enabled),
+		}
+	}
 }
 
 impl Default for SdkConfig {
@@ -1392,9 +1447,9 @@ fn invalid_balance_response(token: &str, detail: impl Into<String>) -> NeoError 
 }
 
 fn parse_balance_stack_item_u64(item: &StackItem, token: &str) -> Result<u64, NeoError> {
-	let bytes = item
-		.as_bytes()
-		.ok_or_else(|| invalid_balance_response(token, "balance stack item is not byte-convertible"))?;
+	let bytes = item.as_bytes().ok_or_else(|| {
+		invalid_balance_response(token, "balance stack item is not byte-convertible")
+	})?;
 	let value = BigInt::from_signed_bytes_le(&bytes);
 
 	match value.sign() {
@@ -1415,11 +1470,7 @@ fn parse_nep17_decimals(decimals: Option<&str>, asset_hash: &ScriptHash) -> Resu
 	})?;
 
 	raw.parse::<u8>().map_err(|_| NeoError::Other {
-		message: format!(
-			"Invalid decimals '{}' for NEP-17 token {}",
-			raw,
-			asset_hash.to_hex()
-		),
+		message: format!("Invalid decimals '{}' for NEP-17 token {}", raw, asset_hash.to_hex()),
 		source: None,
 		recovery: ErrorRecovery::new()
 			.suggest("Retry against another RPC endpoint")

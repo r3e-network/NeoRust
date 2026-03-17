@@ -178,7 +178,9 @@ impl Wallet {
 	/// Use [`Wallet::try_new`] when you need the failure surfaced to the caller.
 	pub fn new() -> Self {
 		Self::try_new_with_account_factory(Account::create).unwrap_or_else(|e| {
-			panic!("failed to create default wallet; use Wallet::try_new for fallible handling: {e}")
+			panic!(
+				"failed to create default wallet; use Wallet::try_new for fallible handling: {e}"
+			)
 		})
 	}
 
@@ -260,8 +262,6 @@ impl Wallet {
 		Ok(wallet)
 	}
 
-
-
 	pub fn from_account(account: &Account) -> Result<Wallet, WalletError> {
 		let mut wallet: Wallet = Wallet::default();
 		wallet.add_account(account.clone());
@@ -294,8 +294,6 @@ impl Wallet {
 	/// let mut wallet = wallets::Wallet::from_accounts(vec![account1, account2]).unwrap();
 	/// ```
 	pub fn from_accounts(accounts: Vec<Account>) -> Result<Wallet, WalletError> {
-
-
 		let mut wallet: Wallet = Wallet::default();
 		for account in &accounts {
 			wallet.add_account(account.clone());
@@ -1136,8 +1134,6 @@ mod tests {
 		assert!(wallet.get_account(&hash).expect("Account should exist in wallet").is_default);
 	}
 
-
-
 	#[test]
 	fn test_create_default_wallet() {
 		let wallet: Wallet = Wallet::default();
@@ -1157,14 +1153,17 @@ mod tests {
 	}
 
 	#[test]
-	#[should_panic(expected = "failed to create default wallet; use Wallet::try_new for fallible handling")]
+	#[should_panic(
+		expected = "failed to create default wallet; use Wallet::try_new for fallible handling"
+	)]
 	fn test_new_panics_when_account_creation_fails() {
-		let _ = Wallet::try_new_with_account_factory(|| {
-			Err(ProviderError::CustomError("boom".to_string()))
-		})
-		.unwrap_or_else(|e| {
-			panic!("failed to create default wallet; use Wallet::try_new for fallible handling: {e}")
-		});
+		let _ =
+			Wallet::try_new_with_account_factory(|| {
+				Err(ProviderError::CustomError("boom".to_string()))
+			})
+			.unwrap_or_else(|e| {
+				panic!("failed to create default wallet; use Wallet::try_new for fallible handling: {e}")
+			});
 	}
 
 	#[test]

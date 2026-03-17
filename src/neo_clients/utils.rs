@@ -93,10 +93,7 @@ pub fn try_serialize<T: serde::Serialize>(t: &T) -> Result<serde_json::Value, se
 // A generic function to serialize any data structure that implements Serialize trait
 pub fn serialize<T: serde::Serialize>(t: &T) -> serde_json::Value {
 	try_serialize(t).unwrap_or_else(|e| {
-		panic!(
-			"failed to serialize value; use try_serialize for fallible handling: {}",
-			e
-		)
+		panic!("failed to serialize value; use try_serialize for fallible handling: {}", e)
 	})
 }
 

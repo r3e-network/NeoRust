@@ -194,6 +194,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 				| UnifiedNeoError::Timeout { recovery, .. }
 				| UnifiedNeoError::RateLimit { recovery, .. }
 				| UnifiedNeoError::Other { recovery, .. } => Some(recovery),
+				_ => None,
 			};
 
 			if let Some(recovery) = recovery {

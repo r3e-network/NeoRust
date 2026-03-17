@@ -25,7 +25,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 	let auth = wallet
 		.as_ref()
 		.map(|addr| NeoFSAuth { wallet_address: addr.clone(), private_key: None });
-	let config = NeoFSConfig { endpoint: endpoint.clone(), auth, timeout_sec: 10, insecure: false };
+	let mut config_builder = NeoFSConfig::builder()
+		.endpoint(endpoint.clone())
+		.timeout_sec(10)
+		.insecure(false);
+
+	if let Some(a) = auth {
+		config_builder = config_builder.auth(a);
+	}
+
+	let config = config_builder.build();
 	let client = NeoFSClient::new(config.clone());
 
 	println!("🌐 Endpoint: {}", endpoint);

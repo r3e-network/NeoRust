@@ -31,7 +31,6 @@ mod tests {
 		ContractParameter, InvocationResult,
 	};
 	use lazy_static::lazy_static;
-	use tracing::info;
 	use neo3::{
 		builder::VerificationScript,
 		config::{NeoConfig, NEOCONFIG},
@@ -42,6 +41,7 @@ mod tests {
 	use std::{default, ops::Deref, str::FromStr, sync::Arc};
 	use tokio::sync::{Mutex, OnceCell};
 	use tracing::debug;
+	use tracing::info;
 
 	lazy_static! {
 		pub static ref ACCOUNT1: Account = Account::from_key_pair(

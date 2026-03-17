@@ -329,10 +329,7 @@ mod tests {
 				.await
 				.unwrap();
 
-		assert_eq!(
-			hash,
-			ScriptHash::from_str("ef4073a0f2b305a38ec4050e4d3d28bc40ea63f5").unwrap()
-		);
+		assert_eq!(hash, ScriptHash::from_str("ef4073a0f2b305a38ec4050e4d3d28bc40ea63f5").unwrap());
 	}
 
 	#[tokio::test]

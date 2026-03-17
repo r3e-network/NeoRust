@@ -15,6 +15,7 @@ pub static MONITORING: Lazy<Arc<MonitoringConfig>> = Lazy::new(|| {
 
 /// Monitoring configuration
 #[derive(Debug, Clone)]
+#[non_exhaustive]
 pub struct MonitoringConfig {
     pub metrics_enabled: bool,
     pub metrics_port: u16,
@@ -23,6 +24,76 @@ pub struct MonitoringConfig {
     pub log_level: String,
     pub health_check_enabled: bool,
     pub health_check_port: u16,
+}
+
+impl MonitoringConfig {
+    /// Creates a new builder for the configuration
+    pub fn builder() -> MonitoringConfigBuilder {
+        MonitoringConfigBuilder::default()
+    }
+}
+
+/// Builder for `MonitoringConfig`
+#[derive(Debug, Default, Clone)]
+pub struct MonitoringConfigBuilder {
+    metrics_enabled: Option<bool>,
+    metrics_port: Option<u16>,
+    tracing_enabled: Option<bool>,
+    tracing_endpoint: Option<String>,
+    log_level: Option<String>,
+    health_check_enabled: Option<bool>,
+    health_check_port: Option<u16>,
+}
+
+impl MonitoringConfigBuilder {
+    pub fn metrics_enabled(mut self, val: bool) -> Self {
+        self.metrics_enabled = Some(val);
+        self
+    }
+    
+    pub fn metrics_port(mut self, val: u16) -> Self {
+        self.metrics_port = Some(val);
+        self
+    }
+
+    pub fn tracing_enabled(mut self, val: bool) -> Self {
+        self.tracing_enabled = Some(val);
+        self
+    }
+
+    pub fn tracing_endpoint(mut self, val: String) -> Self {
+        self.tracing_endpoint = Some(val);
+        self
+    }
+
+    pub fn log_level(mut self, val: String) -> Self {
+        self.log_level = Some(val);
+        self
+    }
+
+    pub fn health_check_enabled(mut self, val: bool) -> Self {
+        self.health_check_enabled = Some(val);
+        self
+    }
+
+    pub fn health_check_port(mut self, val: u16) -> Self {
+        self.health_check_port = Some(val);
+        self
+    }
+
+    /// Builds the `MonitoringConfig`. Missing fields fallback to defaults or environment variables.
+    pub fn build(self) -> MonitoringConfig {
+        let env_default = MonitoringConfig::from_env();
+        MonitoringConfig {
+            metrics_enabled: self.metrics_enabled.unwrap_or(env_default.metrics_enabled),
+            metrics_port: self.metrics_port.unwrap_or(env_default.metrics_port),
+            tracing_enabled: self.tracing_enabled.unwrap_or(env_default.tracing_enabled),
+            tracing_endpoint: self.tracing_endpoint.unwrap_or(env_default.tracing_endpoint),
+            log_level: self.log_level.unwrap_or(env_default.log_level),
+            health_check_enabled: self.health_check_enabled.unwrap_or(env_default.health_check_enabled),
+            health_check_port: self.health_check_port.unwrap_or(env_default.health_check_port),
+        }
+    }
 }
 
 impl MonitoringConfig {

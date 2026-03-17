@@ -183,7 +183,7 @@ impl NEP6Account {
 	///
 	/// Accounts with an address or contract verification script are converted directly.
 	/// Encrypted-key-only accounts are also accepted and use a placeholder script hash until
-	/// [`AccountTrait::decrypt_private_key`] derives the real single-signature state. Truly
+	/// [`crate::neo_protocol::AccountTrait::decrypt_private_key`] derives the real single-signature state. Truly
 	/// incomplete accounts without address, contract script, or encrypted key return an error.
 	///
 	/// # Errors

@@ -5,10 +5,10 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use async_trait::async_trait;
 use futures_util::StreamExt;
 use http::HeaderValue;
-use tracing::debug;
 use reqwest::{header, Client, Error as ReqwestError};
 use serde::{de::DeserializeOwned, Serialize};
 use thiserror::Error;
+use tracing::debug;
 use url::Url;
 
 use super::common::{JsonRpcError, Request, Response};

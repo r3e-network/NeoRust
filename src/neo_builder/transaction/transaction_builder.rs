@@ -82,8 +82,6 @@ use crate::neo_clients::public_key_to_script_hash;
 // Import Account from neo_protocol
 use crate::neo_protocol::Account;
 
-
-
 #[derive(Getters, Setters, MutGetters, CopyGetters)]
 pub struct TransactionBuilder<'a, P: JsonRpcProvider + 'static> {
 	pub(crate) client: Option<&'a RpcClient<P>>,
@@ -566,7 +564,9 @@ impl<'a, P: JsonRpcProvider + 'static> TransactionBuilder<'a, P> {
 		});
 
 		// Client is guaranteed to be Some after validate()
-		let client = self.client.expect("Client validated in validate()");
+		let client = self.client.ok_or_else(|| {
+			TransactionError::IllegalState("Client validated in validate()".to_string())
+		})?;
 
 		if self.valid_until_block.is_none() {
 			self.valid_until_block = Some(
@@ -579,19 +579,6 @@ impl<'a, P: JsonRpcProvider + 'static> TransactionBuilder<'a, P> {
 		if self.is_high_priority() && !self.is_allowed_for_high_priority().await {
 			return Err(TransactionError::IllegalState("This transaction does not have a committee member as signer. Only committee members can send transactions with high priority.".to_string()));
 		}
-
-		// if self.fee_consumer.is_some() {
-
-		// }
-
-		// Get fees
-		// let script = self.script.as_ref().unwrap();
-		// let response = self
-		// 	.client
-		// 	.unwrap()
-		// 	.invoke_script(script.to_hex(), vec![self.signers[0].clone()])
-		// 	.await
-		// 	.map_err(|e| TransactionError::ProviderError(e))?;
 
 		let system_fee = self.get_system_fee().await? + self.additional_system_fee as i64;
 
@@ -730,7 +717,7 @@ impl<'a, P: JsonRpcProvider + 'static> TransactionBuilder<'a, P> {
 				Signer::AccountSigner(account_signer) => {
 					// Get the account from AccountSigner
 					let account = account_signer.account();
-					
+
 					// Use the actual verification script of the account if available
 					let verification_script = if let Some(vs) = account.verification_script() {
 						vs.clone()
@@ -749,12 +736,14 @@ impl<'a, P: JsonRpcProvider + 'static> TransactionBuilder<'a, P> {
 							VerificationScript::from_public_key(&key_pair.public_key)
 						} else {
 							// Fallback to placeholder if no public key is available
-							self.create_placeholder_single_sig_verification_script().map_err(|e| {
-								TransactionError::IllegalState(format!(
-									"Failed to create single-sig verification script: {}",
-									e
-								))
-							})?
+							self.create_placeholder_single_sig_verification_script().map_err(
+								|e| {
+									TransactionError::IllegalState(format!(
+										"Failed to create single-sig verification script: {}",
+										e
+									))
+								},
+							)?
 						}
 					};
 

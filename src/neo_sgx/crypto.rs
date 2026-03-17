@@ -54,11 +54,11 @@ impl SgxCrypto {
 		#[cfg(not(feature = "sgx"))]
 		{
 			use k256::elliptic_curve::sec1::FromEncodedPoint;
-			
+
 			// Build encoded point
 			let mut encoded_pub = vec![0x04];
 			encoded_pub.extend_from_slice(public_key);
-			
+
 			let point = EncodedPoint::from_bytes(&encoded_pub)
 				.map_err(|_| SgxError::CryptoError("Invalid public key".to_string()))?;
 			let verifying_key = PublicKey::from_encoded_point(&point)
@@ -69,7 +69,7 @@ impl SgxCrypto {
 
 			let shared_secret = k256::elliptic_curve::ecdh::diffie_hellman(
 				signing_key.as_nonzero_scalar(),
-				verifying_key.as_affine()
+				verifying_key.as_affine(),
 			);
 
 			let bytes = shared_secret.raw_secret_bytes();

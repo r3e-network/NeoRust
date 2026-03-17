@@ -22,6 +22,7 @@ pub enum CircuitState {
 
 /// Circuit breaker configuration
 #[derive(Debug, Clone)]
+#[non_exhaustive]
 pub struct CircuitBreakerConfig {
 	/// Number of failures before opening the circuit
 	pub failure_threshold: u32,
@@ -33,6 +34,69 @@ pub struct CircuitBreakerConfig {
 	pub failure_window: Duration,
 	/// Maximum number of requests allowed in HalfOpen state
 	pub half_open_max_requests: u32,
+}
+
+impl CircuitBreakerConfig {
+	/// Creates a new builder for the configuration
+	pub fn builder() -> CircuitBreakerConfigBuilder {
+		CircuitBreakerConfigBuilder::default()
+	}
+}
+
+/// Builder for `CircuitBreakerConfig`
+#[derive(Debug, Default, Clone)]
+pub struct CircuitBreakerConfigBuilder {
+	failure_threshold: Option<u32>,
+	timeout: Option<Duration>,
+	success_threshold: Option<u32>,
+	failure_window: Option<Duration>,
+	half_open_max_requests: Option<u32>,
+}
+
+impl CircuitBreakerConfigBuilder {
+	/// Sets the failure threshold
+	pub fn failure_threshold(mut self, val: u32) -> Self {
+		self.failure_threshold = Some(val);
+		self
+	}
+
+	/// Sets the timeout
+	pub fn timeout(mut self, val: Duration) -> Self {
+		self.timeout = Some(val);
+		self
+	}
+
+	/// Sets the success threshold
+	pub fn success_threshold(mut self, val: u32) -> Self {
+		self.success_threshold = Some(val);
+		self
+	}
+
+	/// Sets the failure window
+	pub fn failure_window(mut self, val: Duration) -> Self {
+		self.failure_window = Some(val);
+		self
+	}
+
+	/// Sets the maximum number of requests allowed in HalfOpen state
+	pub fn half_open_max_requests(mut self, val: u32) -> Self {
+		self.half_open_max_requests = Some(val);
+		self
+	}
+
+	/// Builds the `CircuitBreakerConfig`
+	pub fn build(self) -> CircuitBreakerConfig {
+		let default = CircuitBreakerConfig::default();
+		CircuitBreakerConfig {
+			failure_threshold: self.failure_threshold.unwrap_or(default.failure_threshold),
+			timeout: self.timeout.unwrap_or(default.timeout),
+			success_threshold: self.success_threshold.unwrap_or(default.success_threshold),
+			failure_window: self.failure_window.unwrap_or(default.failure_window),
+			half_open_max_requests: self
+				.half_open_max_requests
+				.unwrap_or(default.half_open_max_requests),
+		}
+	}
 }
 
 impl Default for CircuitBreakerConfig {

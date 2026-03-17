@@ -920,7 +920,9 @@ mod tests {
 	}
 
 	#[test]
-	#[should_panic(expected = "failed to serialize transaction; use try_to_array for fallible handling")]
+	#[should_panic(
+		expected = "failed to serialize transaction; use try_to_array for fallible handling"
+	)]
 	fn test_to_array_panics_on_invalid_oracle_response_attribute() {
 		let tx = transaction_with_attribute(TransactionAttribute::OracleResponse(OracleResponse {
 			id: 1,

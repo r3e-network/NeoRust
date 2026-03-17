@@ -23,8 +23,10 @@ impl CliTest {
 
 	/// Run a CLI command with the given arguments
 	pub fn run(&self, args: &[&str]) -> Output {
-		let mut cmd = Command::new("cargo");
-		cmd.arg("run").arg("--").args(args).current_dir(&self.binary_path);
+		// Use the compiled binary directly rather than "cargo run" which is extremely slow due to repeated
+		// cargo compilation checks (taking ~200ms per call instead of ~10ms).
+		let mut cmd = Command::new(env!("CARGO_BIN_EXE_neo-cli"));
+		cmd.args(args).current_dir(&self.binary_path);
 
 		// Ensure a writable and test-isolated HOME directory.
 		//

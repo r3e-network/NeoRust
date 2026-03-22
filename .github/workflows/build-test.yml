@@ -1,127 +1,116 @@
 name: Build & Test
-
-on:
+true:
   push:
-    branches: [ main, master, develop ]
+    branches:
+    - main
+    - master
+    - develop
   pull_request:
-    branches: [ main, master, develop ]
-  workflow_dispatch:
-
-# Cancel in-progress runs when a new run is triggered
+    branches:
+    - main
+    - master
+    - develop
+  workflow_dispatch: null
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref
+    }}
   cancel-in-progress: true
-
 env:
   CARGO_TERM_COLOR: always
   RUST_BACKTRACE: 1
-
 jobs:
-  # Core Rust build and test
   build-test:
     name: Build & Test - ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 20
+    timeout-minutes: 15
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
-        rust: [stable]
-        
+        os:
+        - ubuntu-latest
+        - windows-latest
+        - macos-latest
+        rust:
+        - stable
     steps:
     - uses: actions/checkout@v4
-
     - name: Setup Rust
       uses: dtolnay/rust-toolchain@stable
       with:
         toolchain: ${{ matrix.rust }}
         components: rustfmt, clippy
-
     - name: Cache cargo registry
       uses: actions/cache@v4
       with:
-        path: |
-          ~/.cargo/bin/
-          ~/.cargo/registry/index/
-          ~/.cargo/registry/cache/
-          ~/.cargo/git/db/
-          target/
-        key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-        restore-keys: |
-          ${{ runner.os }}-cargo-
+        path: '~/.cargo/bin/
 
+          ~/.cargo/registry/index/
+
+          ~/.cargo/registry/cache/
+
+          ~/.cargo/git/db/
+
+          target/
+
+          '
+        key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+        restore-keys: '${{ runner.os }}-cargo-
+
+          '
     - name: Check formatting
       run: cargo fmt --all -- --check
-
     - name: Run clippy
       run: cargo clippy --all-targets --no-default-features -- -D warnings
-
     - name: Build
       run: cargo build --no-default-features
-
     - name: Run tests
       run: cargo test --lib -- --test-threads=1 --nocapture
       timeout-minutes: 20
-
     - name: Build documentation
       run: cargo doc --no-deps --no-default-features
-
-  # Security audit (lightweight, runs on every PR)
   security:
     name: Security Audit
     runs-on: ubuntu-latest
-    timeout-minutes: 20
-    
+    timeout-minutes: 15
     steps:
     - uses: actions/checkout@v4
-
     - name: Setup Rust
       uses: dtolnay/rust-toolchain@stable
-
     - name: Install cargo-audit
       run: cargo install cargo-audit --locked
-
     - name: Run security audit
       run: cargo audit -q
-
   supply-chain:
     name: Supply Chain (cargo-deny)
     runs-on: ubuntu-latest
-    timeout-minutes: 20
-
+    timeout-minutes: 15
     steps:
     - uses: actions/checkout@v4
-
     - name: Setup Rust
       uses: dtolnay/rust-toolchain@stable
-
     - name: Install cargo-deny
       run: cargo install cargo-deny --locked
-
     - name: Run cargo-deny
       run: cargo deny check
-
-  # Code coverage (optional, only on main branch)
   coverage:
     name: Code Coverage
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 15
     if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
     continue-on-error: true
-    
     steps:
     - uses: actions/checkout@v4
-
     - name: Setup Rust
       uses: dtolnay/rust-toolchain@stable
       with:
         components: llvm-tools-preview
-
     - name: Generate coverage
-      run: |
-        cargo install cargo-llvm-cov --locked || true
-        cargo llvm-cov --all-features --workspace --lcov --output-path lcov.info || true
+      run: 'cargo install cargo-llvm-cov --locked || true
 
+        cargo llvm-cov --all-features --workspace --lcov --output-path lcov.info ||
+        true
+
+        '
     - name: Upload to Codecov
       if: success()
       uses: codecov/codecov-action@v3

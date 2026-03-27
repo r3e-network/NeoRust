@@ -67,11 +67,12 @@ impl<'a> EcosystemClient<'a> {
 					})?
 					.address_or_scripthash
 					.address();
-				let balance = provider.get_balance(&address).await.map_err(|e| NeoError::Network {
-					message: e.to_string(),
-					source: None,
-					recovery: ErrorRecovery::default(),
-				})?;
+				let balance =
+					provider.get_balance(&address).await.map_err(|e| NeoError::Network {
+						message: e.to_string(),
+						source: None,
+						recovery: ErrorRecovery::default(),
+					})?;
 				Ok(balance.gas.to_string())
 			},
 			Self::NeoX { client } => {
@@ -90,28 +91,28 @@ impl<'a> EcosystemClient<'a> {
 	pub async fn transfer(&self, to: &str, amount: &str) -> Result<String, NeoError> {
 		match self {
 			Self::N3 { provider, wallet } => {
-				let parsed =
-					DecimalAmount::parse(amount, GAS_DECIMALS).map_err(|e| NeoError::Validation {
+				let parsed = DecimalAmount::parse(amount, GAS_DECIMALS).map_err(|e| {
+					NeoError::Validation {
 						message: e.to_string(),
 						field: "amount".into(),
 						value: Some(amount.to_string()),
 						recovery: ErrorRecovery::default(),
-					})?;
-				let amount_u64 =
-					parsed.raw().parse::<u64>().map_err(|e| NeoError::Validation {
-						message: e.to_string(),
-						field: "amount".into(),
-						value: Some(amount.to_string()),
-						recovery: ErrorRecovery::default(),
-					})?;
-				let tx_hash = provider
-					.transfer(wallet, to, amount_u64, Token::GAS)
-					.await
-					.map_err(|e| NeoError::Transaction {
-						message: e.to_string(),
-						tx_hash: None,
-						source: None,
-						recovery: ErrorRecovery::default(),
+					}
+				})?;
+				let amount_u64 = parsed.raw().parse::<u64>().map_err(|e| NeoError::Validation {
+					message: e.to_string(),
+					field: "amount".into(),
+					value: Some(amount.to_string()),
+					recovery: ErrorRecovery::default(),
+				})?;
+				let tx_hash =
+					provider.transfer(wallet, to, amount_u64, Token::GAS).await.map_err(|e| {
+						NeoError::Transaction {
+							message: e.to_string(),
+							tx_hash: None,
+							source: None,
+							recovery: ErrorRecovery::default(),
+						}
 					})?;
 				Ok(tx_hash)
 			},
@@ -123,13 +124,12 @@ impl<'a> EcosystemClient<'a> {
 						value: Some(to.to_string()),
 						recovery: ErrorRecovery::default(),
 					})?;
-				let value =
-					U256::from_dec_str(amount).map_err(|e| NeoError::Validation {
-						message: e.to_string(),
-						field: "amount".into(),
-						value: Some(amount.to_string()),
-						recovery: ErrorRecovery::default(),
-					})?;
+				let value = U256::from_dec_str(amount).map_err(|e| NeoError::Validation {
+					message: e.to_string(),
+					field: "amount".into(),
+					value: Some(amount.to_string()),
+					recovery: ErrorRecovery::default(),
+				})?;
 
 				let tx = NeoXTransaction::new(
 					Some(to_addr),
@@ -160,13 +160,14 @@ impl<'a> EcosystemClient<'a> {
 	) -> Result<String, NeoError> {
 		match self {
 			Self::N3 { provider, wallet } => {
-				let parsed =
-					DecimalAmount::parse(amount, GAS_DECIMALS).map_err(|e| NeoError::Validation {
+				let parsed = DecimalAmount::parse(amount, GAS_DECIMALS).map_err(|e| {
+					NeoError::Validation {
 						message: e.to_string(),
 						field: "amount".into(),
 						value: Some(amount.to_string()),
 						recovery: ErrorRecovery::default(),
-					})?;
+					}
+				})?;
 				let amount_i64 = parsed.raw_i64().ok_or_else(|| NeoError::Validation {
 					message: "amount overflows i64".into(),
 					field: "amount".into(),
@@ -185,12 +186,11 @@ impl<'a> EcosystemClient<'a> {
 					})?;
 
 				// Ensure wallet has a default account to sign with
-				let account =
-					wallet.default_account().ok_or_else(|| NeoError::Wallet {
-						message: "No default account in wallet".into(),
-						source: None,
-						recovery: ErrorRecovery::default(),
-					})?;
+				let account = wallet.default_account().ok_or_else(|| NeoError::Wallet {
+					message: "No default account in wallet".into(),
+					source: None,
+					recovery: ErrorRecovery::default(),
+				})?;
 
 				let gas_token = ScriptHash::from_str("d2a4cff31913016155e38e474a2c06d08be276cf")
 					.map_err(|e| NeoError::Validation {
@@ -211,20 +211,18 @@ impl<'a> EcosystemClient<'a> {
 					})?;
 
 				// Sign and send the N3 transaction
-				let mut signed_tx =
-					builder.sign().await.map_err(|e| NeoError::Transaction {
-						message: e.to_string(),
-						tx_hash: None,
-						source: None,
-						recovery: ErrorRecovery::default(),
-					})?;
-				let tx_response =
-					signed_tx.send_tx().await.map_err(|e| NeoError::Transaction {
-						message: e.to_string(),
-						tx_hash: None,
-						source: None,
-						recovery: ErrorRecovery::default(),
-					})?;
+				let mut signed_tx = builder.sign().await.map_err(|e| NeoError::Transaction {
+					message: e.to_string(),
+					tx_hash: None,
+					source: None,
+					recovery: ErrorRecovery::default(),
+				})?;
+				let tx_response = signed_tx.send_tx().await.map_err(|e| NeoError::Transaction {
+					message: e.to_string(),
+					tx_hash: None,
+					source: None,
+					recovery: ErrorRecovery::default(),
+				})?;
 				Ok(format!("N3 -> Neo X Bridge Transaction Sent: {:?}", tx_response.hash))
 			},
 			Self::NeoX { client } => {

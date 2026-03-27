@@ -115,10 +115,7 @@ impl<'a, P: JsonRpcProvider + 'static> NeoXBridgeContract<'a, P> {
 		builder
 			.set_signers(vec![AccountSigner::called_by_entry(account)
 				.map_err(|e| {
-					ContractError::InvalidAccount(format!(
-						"Failed to create account signer: {}",
-						e
-					))
+					ContractError::InvalidAccount(format!("Failed to create account signer: {}", e))
 				})?
 				.into()])
 			.map_err(|e| ContractError::RuntimeError(format!("Failed to set signers: {}", e)))?;
@@ -167,10 +164,7 @@ impl<'a, P: JsonRpcProvider + 'static> NeoXBridgeContract<'a, P> {
 		builder
 			.set_signers(vec![AccountSigner::called_by_entry(account)
 				.map_err(|e| {
-					ContractError::InvalidAccount(format!(
-						"Failed to create account signer: {}",
-						e
-					))
+					ContractError::InvalidAccount(format!("Failed to create account signer: {}", e))
 				})?
 				.into()])
 			.map_err(|e| ContractError::RuntimeError(format!("Failed to set signers: {}", e)))?;

@@ -69,6 +69,7 @@ use aes::cipher::{block_padding::NoPadding, BlockDecryptMut, BlockEncryptMut, Ke
 use scrypt::{scrypt, Params};
 // Re-export from elliptic_curve crate which is already a dependency
 use p256::elliptic_curve::subtle::ConstantTimeEq;
+use p256::elliptic_curve::zeroize::Zeroize;
 
 type Aes256EcbEnc = ecb::Encryptor<aes::Aes256>;
 type Aes256EcbDec = ecb::Decryptor<aes::Aes256>;
@@ -160,7 +161,7 @@ impl NEP2 {
 		}
 
 		// Get the private key bytes
-		let private_key = key_pair.private_key.to_raw_bytes().to_vec();
+		let mut private_key = key_pair.private_key.to_raw_bytes().to_vec();
 
 		// Calculate the address hash from the public key
 		let address_hash = Self::address_hash_from_pubkey(&key_pair.public_key.get_encoded(true))?;
@@ -183,6 +184,11 @@ impl NEP2 {
 		// Encrypt the XORed key with the second half
 		let encrypted = Self::encrypt_aes256_ecb(&xored, half_2)
 			.map_err(|e| Nep2Error::EncryptionError(e.to_string()))?;
+
+		// SECURITY: Zeroize sensitive intermediate key material
+		private_key.zeroize();
+		xored.zeroize();
+		derived_key.zeroize();
 
 		// Assemble the final NEP2 data
 		let mut assembled = Vec::with_capacity(Self::NEP2_PRIVATE_KEY_LENGTH);
@@ -315,7 +321,7 @@ impl NEP2 {
 		let half_2 = &derived_key[32..64];
 
 		// Decrypt the private key
-		let decrypted = Self::decrypt_aes256_ecb(encrypted_data, half_2)
+		let mut decrypted = Self::decrypt_aes256_ecb(encrypted_data, half_2)
 			.map_err(|e| Nep2Error::DecryptionError(e.to_string()))?;
 
 		// XOR with the first half to get the original private key
@@ -326,7 +332,18 @@ impl NEP2 {
 
 		// Create a KeyPair from the private key
 		let key_pair = KeyPair::from_private_key(&private_key)
-			.map_err(|e| Nep2Error::InvalidPrivateKey(e.to_string()))?;
+			.map_err(|e| {
+				// SECURITY: Zeroize on error path too
+				private_key.zeroize();
+				decrypted.zeroize();
+				derived_key.zeroize();
+				Nep2Error::InvalidPrivateKey(e.to_string())
+			})?;
+
+		// SECURITY: Zeroize sensitive intermediate key material
+		private_key.zeroize();
+		decrypted.zeroize();
+		derived_key.zeroize();
 
 		// Verify that the address hash matches using constant-time comparison
 		// SECURITY: Using constant-time comparison prevents timing attacks that could

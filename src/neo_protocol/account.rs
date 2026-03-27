@@ -606,6 +606,20 @@ impl AccountTrait for Account {
 		public_keys: &mut [Secp256r1PublicKey],
 		signing_threshold: u32,
 	) -> Result<Self, Self::Error> {
+		if signing_threshold == 0 || signing_threshold as usize > public_keys.len() {
+			return Err(Self::Error::IllegalState(format!(
+				"Signing threshold {} must be between 1 and the number of public keys ({})",
+				signing_threshold,
+				public_keys.len()
+			)));
+		}
+		if signing_threshold > u8::MAX as u32 {
+			return Err(Self::Error::IllegalState(format!(
+				"Signing threshold {} exceeds maximum of {}",
+				signing_threshold,
+				u8::MAX
+			)));
+		}
 		let script = VerificationScript::from_multi_sig(public_keys, signing_threshold as u8);
 		let addr = ScriptHash::from_script(script.script());
 
@@ -628,6 +642,12 @@ impl AccountTrait for Account {
 		signing_threshold: u8,
 		nr_of_participants: u8,
 	) -> Result<Self, Self::Error> {
+		if signing_threshold == 0 || signing_threshold > nr_of_participants {
+			return Err(Self::Error::IllegalState(format!(
+				"Signing threshold {} must be between 1 and the number of participants ({})",
+				signing_threshold, nr_of_participants
+			)));
+		}
 		Ok(Self {
 			key_pair: None,
 			address_or_scripthash: AddressOrScriptHash::Address(address),

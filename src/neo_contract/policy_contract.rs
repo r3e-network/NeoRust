@@ -407,7 +407,9 @@ impl<'a, P: JsonRpcProvider + 'static> PolicyContract<'a, P> {
 		}
 
 		if let Some(err) = traverse_error {
-			let _ = iterator.terminate_session().await;
+			if let Err(term_err) = iterator.terminate_session().await {
+				tracing::warn!(error = %term_err, "Failed to terminate iterator session during error cleanup");
+			}
 			return Err(err);
 		}
 

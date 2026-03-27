@@ -68,6 +68,8 @@ pub struct NeoNameService<'a, P: JsonRpcProvider> {
 
 #[allow(dead_code)]
 impl<'a, P: JsonRpcProvider + 'static> NeoNameService<'a, P> {
+	pub const NAME: &'static str = "NameService";
+
 	const ADD_ROOT: &'static str = "addRoot";
 	const ROOTS: &'static str = "roots";
 	const SET_PRICE: &'static str = "setPrice";
@@ -92,6 +94,14 @@ impl<'a, P: JsonRpcProvider + 'static> NeoNameService<'a, P> {
 			"Provider is required for NeoNameService".to_string(),
 		))?;
 		Ok(Self { script_hash: provider.nns_resolver(), provider: Some(provider) })
+	}
+
+	/// Creates a NeoNameService with an explicit script hash, without requiring a provider.
+	///
+	/// This matches the constructor pattern used by other native contracts like
+	/// `NeoToken`, `GasToken`, and `PolicyContract`.
+	pub fn with_script_hash(script_hash: H160, provider: Option<&'a RpcClient<P>>) -> Self {
+		Self { script_hash, provider }
 	}
 
 	// Implementation

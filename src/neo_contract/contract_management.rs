@@ -3,12 +3,15 @@ use primitive_types::H160;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-	builder::TransactionBuilder,
+	neo_builder::TransactionBuilder,
 	neo_clients::{APITrait, JsonRpcProvider, RpcClient},
 	neo_contract::{ContractError, SmartContractTrait},
+	neo_types::{
+		serde_with_utils::{deserialize_script_hash, serialize_script_hash},
+		ContractParameter, ContractState, NefFile, ScriptHash,
+	},
 	ContractIdentifiers,
 };
-use neo3::prelude::*;
 
 /// A struct representing contract management functionalities
 #[derive(Debug, Clone, Serialize, Deserialize)]

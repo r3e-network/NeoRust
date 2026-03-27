@@ -9,7 +9,9 @@ use crate::{
 	neo_contract::{ContractError, SmartContractTrait, TokenTrait},
 	neo_protocol::Account,
 };
-use neo3::prelude::*;
+use crate::neo_types::{
+	deserialize_script_hash, serialize_script_hash, ContractParameter, NNSName, ScriptHash,
+};
 
 /// NeoburgerNeo contract interface for Neo N3
 ///

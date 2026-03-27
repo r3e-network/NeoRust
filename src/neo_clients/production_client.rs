@@ -36,6 +36,7 @@ pub struct ProductionClientConfig {
 
 impl ProductionClientConfig {
 	/// Creates a new builder for the configuration
+	#[must_use]
 	pub fn builder() -> ProductionClientConfigBuilder {
 		ProductionClientConfigBuilder::default()
 	}

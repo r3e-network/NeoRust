@@ -23,6 +23,7 @@ pub struct CacheConfig {
 
 impl CacheConfig {
 	/// Creates a new builder for the configuration
+	#[must_use]
 	pub fn builder() -> CacheConfigBuilder {
 		CacheConfigBuilder::default()
 	}

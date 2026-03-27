@@ -83,6 +83,7 @@ pub struct SdkConfig {
 
 impl SdkConfig {
 	/// Creates a new builder for the configuration
+	#[must_use]
 	pub fn builder() -> SdkConfigBuilder {
 		SdkConfigBuilder::default()
 	}
@@ -387,6 +388,7 @@ impl Neo {
 	/// # Ok(())
 	/// # }
 	/// ```
+	#[must_use]
 	pub fn builder() -> NeoBuilder {
 		NeoBuilder::default()
 	}

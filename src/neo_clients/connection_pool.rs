@@ -33,6 +33,7 @@ pub struct PoolConfig {
 
 impl PoolConfig {
 	/// Creates a new builder for the configuration
+	#[must_use]
 	pub fn builder() -> PoolConfigBuilder {
 		PoolConfigBuilder::default()
 	}

@@ -50,7 +50,7 @@ pub enum TransactionAttributeEnum {
 
 #[derive(Serialize, Deserialize, PartialEq, Hash, Debug, Clone)]
 pub struct OracleResponse {
-	pub(crate) id: u32,
+	pub(crate) id: u64,
 	#[serde(rename = "code")]
 	pub(crate) response_code: OracleResponseCode,
 	pub(crate) result: String,

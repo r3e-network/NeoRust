@@ -7,7 +7,7 @@
 #![allow(clippy::type_complexity)] // Nested generics in RPC futures are unavoidable without boxing
 #![allow(unexpected_cfgs)] // Feature flags checked at build time by downstream crates
 //! ![Neo Logo](https://neo.org/images/neo-logo/NEO-logo.svg)
-//! # NeoRust SDK v1.0.9
+//! # NeoRust SDK
 //!
 //! A production-ready Rust SDK for the Neo N3 blockchain with enterprise-grade features.
 //!
@@ -42,13 +42,13 @@
 //!
 //! ```toml
 //! [dependencies]
-//! neo3 = { version = "1.0.9", features = ["futures", "ledger"] }
+//! neo3 = { version = "1.2", features = ["futures", "ledger"] }
 //! ```
 //!
 //! You can disable default features with:
 //!
 //! ```toml
-//! neo3 = { version = "1.0.9", default-features = false, features = ["futures"] }
+//! neo3 = { version = "1.2", default-features = false, features = ["futures"] }
 //! ```
 //!
 //! ## Overview
@@ -443,6 +443,9 @@ pub mod neo_sgx;
 pub mod neo_wallets;
 pub mod neo_x;
 
+// Monitoring infrastructure (preview -- stub implementations)
+pub mod monitoring;
+
 // High-level SDK API (new in v1.0.x)
 pub mod sdk;
 
@@ -640,8 +643,11 @@ mod tests {
 	}
 }
 
-// Adding trait implementations for serde JSON serialization
-// These extensions will be used by the http-client feature
+/// Trait implementations for serde JSON serialization.
+///
+/// **Deprecated:** Use `serde_json::json!()` macro or `serde_json::Value::from()` instead.
+/// This module will be removed in a future major release.
+#[deprecated(since = "1.2.0", note = "Use serde_json::json!() or Value::from() instead")]
 pub mod extensions {
 	use serde_json::Value;
 

@@ -99,26 +99,16 @@ pub trait TokenTrait<'a, P: JsonRpcProvider>: SmartContractTrait<'a, P = P> {
 		decimal_amount / divisor
 	}
 
-	async fn resolve_nns_text_record(&self, name: &NNSName) -> Result<H160, ContractError>;
-	// {
-	// 	let req = {
-	// 		self.provider()
-	// 			.unwrap()
-	// 			.invoke_function(
-	// 				&NeoNameService::new().script_hash(),
-	// 				"resolve".to_string(),
-	// 				vec![
-	// 					ContractParameter::from(name.name()),
-	// 					ContractParameter::from(RecordType::TXT.byte_repr()),
-	// 				],
-	// 				(),
-	// 			)
-	// 			.clone()
-	// 	};
-	//
-	// 	let address = req.await.unwrap().stack.first().unwrap().clone();
-	//
-	//
-	// 	Ok(H160::from_slice(&address.as_bytes().unwrap()))
-	// }
+	/// Resolves an NNS name to a script hash.
+	///
+	/// The default implementation returns an error indicating NNS resolution
+	/// requires a configured NNS contract. Override this in implementations
+	/// that support NNS-based address resolution.
+	async fn resolve_nns_text_record(&self, name: &NNSName) -> Result<H160, ContractError> {
+		Err(ContractError::RuntimeError(format!(
+			"NNS resolution for '{}' is not supported by this token contract. \
+			 Use NameService directly to resolve NNS names.",
+			name.name()
+		)))
+	}
 }

@@ -17,7 +17,6 @@ pub const NEO_X_MAINNET_MEV_RPC: &str = "https://rpc.neo-x.org/mempool"; // Exam
 pub struct NeoXProvider<'a, P: JsonRpcProvider> {
 	rpc_url: String,
 	#[serde(skip)]
-	#[allow(dead_code)]
 	provider: Option<&'a RpcClient<P>>,
 	#[serde(skip)]
 	evm_provider: Option<Arc<Provider<Http>>>,

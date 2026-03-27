@@ -93,6 +93,18 @@ impl<'a, P: JsonRpcProvider + 'static> NeoXBridgeContract<'a, P> {
 		destination: &str,
 		account: &Account,
 	) -> Result<TransactionBuilder<'_, P>, ContractError> {
+		if amount <= 0 {
+			return Err(ContractError::RuntimeError(format!(
+				"Deposit amount must be positive, got {}",
+				amount
+			)));
+		}
+		if destination.is_empty() {
+			return Err(ContractError::RuntimeError(
+				"Destination address cannot be empty".to_string(),
+			));
+		}
+
 		let params = vec![
 			token.into(),
 			ContractParameter::integer(amount),
@@ -100,11 +112,16 @@ impl<'a, P: JsonRpcProvider + 'static> NeoXBridgeContract<'a, P> {
 		];
 
 		let mut builder = self.invoke_function(Self::DEPOSIT, params).await?;
-		let _ = builder.set_signers(vec![AccountSigner::called_by_entry(account)
-			.map_err(|e| {
-				ContractError::InvalidAccount(format!("Failed to create account signer: {}", e))
-			})?
-			.into()]);
+		builder
+			.set_signers(vec![AccountSigner::called_by_entry(account)
+				.map_err(|e| {
+					ContractError::InvalidAccount(format!(
+						"Failed to create account signer: {}",
+						e
+					))
+				})?
+				.into()])
+			.map_err(|e| ContractError::RuntimeError(format!("Failed to set signers: {}", e)))?;
 
 		Ok(builder)
 	}
@@ -128,6 +145,18 @@ impl<'a, P: JsonRpcProvider + 'static> NeoXBridgeContract<'a, P> {
 		destination: &str,
 		account: &Account,
 	) -> Result<TransactionBuilder<'_, P>, ContractError> {
+		if amount <= 0 {
+			return Err(ContractError::RuntimeError(format!(
+				"Withdrawal amount must be positive, got {}",
+				amount
+			)));
+		}
+		if destination.is_empty() {
+			return Err(ContractError::RuntimeError(
+				"Destination address cannot be empty".to_string(),
+			));
+		}
+
 		let params = vec![
 			token.into(),
 			ContractParameter::integer(amount),
@@ -135,11 +164,16 @@ impl<'a, P: JsonRpcProvider + 'static> NeoXBridgeContract<'a, P> {
 		];
 
 		let mut builder = self.invoke_function(Self::WITHDRAW, params).await?;
-		let _ = builder.set_signers(vec![AccountSigner::called_by_entry(account)
-			.map_err(|e| {
-				ContractError::InvalidAccount(format!("Failed to create account signer: {}", e))
-			})?
-			.into()]);
+		builder
+			.set_signers(vec![AccountSigner::called_by_entry(account)
+				.map_err(|e| {
+					ContractError::InvalidAccount(format!(
+						"Failed to create account signer: {}",
+						e
+					))
+				})?
+				.into()])
+			.map_err(|e| ContractError::RuntimeError(format!("Failed to set signers: {}", e)))?;
 
 		Ok(builder)
 	}

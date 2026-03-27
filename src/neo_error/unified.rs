@@ -731,6 +731,96 @@ impl From<serde_json::Error> for NeoError {
 	}
 }
 
+impl From<crate::neo_fs::NeoFSError> for NeoError {
+	fn from(err: crate::neo_fs::NeoFSError) -> Self {
+		use crate::neo_fs::NeoFSError;
+		match &err {
+			NeoFSError::ConnectionError(msg) => NeoError::Network {
+				message: format!("NeoFS connection error: {}", msg),
+				source: None,
+				recovery: ErrorRecovery::new()
+					.suggest("Check NeoFS endpoint connectivity")
+					.retryable(true),
+			},
+			NeoFSError::AuthenticationError(msg) => NeoError::Wallet {
+				message: format!("NeoFS authentication error: {}", msg),
+				source: None,
+				recovery: ErrorRecovery::new()
+					.suggest("Verify NeoFS credentials")
+					.suggest("Check that the session token is valid"),
+			},
+			NeoFSError::PermissionDenied(msg) => NeoError::Contract {
+				message: format!("NeoFS permission denied: {}", msg),
+				contract: Some("NeoFS".to_string()),
+				method: None,
+				source: None,
+				recovery: ErrorRecovery::new()
+					.suggest("Check container ACL settings")
+					.suggest("Verify the bearer token has sufficient permissions"),
+			},
+			NeoFSError::NotFound(msg) => NeoError::Other {
+				message: format!("NeoFS resource not found: {}", msg),
+				source: None,
+				recovery: ErrorRecovery::new()
+					.suggest("Verify the container or object ID is correct"),
+			},
+			NeoFSError::Timeout(msg) => NeoError::Timeout {
+				duration: std::time::Duration::from_secs(0),
+				operation: format!("NeoFS: {}", msg),
+				recovery: ErrorRecovery::new()
+					.suggest("Increase timeout or retry the operation")
+					.retryable(true),
+			},
+			_ => NeoError::Other {
+				message: err.to_string(),
+				source: None,
+				recovery: ErrorRecovery::new(),
+			},
+		}
+	}
+}
+
+impl From<crate::neo_protocol::ProtocolError> for NeoError {
+	fn from(err: crate::neo_protocol::ProtocolError) -> Self {
+		use crate::neo_protocol::ProtocolError;
+		match &err {
+			ProtocolError::RpcResponse { error } => NeoError::Network {
+				message: format!("RPC response error: {}", error),
+				source: None,
+				recovery: ErrorRecovery::new()
+					.suggest("Check the RPC request parameters")
+					.retryable(true),
+			},
+			ProtocolError::InvocationFaultState { error } => NeoError::Contract {
+				message: format!("VM fault: {}", error),
+				contract: None,
+				method: None,
+				source: None,
+				recovery: ErrorRecovery::new()
+					.suggest("Check contract parameters and state")
+					.suggest("Verify the contract is deployed on the target network"),
+			},
+			ProtocolError::ClientConnection { message } => NeoError::Network {
+				message: format!("Client connection error: {}", message),
+				source: None,
+				recovery: ErrorRecovery::new()
+					.suggest("Check network connectivity")
+					.retryable(true),
+			},
+			ProtocolError::IllegalState { message } => NeoError::Other {
+				message: format!("Illegal state: {}", message),
+				source: None,
+				recovery: ErrorRecovery::new(),
+			},
+			_ => NeoError::Other {
+				message: err.to_string(),
+				source: None,
+				recovery: ErrorRecovery::new(),
+			},
+		}
+	}
+}
+
 // =============================================================================
 // Tests
 // =============================================================================

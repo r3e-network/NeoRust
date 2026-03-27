@@ -60,17 +60,14 @@ impl<D: Sync + Send + PrehashSigner<Signature>> WalletSigner<D> {
 	/// # Returns
 	///
 	/// A `Result` containing the `p256::NistP256` of the transaction, or a `WalletError` on failure.
-	#[allow(dead_code)]
-	pub(crate) async fn sign_transaction<'a, P: JsonRpcProvider + 'static>(
+	/// Signs a given `Transaction`, using the wallet's private key.
+	///
+	/// Computes the transaction hash data and signs the resulting prehash.
+	pub async fn sign_transaction<'a, P: JsonRpcProvider + 'static>(
 		&self,
 		tx: &Transaction<'a, P>,
 	) -> Result<Signature, WalletError> {
-		let tx_with_network = tx;
-		if tx_with_network.network().is_none() {
-			// in the case we don't have a network, let's use the signer chain id instead
-			// tx_with_network.set_network(self.network.map(|n| n as u32));
-		}
-		let hash_data = tx_with_network.get_hash_data().await.map_err(|e| {
+		let hash_data = tx.get_hash_data().await.map_err(|e| {
 			WalletError::TransactionError(TransactionError::TransactionConfiguration(format!(
 				"Failed to get transaction hash data: {}",
 				e
@@ -118,32 +115,17 @@ impl<D: Sync + Send + PrehashSigner<Signature>> WalletSigner<D> {
 	}
 
 	/// Returns the wallet's associated address.
-	///
-	/// # Returns
-	///
-	/// The `Address` of the wallet.
-	#[allow(dead_code)]
-	pub(crate) fn address(&self) -> Address {
+	pub fn address(&self) -> Address {
 		self.address.clone()
 	}
 
-	/// Gets the wallet's chain id
-	#[allow(dead_code)]
-	fn network(&self) -> Option<u64> {
+	/// Gets the wallet's network ID.
+	pub fn network(&self) -> Option<u64> {
 		self.network
 	}
 
 	/// Associates the wallet with a specific network ID.
-	///
-	/// # Arguments
-	///
-	/// * `network` - The network ID to associate with the wallet.
-	///
-	/// # Returns
-	///
-	/// The `WalletSigner` instance with the network ID set.
-	#[allow(dead_code)]
-	fn with_network<T: Into<u64>>(mut self, network: T) -> Self {
+	pub fn with_network<T: Into<u64>>(mut self, network: T) -> Self {
 		self.network = Some(network.into());
 		self
 	}

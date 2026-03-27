@@ -17,7 +17,7 @@ jobs:
   lint:
     name: Lint
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     steps:
     - uses: actions/checkout@v4
     - name: Setup Rust
@@ -71,7 +71,7 @@ jobs:
     name: Documentation
     needs: lint
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     steps:
     - uses: actions/checkout@v4
     - name: Setup Rust
@@ -92,7 +92,7 @@ jobs:
   security:
     name: Security Audit
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     steps:
     - uses: actions/checkout@v4
     - uses: rustsec/audit-check@v2.0.0
@@ -102,7 +102,7 @@ jobs:
   supply-chain:
     name: Supply Chain (cargo-deny)
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     steps:
     - uses: actions/checkout@v4
     - uses: EmbarkStudios/cargo-deny-action@v2

@@ -38,6 +38,7 @@ pub struct CircuitBreakerConfig {
 
 impl CircuitBreakerConfig {
 	/// Creates a new builder for the configuration
+	#[must_use]
 	pub fn builder() -> CircuitBreakerConfigBuilder {
 		CircuitBreakerConfigBuilder::default()
 	}

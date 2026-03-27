@@ -1,10 +1,10 @@
 use std::{fmt, sync::Arc};
 
+use crate::neo_types::StackItem;
 use crate::{
 	neo_clients::{APITrait, JsonRpcProvider, RpcClient},
 	neo_contract::ContractError,
 };
-use crate::neo_types::StackItem;
 
 pub struct NeoIterator<'a, T, P: JsonRpcProvider> {
 	session_id: String,

@@ -16,33 +16,33 @@
 /// **Stub:** Does not start a metrics server (requires `prometheus` and `warp`
 /// dependencies). Returns `Ok(())` unconditionally.
 pub fn init(_port: u16) -> Result<(), Box<dyn std::error::Error>> {
-    // no-op: requires prometheus and warp dependencies
-    Ok(())
+	// no-op: requires prometheus and warp dependencies
+	Ok(())
 }
 
 /// Record a transaction (stub -- currently a no-op).
 pub fn record_transaction(_tx_type: &str, _network: &str, _duration: f64, _success: bool) {
-    // no-op: requires prometheus dependency
+	// no-op: requires prometheus dependency
 }
 
 /// Record an RPC request (stub -- currently a no-op).
 pub fn record_rpc_request(_method: &str, _endpoint: &str, _duration: f64, _success: bool) {
-    // no-op: requires prometheus dependency
+	// no-op: requires prometheus dependency
 }
 
 /// Update blockchain metrics (stub -- currently a no-op).
 pub fn update_blockchain_metrics(_network: &str, _height: u64, _synced: bool, _nodes: u64) {
-    // no-op: requires prometheus dependency
+	// no-op: requires prometheus dependency
 }
 
 /// Record contract invocation (stub -- currently a no-op).
 pub fn record_contract_invocation(_contract: &str, _method: &str, _gas_used: f64) {
-    // no-op: requires prometheus dependency
+	// no-op: requires prometheus dependency
 }
 
 /// Shutdown metrics system (stub -- currently a no-op).
 pub fn shutdown() {
-    // no-op: requires prometheus dependency
+	// no-op: requires prometheus dependency
 }
 
 /// Increment a named counter (stub -- currently a no-op).
@@ -50,10 +50,10 @@ pub fn shutdown() {
 /// Requires the `prometheus` dependency to function.
 #[macro_export]
 macro_rules! counter {
-    ($name:expr, $value:expr) => {
-        // no-op: requires prometheus dependency
-        let _ = ($name, $value);
-    };
+	($name:expr, $value:expr) => {
+		// no-op: requires prometheus dependency
+		let _ = ($name, $value);
+	};
 }
 
 /// Set a named gauge value (stub -- currently a no-op).
@@ -61,10 +61,10 @@ macro_rules! counter {
 /// Requires the `prometheus` dependency to function.
 #[macro_export]
 macro_rules! gauge {
-    ($name:expr, $value:expr) => {
-        // no-op: requires prometheus dependency
-        let _ = ($name, $value);
-    };
+	($name:expr, $value:expr) => {
+		// no-op: requires prometheus dependency
+		let _ = ($name, $value);
+	};
 }
 
 /// Observe a named histogram value (stub -- currently a no-op).
@@ -72,8 +72,8 @@ macro_rules! gauge {
 /// Requires the `prometheus` dependency to function.
 #[macro_export]
 macro_rules! histogram {
-    ($name:expr, $value:expr) => {
-        // no-op: requires prometheus dependency
-        let _ = ($name, $value);
-    };
+	($name:expr, $value:expr) => {
+		// no-op: requires prometheus dependency
+		let _ = ($name, $value);
+	};
 }

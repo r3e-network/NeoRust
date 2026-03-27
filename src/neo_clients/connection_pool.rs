@@ -254,10 +254,10 @@ impl ConnectionPool {
 						stats.retried_requests += 1;
 
 						// Exponential backoff with jitter to prevent thundering herd
-					let base_delay = self.config.retry_delay * retries;
-					let jitter_ms = (base_delay.as_millis() as u64 / 4).max(1);
-					let jitter = Duration::from_millis(rand::random::<u64>() % jitter_ms);
-					tokio::time::sleep(base_delay + jitter).await;
+						let base_delay = self.config.retry_delay * retries;
+						let jitter_ms = (base_delay.as_millis() as u64 / 4).max(1);
+						let jitter = Duration::from_millis(rand::random::<u64>() % jitter_ms);
+						tokio::time::sleep(base_delay + jitter).await;
 						continue;
 					} else {
 						let mut stats = self.stats.write().await;
@@ -277,10 +277,10 @@ impl ConnectionPool {
 						stats.retried_requests += 1;
 
 						// Exponential backoff with jitter to prevent thundering herd
-					let base_delay = self.config.retry_delay * retries;
-					let jitter_ms = (base_delay.as_millis() as u64 / 4).max(1);
-					let jitter = Duration::from_millis(rand::random::<u64>() % jitter_ms);
-					tokio::time::sleep(base_delay + jitter).await;
+						let base_delay = self.config.retry_delay * retries;
+						let jitter_ms = (base_delay.as_millis() as u64 / 4).max(1);
+						let jitter = Duration::from_millis(rand::random::<u64>() % jitter_ms);
+						tokio::time::sleep(base_delay + jitter).await;
 						continue;
 					} else {
 						let mut stats = self.stats.write().await;

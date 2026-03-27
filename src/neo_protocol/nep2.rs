@@ -331,14 +331,13 @@ impl NEP2 {
 		}
 
 		// Create a KeyPair from the private key
-		let key_pair = KeyPair::from_private_key(&private_key)
-			.map_err(|e| {
-				// SECURITY: Zeroize on error path too
-				private_key.zeroize();
-				decrypted.zeroize();
-				derived_key.zeroize();
-				Nep2Error::InvalidPrivateKey(e.to_string())
-			})?;
+		let key_pair = KeyPair::from_private_key(&private_key).map_err(|e| {
+			// SECURITY: Zeroize on error path too
+			private_key.zeroize();
+			decrypted.zeroize();
+			derived_key.zeroize();
+			Nep2Error::InvalidPrivateKey(e.to_string())
+		})?;
 
 		// SECURITY: Zeroize sensitive intermediate key material
 		private_key.zeroize();

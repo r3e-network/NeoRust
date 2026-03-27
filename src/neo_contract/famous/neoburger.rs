@@ -3,14 +3,14 @@ use hex_literal::hex;
 use primitive_types::H160;
 use serde::{Deserialize, Serialize};
 
+use crate::neo_types::{
+	deserialize_script_hash, serialize_script_hash, ContractParameter, NNSName, ScriptHash,
+};
 use crate::{
 	builder::{AccountSigner, TransactionBuilder},
 	neo_clients::{JsonRpcProvider, RpcClient},
 	neo_contract::{ContractError, SmartContractTrait, TokenTrait},
 	neo_protocol::Account,
-};
-use crate::neo_types::{
-	deserialize_script_hash, serialize_script_hash, ContractParameter, NNSName, ScriptHash,
 };
 
 /// NeoburgerNeo contract interface for Neo N3

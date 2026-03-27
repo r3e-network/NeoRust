@@ -165,6 +165,11 @@ impl ScriptHashExtension for H160 {
 	}
 
 	fn from_public_key(public_key: &[u8]) -> Result<Self, TypeError> {
+		// Validate public key length: 33 bytes (compressed) or 65 bytes (uncompressed)
+		if public_key.len() != 33 && public_key.len() != 65 {
+			return Err(TypeError::InvalidPublicKey);
+		}
+
 		// Create a proper verification script for the public key
 		// Format: PushData1 + length + public_key + Syscall + SystemCryptoCheckSig.hash()
 		let mut script = Vec::new();
@@ -172,7 +177,7 @@ impl ScriptHashExtension for H160 {
 		// PushData1 opcode (0x0c)
 		script.push(0x0c);
 
-		// Length of public key (33 bytes for compressed key)
+		// Length of public key
 		script.push(public_key.len() as u8);
 
 		// Public key bytes

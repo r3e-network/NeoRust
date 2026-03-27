@@ -312,6 +312,11 @@ where
 				);
 				next_backoff += Duration::from_secs(seconds_to_wait_for_compute_budget);
 
+				// Add jitter (up to 25% of backoff) to prevent thundering herd
+				let jitter_ms = (next_backoff.as_millis() as u64 / 4).max(1);
+				let jitter = Duration::from_millis(rand::random::<u64>() % jitter_ms);
+				next_backoff += jitter;
+
 				trace!("retrying and backing off for {:?}", next_backoff);
 
 				#[cfg(target_arch = "wasm32")]

@@ -252,7 +252,11 @@ impl ConnectionPool {
 						let mut stats = self.stats.write().await;
 						stats.retried_requests += 1;
 
-						tokio::time::sleep(self.config.retry_delay * retries).await;
+						// Exponential backoff with jitter to prevent thundering herd
+					let base_delay = self.config.retry_delay * retries;
+					let jitter_ms = (base_delay.as_millis() as u64 / 4).max(1);
+					let jitter = Duration::from_millis(rand::random::<u64>() % jitter_ms);
+					tokio::time::sleep(base_delay + jitter).await;
 						continue;
 					} else {
 						let mut stats = self.stats.write().await;
@@ -271,7 +275,11 @@ impl ConnectionPool {
 						let mut stats = self.stats.write().await;
 						stats.retried_requests += 1;
 
-						tokio::time::sleep(self.config.retry_delay * retries).await;
+						// Exponential backoff with jitter to prevent thundering herd
+					let base_delay = self.config.retry_delay * retries;
+					let jitter_ms = (base_delay.as_millis() as u64 / 4).max(1);
+					let jitter = Duration::from_millis(rand::random::<u64>() % jitter_ms);
+					tokio::time::sleep(base_delay + jitter).await;
 						continue;
 					} else {
 						let mut stats = self.stats.write().await;
@@ -286,10 +294,10 @@ impl ConnectionPool {
 
 	/// Get a connection from the pool or create a new one
 	async fn get_connection(&self) -> Neo3Result<PooledConnection> {
-		// Try to get an existing connection
+		// Try to get an existing connection (LIFO order for better cache warmth)
 		{
 			let mut connections = self.connections.write().await;
-			while let Some(mut conn) = connections.pop_front() {
+			while let Some(mut conn) = connections.pop_back() {
 				if !conn.is_expired(self.config.max_idle_time) && conn.is_healthy {
 					conn.mark_used();
 					return Ok(conn);
@@ -361,6 +369,82 @@ impl ConnectionPool {
 			current_active_connections: stats.current_active_connections,
 			current_idle_connections: stats.current_idle_connections,
 		}
+	}
+
+	/// Spawns a background task that periodically maintains the pool.
+	///
+	/// The task runs every 30 seconds and:
+	/// - Performs health checks on idle connections
+	/// - Creates new connections up to `min_idle` if the idle count is too low
+	///
+	/// Returns a `JoinHandle` that can be used to abort the task when the pool
+	/// is no longer needed.
+	pub fn start_maintenance_task(&self) -> tokio::task::JoinHandle<()> {
+		let connections = Arc::clone(&self.connections);
+		let stats = Arc::clone(&self.stats);
+		let endpoint = self.endpoint.clone();
+		let config = self.config.clone();
+
+		tokio::spawn(async move {
+			let mut interval = tokio::time::interval(Duration::from_secs(30));
+			loop {
+				interval.tick().await;
+
+				// --- Health check phase ---
+				// Drain connections while holding the lock briefly
+				let pending: VecDeque<PooledConnection> = {
+					let mut conns = connections.write().await;
+					std::mem::take(&mut *conns)
+				};
+
+				// Run health checks without holding the pool lock
+				let mut healthy_connections = VecDeque::new();
+				for mut conn in pending {
+					if conn.health_check().await {
+						healthy_connections.push_back(conn);
+					}
+				}
+
+				// Re-acquire lock to store healthy connections
+				{
+					let mut conns = connections.write().await;
+					*conns = healthy_connections;
+				}
+
+				// --- Min-idle enforcement phase ---
+				let current_idle = {
+					let conns = connections.read().await;
+					conns.len()
+				};
+
+				if current_idle < config.min_idle {
+					let needed = config.min_idle - current_idle;
+					let mut new_conns = Vec::new();
+					for _ in 0..needed {
+						match PooledConnection::new(&endpoint) {
+							Ok(conn) => new_conns.push(conn),
+							Err(_) => break,
+						}
+					}
+
+					let created = new_conns.len();
+					if created > 0 {
+						let mut conns = connections.write().await;
+						for conn in new_conns {
+							conns.push_back(conn);
+						}
+
+						let mut s = stats.write().await;
+						s.total_connections_created += created as u64;
+						s.current_idle_connections = conns.len();
+					}
+				} else {
+					let mut s = stats.write().await;
+					let conns = connections.read().await;
+					s.current_idle_connections = conns.len();
+				}
+			}
+		})
 	}
 
 	/// Close all connections and clean up the pool

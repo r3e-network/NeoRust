@@ -1,7 +1,6 @@
 use ethers::types::{TransactionRequest, H160 as EthersH160, U256};
 use primitive_types::H160;
 use serde::{Deserialize, Serialize};
-use std::str::FromStr;
 
 /// Neo X EVM transaction for interacting with the Neo X EVM-compatible chain
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -72,8 +71,8 @@ impl NeoXTransaction {
 			.gas_price(U256::from(self.gas_price));
 
 		if let Some(to) = self.to {
-			// Convert primitive_types::H160 to ethers::types::H160
-			let to_ethers = EthersH160::from_str(&format!("{:?}", to)).unwrap_or_default();
+			// Convert primitive_types::H160 to ethers::types::H160 via raw bytes
+			let to_ethers = EthersH160::from(to.0);
 			req = req.to(to_ethers);
 		}
 

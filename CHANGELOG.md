@@ -9,6 +9,49 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 _No changes yet._
 
+## [1.2.0] - 2026-03-27
+
+### ✨ Added
+
+- **Cache invalidation API**: Added `invalidate_where()` for predicate-based cache invalidation and `invalidate_by_prefix()` convenience method on `RpcCache` for clearing related entries after state changes.
+- **Connection pool maintenance**: Added `start_maintenance_task()` to `ConnectionPool` that enforces `min_idle` connections and runs periodic health checks.
+- **Unified error integration**: Added `From<NeoFSError>` and `From<ProtocolError>` conversions for the unified `NeoError` type, completing the error hierarchy.
+- **NeoNameService**: Added `NAME` constant and `with_script_hash()` constructor for consistency with other native contracts.
+- **TokenTrait**: Added default `resolve_nns_text_record()` implementation so implementors don't need to provide NNS support.
+- **WalletSigner**: Made `address()`, `network()`, `with_network()`, and `sign_transaction()` public.
+
+### 🔧 Changed
+
+- **EcosystemClient error types**: Changed all methods from `Result<String, String>` to `Result<String, NeoError>` with proper error variant mapping (Wallet, Network, Validation, Transaction, Contract, Configuration).
+- **EcosystemClient decimal precision**: Replaced lossy `f64 * 100_000_000.0` arithmetic with exact `DecimalAmount::parse()` for GAS amount conversions.
+- **EcosystemClient constants**: Extracted `NEOX_GAS_PRICE_WEI`, `NEOX_TRANSFER_GAS_LIMIT`, `NEOX_BRIDGE_GAS_LIMIT`, `GAS_DECIMALS` constants to replace hardcoded magic numbers.
+- **Connection pool**: Changed from FIFO to LIFO connection reuse for better TCP/TLS cache warmth.
+- **Retry backoff jitter**: Added 25% random jitter to `RetryClient` and `ConnectionPool` retry backoff to prevent thundering herd.
+- **Smart contract traits**: Changed `set_name()`/`set_script_hash()` no-op log level from `warn` to `debug`.
+- **Monitoring module**: Rewrote to remove unavailable dependencies (opentelemetry, prometheus, warp); documented as preview with stub implementations.
+- **Wildcard imports**: Replaced `neo3::prelude::*` with explicit `crate::` imports in 6 source files.
+
+### 🐛 Fixes
+
+- **Unsafe H160 address conversion**: Fixed `into_ethers_request()` to use direct byte conversion (`EthersH160::from(to.0)`) instead of string roundtrip with `unwrap_or_default()` that silently zeroed invalid addresses.
+- **OracleResponse ID type**: Fixed type mismatch from `u32` to `u64` in `response_transaction_attribute.rs` to match Neo N3 protocol spec.
+- **Multi-sig threshold validation**: Added validation in `multi_sig_from_public_keys()` and `multi_sig_from_addr()` to reject threshold=0 or threshold > participants.
+- **Public key length validation**: `ScriptHashExtension::from_public_key()` now rejects keys that aren't 33 or 65 bytes.
+- **Bridge contract signer errors**: Changed `deposit()` and `withdraw()` from `let _ = set_signers(...)` to proper error propagation.
+- **Bridge input validation**: Added amount > 0 and non-empty destination checks to `deposit()` and `withdraw()`.
+- **PolicyContract session leak**: `collect_all()` now logs iterator session termination errors instead of silently discarding them.
+- **RoleManagement constant visibility**: Changed `const NAME` to `pub const NAME` for consistency with other native contracts.
+- **Contract management imports**: Replaced self-referential `neo3::prelude::*` with explicit `crate::` imports.
+- **Stale version in docs**: Updated doc comments from hardcoded "v1.0.9" to current version.
+
+### 🗑️ Deprecated
+
+- **`extensions` module**: `ToValue` trait deprecated in favor of `serde_json::json!()` macro.
+
+### 🧪 Testing
+
+- All **522 tests passing**, 0 clippy warnings, 0 doc warnings.
+
 ## [1.0.9] - 2026-03-14
 
 ### 🐛 Critical Fixes

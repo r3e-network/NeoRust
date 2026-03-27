@@ -318,6 +318,25 @@ where
 		}
 	}
 
+	/// Invalidate all entries matching a predicate.
+	///
+	/// Returns the number of entries removed.
+	pub async fn invalidate_where<F>(&self, predicate: F) -> usize
+	where
+		F: Fn(&K) -> bool,
+	{
+		let mut entries = self.entries.write().await;
+		let mut stats = self.stats.write().await;
+
+		let initial_size = entries.len();
+		entries.retain(|key, _| !predicate(key));
+		let removed = initial_size - entries.len();
+
+		stats.evictions += removed as u64;
+		stats.current_size = entries.len();
+		removed
+	}
+
 	/// Start background cleanup task
 	pub fn start_cleanup_task(&self) -> tokio::task::JoinHandle<()> {
 		let cache = Cache {
@@ -393,6 +412,16 @@ impl RpcCache {
 			Duration::from_secs(10), // 10 seconds
 		)
 		.await;
+	}
+
+	/// Invalidate all cached entries with keys matching the given prefix.
+	///
+	/// Useful for clearing stale data after state changes, e.g.:
+	/// - `invalidate_by_prefix("balance:")` after sending a transaction
+	/// - `invalidate_by_prefix("contract:0xabc...")` after a contract update
+	pub async fn invalidate_by_prefix(&self, prefix: &str) -> usize {
+		let prefix = prefix.to_string();
+		self.invalidate_where(|key| key.starts_with(&prefix)).await
 	}
 }
 

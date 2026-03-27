@@ -24,7 +24,7 @@ pub struct RoleManagement<'a, P: JsonRpcProvider> {
 }
 
 impl<'a, P: JsonRpcProvider + 'static> RoleManagement<'a, P> {
-	const NAME: &'static str = "RoleManagement";
+	pub const NAME: &'static str = "RoleManagement";
 	// const SCRIPT_HASH: H160 = Self::calc_native_contract_hash(Self::NAME).unwrap(); // compute hash
 
 	pub fn new(provider: Option<&'a RpcClient<P>>) -> Self {

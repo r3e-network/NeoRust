@@ -1,4 +1,4 @@
-use hmac::{Hmac, Mac};
+use hmac::{Hmac, KeyInit, Mac};
 use ripemd::{Digest as RipemdDigest, Ripemd160};
 use sha2::{Sha256, Sha512};
 

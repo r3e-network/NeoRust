@@ -73,7 +73,7 @@ use p256::{
 	EncodedPoint, FieldBytes, PublicKey, SecretKey,
 };
 use primitive_types::U256;
-use rand_core::OsRng;
+use p256::elliptic_curve::rand_core::OsRng;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use signature::{hazmat::PrehashSigner, Verifier};
 

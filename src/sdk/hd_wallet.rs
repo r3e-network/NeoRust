@@ -52,7 +52,7 @@
 use crate::neo_error::unified::{ErrorRecovery, NeoError};
 use crate::neo_protocol::{Account, AccountTrait};
 use bip39::{Language, Mnemonic};
-use hmac::{Hmac, Mac};
+use hmac::{Hmac, KeyInit, Mac};
 use p256::elliptic_curve::zeroize::Zeroize;
 use serde::{Deserialize, Serialize};
 use sha2::Sha512;
@@ -408,7 +408,7 @@ impl HDWallet {
 		use aes::cipher::{block_padding::Pkcs7, BlockEncryptMut, KeyInit};
 		use base64::engine::general_purpose;
 		use base64::Engine;
-		use rand_core::{OsRng, RngCore};
+		use rand::{rngs::OsRng, RngCore};
 		use scrypt::{scrypt, Params};
 
 		type Aes256EcbEnc = ecb::Encryptor<aes::Aes256>;

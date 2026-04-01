@@ -408,7 +408,7 @@ impl HDWallet {
 		use aes::cipher::{block_padding::Pkcs7, BlockEncryptMut, KeyInit};
 		use base64::engine::general_purpose;
 		use base64::Engine;
-		use rand::{rngs::OsRng, RngCore};
+		use rand::Rng;
 		use scrypt::{scrypt, Params};
 
 		type Aes256EcbEnc = ecb::Encryptor<aes::Aes256>;
@@ -448,7 +448,7 @@ impl HDWallet {
 			})?;
 
 		let mut salt = [0u8; 16];
-		OsRng.fill_bytes(&mut salt);
+		rand::rng().fill_bytes(&mut salt);
 
 		let mut key = [0u8; 32];
 		scrypt(password.as_bytes(), &salt, &params, &mut key).map_err(|e| NeoError::Wallet {

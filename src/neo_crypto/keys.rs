@@ -69,11 +69,11 @@ use crate::{
 use p256::elliptic_curve::zeroize::Zeroize;
 use p256::{
 	ecdsa::{signature::Signer, Signature, SigningKey, VerifyingKey},
+	elliptic_curve::rand_core::OsRng,
 	elliptic_curve::sec1::{FromEncodedPoint, ToEncodedPoint},
 	EncodedPoint, FieldBytes, PublicKey, SecretKey,
 };
 use primitive_types::U256;
-use p256::elliptic_curve::rand_core::OsRng;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use signature::{hazmat::PrehashSigner, Verifier};
 

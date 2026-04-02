@@ -408,7 +408,7 @@ impl HDWallet {
 		use aes::cipher::{block_padding::Pkcs7, BlockEncryptMut, KeyInit};
 		use base64::engine::general_purpose;
 		use base64::Engine;
-		use rand::Rng;
+		use rand::RngCore;
 		use scrypt::{scrypt, Params};
 
 		type Aes256EcbEnc = ecb::Encryptor<aes::Aes256>;

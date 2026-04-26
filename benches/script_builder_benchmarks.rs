@@ -1,4 +1,4 @@
-use criterion::{black_box, criterion_group, criterion_main, Criterion};
+use criterion::{criterion_group, criterion_main, Criterion};
 use neo3::{
 	neo_builder::{AccountSigner, ScriptBuilder, Signer, TransactionBuilder},
 	neo_clients::HttpProvider,
@@ -12,9 +12,9 @@ fn benchmark_script_builder_simple(c: &mut Criterion) {
 	c.bench_function("script_builder_simple", |b| {
 		b.iter(|| {
 			let mut builder = ScriptBuilder::new();
-			builder.push_integer(black_box(BigInt::from(42)));
-			builder.push_data(black_box(b"test".to_vec()));
-			builder.op_code(&[black_box(OpCode::Add)]);
+			builder.push_integer(std::hint::black_box(BigInt::from(42)));
+			builder.push_data(std::hint::black_box(b"test".to_vec()));
+			builder.op_code(&[std::hint::black_box(OpCode::Add)]);
 			let _script = builder.to_bytes();
 		});
 	});
@@ -28,9 +28,9 @@ fn benchmark_script_builder_contract_call(c: &mut Criterion) {
 			let mut builder = ScriptBuilder::new();
 			builder
 				.contract_call(
-					black_box(&contract_hash),
-					black_box("transfer"),
-					black_box(&[
+					std::hint::black_box(&contract_hash),
+					std::hint::black_box("transfer"),
+					std::hint::black_box(&[
 						ContractParameter::h160(&contract_hash),
 						ContractParameter::h160(&contract_hash),
 						ContractParameter::integer(100),
@@ -50,16 +50,17 @@ fn benchmark_transaction_builder(c: &mut Criterion) {
 	c.bench_function("transaction_builder", |b| {
 		b.iter(|| {
 			let mut builder: TransactionBuilder<HttpProvider> = TransactionBuilder::new();
-			builder.set_script(black_box(Some(vec![0x00, 0x01, 0x02])));
-			let signer: Signer =
-				AccountSigner::called_by_entry_hash160(black_box(account.get_script_hash()))
-					.unwrap()
-					.into();
+			builder.set_script(std::hint::black_box(Some(vec![0x00, 0x01, 0x02])));
+			let signer: Signer = AccountSigner::called_by_entry_hash160(std::hint::black_box(
+				account.get_script_hash(),
+			))
+			.unwrap()
+			.into();
 			let _ = builder.set_signers(vec![signer]);
-			builder.nonce(black_box(12345)).unwrap();
-			builder.set_additional_system_fee(black_box(1000000));
-			builder.set_additional_network_fee(black_box(500000));
-			builder.valid_until_block(black_box(1000000)).unwrap();
+			builder.nonce(std::hint::black_box(12345)).unwrap();
+			builder.set_additional_system_fee(std::hint::black_box(1000000));
+			builder.set_additional_network_fee(std::hint::black_box(500000));
+			builder.valid_until_block(std::hint::black_box(1000000)).unwrap();
 			let _tx = builder.build();
 		});
 	});

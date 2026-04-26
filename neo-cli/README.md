@@ -6,9 +6,7 @@ A command-line interface for interacting with the Neo N3 blockchain, built on th
 
 ## Overview
 
-Neo CLI wraps common SDK workflows into a single tool: network connectivity checks, contract operations, DeFi helpers, NeoFS commands, and project generation templates.
-
-> Note: some subcommands are still placeholders and may return “NotImplemented”. Use `neo-cli --help` for the authoritative list of available commands.
+Neo CLI wraps common SDK workflows into a single tool: network connectivity checks, wallet management, contract operations, token helpers, NFT operations, NeoFS gateway access, and project generation templates.
 
 ## Installation
 
@@ -78,7 +76,7 @@ Run `neo-cli --help` (and `neo-cli <command> --help`) for the full set of flags 
 ### Wallet
 
 - `neo-cli wallet create`, `open`, `backup`, `restore`, `hd-wallet`
-- `neo-cli wallet send` and `neo-cli wallet balance` exist, but some on-chain operations are still stubbed; for now, `neo-cli de-fi token` and `neo-cli de-fi balance <TOKEN> <ADDRESS>` are the most reliable token helpers.
+- `neo-cli wallet send`, `balance`, `import-address`, `create-multisig`, `set-default`, and `sign-message`
 
 ### Contracts
 
@@ -87,8 +85,7 @@ Run `neo-cli --help` (and `neo-cli <command> --help`) for the full set of flags 
 ### DeFi
 
 - `neo-cli de-fi token` and `neo-cli de-fi balance` for token metadata/balance queries
-- `neo-cli de-fi transfer` exists, but signing workflows are still evolving (see subcommand `--help`)
-- Protocol helpers: `neo-cli de-fi flamingo ...`, `neo-cli de-fi neo-burger ...`, `neo-cli de-fi neo-compound ...`, `neo-cli de-fi grand-share ...`
+- `neo-cli de-fi transfer` for NEP-17 token transfers
 
 ### NeoFS
 

@@ -284,7 +284,7 @@ impl NeoFSClientImpl {
 				container_id: container_id.to_string(),
 				owner: "current_user".to_string(),
 				size: file_content.len() as u64,
-				checksum: format!("sha256:{:x}", sha2::Sha256::digest(&file_content)),
+				checksum: format!("sha256:{}", hex::encode(sha2::Sha256::digest(&file_content))),
 				content_type: mime_guess::from_path(file_path).first_or_octet_stream().to_string(),
 				created_at: chrono::Utc::now().to_rfc3339(),
 				attributes: HashMap::new(),
@@ -402,7 +402,7 @@ pub enum EndpointCommands {
 	/// List all available NeoFS endpoints
 	List {
 		/// Network to list endpoints for (mainnet or testnet)
-		#[arg(short, long, default_value = "mainnet")]
+		#[arg(long, default_value = "mainnet")]
 		network: String,
 	},
 	/// Test connection to a NeoFS endpoint
@@ -412,7 +412,7 @@ pub enum EndpointCommands {
 		endpoint: Option<String>,
 
 		/// Network (mainnet or testnet)
-		#[arg(short, long, default_value = "mainnet")]
+		#[arg(long, default_value = "mainnet")]
 		network: String,
 
 		/// Endpoint type (grpc, http, rest)
@@ -430,7 +430,7 @@ pub enum EndpointCommands {
 		url: String,
 
 		/// Network (mainnet or testnet)
-		#[arg(short, long, default_value = "mainnet")]
+		#[arg(long, default_value = "mainnet")]
 		network: String,
 
 		/// Endpoint type (grpc, http, rest)

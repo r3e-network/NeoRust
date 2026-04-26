@@ -9,7 +9,7 @@
 //! ![Neo Logo](https://neo.org/images/neo-logo/NEO-logo.svg)
 //! # NeoRust SDK
 //!
-//! A production-ready Rust SDK for the Neo N3 blockchain with enterprise-grade features.
+//! A production-focused Rust SDK for the Neo N3 blockchain.
 //!
 //! [![Crates.io](https://img.shields.io/crates/v/neo3.svg)](https://crates.io/crates/neo3)
 //! [![Documentation](https://docs.rs/neo3/badge.svg)](https://docs.rs/neo3)
@@ -22,21 +22,16 @@
 //! - **futures**: Enables async/futures support for asynchronous blockchain operations. This is recommended
 //!   for most applications that need to interact with the Neo blockchain without blocking.
 //!
-//! - **ledger**: Enables hardware wallet support via Ledger devices. When enabled, you can use Ledger
-//!   hardware wallets for transaction signing and key management. This feature provides an additional
-//!   security layer by keeping private keys on dedicated hardware.
+//! - **ledger**: Enables Ledger hardware wallet types. The feature gate is compile-checked, but
+//!   production use should include real-device signing tests in your release environment.
 //!
-//! - **aws**: ⚠️ **DISABLED in v1.0.1** due to security vulnerabilities in rusoto dependencies.
-//!   Will be re-enabled in a future 1.x release with the modern AWS SDK. For AWS KMS integration,
-//!   use the legacy v0.3.x line or wait for updated AWS SDK support.
+//! - **yubi** / **mock-hsm**: Enables YubiHSM support, or the YubiHSM mock backend for tests.
 //!
-//! - **sgx**: Enables Intel SGX (Software Guard Extensions) support for running Neo operations
-//!   in secure enclaves. This feature enables `no_std` compilation and provides hardware-based
-//!   security for sensitive operations like key management and transaction signing.
+//! - **sgx**: Experimental Intel SGX compile gate. Host builds compile the flag, but enclave
+//!   builds require an SGX target/toolchain and dedicated validation.
 //!
-//! - **no_std**: Enables `no_std` compilation for embedded systems and SGX environments.
-//!   This feature removes dependencies on the standard library, allowing the SDK to run in
-//!   constrained environments with custom allocators.
+//! - **no_std**: Experimental dependency feature forwarding for specialized builds. It is not
+//!   certified as general embedded or `wasm32-unknown-unknown` support.
 //!
 //! To enable specific features in your project, modify your `Cargo.toml` as follows:
 //!
@@ -346,7 +341,7 @@
 //!     ├── neo_contract       - Smart contract interaction abstractions
 //!     ├── neo_crypto         - Neo-specific cryptographic operations
 //!     ├── neo_protocol       - Neo network protocol implementation
-//!     ├── neo_sgx            - SGX support for secure enclave execution
+//!     ├── neo_sgx            - Experimental SGX enclave scaffolding
 //!     ├── neo_types          - Core Neo ecosystem data types
 //!     └── neo_wallets        - Neo asset and account management
 //! ```
@@ -443,7 +438,7 @@ pub mod neo_sgx;
 pub mod neo_wallets;
 pub mod neo_x;
 
-// Monitoring infrastructure (preview -- stub implementations)
+// Monitoring infrastructure
 pub mod monitoring;
 
 // High-level SDK API (new in v1.0.x)
@@ -692,12 +687,3 @@ pub use futures;
 
 #[cfg(feature = "ledger")]
 pub use coins_ledger;
-
-// AWS feature is disabled in v1.0.1 due to security vulnerabilities
-// #[cfg(feature = "aws")]
-// #[cfg_attr(docsrs, doc(cfg(feature = "aws")))]
-// pub use rusoto_core;
-//
-// #[cfg(feature = "aws")]
-// #[cfg_attr(docsrs, doc(cfg(feature = "aws")))]
-// pub use rusoto_kms;

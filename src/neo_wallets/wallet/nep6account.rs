@@ -182,7 +182,7 @@ impl NEP6Account {
 	/// Converts a `NEP6Account` into an `Account`.
 	///
 	/// Accounts with an address or contract verification script are converted directly.
-	/// Encrypted-key-only accounts are also accepted and use a placeholder script hash until
+	/// Encrypted-key-only accounts are also accepted and use a temporary script hash until
 	/// [`crate::neo_protocol::AccountTrait::decrypt_private_key`] derives the real single-signature state. Truly
 	/// incomplete accounts without address, contract script, or encrypted key return an error.
 	///
@@ -332,7 +332,8 @@ mod tests {
 				.key_pair
 				.clone()
 				.expect("Key pair should be present after decryption")
-				.private_key
+				.private_key_bytes()
+				.unwrap()
 				.to_vec(),
 			private_key.to_vec()
 		);
@@ -346,7 +347,8 @@ mod tests {
 				.key_pair
 				.clone()
 				.expect("Key pair should be present after decryption")
-				.private_key,
+				.private_key()
+				.unwrap(),
 			private_key
 		);
 	}
@@ -542,7 +544,8 @@ mod tests {
 				.key_pair
 				.as_ref()
 				.expect("Key pair should be present")
-				.private_key
+				.private_key_bytes()
+				.unwrap()
 				.to_vec(),
 			original_private_key
 		);

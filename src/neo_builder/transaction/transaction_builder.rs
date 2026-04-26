@@ -722,7 +722,7 @@ impl<'a, P: JsonRpcProvider + 'static> TransactionBuilder<'a, P> {
 					let verification_script = if let Some(vs) = account.verification_script() {
 						vs.clone()
 					} else if account.is_multi_sig() {
-						self.create_placeholder_multi_sig_verification_script(account).map_err(
+						self.create_estimated_multi_sig_verification_script(account).map_err(
 							|e| {
 								TransactionError::IllegalState(format!(
 									"Failed to create multi-sig verification script: {}",
@@ -733,17 +733,15 @@ impl<'a, P: JsonRpcProvider + 'static> TransactionBuilder<'a, P> {
 					} else {
 						// For single sig, if we don't have a verification script, try to derive from public key
 						if let Some(key_pair) = account.key_pair() {
-							VerificationScript::from_public_key(&key_pair.public_key)
+							VerificationScript::from_public_key(key_pair.public_key_ref())
 						} else {
-							// Fallback to placeholder if no public key is available
-							self.create_placeholder_single_sig_verification_script().map_err(
-								|e| {
-									TransactionError::IllegalState(format!(
-										"Failed to create single-sig verification script: {}",
-										e
-									))
-								},
-							)?
+							// Use a deterministic verification script with the correct encoded size.
+							self.create_estimated_single_sig_verification_script().map_err(|e| {
+								TransactionError::IllegalState(format!(
+									"Failed to create single-sig verification script: {}",
+									e
+								))
+							})?
 						}
 					};
 
@@ -810,21 +808,17 @@ impl<'a, P: JsonRpcProvider + 'static> TransactionBuilder<'a, P> {
 		Err(TransactionError::InvalidSender)
 	}
 
-	fn create_placeholder_single_sig_verification_script(
+	fn create_estimated_single_sig_verification_script(
 		&self,
 	) -> Result<VerificationScript, TransactionError> {
-		// Create placeholder public key for size estimation
-		let placeholder_public_key = Secp256r1PublicKey::from_encoded(Self::DUMMY_PUB_KEY)
+		let estimated_public_key = Secp256r1PublicKey::from_encoded(Self::DUMMY_PUB_KEY)
 			.ok_or_else(|| {
-				TransactionError::IllegalState(
-					"Failed to create placeholder public key".to_string(),
-				)
+				TransactionError::IllegalState("Failed to create estimated public key".to_string())
 			})?;
-		// Create and return the VerificationScript with the pub_keys and signing threshold
-		Ok(VerificationScript::from_public_key(&placeholder_public_key))
+		Ok(VerificationScript::from_public_key(&estimated_public_key))
 	}
 
-	fn create_placeholder_multi_sig_verification_script(
+	fn create_estimated_multi_sig_verification_script(
 		&self,
 		account: &Account,
 	) -> Result<VerificationScript, TransactionError> {
@@ -833,19 +827,16 @@ impl<'a, P: JsonRpcProvider + 'static> TransactionBuilder<'a, P> {
 			TransactionError::IllegalState(format!("Failed to get number of participants: {}", e))
 		})?;
 
-		// Vector to store placeholder public keys for size estimation
 		let mut pub_keys: Vec<Secp256r1PublicKey> = Vec::with_capacity(nr_of_participants as usize);
 
-		// Loop to add placeholder public keys based on the number of participants
 		for _ in 0..nr_of_participants {
-			// Create a placeholder public key for accurate size estimation
-			let placeholder_public_key = Secp256r1PublicKey::from_encoded(Self::DUMMY_PUB_KEY)
+			let estimated_public_key = Secp256r1PublicKey::from_encoded(Self::DUMMY_PUB_KEY)
 				.ok_or_else(|| {
 					TransactionError::IllegalState(
-						"Failed to create placeholder public key".to_string(),
+						"Failed to create estimated public key".to_string(),
 					)
 				})?;
-			pub_keys.push(placeholder_public_key);
+			pub_keys.push(estimated_public_key);
 		}
 
 		// Get the signing threshold

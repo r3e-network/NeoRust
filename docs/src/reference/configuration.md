@@ -205,30 +205,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 ## SGX Configuration
 
-If you're using the SGX features, you can configure the SGX environment:
+The `sgx` and `no_std` flags are experimental specialized build gates. Host builds can compile the flags, but enclave configuration is deployment-specific and must be validated with your SGX SDK, target, EDL, attestation verifier, and release process.
 
 ```rust,no_run
-use neo3::prelude::*;
-
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // Configure SGX
-    let sgx_config = SgxConfig::new()
-        .enclave_path("path/to/enclave.so")
-        .simulation_mode(false)
-        .build();
-    
-    // Initialize the SGX enclave with the configuration
-    let enclave_manager = SgxEnclaveManager::with_config(sgx_config)?;
-    
-    // Use the enclave manager
-    let wallet = enclave_manager.create_wallet("my-secure-password")?;
-    
-    Ok(())
-}
+// Pseudocode only: wire this to your SGX SDK and enclave layout.
+let enclave_path = std::env::var("SGX_ENCLAVE_PATH")?;
 ```
 
-You can also use environment variables for SGX configuration:
+Common environment variables used by SGX deployments:
 
 | Variable | Description | Default |
 |----------|-------------|---------|

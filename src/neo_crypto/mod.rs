@@ -47,7 +47,7 @@
 //! let data = b"Hello, Neo!";
 //!
 //! // Sign the data using the private key
-//! let signature = key_pair.private_key_ref().sign_tx(data);
+//! let signature = key_pair.sign(data).unwrap();
 //! ```
 //!
 //! ### Working with WIF format
@@ -60,7 +60,7 @@
 //! let key_pair = KeyPair::from_wif(wif).unwrap();
 //!
 //! // Export a private key to WIF format
-//! let exported_wif = key_pair.export_as_wif();
+//! let exported_wif = key_pair.export_as_wif().unwrap();
 //! assert_eq!(wif, exported_wif);
 //! ```
 

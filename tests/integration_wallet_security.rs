@@ -29,7 +29,7 @@ async fn test_complete_wallet_lifecycle() {
 
 	// 2. Test password operations
 	let password = "integration_test_password_123!";
-	wallet.encrypt_accounts(password);
+	wallet.encrypt_accounts(password).unwrap();
 
 	// Verify all accounts are encrypted
 	for account in wallet.accounts() {
@@ -90,19 +90,19 @@ async fn test_wallet_security_edge_cases() {
 
 	// Test short password (empty passwords are not allowed)
 	let mut test_wallet = wallet.clone();
-	test_wallet.encrypt_accounts("a");
+	test_wallet.encrypt_accounts("a").unwrap();
 	assert!(test_wallet.verify_password("a"), "Short password should work");
 
 	// Test very long password
 	let long_password = "a".repeat(1000);
 	let mut test_wallet2 = wallet.clone();
-	test_wallet2.encrypt_accounts(&long_password);
+	test_wallet2.encrypt_accounts(&long_password).unwrap();
 	assert!(test_wallet2.verify_password(&long_password), "Long password should work");
 
 	// Test special characters in password
 	let special_password = "!@#$%^&*()_+-=[]{}|;':\",./<>?`~";
 	let mut test_wallet3 = wallet.clone();
-	test_wallet3.encrypt_accounts(special_password);
+	test_wallet3.encrypt_accounts(special_password).unwrap();
 	assert!(
 		test_wallet3.verify_password(special_password),
 		"Special character password should work"
@@ -126,7 +126,7 @@ async fn test_large_wallet_performance() {
 
 	// Test encryption performance using parallel encryption
 	let start = std::time::Instant::now();
-	wallet.encrypt_accounts_parallel("performance_test_password");
+	wallet.encrypt_accounts_parallel("performance_test_password").unwrap();
 	let encryption_time = start.elapsed();
 
 	println!("Encrypted {} accounts in {:?}", account_count + 1, encryption_time);
@@ -203,7 +203,7 @@ async fn test_backup_file_integrity() {
 	wallet.set_scrypt_params(fast_scrypt_params());
 	let account = Account::create().expect("Should create account");
 	wallet.add_account(account);
-	wallet.encrypt_accounts("integrity_test_password");
+	wallet.encrypt_accounts("integrity_test_password").unwrap();
 
 	let temp_dir = TempDir::new().expect("Should create temp dir");
 	let backup_path = temp_dir.path().join("integrity_test_wallet.json");

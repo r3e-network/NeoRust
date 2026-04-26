@@ -115,10 +115,8 @@ impl LedgerDevice {
 
 		// Simulate signature generation
 		let key_pair = KeyPair::new_random(); // In reality, uses hardware-stored key
-		let signature = key_pair
-			.private_key()
-			.sign_tx(transaction_data)
-			.map_err(|e| format!("Signing failed: {e}"))?;
+		let signature =
+			key_pair.sign(transaction_data).map_err(|e| format!("Signing failed: {e}"))?;
 
 		let public_key = self.get_public_key(path)?;
 
@@ -236,8 +234,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 		let _script =
 			ScriptBuilder::new().contract_call(&gas_hash, "symbol", &[], None)?.to_bytes();
 
-		// Simulate transaction signing with Ledger
-		let tx_data = b"simulated_transaction_data"; // In reality, this would be the actual transaction hash
+		// Demonstrate Ledger signing with a deterministic 32-byte digest.
+		let tx_data = &[0x42u8; 32];
 		match ledger.sign_transaction(first_path, tx_data) {
 			Ok(signature) => {
 				println!("   ✅ Transaction signed with Ledger");

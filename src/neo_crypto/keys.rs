@@ -32,7 +32,7 @@
 //! converted to and from various formats for storage or transmission.
 //!
 //! ```
-//! use rand_core::OsRng;
+//! use p256::elliptic_curve::rand_core::OsRng;
 //! use neo3::neo_crypto::Secp256r1PrivateKey;
 //!
 //! // Generate a new private key

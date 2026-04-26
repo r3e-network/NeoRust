@@ -41,7 +41,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 	// Example 2: Create wallet from WIF
 	println!("\n{}", "📥 Loading Wallet from WIF...".yellow().bold());
-	let wif = key_pair.export_as_wif();
+	let wif = key_pair.export_as_wif()?;
 	let wif_preview = if wif.len() > 16 {
 		format!("{}...{}", &wif[..10], &wif[wif.len() - 6..])
 	} else {
@@ -118,13 +118,13 @@ mod tests {
 	#[test]
 	fn test_wif_roundtrip() {
 		let original_key = KeyPair::new_random();
-		let wif = original_key.export_as_wif();
+		let wif = original_key.export_as_wif().unwrap();
 		let loaded_key = KeyPair::from_wif(&wif).unwrap();
 
 		// Keys should be identical after WIF roundtrip
 		assert_eq!(
-			original_key.private_key().to_raw_bytes(),
-			loaded_key.private_key().to_raw_bytes()
+			original_key.private_key_bytes().unwrap(),
+			loaded_key.private_key_bytes().unwrap()
 		);
 	}
 

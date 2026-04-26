@@ -45,9 +45,6 @@ pub enum CliError {
 	#[error("Invalid format: {0}")]
 	InvalidFormat(String),
 
-	#[error("Operation not implemented: {0}")]
-	NotImplemented(String),
-
 	#[error("External error: {0}")]
 	External(String),
 }

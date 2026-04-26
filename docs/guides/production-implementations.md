@@ -1,10 +1,10 @@
 # Production-Ready Implementations Guide
 
-This guide documents the production-ready implementations that have replaced placeholder code throughout the NeoRust project.
+This guide documents production-focused implementations that have replaced placeholder code throughout the NeoRust project.
 
 ## Overview
 
-The following components have been upgraded from placeholder implementations to production-ready code:
+The following components have been upgraded from placeholder implementations to tested implementation paths:
 
 1. **Transaction Signing** - Real cryptographic signing for contract operations
 2. **NeoFS Client** - HTTP/REST API implementation for file storage
@@ -432,7 +432,7 @@ To upgrade from placeholder implementations:
 
 ## Conclusion
 
-These production-ready implementations provide a solid foundation for building robust Neo N3 applications. They include proper error handling, security measures, and scalability considerations necessary for production deployment.
+These implementations provide a solid foundation for building robust Neo N3 applications. They include proper error handling, security measures, and scalability considerations, but production deployment still requires application-specific validation.
 
 Each implementation follows best practices for:
 - Security and input validation
@@ -441,4 +441,4 @@ Each implementation follows best practices for:
 - Code maintainability and documentation
 - Testing and quality assurance
 
-The implementations are designed to be modular and extensible, allowing for easy customization and enhancement based on specific project requirements. All placeholder code has been replaced with fully functional, production-ready implementations that can be deployed and used in real-world applications. 
+The implementations are designed to be modular and extensible, allowing for customization and enhancement based on specific project requirements. Optional hardware, SGX/no_std, live broadcast, and cross-platform release paths should be validated in the target environment before real-asset use.

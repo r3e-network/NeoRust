@@ -1,17 +1,17 @@
 # 🔒 NeoRust SDK Security Audit
 
-**Audit Date**: December 2024  
-**Auditor**: AI Assistant  
-**Scope**: Core SDK, CLI, and dependencies  
-**Version**: v1.0.9
+**Audit Date**: April 2026
+**Auditor**: AI Assistant
+**Scope**: Core SDK, CLI, and dependencies
+**Version**: v1.3.0
 
 ---
 
 ## 📊 **EXECUTIVE SUMMARY**
 
-**Overall Security Rating**: ✅ **HIGH**
+**Overall Security Rating**: ✅ **HIGH for reviewed core surfaces**
 
-The NeoRust SDK demonstrates **strong security practices** with proper cryptographic implementations, secure dependency management, and production-grade architecture. The core SDK is suitable for production use with real assets when following recommended security practices.
+The NeoRust SDK demonstrates **strong security practices** in the reviewed core wallet, cryptography, RPC, and dependency-management surfaces. This document is not a formal third-party certification: hardware wallet devices, SGX/no_std enclave builds, live transaction broadcasting, and non-Linux release targets require environment-specific validation before production use.
 
 ---
 
@@ -250,7 +250,7 @@ If you discover a security vulnerability:
 
 ## 🎯 **SECURITY CONCLUSION**
 
-**The NeoRust SDK demonstrates excellent security practices** and is suitable for production use with real assets when following recommended security practices.
+**The reviewed NeoRust SDK core surfaces demonstrate strong security practices** and can be used in production when paired with application-specific controls, release CI, and operational validation.
 
 ### **Key Strengths**
 - ✅ **Strong Cryptographic Foundation**: Industry-standard implementations
@@ -259,13 +259,13 @@ If you discover a security vulnerability:
 - ✅ **Best Practices**: Following established security guidelines
 
 ### **Recommended Use**
-- ✅ **Production Ready**: Core SDK suitable for real asset management
+- ✅ **Production Ready**: Core SDK suitable for real asset management after application-specific signing, broadcast, backup, and recovery validation
 - ✅ **Enterprise Ready**: With additional security controls
 - ✅ **Security Conscious**: Designed with security as primary concern
 
 ---
 
-**Security Rating**: ✅ **HIGH** - Suitable for production use with real assets
+**Security Rating**: ✅ **HIGH for reviewed core surfaces** - hardware wallet devices, SGX/no_std, live broadcast flows, and non-Linux release targets remain outside this audit's verification evidence
 
-*Last Updated: December 2024*  
-*Next Security Review: After major version updates* 
+*Last Updated: April 2026*
+*Next Security Review: After major version updates*

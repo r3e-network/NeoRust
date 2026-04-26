@@ -1,8 +1,8 @@
 [package]
 name = "neo3"
-version = "1.2.0"
+version = "1.3.0"
 edition = "2021"
-rust-version = "1.70"
+rust-version = "1.83"
 authors = ["R3E Network <jimmy@r3e.network> (c) 2020-2025"]
 license = "MIT OR Apache-2.0"
 description = "Production-ready Rust SDK for Neo N3 blockchain with high-level API, unified error handling, and enterprise features"
@@ -12,40 +12,18 @@ homepage = "https://github.com/R3E-Network/NeoRust"
 readme = "README.md"
 categories = ["cryptography::cryptocurrencies", "api-bindings", "cryptography"]
 keywords = ["crypto", "neo", "neo-N3", "web3", "blockchain"]
-exclude = [
-    ".github/",
-    ".hive-mind/",
-    "bin/",
-    "book/",
-    "**/tests/",
-    "**/test-data/",
-    "**/testdata/",
-    "scripts/",
-    "docs/",
-    "website/",
-    "neo-cli/",
-    "examples/",
-    "benches/",
-    "test_resources/",
-    "target/",
-    "**/target/",
-    "test_verification",
-    "*.lock",
-    "act",
-    "**/*.dylib",
-    "**/*.so",
-    "**/*.a",
-    "**/*.o",
-    ".git/",
-    "**/node_modules/",
-    "**/.docusaurus/",
-    "**/build/",
-    "**/dist/",
-    "**/coverage/",
-    "**/.next/",
-    "**/.turbo/",
-    "**/playwright-report/",
-    "**/test-results/",
+include = [
+    "/Cargo.toml",
+    "/Cargo.lock",
+    "/build.rs",
+    "/README.md",
+    "/CHANGELOG.md",
+    "/LICENSE",
+    "/LICENSE-APACHE",
+    "/LICENSE-MIT",
+    "/COPYRIGHT",
+    "/assets/**",
+    "/src/**",
 ]
 
 [lib]
@@ -100,8 +78,7 @@ exclude = [
 ]
 
 [dependencies]
-tungstenite = { version = "0.29.0", optional = true }
-tokio-tungstenite = { version = "0.23.1", features = ["native-tls", "connect"], optional = true }
+tokio-tungstenite = { version = "0.29.0", features = ["native-tls", "connect"], optional = true }
 futures = { version = "0.3.32", default-features = false, features = ["std"] }
 futures-util = "0.3.28"
 futures-channel = "0.3.28"
@@ -132,7 +109,7 @@ bytes = "1.4"
 hex = { package = "const-hex", version = "1.6", features = ["hex"] }
 hex-literal = "1.1"
 once_cell = "1.21"
-rand = "0.9"
+rand = "0.9.3"
 rayon = "1.7"
 # tempfile: moved to [dev-dependencies]
 thiserror = "2.0.17"
@@ -191,7 +168,7 @@ coins-ledger = { version = "0.13.0", default-features = false, optional = true }
 yubihsm = { version = "0.42", features = ["http", "usb"], optional = true }
 
 bip39 = { version = "2.2.2", features = ["rand"] }
-ethers = { version = "2.0.14", features = ["rustls"] }
+ethers = { version = "2.0.14", default-features = false, features = ["abigen", "rustls"] }
 
 # SGX dependencies (optional) - only available when building for SGX target
 # These are commented out by default as they require special SGX environment
@@ -240,11 +217,11 @@ default = []
 mock = []
 # YubiHSM features - only for development/testing
 yubi = ["dep:yubihsm"]
-mock-hsm = ["dep:yubihsm", "yubihsm/mockhsm"]
+mock-hsm = ["yubi", "yubihsm/mockhsm"]
 ipc = ["dep:rustc-hash"]
 init = []
-legacy-ws = ["dep:tungstenite", "dep:tokio-tungstenite"]
-ws = ["dep:tungstenite", "dep:tokio-tungstenite"]
+legacy-ws = ["dep:tokio-tungstenite"]
+ws = ["dep:tokio-tungstenite"]
 # Note: use `yubi` feature to enable YubiHSM support (activates `dep:yubihsm`)
 
 # SGX support for secure enclave execution

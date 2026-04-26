@@ -1,15 +1,15 @@
 # Oracle Consumer Template
-# Scaffold for a dApp that consumes oracle data on Neo.
+# Starter for a dApp that consumes oracle data on Neo.
 
 [template]
 name = "oracle-consumer"
-description = "Oracle consumer scaffold (fetch/read oracle-fed state)"
+description = "Oracle consumer starter (fetch/read oracle-fed state)"
 version = "1.0.6"
 author = "NeoRust Team"
 
 [files]
 "src/main.rs" = '''
-//! Oracle consumer scaffold
+//! Oracle consumer starter
 //!
 //! This template demonstrates:
 //! - Connecting to Neo TestNet
@@ -20,7 +20,7 @@ use std::error::Error;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
-    println!("🔮 Oracle Consumer Scaffold");
+    println!("🔮 Oracle Consumer Starter");
 
     let neo = Neo::testnet().await?;
     let height = neo.get_block_height().await?;
@@ -47,9 +47,9 @@ anyhow = "1.0"
 '''
 
 "README.md" = '''
-# {{project_name}} - Oracle Consumer Scaffold
+# {{project_name}} - Oracle Consumer Starter
 
-Oracle consumer scaffold built with NeoRust SDK v{{neo3_version}}.
+Oracle consumer starter built with NeoRust SDK v{{neo3_version}}.
 
 ## Next Steps
 

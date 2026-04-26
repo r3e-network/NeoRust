@@ -1,7 +1,7 @@
 # 🚀 NeoRust SDK Production Deployment Guide
 
-**Version**: v1.0.9  
-**Target Audience**: DevOps Engineers, Security Teams, Production Deployers  
+**Version**: v1.3.0
+**Target Audience**: DevOps Engineers, Security Teams, Production Deployers
 **Last Updated**: December 2024
 
 ---
@@ -50,12 +50,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         enable_metrics: true,
         enable_logging: true,
     };
-    
+
     let client = ProductionRpcClient::new(
         "https://mainnet1.neo.org:443".to_string(),
         config
     );
-    
+
     // Your application logic here
     Ok(())
 }
@@ -75,7 +75,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 cargo build --release -p neo-cli
 
 # Docker deployment
-FROM rust:1.70 as builder
+FROM rust:1.83 as builder
 WORKDIR /app
 COPY . .
 RUN cargo build --release -p neo-cli
@@ -192,22 +192,22 @@ use neo3::neo_clients::ProductionRpcClient;
 async fn health_check(client: &ProductionRpcClient) -> Result<(), HealthCheckError> {
     // Check RPC connectivity
     let block_count = client.get_block_count().await?;
-    
+
     // Check response time
     let start = Instant::now();
     client.get_version().await?;
     let response_time = start.elapsed();
-    
+
     if response_time > Duration::from_secs(5) {
         return Err(HealthCheckError::SlowResponse(response_time));
     }
-    
+
     // Check circuit breaker state
     let health = client.get_health().await;
     if health["status"] != "healthy" {
         return Err(HealthCheckError::CircuitBreakerOpen);
     }
-    
+
     Ok(())
 }
 ```
@@ -268,11 +268,11 @@ groups:
       - alert: NeoConnectivityDown
         expr: neo_rpc_success_rate < 0.95
         for: 5m
-        
+
       - alert: HighErrorRate
         expr: neo_error_rate > 0.1
         for: 2m
-        
+
       - alert: CircuitBreakerOpen
         expr: neo_circuit_breaker_state == 1
         for: 1m
@@ -332,16 +332,16 @@ async fn backup_wallet(wallet_path: &Path, backup_dir: &Path) -> Result<(), Back
     let timestamp = Utc::now().format("%Y%m%d_%H%M%S");
     let backup_filename = format!("wallet_backup_{}.json.enc", timestamp);
     let backup_path = backup_dir.join(backup_filename);
-    
+
     // Create encrypted backup
     let wallet_data = tokio::fs::read(wallet_path).await?;
     let encrypted_backup = encrypt_backup(&wallet_data, &get_backup_key())?;
-    
+
     tokio::fs::write(&backup_path, encrypted_backup).await?;
-    
+
     // Verify backup integrity
     verify_backup_integrity(&backup_path).await?;
-    
+
     tracing::info!("Wallet backup created: {:?}", backup_path);
     Ok(())
 }
@@ -449,7 +449,7 @@ deploy_to_environment "$NEW_ENV"
 if health_check "$NEW_ENV"; then
     echo "Health check passed, switching traffic..."
     switch_traffic_to "$NEW_ENV"
-    
+
     # Verify switch successful
     if verify_traffic_switch "$NEW_ENV"; then
         echo "Deployment successful"
@@ -484,7 +484,7 @@ spec:
     spec:
       containers:
       - name: neorust-app
-        image: neorust:v1.0.9
+        image: neorust:v1.3.0
         resources:
           requests:
             memory: "256Mi"
@@ -655,9 +655,9 @@ server {
 
 ---
 
-**✅ DEPLOYMENT CERTIFICATION**
+**Deployment Readiness**
 
-This guide certifies that the NeoRust SDK Core components are **production-ready** when deployed following these procedures and security practices.
+This guide documents a production deployment checklist for the reviewed core SDK surfaces. It is not a blanket certification for every optional feature: hardware wallet devices, SGX/no_std enclave builds, live transaction broadcasting, and non-Linux release targets must be validated in the target deployment environment.
 
-*Last Updated: December 2024*  
-*Next Review: Quarterly or after major version updates* 
+*Last Updated: April 2026*
+*Next Review: Quarterly or after major version updates*

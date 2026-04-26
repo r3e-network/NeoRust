@@ -3,6 +3,8 @@ use ethers::providers::{Http, Provider};
 use ethers::types::{Address, U256};
 use std::sync::Arc;
 
+use crate::neo_contract::ContractError;
+
 // Abigen binding for the Neo X EVM Bridge Contract
 abigen!(
 	NeoXBridgeEVM,
@@ -19,28 +21,32 @@ pub struct NeoXBridgeContractEVM {
 }
 
 impl NeoXBridgeContractEVM {
-	/// Placeholder bridge contract address on Neo X Mainnet.
-	///
-	/// **Important:** This must be set to the actual deployed bridge contract address
-	/// before use. Use [`NeoXBridgeContractEVM::new`] with an explicit address for
-	/// production deployments.
-	pub const CONTRACT_ADDRESS: &'static str = "0x0000000000000000000000000000000000000000";
-
 	/// Creates a new NeoXBridgeContractEVM instance with an explicit contract address.
 	pub fn new(address: Address, provider: Arc<Provider<Http>>) -> Self {
 		let contract = NeoXBridgeEVM::new(address, provider);
 		Self { contract }
 	}
 
-	/// Creates an instance using the default bridge address and a provider.
-	///
-	/// **Warning:** The default address is a placeholder (`0x000...0`). For production
-	/// use, call [`NeoXBridgeContractEVM::new`] with the actual deployed contract address.
-	pub fn default_bridge(provider: Arc<Provider<Http>>) -> Self {
-		let address: Address = Self::CONTRACT_ADDRESS
-			.parse()
-			.expect("CONTRACT_ADDRESS constant is not a valid address");
-		Self::new(address, provider)
+	/// Creates an instance using `NEOX_BRIDGE_EVM_ADDRESS`.
+	pub fn default_bridge(provider: Arc<Provider<Http>>) -> Result<Self, ContractError> {
+		let configured = std::env::var("NEOX_BRIDGE_EVM_ADDRESS").map_err(|_| {
+			ContractError::InvalidStateError(
+				"NEOX_BRIDGE_EVM_ADDRESS must be set to the deployed Neo X bridge contract address"
+					.to_string(),
+			)
+		})?;
+		let address: Address = configured.parse().map_err(|e| {
+			ContractError::InvalidArgError(format!(
+				"Invalid NEOX_BRIDGE_EVM_ADDRESS '{}': {}",
+				configured, e
+			))
+		})?;
+		if address == Address::zero() {
+			return Err(ContractError::InvalidArgError(
+				"NEOX_BRIDGE_EVM_ADDRESS must not be the zero address".to_string(),
+			));
+		}
+		Ok(Self::new(address, provider))
 	}
 
 	/// Builds a transaction to withdraw tokens from Neo X back to Neo N3.

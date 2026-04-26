@@ -4,7 +4,7 @@ use neo3::neo_fs::{
 	types::{ContainerId, OwnerId},
 	NeoFSService,
 };
-use rand::{thread_rng, RngCore};
+use rand::RngCore;
 use std::env;
 use uuid::Uuid;
 
@@ -59,7 +59,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 	let mut parts: Vec<Part> = Vec::new();
 	let mut remaining = total_size;
 	let mut part_no = 1;
-	let mut rng = thread_rng();
+	let mut rng = rand::rng();
 
 	while remaining > 0 && (parts.len() as u64) < upload.max_parts {
 		let current_size = remaining.min(part_size);

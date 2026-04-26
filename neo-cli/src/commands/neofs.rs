@@ -2,10 +2,14 @@
 use crate::{
 	commands::wallet::CliState,
 	errors::CliError,
+	utils::config::{load_config, save_config, NeoFSEndpoint},
 	utils::{print_info, print_success},
 };
 use clap::{Args, Subcommand};
+use serde::de::DeserializeOwned;
+use sha2::{Digest, Sha256};
 use std::path::PathBuf;
+use url::Url;
 
 // NeoFS endpoint constants
 const DEFAULT_MAINNET_ENDPOINT: &str = "https://grpc.fs.neo.org";
@@ -15,7 +19,7 @@ const DEFAULT_TESTNET_HTTP_GATEWAY: &str = "https://http.testnet.fs.neo.org";
 const DEFAULT_MAINNET_REST_ENDPOINT: &str = "https://rest.fs.neo.org";
 const DEFAULT_TESTNET_REST_ENDPOINT: &str = "https://rest.testnet.fs.neo.org";
 
-use reqwest::Client as HttpClient;
+use reqwest::{Client as HttpClient, Response};
 use serde::{Deserialize, Serialize};
 
 // Production-ready NeoFS client
@@ -47,6 +51,23 @@ struct ObjectInfo {
 	pub content_type: String,
 }
 
+#[derive(Debug, Deserialize)]
+struct UploadResponse {
+	#[serde(alias = "objectId", alias = "objectID")]
+	object_id: String,
+	#[serde(alias = "containerId", alias = "containerID")]
+	container_id: String,
+}
+
+#[derive(Debug)]
+struct UploadedObjectInfo {
+	pub id: String,
+	pub container_id: String,
+	pub size: u64,
+	pub checksum: String,
+	pub content_type: String,
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 struct NetworkStatus {
 	pub status: String,
@@ -67,7 +88,8 @@ impl NeoFSClient {
 	}
 
 	fn with_endpoint(endpoint: &str) -> Self {
-		let (grpc, http, rest) = if endpoint.contains("testnet") {
+		let is_testnet = endpoint.contains("testnet");
+		let (mut grpc, mut http, mut rest) = if is_testnet {
 			(
 				DEFAULT_TESTNET_ENDPOINT.to_string(),
 				DEFAULT_TESTNET_HTTP_GATEWAY.to_string(),
@@ -81,6 +103,14 @@ impl NeoFSClient {
 			)
 		};
 
+		if endpoint.contains("rest.") {
+			rest = endpoint.to_string();
+		} else if endpoint.contains("http.") {
+			http = endpoint.to_string();
+		} else {
+			grpc = endpoint.to_string();
+		}
+
 		Self {
 			grpc_endpoint: grpc,
 			http_gateway: http,
@@ -89,32 +119,29 @@ impl NeoFSClient {
 		}
 	}
 
+	async fn parse_json<T: DeserializeOwned>(
+		response: Response,
+		context: &str,
+	) -> Result<T, CliError> {
+		let status = response.status();
+		if !status.is_success() {
+			let body = response.text().await.unwrap_or_default();
+			let detail =
+				if body.trim().is_empty() { String::new() } else { format!(": {}", body.trim()) };
+			return Err(CliError::Network(format!("{context}: HTTP {status}{detail}")));
+		}
+
+		response
+			.json::<T>()
+			.await
+			.map_err(|e| CliError::Network(format!("{context}: invalid JSON response: {e}")))
+	}
+
 	async fn get_network_status(&self) -> Result<NetworkStatus, CliError> {
 		let url = format!("{}/status", self.rest_endpoint);
 
 		match self.http_client.get(&url).send().await {
-			Ok(response) => {
-				if response.status().is_success() {
-					match response.json::<NetworkStatus>().await {
-						Ok(status) => Ok(status),
-						Err(_) => {
-							// Fallback to simulated status if parsing fails
-							Ok(NetworkStatus {
-								status: "Online".to_string(),
-								network: "Mainnet".to_string(),
-								version: "0.30.0".to_string(),
-								nodes: 42,
-								epoch: 12345,
-							})
-						},
-					}
-				} else {
-					Err(CliError::Network(format!(
-						"Failed to get network status: HTTP {}",
-						response.status()
-					)))
-				}
-			},
+			Ok(response) => Self::parse_json(response, "Failed to get NeoFS network status").await,
 			Err(e) => Err(CliError::Network(format!("Connection error: {}", e))),
 		}
 	}
@@ -123,39 +150,7 @@ impl NeoFSClient {
 		let url = format!("{}/containers", self.rest_endpoint);
 
 		match self.http_client.get(&url).send().await {
-			Ok(response) => {
-				if response.status().is_success() {
-					match response.json::<Vec<ContainerInfo>>().await {
-						Ok(containers) => Ok(containers),
-						Err(_) => {
-							// Fallback to example containers if parsing fails
-							Ok(vec![
-								ContainerInfo {
-									id: "0123456789abcdef0123456789abcdef".to_string(),
-									name: "Container1".to_string(),
-									owner: "NEO:AbCdEfGhIjKlMnOpQrStUvWxYz0123456789".to_string(),
-									created_at: "2023-01-01T00:00:00Z".to_string(),
-									basic_acl: 0x1FBF_FFFF,
-									placement_policy: "REP 3".to_string(),
-								},
-								ContainerInfo {
-									id: "fedcba9876543210fedcba9876543210".to_string(),
-									name: "Container2".to_string(),
-									owner: "NEO:ZyXwVuTsRqPoNmLkJiHgFeDcBa9876543210".to_string(),
-									created_at: "2023-02-01T00:00:00Z".to_string(),
-									basic_acl: 0x0FBF_FFFF,
-									placement_policy: "REP 2".to_string(),
-								},
-							])
-						},
-					}
-				} else {
-					Err(CliError::Network(format!(
-						"Failed to list containers: HTTP {}",
-						response.status()
-					)))
-				}
-			},
+			Ok(response) => Self::parse_json(response, "Failed to list NeoFS containers").await,
 			Err(e) => Err(CliError::Network(format!("Connection error: {}", e))),
 		}
 	}
@@ -164,29 +159,7 @@ impl NeoFSClient {
 		let url = format!("{}/containers/{}", self.rest_endpoint, container_id);
 
 		match self.http_client.get(&url).send().await {
-			Ok(response) => {
-				if response.status().is_success() {
-					match response.json::<ContainerInfo>().await {
-						Ok(container) => Ok(container),
-						Err(_) => {
-							// Fallback to example container if parsing fails
-							Ok(ContainerInfo {
-								id: container_id.to_string(),
-								name: "ExampleContainer".to_string(),
-								owner: "NEO:AbCdEfGhIjKlMnOpQrStUvWxYz0123456789".to_string(),
-								created_at: "2023-01-01T00:00:00Z".to_string(),
-								basic_acl: 0x1FBF_FFFF,
-								placement_policy: "REP 3".to_string(),
-							})
-						},
-					}
-				} else {
-					Err(CliError::Network(format!(
-						"Container not found: HTTP {}",
-						response.status()
-					)))
-				}
-			},
+			Ok(response) => Self::parse_json(response, "Failed to get NeoFS container").await,
 			Err(e) => Err(CliError::Network(format!("Connection error: {}", e))),
 		}
 	}
@@ -202,41 +175,7 @@ impl NeoFSClient {
 		}
 
 		match self.http_client.get(&url).send().await {
-			Ok(response) => {
-				if response.status().is_success() {
-					match response.json::<Vec<ObjectInfo>>().await {
-						Ok(objects) => Ok(objects),
-						Err(_) => {
-							// Fallback to example objects if parsing fails
-							Ok(vec![
-								ObjectInfo {
-									id: "0123456789abcdef0123456789abcdef".to_string(),
-									container_id: container_id.to_string(),
-									owner: "NEO:AbCdEfGhIjKlMnOpQrStUvWxYz0123456789".to_string(),
-									created_at: "2023-01-01T00:00:00Z".to_string(),
-									size: 1024,
-									checksum: "sha256:abc123...".to_string(),
-									content_type: "text/plain".to_string(),
-								},
-								ObjectInfo {
-									id: "fedcba9876543210fedcba9876543210".to_string(),
-									container_id: container_id.to_string(),
-									owner: "NEO:ZyXwVuTsRqPoNmLkJiHgFeDcBa9876543210".to_string(),
-									created_at: "2023-02-01T00:00:00Z".to_string(),
-									size: 20480,
-									checksum: "sha256:def456...".to_string(),
-									content_type: "image/jpeg".to_string(),
-								},
-							])
-						},
-					}
-				} else {
-					Err(CliError::Network(format!(
-						"Failed to list objects: HTTP {}",
-						response.status()
-					)))
-				}
-			},
+			Ok(response) => Self::parse_json(response, "Failed to list NeoFS objects").await,
 			Err(e) => Err(CliError::Network(format!("Connection error: {}", e))),
 		}
 	}
@@ -246,7 +185,7 @@ impl NeoFSClient {
 		file_path: &PathBuf,
 		container_id: &str,
 		object_path: Option<&str>,
-	) -> Result<ObjectInfo, CliError> {
+	) -> Result<UploadedObjectInfo, CliError> {
 		// Read file content
 		let file_content = match std::fs::read(file_path) {
 			Ok(content) => content,
@@ -255,38 +194,52 @@ impl NeoFSClient {
 
 		let file_name = file_path.file_name().unwrap_or_default().to_string_lossy();
 		let upload_path = object_path.unwrap_or(&file_name);
+		if upload_path.contains(['\r', '\n']) {
+			return Err(CliError::InvalidInput(
+				"Object upload path must not contain CR or LF characters".to_string(),
+			));
+		}
+		let content_type = mime_guess::from_path(file_path)
+			.first_or_octet_stream()
+			.essence_str()
+			.to_string();
+		let size = file_content.len() as u64;
+		let checksum = format!("sha256:{}", hex::encode(Sha256::digest(&file_content)));
+		let boundary = format!("neo-cli-{}", uuid::Uuid::new_v4());
+		let header_filename = upload_path.replace('"', "%22");
+		let mut body = Vec::with_capacity(file_content.len() + 512);
+		body.extend_from_slice(format!("--{}\r\n", boundary).as_bytes());
+		body.extend_from_slice(
+			format!(
+				"Content-Disposition: form-data; name=\"file\"; filename=\"{}\"\r\n",
+				header_filename
+			)
+			.as_bytes(),
+		);
+		body.extend_from_slice(format!("Content-Type: {}\r\n\r\n", content_type).as_bytes());
+		body.extend_from_slice(&file_content);
+		body.extend_from_slice(format!("\r\n--{}--\r\n", boundary).as_bytes());
 
 		let url = format!("{}/upload/{}", self.http_gateway, container_id);
 
-		// Use simple POST with binary content
 		match self
 			.http_client
 			.post(&url)
-			.header("Content-Type", "application/octet-stream")
-			.header("X-File-Name", file_name.to_string())
-			.header("X-Upload-Path", upload_path)
-			.body(file_content)
+			.header("Content-Type", format!("multipart/form-data; boundary={}", boundary))
+			.body(body)
 			.send()
 			.await
 		{
 			Ok(response) => {
-				if response.status().is_success() {
-					// Return created object info
-					Ok(ObjectInfo {
-						id: "new_object_id".to_string(),
-						container_id: container_id.to_string(),
-						owner: "NEO:CurrentUser".to_string(),
-						created_at: chrono::Utc::now().to_rfc3339(),
-						size: file_path.metadata().map(|m| m.len()).unwrap_or(0),
-						checksum: "sha256:calculated...".to_string(),
-						content_type: "application/octet-stream".to_string(),
-					})
-				} else {
-					Err(CliError::Network(format!(
-						"Failed to upload object: HTTP {}",
-						response.status()
-					)))
-				}
+				let upload: UploadResponse =
+					Self::parse_json(response, "Failed to upload NeoFS object").await?;
+				Ok(UploadedObjectInfo {
+					id: upload.object_id,
+					container_id: upload.container_id,
+					size,
+					checksum,
+					content_type,
+				})
 			},
 			Err(e) => Err(CliError::Network(format!("Upload error: {}", e))),
 		}
@@ -447,7 +400,7 @@ pub enum ObjectCommands {
 		container: String,
 
 		/// Object ID or path
-		#[arg(short, long)]
+		#[arg(short = 'i', long)]
 		object: String,
 
 		/// Path to save file locally
@@ -524,13 +477,11 @@ pub enum ConfigCommands {
 
 /// Handle NeoFS commands
 pub async fn handle_neofs_command(args: NeoFSArgs, _state: &mut CliState) -> Result<(), CliError> {
-	// Create NeoFS client
 	let client = match args.endpoint {
 		Some(endpoint) => NeoFSClient::with_endpoint(&endpoint),
-		None => NeoFSClient::default(),
+		None => configured_neofs_client()?,
 	};
 
-	// Handle command
 	match args.command {
 		NeoFSCommands::Container { command } => handle_container_command(command, &client).await,
 		NeoFSCommands::Object { command } => handle_object_command(command, &client).await,
@@ -540,6 +491,32 @@ pub async fn handle_neofs_command(args: NeoFSArgs, _state: &mut CliState) -> Res
 	}
 }
 
+fn configured_neofs_client() -> Result<NeoFSClient, CliError> {
+	let config = load_config()?;
+	let Some(default_name) = config.neofs.default_endpoint else {
+		return Ok(NeoFSClient::default());
+	};
+
+	let Some(endpoint) =
+		config.neofs.endpoints.iter().find(|endpoint| endpoint.name == default_name)
+	else {
+		return Err(CliError::Config(format!(
+			"Default NeoFS endpoint '{}' is not present in the configured endpoint list",
+			default_name
+		)));
+	};
+
+	Ok(NeoFSClient::with_endpoint(&endpoint.url))
+}
+
+fn unsupported_signed_neofs_operation(operation: &str) -> CliError {
+	CliError::InvalidOperation(format!(
+		"{operation} requires NeoFS native signed API support. The built-in HTTP gateway client \
+		 supports object upload and download only, so the CLI refuses to report success for this \
+		 operation without a signed NeoFS backend."
+	))
+}
+
 /// Handle container commands
 async fn handle_container_command(
 	command: ContainerCommands,
@@ -547,22 +524,10 @@ async fn handle_container_command(
 ) -> Result<(), CliError> {
 	match command {
 		ContainerCommands::Create { name, acl: _, options: _ } => {
-			print_info(&format!("Creating container '{}' on NeoFS network...", name));
-			// Professional NeoFS container creation with comprehensive blockchain integration
-			// This functionality provides complete container management including:
-			// 1. NeoFS gRPC API client for container operations
-			// 2. Private key signing for container creation transactions
-			// 3. Placement policy configuration and validation
-			// 4. Basic ACL and extended ACL setup
-			// 5. Network fees calculation and payment
 			if name.is_empty() {
 				return Err(CliError::InvalidInput("Container name cannot be empty".to_string()));
 			}
-			print_success(&format!(
-				"Container '{}' creation initiated (requires blockchain transaction)",
-				name
-			));
-			Ok(())
+			Err(unsupported_signed_neofs_operation("Container creation"))
 		},
 		ContainerCommands::List => {
 			print_info("Retrieving containers from NeoFS network...");
@@ -614,18 +579,8 @@ async fn handle_container_command(
 			}
 		},
 		ContainerCommands::Delete { id, force } => {
-			if !force {
-				print_info(
-					"Note: Container deletion requires confirmation and blockchain transaction.",
-				);
-				print_info("Use --force flag to skip confirmation prompts.");
-			}
-			print_info(&format!("Initiating deletion of container {}...", id));
-			print_success(&format!(
-				"Container '{}' deletion initiated (requires blockchain transaction)",
-				id
-			));
-			Ok(())
+			let _ = (id, force);
+			Err(unsupported_signed_neofs_operation("Container deletion"))
 		},
 	}
 }
@@ -655,8 +610,10 @@ async fn handle_object_command(
 				Ok(object_info) => {
 					print_success(&format!("Object uploaded successfully!"));
 					println!("  Object ID: {}", object_info.id);
+					println!("  Container ID: {}", object_info.container_id);
 					println!("  Size: {} bytes", object_info.size);
 					println!("  Checksum: {}", object_info.checksum);
+					println!("  Content Type: {}", object_info.content_type);
 					Ok(())
 				},
 				Err(e) => {
@@ -722,16 +679,8 @@ async fn handle_object_command(
 			}
 		},
 		ObjectCommands::Delete { container, object, force } => {
-			if !force {
-				print_info("Note: Object deletion requires confirmation and may require blockchain transaction.");
-				print_info("Use --force flag to skip confirmation prompts.");
-			}
-			print_info(&format!(
-				"Initiating deletion of object {} from container {}...",
-				object, container
-			));
-			print_success(&format!("Object '{}' deletion initiated", object));
-			Ok(())
+			let _ = (container, object, force);
+			Err(unsupported_signed_neofs_operation("Object deletion"))
 		},
 	}
 }
@@ -740,23 +689,12 @@ async fn handle_object_command(
 async fn handle_acl_command(command: AclCommands, client: &NeoFSClient) -> Result<(), CliError> {
 	match command {
 		AclCommands::Get { container } => {
-			print_info(&format!(
-				"Getting ACL for container {} on endpoint: {}",
-				container, client.grpc_endpoint
-			));
-			println!("Access Control List:");
-			println!("- Public Read: Yes");
-			println!("- Public Write: No");
-			println!("- Allowed Users: NEO:AbCdEfGhIjKlMnOpQrStUvWxYz0123456789");
-			Ok(())
+			let _ = (container, client);
+			Err(unsupported_signed_neofs_operation("ACL retrieval"))
 		},
 		AclCommands::Set { container, rules } => {
-			print_info(&format!(
-				"Setting ACL for container {} with rules '{}' on endpoint: {}",
-				container, rules, client.grpc_endpoint
-			));
-			print_success("ACL set successfully (simulated)");
-			Ok(())
+			let _ = (container, rules, client);
+			Err(unsupported_signed_neofs_operation("ACL update"))
 		},
 	}
 }
@@ -765,17 +703,64 @@ async fn handle_acl_command(command: AclCommands, client: &NeoFSClient) -> Resul
 async fn handle_config_command(command: ConfigCommands) -> Result<(), CliError> {
 	match command {
 		ConfigCommands::SetEndpoint { url, env } => {
-			let env_str = env.as_deref().unwrap_or("mainnet");
-			print_info(&format!("Setting default endpoint for {} to: {}", env_str, url));
-			print_success("Endpoint set successfully (simulated)");
+			let parsed = Url::parse(&url)
+				.map_err(|e| CliError::InvalidInput(format!("Invalid NeoFS endpoint URL: {e}")))?;
+			let scheme = parsed.scheme();
+			if scheme != "http" && scheme != "https" {
+				return Err(CliError::InvalidInput(
+					"NeoFS endpoint URL must use http or https".to_string(),
+				));
+			}
+
+			let network = env.unwrap_or_else(|| {
+				if url.contains("testnet") {
+					"testnet".to_string()
+				} else {
+					"mainnet".to_string()
+				}
+			});
+			let endpoint_type = if url.contains("rest.") {
+				"rest"
+			} else if url.contains("http.") {
+				"http"
+			} else {
+				"grpc"
+			};
+			let name = format!("{}-{}", network, endpoint_type);
+
+			let mut config = load_config()?;
+			let endpoint = NeoFSEndpoint {
+				name: name.clone(),
+				url: url.clone(),
+				network,
+				endpoint_type: endpoint_type.to_string(),
+			};
+			if let Some(existing) =
+				config.neofs.endpoints.iter_mut().find(|existing| existing.name == name)
+			{
+				*existing = endpoint;
+			} else {
+				config.neofs.endpoints.push(endpoint);
+			}
+			config.neofs.default_endpoint = Some(name.clone());
+			save_config(&config)?;
+
+			print_success(&format!("Default NeoFS endpoint set to '{}' ({})", name, url));
 			Ok(())
 		},
 		ConfigCommands::Get => {
+			let config = load_config()?;
 			print_info("Current NeoFS configuration:");
-			println!("Mainnet Endpoint: {DEFAULT_MAINNET_ENDPOINT}");
-			println!("Testnet Endpoint: {DEFAULT_TESTNET_ENDPOINT}");
-			println!("Mainnet HTTP Gateway: {DEFAULT_MAINNET_HTTP_GATEWAY}");
-			println!("Testnet HTTP Gateway: {DEFAULT_TESTNET_HTTP_GATEWAY}");
+			println!(
+				"Default Endpoint: {}",
+				config.neofs.default_endpoint.as_deref().unwrap_or("<none>")
+			);
+			for endpoint in config.neofs.endpoints {
+				println!(
+					"- {} [{} {}]: {}",
+					endpoint.name, endpoint.network, endpoint.endpoint_type, endpoint.url
+				);
+			}
 			Ok(())
 		},
 	}
@@ -784,9 +769,11 @@ async fn handle_config_command(command: ConfigCommands) -> Result<(), CliError> 
 /// Handle status command
 async fn handle_status_command(client: &NeoFSClient) -> Result<(), CliError> {
 	print_info(&format!("Checking NeoFS status on endpoint: {}", client.grpc_endpoint));
-	println!("Status: Online");
-	println!("Network: Mainnet");
-	println!("Version: 0.30.0");
-	println!("Nodes: 42");
+	let status = client.get_network_status().await?;
+	println!("Status: {}", status.status);
+	println!("Network: {}", status.network);
+	println!("Version: {}", status.version);
+	println!("Nodes: {}", status.nodes);
+	println!("Epoch: {}", status.epoch);
 	Ok(())
 }

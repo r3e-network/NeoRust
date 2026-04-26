@@ -188,11 +188,9 @@ impl Ws {
 	#[cfg(not(target_arch = "wasm32"))]
 	pub async fn connect(url: impl IntoClientRequest + Unpin) -> Result<Self, ClientError> {
 		let max_message_size = NeoConstants::max_rpc_message_size();
-		let config = tungstenite::protocol::WebSocketConfig {
-			max_message_size: Some(max_message_size),
-			max_frame_size: Some(max_message_size),
-			..Default::default()
-		};
+		let config = tungstenite::protocol::WebSocketConfig::default()
+			.max_message_size(Some(max_message_size))
+			.max_frame_size(Some(max_message_size));
 
 		let connect_fut = connect_async_with_config(url, Some(config), false);
 		let (ws, _) = if let Some(timeout) = NeoConstants::rpc_request_timeout() {
@@ -366,7 +364,7 @@ where
 			warn!("Replacing a pending request with id {:?}", id);
 		}
 
-		if let Err(e) = self.ws.send(Message::Text(request)).await {
+		if let Err(e) = self.ws.send(Message::Text(request.into())).await {
 			error!("WS connection error: {:?}", e);
 			self.pending.remove(&id);
 		}
@@ -402,7 +400,7 @@ where
 
 	#[cfg(not(target_arch = "wasm32"))]
 	async fn handle_ping(&mut self, inner: Vec<u8>) -> Result<(), ClientError> {
-		self.ws.send(Message::Pong(inner)).await?;
+		self.ws.send(Message::Pong(inner.into())).await?;
 		Ok(())
 	}
 
@@ -485,7 +483,7 @@ where
 	#[cfg(target_arch = "wasm32")]
 	async fn handle(&mut self, resp: Message) -> Result<(), ClientError> {
 		match resp {
-			Message::Text(inner) => self.handle_text(inner).await,
+			Message::Text(inner) => self.handle_text(inner.to_string()).await,
 			Message::Binary(buf) => Err(ClientError::UnexpectedBinary(buf)),
 		}
 	}
@@ -493,13 +491,13 @@ where
 	#[cfg(not(target_arch = "wasm32"))]
 	async fn handle(&mut self, resp: Message) -> Result<(), ClientError> {
 		match resp {
-			Message::Text(inner) => self.handle_text(inner).await,
+			Message::Text(inner) => self.handle_text(inner.to_string()).await,
 			Message::Frame(_) => Ok(()), // Server is allowed to send Raw frames
-			Message::Ping(inner) => self.handle_ping(inner).await,
+			Message::Ping(inner) => self.handle_ping(inner.to_vec()).await,
 			Message::Pong(_) => Ok(()), // Server is allowed to send unsolicited pongs.
 			Message::Close(Some(frame)) => Err(ClientError::WsClosed(frame)),
 			Message::Close(None) => Err(ClientError::UnexpectedClose),
-			Message::Binary(buf) => Err(ClientError::UnexpectedBinary(buf)),
+			Message::Binary(buf) => Err(ClientError::UnexpectedBinary(buf.to_vec())),
 		}
 	}
 
@@ -600,7 +598,7 @@ pub enum ClientError {
 	/// Remote server sent a Close message
 	#[error("Websocket closed with info: {0:?}")]
 	#[cfg(not(target_arch = "wasm32"))]
-	WsClosed(CloseFrame<'static>),
+	WsClosed(CloseFrame),
 
 	/// Remote server sent a Close message
 	#[error("Websocket closed")]

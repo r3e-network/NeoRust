@@ -5,7 +5,7 @@ use neo3::{
 };
 use std::time::Instant;
 
-fn main() {
+fn main() -> Result<(), Box<dyn std::error::Error>> {
 	println!("Analyzing wallet encryption performance bottleneck...\n");
 
 	// First, let's time individual operations
@@ -27,7 +27,7 @@ fn main() {
 	let mut single_wallet = Wallet::new();
 	single_wallet.add_account(account);
 	let start = Instant::now();
-	single_wallet.encrypt_accounts("test_password");
+	single_wallet.encrypt_accounts("test_password")?;
 	let single_encrypt_time = start.elapsed();
 	println!("   Single account encryption: {single_encrypt_time:?}");
 
@@ -46,7 +46,7 @@ fn main() {
 	}
 
 	let start = Instant::now();
-	seq_wallet.encrypt_accounts("test_password");
+	seq_wallet.encrypt_accounts("test_password")?;
 	let seq_time = start.elapsed();
 	println!("   Sequential encryption (10 accounts): {seq_time:?}");
 	println!("   Average per account: {:?}", seq_time / 10);
@@ -76,4 +76,6 @@ fn main() {
 		println!("   c) Consider alternative encryption schemes");
 		println!("   d) Implement progressive encryption with progress reporting");
 	}
+
+	Ok(())
 }

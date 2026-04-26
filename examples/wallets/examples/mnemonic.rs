@@ -60,7 +60,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 	// Encrypt accounts in the wallet
 	println!("\nEncrypting accounts in the wallet...");
-	wallet.encrypt_accounts("password123");
+	wallet.encrypt_accounts("password123")?;
 	println!("Accounts encrypted");
 
 	// Backup the wallet

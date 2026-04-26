@@ -2,7 +2,6 @@ use crate::{
 	commands::defi::create_h160_param, errors::CliError, print_error, print_info, print_success,
 	prompt_password,
 };
-use base64::{engine::general_purpose, Engine as _};
 use clap::{Args, Subcommand};
 use neo3::{
 	builder::{AccountSigner, ScriptBuilder, Signer, TransactionBuilder},
@@ -24,6 +23,20 @@ pub struct ContractArgs {
 
 #[derive(Subcommand, Debug)]
 pub enum ContractCommands {
+	/// Get deployed contract metadata and manifest
+	Get {
+		/// Contract script hash
+		#[arg(short, long)]
+		script_hash: String,
+	},
+
+	/// Get a native contract by name
+	Native {
+		/// Native contract name (for example NeoToken, GasToken, PolicyContract)
+		#[arg(short, long)]
+		name: String,
+	},
+
 	/// Deploy a smart contract
 	Deploy {
 		/// Path to the contract file (.nef)
@@ -81,6 +94,47 @@ pub enum ContractCommands {
 		test_invoke: bool,
 	},
 
+	/// Call a contract method without submitting a transaction
+	Call {
+		/// Contract script hash
+		#[arg(short, long)]
+		script_hash: String,
+
+		/// Method name
+		#[arg(short, long)]
+		method: String,
+
+		/// Method parameters as JSON array
+		#[arg(short, long)]
+		params: Option<String>,
+	},
+
+	/// Read contract storage
+	Storage {
+		/// Contract script hash
+		#[arg(short, long)]
+		script_hash: String,
+
+		/// Storage key as hex string
+		#[arg(short, long)]
+		key: String,
+	},
+
+	/// Find contract storage by key prefix
+	FindStorage {
+		/// Contract script hash
+		#[arg(short, long)]
+		script_hash: String,
+
+		/// Storage key prefix as hex string
+		#[arg(short, long)]
+		prefix: String,
+
+		/// Start index for paged results
+		#[arg(long, default_value = "0")]
+		start: u64,
+	},
+
 	/// List native contracts
 	ListNativeContracts,
 
@@ -94,6 +148,8 @@ pub async fn handle_contract_command(
 	state: &mut crate::commands::wallet::CliState,
 ) -> Result<(), CliError> {
 	match args.command {
+		ContractCommands::Get { script_hash } => get_contract(script_hash, state).await,
+		ContractCommands::Native { name } => get_native_contract(name, state).await,
 		ContractCommands::Deploy { nef, manifest, account } => {
 			deploy_contract(nef, manifest, account, state).await
 		},
@@ -103,9 +159,89 @@ pub async fn handle_contract_command(
 		ContractCommands::Invoke { script_hash, method, params, account, test_invoke } => {
 			invoke_contract(script_hash, method, params, account, test_invoke, state).await
 		},
+		ContractCommands::Call { script_hash, method, params } => {
+			invoke_contract(script_hash, method, params, None, true, state).await
+		},
+		ContractCommands::Storage { script_hash, key } => {
+			get_contract_storage(script_hash, key, state).await
+		},
+		ContractCommands::FindStorage { script_hash, prefix, start } => {
+			find_contract_storage(script_hash, prefix, start, state).await
+		},
 		ContractCommands::ListNativeContracts => list_native_contracts(state).await,
 		ContractCommands::Policy => show_policy(state).await,
 	}
+}
+
+fn strip_hex_prefix(input: &str) -> &str {
+	input.strip_prefix("0x").unwrap_or(input)
+}
+
+fn parse_h160(input: &str, label: &str) -> Result<H160, CliError> {
+	let bytes = hex::decode(strip_hex_prefix(input))
+		.map_err(|e| CliError::Input(format!("Invalid {label} hex: {e}")))?;
+	if bytes.len() != 20 {
+		return Err(CliError::Input(format!("{label} must be 20 bytes")));
+	}
+	Ok(H160::from_slice(&bytes))
+}
+
+async fn get_contract(
+	script_hash: String,
+	state: &mut crate::commands::wallet::CliState,
+) -> Result<(), CliError> {
+	let rpc_client = state.get_rpc_client()?;
+	let contract_hash = parse_h160(&script_hash, "contract hash")?;
+	let contract = rpc_client
+		.get_contract_state(contract_hash)
+		.await
+		.map_err(|e| CliError::Network(format!("Failed to get contract: {}", e)))?;
+	println!("{}", serde_json::to_string_pretty(&contract)?);
+	Ok(())
+}
+
+async fn get_native_contract(
+	name: String,
+	state: &mut crate::commands::wallet::CliState,
+) -> Result<(), CliError> {
+	let rpc_client = state.get_rpc_client()?;
+	let contract = rpc_client
+		.get_native_contract_state(&name)
+		.await
+		.map_err(|e| CliError::Network(format!("Failed to get native contract '{name}': {e}")))?;
+	println!("{}", serde_json::to_string_pretty(&contract)?);
+	Ok(())
+}
+
+async fn get_contract_storage(
+	script_hash: String,
+	key: String,
+	state: &mut crate::commands::wallet::CliState,
+) -> Result<(), CliError> {
+	let rpc_client = state.get_rpc_client()?;
+	let contract_hash = parse_h160(&script_hash, "contract hash")?;
+	let value = rpc_client
+		.get_storage(contract_hash, strip_hex_prefix(&key))
+		.await
+		.map_err(|e| CliError::Network(format!("Failed to get storage: {}", e)))?;
+	println!("{value}");
+	Ok(())
+}
+
+async fn find_contract_storage(
+	script_hash: String,
+	prefix: String,
+	start: u64,
+	state: &mut crate::commands::wallet::CliState,
+) -> Result<(), CliError> {
+	let rpc_client = state.get_rpc_client()?;
+	let contract_hash = parse_h160(&script_hash, "contract hash")?;
+	let result = rpc_client
+		.find_storage(contract_hash, strip_hex_prefix(&prefix), start)
+		.await
+		.map_err(|e| CliError::Network(format!("Failed to find storage: {}", e)))?;
+	println!("{result}");
+	Ok(())
 }
 
 async fn deploy_contract(
@@ -267,22 +403,13 @@ async fn deploy_contract(
 	// Add the witness to the transaction
 	tx.add_witness(witness);
 
-	// Create a JSON structure directly that matches the expected format
 	let mut encoder = neo3::codec::Encoder::new();
 	tx.encode(&mut encoder);
-	let tx_bytes = encoder.to_bytes();
-
-	let tx_json = serde_json::json!({
-		"jsonrpc": "2.0",
-		"method": "sendrawtransaction",
-		"params": [general_purpose::STANDARD.encode(&tx_bytes)],
-		"id": 1
-	})
-	.to_string();
+	let tx_hex = hex::encode(encoder.to_bytes());
 
 	// Send transaction
 	let result = rpc_client
-		.send_raw_transaction(tx_json)
+		.send_raw_transaction(tx_hex)
 		.await
 		.map_err(|e| CliError::Network(format!("Failed to send transaction: {}", e)))?;
 
@@ -455,22 +582,13 @@ async fn update_contract(
 	// Add the witness to the transaction
 	tx.add_witness(witness);
 
-	// Create a JSON structure directly that matches the expected format
 	let mut encoder = neo3::codec::Encoder::new();
 	tx.encode(&mut encoder);
-	let tx_bytes = encoder.to_bytes();
-
-	let tx_json = serde_json::json!({
-		"jsonrpc": "2.0",
-		"method": "sendrawtransaction",
-		"params": [general_purpose::STANDARD.encode(&tx_bytes)],
-		"id": 1
-	})
-	.to_string();
+	let tx_hex = hex::encode(encoder.to_bytes());
 
 	// Send transaction
 	let result = rpc_client
-		.send_raw_transaction(tx_json)
+		.send_raw_transaction(tx_hex)
 		.await
 		.map_err(|e| CliError::Network(format!("Failed to send transaction: {}", e)))?;
 
@@ -648,22 +766,13 @@ async fn invoke_contract(
 		// Add the witness to the transaction
 		tx.add_witness(witness);
 
-		// Create a JSON structure directly that matches the expected format
 		let mut encoder = neo3::codec::Encoder::new();
 		tx.encode(&mut encoder);
-		let tx_bytes = encoder.to_bytes();
-
-		let tx_json = serde_json::json!({
-			"jsonrpc": "2.0",
-			"method": "sendrawtransaction",
-			"params": [general_purpose::STANDARD.encode(&tx_bytes)],
-			"id": 1
-		})
-		.to_string();
+		let tx_hex = hex::encode(encoder.to_bytes());
 
 		// Send transaction
 		let result = rpc_client
-			.send_raw_transaction(tx_json)
+			.send_raw_transaction(tx_hex)
 			.await
 			.map_err(|e| CliError::Network(format!("Failed to send transaction: {}", e)))?;
 

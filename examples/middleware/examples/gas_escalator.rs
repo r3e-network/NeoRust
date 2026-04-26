@@ -164,11 +164,7 @@ impl AdaptiveGasStrategy {
 			}
 		}
 
-		let avg_gas_per_block = if block_samples > 0 {
-			total_gas_used / block_samples
-		} else {
-			1_000_000 // Default
-		};
+		let avg_gas_per_block = total_gas_used.checked_div(block_samples).unwrap_or(1_000_000);
 
 		// Calculate congestion factor (simplified)
 		let congestion_factor = (avg_gas_per_block as f64 / 5_000_000.0).clamp(0.5, 2.0);

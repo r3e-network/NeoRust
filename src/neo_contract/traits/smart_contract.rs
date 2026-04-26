@@ -41,20 +41,20 @@ pub trait SmartContractTrait<'a>: Send + Sync {
 			fallback
 		})
 	}
-	/// Attempts to set the contract name. No-op by default since most
+	/// Attempts to set the contract name. Ignored by default since most
 	/// contract wrappers derive their name from the on-chain manifest.
 	/// Override in implementations that support mutable names.
 	fn set_name(&mut self, _name: String) {
-		tracing::debug!("set_name is a no-op for this contract type");
+		tracing::debug!("set_name ignored for this contract type");
 	}
 
 	fn script_hash(&self) -> H160;
 
-	/// Attempts to set the script hash. No-op by default since most
+	/// Attempts to set the script hash. Ignored by default since most
 	/// contract wrappers are bound to a fixed script hash at construction.
 	/// Override in implementations that support retargeting.
 	fn set_script_hash(&mut self, _script_hash: H160) {
-		tracing::debug!("set_script_hash is a no-op for this contract type");
+		tracing::debug!("set_script_hash ignored for this contract type");
 	}
 
 	fn provider(&self) -> Option<&RpcClient<Self::P>>;

@@ -173,10 +173,7 @@ impl YubiHsm {
 
 		// In reality, this would use the HSM's cryptographic capabilities
 		let key_pair = KeyPair::new_random();
-		let signature = key_pair
-			.private_key()
-			.sign_tx(data)
-			.map_err(|e| format!("HSM signing failed: {e}"))?;
+		let signature = key_pair.sign(data).map_err(|e| format!("HSM signing failed: {e}"))?;
 
 		println!("   ✅ Data signed successfully with HSM");
 

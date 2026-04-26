@@ -220,7 +220,11 @@ mod tests {
 		// Test that the WalletSigner type exists and has correct type parameters
 		#[cfg(feature = "yubi")]
 		{
+			use crate::neo_wallets::WalletSigner;
+			use p256::NistP256;
 			use std::marker::PhantomData;
+			use yubihsm::ecdsa::Signer as YubiSigner;
+
 			let _phantom: PhantomData<WalletSigner<YubiSigner<NistP256>>> = PhantomData;
 		}
 

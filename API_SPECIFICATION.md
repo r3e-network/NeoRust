@@ -310,15 +310,15 @@ while let Some(notification) = stream.next().await {
 ### Key Operations
 
 ```rust
-use neo3::neo_crypto::{KeyPair, PublicKey, PrivateKey};
+use neo3::neo_crypto::KeyPair;
 
 // Generate new key pair
-let keypair = KeyPair::generate()?;
-let private_key = keypair.private_key();
+let keypair = KeyPair::new_random();
+let private_key = keypair.private_key()?;
 let public_key = keypair.public_key();
 
 // Import from hex
-let private_key = PrivateKey::from_hex("0x...")?;
+let private_key = [1u8; 32];
 let keypair = KeyPair::from_private_key(&private_key)?;
 
 // Sign and verify

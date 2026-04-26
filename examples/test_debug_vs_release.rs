@@ -4,7 +4,7 @@ use neo3::{
 };
 use std::time::Instant;
 
-fn main() {
+fn main() -> Result<(), Box<dyn std::error::Error>> {
 	#[cfg(debug_assertions)]
 	println!("Running in DEBUG mode");
 
@@ -22,7 +22,7 @@ fn main() {
 
 	println!("Starting encryption of 50 accounts...");
 	let start = Instant::now();
-	wallet.encrypt_accounts("test_password");
+	wallet.encrypt_accounts("test_password")?;
 	let duration = start.elapsed();
 
 	println!("\nResults:");
@@ -42,4 +42,5 @@ fn main() {
 	} else {
 		println!("\n✅ PASSED: Encryption completed within 15 seconds");
 	}
+	Ok(())
 }

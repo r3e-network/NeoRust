@@ -6,7 +6,7 @@ use crate::{
 use clap::{Args, Subcommand};
 use hex;
 use neo3::{neo_clients::APITrait, neo_protocol::NeoBlock};
-use primitive_types::H160;
+use primitive_types::{H160, H256};
 use std::{io, io::Write, path::PathBuf, str::FromStr};
 
 #[derive(Args, Debug)]
@@ -17,6 +17,9 @@ pub struct BlockchainArgs {
 
 #[derive(Subcommand, Debug)]
 pub enum BlockchainCommands {
+	/// Show chain tip, node version, mempool, and connectivity summary
+	Status,
+
 	/// Export blockchain data
 	Export {
 		/// Path to save the exported data
@@ -39,17 +42,88 @@ pub enum BlockchainCommands {
 		identifier: String,
 	},
 
+	/// Show block header details
+	ShowHeader {
+		/// Block hash or index
+		#[arg(short, long)]
+		identifier: String,
+	},
+
+	/// Fetch raw block data
+	RawBlock {
+		/// Block hash or index
+		#[arg(short, long)]
+		identifier: String,
+	},
+
 	/// Show transaction information
 	ShowTx {
 		/// Transaction hash
-		#[arg(short, long)]
+		#[arg(short = 'x', long)]
 		hash: String,
+	},
+
+	/// Show transaction height
+	TxHeight {
+		/// Transaction hash
+		#[arg(short = 'x', long)]
+		hash: String,
+	},
+
+	/// Show application log for a transaction
+	AppLog {
+		/// Transaction hash
+		#[arg(short = 'x', long)]
+		hash: String,
+	},
+
+	/// Show current mempool
+	Mempool,
+
+	/// Calculate network fee for a raw transaction
+	CalculateFee {
+		/// Raw transaction hex
+		#[arg(short = 'x', long)]
+		hex: String,
+	},
+
+	/// Send a raw transaction
+	SendRaw {
+		/// Raw transaction hex
+		#[arg(short = 'x', long)]
+		hex: String,
+	},
+
+	/// Read contract storage
+	GetStorage {
+		/// Contract hash
+		#[arg(short, long)]
+		contract: String,
+
+		/// Storage key as hex string
+		#[arg(short, long)]
+		key: String,
+	},
+
+	/// Find contract storage by prefix
+	FindStorage {
+		/// Contract hash
+		#[arg(short, long)]
+		contract: String,
+
+		/// Storage key prefix as hex string
+		#[arg(short, long)]
+		prefix: String,
+
+		/// Start index for paged find results
+		#[arg(long, default_value = "0")]
+		start: u64,
 	},
 
 	/// Show contract details
 	ShowContract {
 		/// Contract hash or script hash
-		#[arg(short, long)]
+		#[arg(short = 'c', long)]
 		hash: String,
 	},
 }
@@ -61,13 +135,87 @@ pub async fn handle_blockchain_command(
 	state: &mut crate::commands::wallet::CliState,
 ) -> Result<(), CliError> {
 	match args.command {
+		BlockchainCommands::Status => show_status(state).await,
 		BlockchainCommands::Export { path, start, end } => {
 			export_blockchain(path, start, end, state).await
 		},
 		BlockchainCommands::ShowBlock { identifier } => show_block(identifier, state).await,
+		BlockchainCommands::ShowHeader { identifier } => show_header(identifier, state).await,
+		BlockchainCommands::RawBlock { identifier } => show_raw_block(identifier, state).await,
 		BlockchainCommands::ShowTx { hash } => show_transaction(hash, state).await,
+		BlockchainCommands::TxHeight { hash } => show_transaction_height(hash, state).await,
+		BlockchainCommands::AppLog { hash } => show_application_log(hash, state).await,
+		BlockchainCommands::Mempool => show_mempool(state).await,
+		BlockchainCommands::CalculateFee { hex } => calculate_network_fee(hex, state).await,
+		BlockchainCommands::SendRaw { hex } => send_raw_transaction(hex, state).await,
+		BlockchainCommands::GetStorage { contract, key } => get_storage(contract, key, state).await,
+		BlockchainCommands::FindStorage { contract, prefix, start } => {
+			find_storage(contract, prefix, start, state).await
+		},
 		BlockchainCommands::ShowContract { hash } => show_contract(hash, state).await,
 	}
+}
+
+fn strip_hex_prefix(input: &str) -> &str {
+	input.strip_prefix("0x").unwrap_or(input)
+}
+
+fn parse_h256(input: &str, label: &str) -> Result<H256, CliError> {
+	let bytes = hex::decode(strip_hex_prefix(input))
+		.map_err(|e| CliError::Input(format!("Invalid {label} hex: {e}")))?;
+	if bytes.len() != 32 {
+		return Err(CliError::Input(format!("{label} must be 32 bytes")));
+	}
+	Ok(H256::from_slice(&bytes))
+}
+
+fn parse_h160(input: &str, label: &str) -> Result<H160, CliError> {
+	let bytes = hex::decode(strip_hex_prefix(input))
+		.map_err(|e| CliError::Input(format!("Invalid {label} hex: {e}")))?;
+	if bytes.len() != 20 {
+		return Err(CliError::Input(format!("{label} must be 20 bytes")));
+	}
+	Ok(H160::from_slice(&bytes))
+}
+
+fn identifier_is_hash(identifier: &str) -> bool {
+	let hex = strip_hex_prefix(identifier);
+	hex.len() == 64 && hex.chars().all(|c| c.is_ascii_hexdigit())
+}
+
+async fn show_status(state: &mut crate::commands::wallet::CliState) -> Result<(), CliError> {
+	let rpc_client = state.get_rpc_client()?;
+
+	let block_count = rpc_client
+		.get_block_count()
+		.await
+		.map_err(|e| CliError::Network(format!("Failed to get block count: {}", e)))?;
+	let header_count = rpc_client
+		.get_block_header_count()
+		.await
+		.map_err(|e| CliError::Network(format!("Failed to get header count: {}", e)))?;
+	let best_hash = rpc_client
+		.get_best_block_hash()
+		.await
+		.map_err(|e| CliError::Network(format!("Failed to get best block hash: {}", e)))?;
+	let version = rpc_client
+		.get_version()
+		.await
+		.map_err(|e| CliError::Network(format!("Failed to get node version: {}", e)))?;
+	let mempool_count = rpc_client.get_raw_mem_pool().await.map(|m| m.len()).unwrap_or(0);
+	let connections = rpc_client.get_connection_count().await.ok();
+
+	println!("Network: {}", state.get_network_type_string());
+	println!("Node: {}", version.user_agent);
+	println!("Best Block Hash: {}", best_hash);
+	println!("Block Count: {}", block_count);
+	println!("Header Count: {}", header_count);
+	println!("Mempool Transactions: {}", mempool_count);
+	println!(
+		"Connections: {}",
+		connections.map_or_else(|| "Unavailable".to_string(), |count| count.to_string())
+	);
+	Ok(())
 }
 
 #[allow(dead_code)]
@@ -179,6 +327,62 @@ async fn show_block(
 
 		show_block_by_index(index, state).await
 	}
+}
+
+async fn show_header(
+	identifier: String,
+	state: &mut crate::commands::wallet::CliState,
+) -> Result<(), CliError> {
+	let rpc_client = state.get_rpc_client()?;
+	let header = if identifier_is_hash(&identifier) {
+		let hash = parse_h256(&identifier, "block hash")?;
+		rpc_client
+			.get_block_header(hash)
+			.await
+			.map_err(|e| CliError::Rpc(format!("Failed to get block header: {}", e)))?
+	} else {
+		let index = identifier.parse::<u32>().map_err(|_| {
+			CliError::Input(format!(
+				"Invalid block identifier. Must be a block hash or block index: {}",
+				identifier
+			))
+		})?;
+		rpc_client
+			.get_block_header_by_index(index)
+			.await
+			.map_err(|e| CliError::Rpc(format!("Failed to get block header: {}", e)))?
+	};
+
+	println!("{}", serde_json::to_string_pretty(&header)?);
+	Ok(())
+}
+
+async fn show_raw_block(
+	identifier: String,
+	state: &mut crate::commands::wallet::CliState,
+) -> Result<(), CliError> {
+	let rpc_client = state.get_rpc_client()?;
+	let raw = if identifier_is_hash(&identifier) {
+		let hash = parse_h256(&identifier, "block hash")?;
+		rpc_client
+			.get_raw_block(hash)
+			.await
+			.map_err(|e| CliError::Rpc(format!("Failed to get raw block: {}", e)))?
+	} else {
+		let index = identifier.parse::<u32>().map_err(|_| {
+			CliError::Input(format!(
+				"Invalid block identifier. Must be a block hash or block index: {}",
+				identifier
+			))
+		})?;
+		rpc_client
+			.get_raw_block_by_index(index)
+			.await
+			.map_err(|e| CliError::Rpc(format!("Failed to get raw block: {}", e)))?
+	};
+
+	println!("{raw}");
+	Ok(())
 }
 
 #[allow(dead_code)]
@@ -320,6 +524,101 @@ async fn show_transaction(
 	println!("\nTransaction Script: 0x{}", hex::encode(&tx.script));
 
 	print_success("Transaction information retrieved successfully");
+	Ok(())
+}
+
+async fn show_transaction_height(
+	hash: String,
+	state: &mut crate::commands::wallet::CliState,
+) -> Result<(), CliError> {
+	let rpc_client = state.get_rpc_client()?;
+	let tx_hash = parse_h256(&hash, "transaction hash")?;
+	let height = rpc_client
+		.get_transaction_height(tx_hash)
+		.await
+		.map_err(|e| CliError::Rpc(format!("Failed to get transaction height: {}", e)))?;
+	println!("{height}");
+	Ok(())
+}
+
+async fn show_application_log(
+	hash: String,
+	state: &mut crate::commands::wallet::CliState,
+) -> Result<(), CliError> {
+	let rpc_client = state.get_rpc_client()?;
+	let tx_hash = parse_h256(&hash, "transaction hash")?;
+	let log = rpc_client
+		.get_application_log(tx_hash)
+		.await
+		.map_err(|e| CliError::Rpc(format!("Failed to get application log: {}", e)))?;
+	println!("{}", serde_json::to_string_pretty(&log)?);
+	Ok(())
+}
+
+async fn show_mempool(state: &mut crate::commands::wallet::CliState) -> Result<(), CliError> {
+	let rpc_client = state.get_rpc_client()?;
+	let mempool = rpc_client
+		.get_raw_mempool()
+		.await
+		.map_err(|e| CliError::Rpc(format!("Failed to get mempool: {}", e)))?;
+	println!("{}", serde_json::to_string_pretty(&mempool)?);
+	Ok(())
+}
+
+async fn calculate_network_fee(
+	hex: String,
+	state: &mut crate::commands::wallet::CliState,
+) -> Result<(), CliError> {
+	let rpc_client = state.get_rpc_client()?;
+	let fee = rpc_client
+		.calculate_network_fee(strip_hex_prefix(&hex).to_string())
+		.await
+		.map_err(|e| CliError::Rpc(format!("Failed to calculate network fee: {}", e)))?;
+	println!("{}", serde_json::to_string_pretty(&fee)?);
+	Ok(())
+}
+
+async fn send_raw_transaction(
+	hex: String,
+	state: &mut crate::commands::wallet::CliState,
+) -> Result<(), CliError> {
+	let rpc_client = state.get_rpc_client()?;
+	let result = rpc_client
+		.send_raw_transaction(strip_hex_prefix(&hex).to_string())
+		.await
+		.map_err(|e| CliError::Rpc(format!("Failed to send raw transaction: {}", e)))?;
+	println!("{}", serde_json::to_string_pretty(&result)?);
+	Ok(())
+}
+
+async fn get_storage(
+	contract: String,
+	key: String,
+	state: &mut crate::commands::wallet::CliState,
+) -> Result<(), CliError> {
+	let rpc_client = state.get_rpc_client()?;
+	let contract_hash = parse_h160(&contract, "contract hash")?;
+	let value = rpc_client
+		.get_storage(contract_hash, strip_hex_prefix(&key))
+		.await
+		.map_err(|e| CliError::Rpc(format!("Failed to get storage: {}", e)))?;
+	println!("{value}");
+	Ok(())
+}
+
+async fn find_storage(
+	contract: String,
+	prefix: String,
+	start: u64,
+	state: &mut crate::commands::wallet::CliState,
+) -> Result<(), CliError> {
+	let rpc_client = state.get_rpc_client()?;
+	let contract_hash = parse_h160(&contract, "contract hash")?;
+	let result = rpc_client
+		.find_storage(contract_hash, strip_hex_prefix(&prefix), start)
+		.await
+		.map_err(|e| CliError::Rpc(format!("Failed to find storage: {}", e)))?;
+	println!("{result}");
 	Ok(())
 }
 

@@ -50,7 +50,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 			Some(key_pair) => {
 				println!("     ✅ Has private key");
 				// Show WIF (truncated for security)
-				let wif = key_pair.export_as_wif();
+				let wif = key_pair.export_as_wif()?;
 				println!("     🔑 WIF: {}...", &wif[..10]);
 			},
 			None => {
@@ -114,11 +114,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 	if let Some(first_account) = accounts.first() {
 		if let Some(key_pair) = first_account.key_pair() {
-			let wif = key_pair.export_as_wif();
+			let wif = key_pair.export_as_wif()?;
 			println!("   💾 Backup methods:");
 			println!("     • WIF export: {}...", &wif[..15]);
 			println!("     • Private key: [HIDDEN FOR SECURITY]");
-			println!("     • Mnemonic: [Not implemented in this example]");
+			println!("     • Mnemonic: use the HD wallet example for seed phrase backup");
 
 			// Demonstrate recovery
 			println!("\n   🔄 Recovery demonstration:");

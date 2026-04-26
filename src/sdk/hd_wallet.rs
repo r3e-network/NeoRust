@@ -58,6 +58,13 @@ use serde::{Deserialize, Serialize};
 use sha2::Sha512;
 use std::{collections::HashMap, fmt};
 
+const HD_WALLET_EXPORT_VERSION: u8 = 2;
+const HD_WALLET_LEGACY_ECB_VERSION: u8 = 1;
+const HD_WALLET_SALT_LEN: usize = 16;
+const HD_WALLET_NONCE_LEN: usize = 16;
+const HD_WALLET_KEY_MATERIAL_LEN: usize = 64;
+const HD_WALLET_TAG_LEN: usize = 32;
+
 /// HD wallet derivation path components
 ///
 /// Represents a BIP-44 compliant derivation path for hierarchical deterministic
@@ -190,6 +197,8 @@ pub struct HDWallet {
 	mnemonic_phrase: String,
 	/// Seed bytes derived from mnemonic
 	seed: Vec<u8>,
+	/// Optional BIP-39 passphrase used to derive the seed.
+	passphrase: Option<String>,
 	/// Master private key
 	master_key: ExtendedPrivateKey,
 	/// Cached derived accounts
@@ -204,6 +213,7 @@ impl fmt::Debug for HDWallet {
 			.field("mnemonic_words", &self.mnemonic_phrase.split_whitespace().count())
 			.field("language", &self.language)
 			.field("accounts_cached", &self.accounts.len())
+			.field("has_passphrase", &self.passphrase.is_some())
 			.field("mnemonic", &"<redacted>")
 			.field("seed", &"<redacted>")
 			.field("master_key", &"<redacted>")
@@ -215,6 +225,9 @@ impl Drop for HDWallet {
 	fn drop(&mut self) {
 		self.seed.zeroize();
 		self.mnemonic_phrase.zeroize();
+		if let Some(passphrase) = &mut self.passphrase {
+			passphrase.zeroize();
+		}
 		self.master_key.key.zeroize();
 		self.master_key.chain_code.zeroize();
 	}
@@ -285,6 +298,7 @@ impl HDWallet {
 			mnemonic,
 			mnemonic_phrase,
 			seed: seed.to_vec(),
+			passphrase: passphrase.map(str::to_owned),
 			master_key,
 			accounts: HashMap::new(),
 			language,
@@ -405,13 +419,10 @@ impl HDWallet {
 	/// Convert key bytes to WIF format
 	/// Export wallet to encrypted JSON
 	pub fn export_encrypted(&self, password: &str) -> Result<String, NeoError> {
-		use aes::cipher::{block_padding::Pkcs7, BlockEncryptMut, KeyInit};
 		use base64::engine::general_purpose;
 		use base64::Engine;
 		use rand::RngCore;
-		use scrypt::{scrypt, Params};
-
-		type Aes256EcbEnc = ecb::Encryptor<aes::Aes256>;
+		use scrypt::Params;
 
 		if password.is_empty() {
 			return Err(NeoError::Validation {
@@ -426,6 +437,7 @@ impl HDWallet {
 
 		let wallet_data = HDWalletData {
 			mnemonic: self.mnemonic_phrase.clone(),
+			passphrase: self.passphrase.clone(),
 			language: format!("{:?}", self.language),
 			accounts: self.accounts.keys().cloned().collect(),
 		};
@@ -447,34 +459,39 @@ impl HDWallet {
 				}
 			})?;
 
-		let mut salt = [0u8; 16];
+		let mut salt = [0u8; HD_WALLET_SALT_LEN];
 		rand::rng().fill_bytes(&mut salt);
 
-		let mut key = [0u8; 32];
-		scrypt(password.as_bytes(), &salt, &params, &mut key).map_err(|e| NeoError::Wallet {
-			message: format!("Failed to derive encryption key: {e}"),
-			source: Some(Box::new(e)),
-			recovery: ErrorRecovery::new()
-				.suggest("Check password encoding")
-				.suggest("Try a different password"),
-		})?;
+		let mut nonce = [0u8; HD_WALLET_NONCE_LEN];
+		rand::rng().fill_bytes(&mut nonce);
 
-		let mut buf = vec![0u8; plaintext.len() + 16];
-		buf[..plaintext.len()].copy_from_slice(&plaintext);
+		let mut key_material =
+			derive_hd_wallet_key_material(password, &salt, &params, HD_WALLET_KEY_MATERIAL_LEN)?;
+		let mut encryption_key = [0u8; 32];
+		let mut mac_key = [0u8; 32];
+		encryption_key.copy_from_slice(&key_material[..32]);
+		mac_key.copy_from_slice(&key_material[32..]);
 
-		let ciphertext = Aes256EcbEnc::new(&key.into())
-			.encrypt_padded_mut::<Pkcs7>(&mut buf, plaintext.len())
-			.map_err(|_| NeoError::Wallet {
-				message: "AES encryption failed".to_string(),
-				source: None,
-				recovery: ErrorRecovery::new(),
-			})?
-			.to_vec();
+		let ciphertext = aes256_ctr_crypt(&encryption_key, &nonce, &plaintext)?;
+		let tag = hd_wallet_auth_tag(
+			HD_WALLET_EXPORT_VERSION,
+			&scrypt_def,
+			&salt,
+			&nonce,
+			&ciphertext,
+			&mac_key,
+		)?;
+
+		key_material.zeroize();
+		encryption_key.zeroize();
+		mac_key.zeroize();
 
 		let encrypted = EncryptedHDWalletData {
-			version: 1,
+			version: HD_WALLET_EXPORT_VERSION,
 			scrypt: scrypt_def,
 			salt: general_purpose::STANDARD.encode(salt),
+			nonce: Some(general_purpose::STANDARD.encode(nonce)),
+			tag: Some(general_purpose::STANDARD.encode(tag)),
 			ciphertext: general_purpose::STANDARD.encode(ciphertext),
 		};
 
@@ -534,24 +551,96 @@ impl HDWallet {
 				recovery: ErrorRecovery::new(),
 			})?;
 
-			let mut key = [0u8; 32];
-			scrypt(password.as_bytes(), &salt, &params, &mut key).map_err(|e| {
-				NeoError::Wallet {
-					message: format!("Failed to derive decryption key: {e}"),
-					source: Some(Box::new(e)),
-					recovery: ErrorRecovery::new().suggest("Check password correctness"),
-				}
-			})?;
+			let plaintext = match encrypted_payload.version {
+				HD_WALLET_EXPORT_VERSION => {
+					let nonce = encrypted_payload
+						.nonce
+						.as_deref()
+						.ok_or_else(|| encrypted_wallet_error("Missing nonce"))?;
+					let nonce =
+						general_purpose::STANDARD.decode(nonce.as_bytes()).map_err(|e| {
+							NeoError::Wallet {
+								message: format!("Invalid nonce encoding: {e}"),
+								source: Some(Box::new(e)),
+								recovery: ErrorRecovery::new(),
+							}
+						})?;
+					let nonce: [u8; HD_WALLET_NONCE_LEN] = nonce
+						.try_into()
+						.map_err(|_| encrypted_wallet_error("Invalid nonce length"))?;
 
-			let mut buf = vec![0u8; ciphertext.len()];
-			let plaintext = Aes256EcbDec::new(&key.into())
-				.decrypt_padded_b2b_mut::<Pkcs7>(&ciphertext, &mut buf)
-				.map_err(|_| NeoError::Wallet {
-					message: "AES decryption failed (wrong password?)".to_string(),
-					source: None,
-					recovery: ErrorRecovery::new().suggest("Verify the password").retryable(false),
-				})?
-				.to_vec();
+					let tag = encrypted_payload
+						.tag
+						.as_deref()
+						.ok_or_else(|| encrypted_wallet_error("Missing authentication tag"))?;
+					let tag = general_purpose::STANDARD.decode(tag.as_bytes()).map_err(|e| {
+						NeoError::Wallet {
+							message: format!("Invalid authentication tag encoding: {e}"),
+							source: Some(Box::new(e)),
+							recovery: ErrorRecovery::new(),
+						}
+					})?;
+					let tag: [u8; HD_WALLET_TAG_LEN] = tag
+						.try_into()
+						.map_err(|_| encrypted_wallet_error("Invalid authentication tag length"))?;
+
+					let mut key_material = derive_hd_wallet_key_material(
+						password,
+						&salt,
+						&params,
+						HD_WALLET_KEY_MATERIAL_LEN,
+					)?;
+					let mut encryption_key = [0u8; 32];
+					let mut mac_key = [0u8; 32];
+					encryption_key.copy_from_slice(&key_material[..32]);
+					mac_key.copy_from_slice(&key_material[32..]);
+
+					verify_hd_wallet_auth_tag(
+						HD_WALLET_EXPORT_VERSION,
+						&encrypted_payload.scrypt,
+						&salt,
+						&nonce,
+						&ciphertext,
+						&mac_key,
+						&tag,
+					)?;
+
+					let plaintext = aes256_ctr_crypt(&encryption_key, &nonce, &ciphertext)?;
+					key_material.zeroize();
+					encryption_key.zeroize();
+					mac_key.zeroize();
+					plaintext
+				},
+				HD_WALLET_LEGACY_ECB_VERSION => {
+					let mut key = [0u8; 32];
+					scrypt(password.as_bytes(), &salt, &params, &mut key).map_err(|e| {
+						NeoError::Wallet {
+							message: format!("Failed to derive decryption key: {e}"),
+							source: Some(Box::new(e)),
+							recovery: ErrorRecovery::new().suggest("Check password correctness"),
+						}
+					})?;
+
+					let mut buf = vec![0u8; ciphertext.len()];
+					let plaintext = Aes256EcbDec::new(&key.into())
+						.decrypt_padded_b2b_mut::<Pkcs7>(&ciphertext, &mut buf)
+						.map_err(|_| NeoError::Wallet {
+							message: "AES decryption failed (wrong password?)".to_string(),
+							source: None,
+							recovery: ErrorRecovery::new()
+								.suggest("Verify the password")
+								.retryable(false),
+						})?
+						.to_vec();
+					key.zeroize();
+					plaintext
+				},
+				version => {
+					return Err(encrypted_wallet_error(format!(
+						"Unsupported encrypted wallet version: {version}"
+					)));
+				},
+			};
 
 			let plaintext_str = String::from_utf8(plaintext).map_err(|e| NeoError::Wallet {
 				message: format!("Decrypted data is not valid UTF-8: {e}"),
@@ -578,13 +667,121 @@ impl HDWallet {
 			_ => Language::English, // Default to English
 		};
 
-		let mut wallet = Self::from_phrase(&wallet_data.mnemonic, None, language)?;
+		let mut wallet =
+			Self::from_phrase(&wallet_data.mnemonic, wallet_data.passphrase.as_deref(), language)?;
 		// Restore cached accounts based on stored derivation paths.
 		for path in wallet_data.accounts {
 			let _ = wallet.derive_account(&path)?;
 		}
 
 		Ok(wallet)
+	}
+}
+
+fn encrypted_wallet_error(message: impl Into<String>) -> NeoError {
+	NeoError::Wallet { message: message.into(), source: None, recovery: ErrorRecovery::new() }
+}
+
+fn derive_hd_wallet_key_material(
+	password: &str,
+	salt: &[u8],
+	params: &scrypt::Params,
+	len: usize,
+) -> Result<Vec<u8>, NeoError> {
+	use scrypt::scrypt;
+
+	let mut key_material = vec![0u8; len];
+	scrypt(password.as_bytes(), salt, params, &mut key_material).map_err(|e| NeoError::Wallet {
+		message: format!("Failed to derive wallet encryption key: {e}"),
+		source: Some(Box::new(e)),
+		recovery: ErrorRecovery::new()
+			.suggest("Check password encoding")
+			.suggest("Verify the password"),
+	})?;
+
+	Ok(key_material)
+}
+
+fn aes256_ctr_crypt(
+	key: &[u8; 32],
+	nonce: &[u8; HD_WALLET_NONCE_LEN],
+	input: &[u8],
+) -> Result<Vec<u8>, NeoError> {
+	use aes::cipher::{BlockEncrypt, KeyInit};
+
+	let cipher =
+		aes::Aes256::new_from_slice(key).map_err(|_| encrypted_wallet_error("Invalid AES key"))?;
+	let mut counter = *nonce;
+	let mut output = Vec::with_capacity(input.len());
+
+	for chunk in input.chunks(16) {
+		let mut block = counter.into();
+		cipher.encrypt_block(&mut block);
+
+		for (byte, keystream) in chunk.iter().zip(block.iter()) {
+			output.push(byte ^ keystream);
+		}
+
+		for byte in counter.iter_mut().rev() {
+			let (next, overflow) = byte.overflowing_add(1);
+			*byte = next;
+			if !overflow {
+				break;
+			}
+		}
+	}
+
+	Ok(output)
+}
+
+fn hd_wallet_auth_tag(
+	version: u8,
+	params: &crate::neo_types::ScryptParamsDef,
+	salt: &[u8],
+	nonce: &[u8; HD_WALLET_NONCE_LEN],
+	ciphertext: &[u8],
+	mac_key: &[u8; 32],
+) -> Result<[u8; HD_WALLET_TAG_LEN], NeoError> {
+	let mut mac = Hmac::<Sha512>::new_from_slice(mac_key)
+		.map_err(|_| encrypted_wallet_error("Invalid wallet authentication key"))?;
+	mac.update(&[version]);
+	mac.update(&[params.log_n]);
+	mac.update(&params.r.to_be_bytes());
+	mac.update(&params.p.to_be_bytes());
+	mac.update(salt);
+	mac.update(nonce);
+	mac.update(ciphertext);
+
+	let digest = mac.finalize().into_bytes();
+	let mut tag = [0u8; HD_WALLET_TAG_LEN];
+	tag.copy_from_slice(&digest[..HD_WALLET_TAG_LEN]);
+	Ok(tag)
+}
+
+fn verify_hd_wallet_auth_tag(
+	version: u8,
+	params: &crate::neo_types::ScryptParamsDef,
+	salt: &[u8],
+	nonce: &[u8; HD_WALLET_NONCE_LEN],
+	ciphertext: &[u8],
+	mac_key: &[u8; 32],
+	tag: &[u8; HD_WALLET_TAG_LEN],
+) -> Result<(), NeoError> {
+	let expected = hd_wallet_auth_tag(version, params, salt, nonce, ciphertext, mac_key)?;
+	let diff = expected
+		.iter()
+		.zip(tag.iter())
+		.fold(0u8, |acc, (expected, actual)| acc | (expected ^ actual));
+
+	if diff == 0 {
+		Ok(())
+	} else {
+		Err(NeoError::Wallet {
+			message: "Encrypted wallet authentication failed (wrong password or tampered data)"
+				.to_string(),
+			source: None,
+			recovery: ErrorRecovery::new().suggest("Verify the password").retryable(false),
+		})
 	}
 }
 
@@ -668,6 +865,8 @@ impl ExtendedPrivateKey {
 #[derive(Serialize, Deserialize)]
 struct HDWalletData {
 	mnemonic: String,
+	#[serde(default)]
+	passphrase: Option<String>,
 	language: String,
 	accounts: Vec<String>,
 }
@@ -679,7 +878,13 @@ struct EncryptedHDWalletData {
 	scrypt: crate::neo_types::ScryptParamsDef,
 	/// base64-encoded salt
 	salt: String,
-	/// base64-encoded AES-256-ECB ciphertext
+	/// base64-encoded AES-256-CTR nonce (version 2+)
+	#[serde(default, skip_serializing_if = "Option::is_none")]
+	nonce: Option<String>,
+	/// base64-encoded authentication tag (version 2+)
+	#[serde(default, skip_serializing_if = "Option::is_none")]
+	tag: Option<String>,
+	/// base64-encoded ciphertext
 	ciphertext: String,
 }
 
@@ -839,11 +1044,48 @@ mod tests {
 
 		let password = "correct horse battery staple";
 		let exported = wallet.export_encrypted(password).unwrap();
+		let exported_json: serde_json::Value = serde_json::from_str(&exported).unwrap();
+		assert_eq!(exported_json.get("version").and_then(|v| v.as_u64()), Some(2));
+		assert!(exported_json.get("nonce").and_then(|v| v.as_str()).is_some());
+		assert!(exported_json.get("tag").and_then(|v| v.as_str()).is_some());
 		let imported = HDWallet::import_encrypted(&exported, password).unwrap();
 
 		assert_eq!(imported.mnemonic_phrase(), phrase);
 		assert_eq!(imported.accounts.len(), 2);
 		assert!(imported.accounts.contains_key("m/44'/888'/0'/0/0"));
 		assert!(imported.accounts.contains_key("m/44'/888'/0'/0/1"));
+	}
+
+	#[test]
+	fn test_export_import_preserves_bip39_passphrase() {
+		let phrase = "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about";
+		let passphrase = "bip39 passphrase";
+		let path = "m/44'/888'/0'/0/0";
+		let mut wallet =
+			HDWallet::from_phrase(phrase, Some(passphrase), Language::English).unwrap();
+		let original_address = wallet.derive_account(path).unwrap().get_address();
+
+		let exported = wallet.export_encrypted("wallet password").unwrap();
+		let mut imported = HDWallet::import_encrypted(&exported, "wallet password").unwrap();
+		let imported_address = imported.derive_account(path).unwrap().get_address();
+
+		assert_eq!(imported_address, original_address);
+	}
+
+	#[test]
+	fn test_import_encrypted_rejects_tampered_ciphertext() {
+		let phrase = "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about";
+		let wallet = HDWallet::from_phrase(phrase, None, Language::English).unwrap();
+		let exported = wallet.export_encrypted("wallet password").unwrap();
+		let mut json: serde_json::Value = serde_json::from_str(&exported).unwrap();
+		let ciphertext = json.get_mut("ciphertext").unwrap().as_str().unwrap().to_string();
+		let replacement = if ciphertext.ends_with('A') { "B" } else { "A" };
+		let last = ciphertext.len() - 1;
+		json["ciphertext"] =
+			serde_json::Value::String(format!("{}{}", &ciphertext[..last], replacement));
+
+		let tampered = serde_json::to_string(&json).unwrap();
+		let err = HDWallet::import_encrypted(&tampered, "wallet password").unwrap_err();
+		assert!(format!("{err}").contains("authentication failed"));
 	}
 }

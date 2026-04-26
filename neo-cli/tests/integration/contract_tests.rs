@@ -17,7 +17,7 @@ mod tests {
 	}
 
 	#[test]
-	#[ignore] // Command not implemented yet
+	#[ignore] // Requires a live RPC fixture
 	fn test_contract_manifest() {
 		let cli = CliTest::new();
 
@@ -31,7 +31,7 @@ mod tests {
 	}
 
 	#[test]
-	#[ignore] // Command not implemented yet
+	#[ignore] // Requires a deployable contract fixture
 	fn test_contract_methods() {
 		let cli = CliTest::new();
 
@@ -72,7 +72,7 @@ mod tests {
 	}
 
 	#[test]
-	#[ignore] // Command not implemented yet
+	#[ignore] // Requires a live RPC fixture
 	fn test_contract_storage() {
 		let cli = CliTest::new();
 

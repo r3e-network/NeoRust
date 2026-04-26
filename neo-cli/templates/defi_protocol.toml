@@ -1,15 +1,15 @@
 # DeFi Protocol Template
-# Scaffold for building a DeFi-focused Neo dApp.
+# Starter for building a DeFi-focused Neo dApp.
 
 [template]
 name = "defi-protocol"
-description = "DeFi-focused dApp scaffold (swap/pools/positions)"
+description = "DeFi-focused dApp starter (swap/pools/positions)"
 version = "1.0.6"
 author = "NeoRust Team"
 
 [files]
 "src/main.rs" = '''
-//! DeFi dApp scaffold
+//! DeFi dApp starter
 //!
 //! This template demonstrates:
 //! - Connecting to Neo TestNet
@@ -20,7 +20,7 @@ use std::error::Error;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
-    println!("🧩 DeFi Protocol Scaffold");
+    println!("🧩 DeFi Protocol Starter");
 
     let neo = Neo::testnet().await?;
     let height = neo.get_block_height().await?;
@@ -47,9 +47,9 @@ anyhow = "1.0"
 '''
 
 "README.md" = '''
-# {{project_name}} - DeFi Scaffold
+# {{project_name}} - DeFi Starter
 
-DeFi scaffold built with NeoRust SDK v{{neo3_version}}.
+DeFi starter built with NeoRust SDK v{{neo3_version}}.
 
 ## Ideas to Implement
 

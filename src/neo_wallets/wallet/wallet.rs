@@ -333,8 +333,9 @@ impl Wallet {
 		WalletTrait::remove_account(self, script_hash).is_some()
 	}
 
-	pub fn encrypt_accounts(&mut self, password: &str) {
+	pub fn encrypt_accounts(&mut self, password: &str) -> Result<(), WalletError> {
 		let params = self.effective_scrypt_params();
+		let mut errors = Vec::new();
 
 		for account in self.accounts.values_mut() {
 			// Only encrypt accounts that have a key pair
@@ -345,8 +346,19 @@ impl Wallet {
 						error = %e,
 						"Failed to encrypt private key for account"
 					);
+					errors.push(format!("{}: {e}", account.get_address()));
 				}
 			}
+		}
+
+		if errors.is_empty() {
+			Ok(())
+		} else {
+			Err(WalletError::AccountState(format!(
+				"Failed to encrypt {} account(s): {}",
+				errors.len(),
+				errors.join("; ")
+			)))
 		}
 	}
 
@@ -374,9 +386,9 @@ impl Wallet {
 	/// # use neo3::prelude::*;
 	/// # let mut wallet = wallets::Wallet::new();
 	/// // For wallets with many accounts, use parallel encryption
-	/// wallet.encrypt_accounts_parallel("strong_password");
+	/// wallet.encrypt_accounts_parallel("strong_password").unwrap();
 	/// ```
-	pub fn encrypt_accounts_parallel(&mut self, password: &str) {
+	pub fn encrypt_accounts_parallel(&mut self, password: &str) -> Result<(), WalletError> {
 		let params = self.effective_scrypt_params();
 
 		// Collect errors in a thread-safe manner
@@ -397,8 +409,22 @@ impl Wallet {
 			.collect();
 
 		// Log any errors that occurred
-		for (address, error) in errors {
+		for (address, error) in &errors {
 			tracing::warn!(address = %address, error = %error, "Failed to encrypt private key");
+		}
+
+		if errors.is_empty() {
+			Ok(())
+		} else {
+			Err(WalletError::AccountState(format!(
+				"Failed to encrypt {} account(s): {}",
+				errors.len(),
+				errors
+					.into_iter()
+					.map(|(address, error)| format!("{address}: {error}"))
+					.collect::<Vec<_>>()
+					.join("; ")
+			)))
 		}
 	}
 
@@ -419,9 +445,13 @@ impl Wallet {
 	/// # use neo3::prelude::*;
 	/// # let mut wallet = wallets::Wallet::new();
 	/// // Use 4 threads for encryption
-	/// wallet.encrypt_accounts_parallel_with_threads("strong_password", 4);
+	/// wallet.encrypt_accounts_parallel_with_threads("strong_password", 4).unwrap();
 	/// ```
-	pub fn encrypt_accounts_parallel_with_threads(&mut self, password: &str, num_threads: usize) {
+	pub fn encrypt_accounts_parallel_with_threads(
+		&mut self,
+		password: &str,
+		num_threads: usize,
+	) -> Result<(), WalletError> {
 		// Create a custom thread pool with the specified number of threads
 		let pool = match rayon::ThreadPoolBuilder::new().num_threads(num_threads).build() {
 			Ok(pool) => pool,
@@ -431,14 +461,11 @@ impl Wallet {
 					error = %err,
 					"Failed to build custom rayon thread pool; falling back to default pool"
 				);
-				self.encrypt_accounts_parallel(password);
-				return;
+				return self.encrypt_accounts_parallel(password);
 			},
 		};
 
-		pool.install(|| {
-			self.encrypt_accounts_parallel(password);
-		});
+		pool.install(|| self.encrypt_accounts_parallel(password))
 	}
 
 	/// Encrypts accounts in parallel using batch processing.
@@ -459,9 +486,13 @@ impl Wallet {
 	/// # use neo3::prelude::*;
 	/// # let mut wallet = wallets::Wallet::new();
 	/// // Process accounts in batches of 50
-	/// wallet.encrypt_accounts_batch_parallel("strong_password", 50);
+	/// wallet.encrypt_accounts_batch_parallel("strong_password", 50).unwrap();
 	/// ```
-	pub fn encrypt_accounts_batch_parallel(&mut self, password: &str, batch_size: usize) {
+	pub fn encrypt_accounts_batch_parallel(
+		&mut self,
+		password: &str,
+		batch_size: usize,
+	) -> Result<(), WalletError> {
 		use std::sync::{Arc, Mutex};
 
 		let params = self.effective_scrypt_params();
@@ -498,6 +529,7 @@ impl Wallet {
 			Ok(mutex) => mutex.into_inner().unwrap_or_else(|e| e.into_inner()),
 			Err(arc) => arc.lock().unwrap_or_else(|e| e.into_inner()).clone(),
 		};
+		let mut errors = Vec::new();
 		for (hash, result) in results {
 			match result {
 				Ok(encrypted_account) => {
@@ -505,8 +537,19 @@ impl Wallet {
 				},
 				Err(error_msg) => {
 					tracing::warn!("Failed to encrypt private key for account {}", error_msg);
+					errors.push(error_msg);
 				},
 			}
+		}
+
+		if errors.is_empty() {
+			Ok(())
+		} else {
+			Err(WalletError::AccountState(format!(
+				"Failed to encrypt {} account(s): {}",
+				errors.len(),
+				errors.join("; ")
+			)))
 		}
 	}
 
@@ -618,14 +661,19 @@ impl Wallet {
 		current_password: &str,
 		new_password: &str,
 	) -> Result<(), WalletError> {
+		if new_password.is_empty() {
+			return Err(WalletError::InvalidPassword);
+		}
+
 		if !self.verify_password(current_password) {
 			return Err(WalletError::AccountState("Invalid password".to_string()));
 		}
 
 		let params = self.effective_scrypt_params();
+		let mut updated_accounts = self.accounts.clone();
 
 		// First decrypt all accounts with the current password
-		for account in self.accounts.values_mut() {
+		for account in updated_accounts.values_mut() {
 			if account.encrypted_private_key().is_some() && account.key_pair().is_none() {
 				if let Err(e) = account.decrypt_private_key_with_params(current_password, &params) {
 					return Err(WalletError::DecryptionError(format!(
@@ -638,9 +686,25 @@ impl Wallet {
 		}
 
 		// Re-encrypt all accounts with the new password
-		self.encrypt_accounts(new_password);
+		let mut errors = Vec::new();
+		for account in updated_accounts.values_mut() {
+			if account.key_pair().is_some() {
+				if let Err(e) = account.encrypt_private_key_with_params(new_password, &params) {
+					errors.push(format!("{}: {e}", account.get_address()));
+				}
+			}
+		}
 
-		Ok(())
+		if errors.is_empty() {
+			self.accounts = updated_accounts;
+			Ok(())
+		} else {
+			Err(WalletError::AccountState(format!(
+				"Failed to encrypt {} account(s): {}",
+				errors.len(),
+				errors.join("; ")
+			)))
+		}
 	}
 
 	/// Changes the wallet password using parallel processing.
@@ -669,15 +733,19 @@ impl Wallet {
 		current_password: &str,
 		new_password: &str,
 	) -> Result<(), WalletError> {
+		if new_password.is_empty() {
+			return Err(WalletError::InvalidPassword);
+		}
+
 		if !self.verify_password(current_password) {
 			return Err(WalletError::AccountState("Invalid password".to_string()));
 		}
 
 		let params = self.effective_scrypt_params();
+		let mut updated_accounts = self.accounts.clone();
 
 		// Collect accounts that need decryption
-		let accounts_to_decrypt: Vec<(H160, Account)> = self
-			.accounts
+		let accounts_to_decrypt: Vec<(H160, Account)> = updated_accounts
 			.iter()
 			.filter(|(_, account)| {
 				account.encrypted_private_key().is_some() && account.key_pair().is_none()
@@ -710,14 +778,39 @@ impl Wallet {
 		// Apply successful decryptions
 		for (hash, result) in decrypted_results {
 			if let Ok(decrypted_account) = result {
-				self.accounts.insert(hash, decrypted_account);
+				updated_accounts.insert(hash, decrypted_account);
 			}
 		}
 
 		// Re-encrypt all accounts with the new password using parallel processing
-		self.encrypt_accounts_parallel(new_password);
+		let errors: Vec<(String, String)> = updated_accounts
+			.par_iter_mut()
+			.filter_map(|(_, account)| {
+				if account.key_pair().is_some() {
+					match account.encrypt_private_key_with_params(new_password, &params) {
+						Err(e) => Some((account.get_address(), e.to_string())),
+						Ok(_) => None,
+					}
+				} else {
+					None
+				}
+			})
+			.collect();
 
-		Ok(())
+		if errors.is_empty() {
+			self.accounts = updated_accounts;
+			Ok(())
+		} else {
+			Err(WalletError::AccountState(format!(
+				"Failed to encrypt {} account(s): {}",
+				errors.len(),
+				errors
+					.into_iter()
+					.map(|(address, error)| format!("{address}: {error}"))
+					.collect::<Vec<_>>()
+					.join("; ")
+			)))
+		}
 	}
 
 	/// Gets the unclaimed GAS for all accounts in the wallet
@@ -783,8 +876,7 @@ impl Wallet {
 			.key_pair()
 			.clone()
 			.ok_or(WalletError::NoKeyPair)?
-			.private_key()
-			.sign_tx(message_hash)
+			.sign(message_hash)
 			.map_err(|_e| WalletError::NoKeyPair)
 	}
 
@@ -930,7 +1022,7 @@ impl Wallet {
 		wallet.add_account(account);
 
 		// Encrypt the wallet with the provided password
-		wallet.encrypt_accounts(password);
+		wallet.encrypt_accounts(password)?;
 
 		// Save the wallet to the specified path
 		wallet.save_to_file(path.to_path_buf())?;
@@ -1259,7 +1351,7 @@ mod tests {
 		assert!(wallet.accounts()[0].key_pair().is_some());
 		assert!(wallet.accounts()[1].key_pair().is_some());
 
-		wallet.encrypt_accounts("pw");
+		wallet.encrypt_accounts("pw").unwrap();
 
 		assert!(wallet.accounts()[0].key_pair().is_none());
 		assert!(wallet.accounts()[1].key_pair().is_none());
@@ -1281,7 +1373,7 @@ mod tests {
 		}
 
 		// Encrypt using parallel method
-		wallet.encrypt_accounts_parallel("parallel_password");
+		wallet.encrypt_accounts_parallel("parallel_password").unwrap();
 
 		// Verify all accounts are now encrypted
 		for account in wallet.accounts() {
@@ -1306,7 +1398,7 @@ mod tests {
 		}
 
 		// Encrypt using batch parallel method with batch size of 3
-		wallet.encrypt_accounts_batch_parallel("batch_password", 3);
+		wallet.encrypt_accounts_batch_parallel("batch_password", 3).unwrap();
 
 		// Verify all accounts are now encrypted
 		for account in wallet.accounts() {
@@ -1329,7 +1421,7 @@ mod tests {
 		let new_password = "new_password";
 
 		// Initially encrypt the wallet
-		wallet.encrypt_accounts(old_password);
+		wallet.encrypt_accounts(old_password).unwrap();
 
 		// Verify initial encryption
 		assert!(wallet.verify_password(old_password));
@@ -1343,6 +1435,32 @@ mod tests {
 		// Verify new password works
 		assert!(!wallet.verify_password(old_password));
 		assert!(wallet.verify_password(new_password));
+	}
+
+	#[test]
+	fn test_change_password_rejects_empty_new_password_without_mutating_wallet() {
+		let mut wallet = Wallet::new();
+		apply_fast_scrypt(&mut wallet);
+
+		let old_password = "old_password";
+		wallet.encrypt_accounts(old_password).unwrap();
+		let encrypted_before: Vec<_> = wallet
+			.accounts()
+			.iter()
+			.map(|account| account.encrypted_private_key().clone())
+			.collect();
+
+		let err = wallet.change_password(old_password, "").unwrap_err();
+		assert!(matches!(err, WalletError::InvalidPassword));
+		assert!(wallet.verify_password(old_password));
+		assert_eq!(
+			encrypted_before,
+			wallet
+				.accounts()
+				.iter()
+				.map(|account| account.encrypted_private_key().clone())
+				.collect::<Vec<_>>()
+		);
 	}
 
 	#[test]
@@ -1431,7 +1549,7 @@ mod tests {
 		assert!(!wallet.verify_password("password123"));
 
 		// Encrypt the account
-		wallet.encrypt_accounts("password123");
+		wallet.encrypt_accounts("password123").unwrap();
 
 		// Now verification should succeed with the correct password
 		assert!(wallet.verify_password("password123"));

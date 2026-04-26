@@ -113,7 +113,7 @@ impl RetryHandler {
 
 		if self.config.jitter {
 			use rand::Rng;
-			let jitter = rand::thread_rng().gen_range(0.8..1.2);
+			let jitter = rand::rng().random_range(0.8..1.2);
 			delay_ms *= jitter;
 		}
 

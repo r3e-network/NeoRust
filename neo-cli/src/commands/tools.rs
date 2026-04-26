@@ -7,8 +7,121 @@ use base64::{engine::general_purpose, Engine as _};
 use clap::{Args, Subcommand};
 use colored::*;
 use comfy_table::{Cell, Color};
+use neo3::{
+	neo_clients::{public_key_to_address, public_key_to_script_hash},
+	neo_crypto::{
+		base58check_encode, try_base58check_decode, Secp256r1PublicKey, Secp256r1Signature,
+	},
+	neo_types::{AddressExtension, ScriptHash, ScriptHashExtension},
+};
 use ripemd::Ripemd160;
 use sha2::{Digest, Sha256};
+
+const BASE58_ALPHABET: &[u8; 58] = b"123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
+const NEO_N3_ADDRESS_VERSION: u8 = 53;
+
+fn strip_hex_prefix(input: &str) -> &str {
+	input.strip_prefix("0x").or_else(|| input.strip_prefix("0X")).unwrap_or(input)
+}
+
+fn decode_hex_input(input: &str) -> Result<Vec<u8>, CliError> {
+	hex::decode(strip_hex_prefix(input)).map_err(|e| CliError::InvalidInput(e.to_string()))
+}
+
+fn encode_base58(data: &[u8]) -> String {
+	if data.is_empty() {
+		return String::new();
+	}
+
+	let leading_zeroes = data.iter().take_while(|byte| **byte == 0).count();
+	let mut digits: Vec<u8> = Vec::new();
+
+	for byte in data {
+		let mut carry = *byte as u32;
+		for digit in &mut digits {
+			let value = (*digit as u32) * 256 + carry;
+			*digit = (value % 58) as u8;
+			carry = value / 58;
+		}
+		while carry > 0 {
+			digits.push((carry % 58) as u8);
+			carry /= 58;
+		}
+	}
+
+	let mut encoded = String::with_capacity(leading_zeroes + digits.len());
+	for _ in 0..leading_zeroes {
+		encoded.push('1');
+	}
+	for digit in digits.iter().rev() {
+		encoded.push(BASE58_ALPHABET[*digit as usize] as char);
+	}
+	encoded
+}
+
+fn decode_base58(input: &str) -> Result<Vec<u8>, CliError> {
+	if input.is_empty() {
+		return Ok(Vec::new());
+	}
+
+	let leading_zeroes = input.bytes().take_while(|byte| *byte == b'1').count();
+	let mut bytes: Vec<u8> = Vec::new();
+
+	for byte in input.bytes() {
+		let value =
+			BASE58_ALPHABET.iter().position(|candidate| *candidate == byte).ok_or_else(|| {
+				CliError::InvalidInput(format!("Invalid base58 character: {}", byte as char))
+			})? as u32;
+
+		let mut carry = value;
+		for item in &mut bytes {
+			let value = (*item as u32) * 58 + carry;
+			*item = (value & 0xff) as u8;
+			carry = value >> 8;
+		}
+		while carry > 0 {
+			bytes.push((carry & 0xff) as u8);
+			carry >>= 8;
+		}
+	}
+
+	let mut decoded = vec![0u8; leading_zeroes];
+	decoded.extend(bytes.iter().rev());
+	Ok(decoded)
+}
+
+fn parse_tool_input(input: &str, format: &str) -> Result<Vec<u8>, CliError> {
+	match format.to_ascii_lowercase().as_str() {
+		"text" | "utf8" | "utf-8" => Ok(input.as_bytes().to_vec()),
+		"hex" => decode_hex_input(input),
+		"base64" => general_purpose::STANDARD
+			.decode(input)
+			.map_err(|e| CliError::InvalidInput(e.to_string())),
+		"base58" => decode_base58(input),
+		"base58check" => {
+			try_base58check_decode(input).map_err(|e| CliError::InvalidInput(e.to_string()))
+		},
+		"file" => std::fs::read(input).map_err(|e| CliError::Io(e)),
+		_ => Err(CliError::InvalidInput(format!(
+			"Unsupported format '{}'. Use text, hex, base64, base58, base58check, or file.",
+			format
+		))),
+	}
+}
+
+fn format_tool_output(data: &[u8], format: &str) -> Result<String, CliError> {
+	match format.to_ascii_lowercase().as_str() {
+		"text" | "utf8" | "utf-8" => Ok(String::from_utf8_lossy(data).to_string()),
+		"hex" => Ok(hex::encode(data)),
+		"base64" => Ok(general_purpose::STANDARD.encode(data)),
+		"base58" => Ok(encode_base58(data)),
+		"base58check" => Ok(base58check_encode(data)),
+		_ => Err(CliError::InvalidInput(format!(
+			"Unsupported output format '{}'. Use text, hex, base64, base58, or base58check.",
+			format
+		))),
+	}
+}
 
 #[derive(Args, Debug)]
 pub struct ToolsArgs {
@@ -25,7 +138,7 @@ pub enum ToolsCommands {
 		#[arg(short, long, help = "Data to encode")]
 		input: String,
 
-		/// Encoding format (base64, hex, base58)
+		/// Encoding format (base64, hex, base58, base58check)
 		#[arg(short, long, default_value = "base64", help = "Encoding format")]
 		format: String,
 
@@ -41,11 +154,11 @@ pub enum ToolsCommands {
 		#[arg(short, long, help = "Data to decode")]
 		input: String,
 
-		/// Decoding format (base64, hex, base58)
+		/// Decoding format (base64, hex, base58, base58check)
 		#[arg(short, long, default_value = "base64", help = "Decoding format")]
 		format: String,
 
-		/// Output format (text, hex, file)
+		/// Output format (text, hex, base64, base58, base58check, file)
 		#[arg(long, default_value = "text", help = "Output data format")]
 		output_format: String,
 	},
@@ -93,7 +206,7 @@ pub enum ToolsCommands {
 		#[arg(short, long, help = "Public key in hex format")]
 		pubkey: String,
 
-		/// Address version (3 for N3)
+		/// Address version (53 for Neo N3)
 		#[arg(short, long, default_value = "53", help = "Address version")]
 		version: u8,
 	},
@@ -121,7 +234,7 @@ pub enum ToolsCommands {
 		#[arg(short, long, default_value = "32", help = "Number of random bytes")]
 		bytes: usize,
 
-		/// Output format (hex, base64, base58)
+		/// Output format (hex, base64, base58, base58check)
 		#[arg(short, long, default_value = "hex", help = "Output format")]
 		format: String,
 	},
@@ -154,7 +267,7 @@ pub enum ToolsCommands {
 		fee_per_byte: u64,
 
 		/// System fee
-		#[arg(short, long, default_value = "0", help = "System fee")]
+		#[arg(long, default_value = "0", help = "System fee")]
 		system_fee: u64,
 	},
 
@@ -208,24 +321,8 @@ async fn handle_encode(
 ) -> Result<(), CliError> {
 	print_section_header("Data Encoding");
 
-	// Parse input based on input format
-	let data = match input_format.as_str() {
-		"text" => input.as_bytes().to_vec(),
-		"hex" => hex::decode(&input).map_err(|e| CliError::InvalidInput(e.to_string()))?,
-		"file" => std::fs::read(&input).map_err(|e| CliError::Io(e))?,
-		_ => return Err(CliError::InvalidInput("Invalid input format".to_string())),
-	};
-
-	// Encode data
-	let encoded = match format.as_str() {
-		"base64" => general_purpose::STANDARD.encode(&data),
-		"hex" => hex::encode(&data),
-		"base58" => {
-			// Professional base58 encoding implementation for Neo blockchain compatibility
-			format!("base58:{}", hex::encode(&data))
-		},
-		_ => return Err(CliError::InvalidInput("Invalid encoding format".to_string())),
-	};
+	let data = parse_tool_input(&input, &input_format)?;
+	let encoded = format_tool_output(&data, &format)?;
 
 	let mut table = create_table();
 	table.add_row(vec![
@@ -259,33 +356,15 @@ async fn handle_decode(
 ) -> Result<(), CliError> {
 	print_section_header("Data Decoding");
 
-	// Decode data
-	let decoded = match format.as_str() {
-		"base64" => general_purpose::STANDARD
-			.decode(&input)
-			.map_err(|e| CliError::InvalidInput(e.to_string()))?,
-		"hex" => hex::decode(&input).map_err(|e| CliError::InvalidInput(e.to_string()))?,
-		"base58" => {
-			// Professional base58 decoding implementation for Neo blockchain compatibility
-			if input.starts_with("base58:") {
-				hex::decode(&input[7..]).map_err(|e| CliError::InvalidInput(e.to_string()))?
-			} else {
-				return Err(CliError::InvalidInput("Invalid base58 format".to_string()));
-			}
-		},
-		_ => return Err(CliError::InvalidInput("Invalid decoding format".to_string())),
-	};
+	let decoded = parse_tool_input(&input, &format)?;
 
 	// Format output
-	let output = match output_format.as_str() {
-		"text" => String::from_utf8_lossy(&decoded).to_string(),
-		"hex" => hex::encode(&decoded),
-		"file" => {
-			let filename = format!("decoded_output_{}.bin", chrono::Utc::now().timestamp());
-			std::fs::write(&filename, &decoded).map_err(|e| CliError::Io(e))?;
-			format!("Saved to file: {}", filename)
-		},
-		_ => return Err(CliError::InvalidInput("Invalid output format".to_string())),
+	let output = if output_format.eq_ignore_ascii_case("file") {
+		let filename = format!("decoded_output_{}.bin", chrono::Utc::now().timestamp());
+		std::fs::write(&filename, &decoded).map_err(|e| CliError::Io(e))?;
+		format!("Saved to file: {}", filename)
+	} else {
+		format_tool_output(&decoded, &output_format)?
 	};
 
 	let mut table = create_table();
@@ -324,7 +403,7 @@ async fn handle_hash(
 	// Parse input
 	let data = match input_format.as_str() {
 		"text" => input.as_bytes().to_vec(),
-		"hex" => hex::decode(&input).map_err(|e| CliError::InvalidInput(e.to_string()))?,
+		"hex" => decode_hex_input(&input)?,
 		"file" => std::fs::read(&input).map_err(|e| CliError::Io(e))?,
 		_ => return Err(CliError::InvalidInput("Invalid input format".to_string())),
 	};
@@ -377,14 +456,15 @@ async fn handle_random_generation(bytes: usize, format: String) -> Result<(), Cl
 	print_section_header("Random Data Generation");
 
 	use rand::RngCore;
-	let mut rng = rand::thread_rng();
+	let mut rng = rand::rng();
 	let mut random_bytes = vec![0u8; bytes];
 	rng.fill_bytes(&mut random_bytes);
 
 	let output = match format.as_str() {
 		"hex" => hex::encode(&random_bytes),
 		"base64" => general_purpose::STANDARD.encode(&random_bytes),
-		"base58" => format!("base58:{}", hex::encode(&random_bytes)), // Professional base58 format
+		"base58" => encode_base58(&random_bytes),
+		"base58check" => base58check_encode(&random_bytes),
 		_ => return Err(CliError::InvalidInput("Invalid output format".to_string())),
 	};
 
@@ -479,77 +559,193 @@ async fn handle_format_json(input: String, compact: bool) -> Result<(), CliError
 	Ok(())
 }
 
-// Professional implementation functions with comprehensive error handling and user guidance
-async fn handle_convert(_input: String, _from: String, _to: String) -> Result<(), CliError> {
-	Err(CliError::NotImplemented(
-		"Format conversion requires comprehensive encoding integration. \
-		Professional implementation includes:\n\n\
-		1. Advanced format validation and parsing\n\
-		2. Secure conversion between different data formats\n\
-		3. Comprehensive error handling for incompatible conversions\n\
-		4. Complete support for multiple encoding schemes\n\
-		5. Professional file format detection and processing\n\n\
-		For format conversion, use dedicated tools or online converters."
-			.to_string(),
-	))
+async fn handle_convert(input: String, from: String, to: String) -> Result<(), CliError> {
+	print_section_header("Format Conversion");
+
+	let data = parse_tool_input(&input, &from)?;
+	let output = format_tool_output(&data, &to)?;
+
+	let mut table = create_table();
+	table.add_row(vec![Cell::new("From").fg(Color::Cyan), Cell::new(&from).fg(Color::Green)]);
+	table.add_row(vec![Cell::new("To").fg(Color::Cyan), Cell::new(&to).fg(Color::Green)]);
+	table.add_row(vec![
+		Cell::new("Decoded Size").fg(Color::Cyan),
+		Cell::new(format!("{} bytes", data.len())).fg(Color::Yellow),
+	]);
+	table.add_row(vec![Cell::new("Output").fg(Color::Cyan), Cell::new(&output).fg(Color::Blue)]);
+
+	println!("{table}");
+	print_success("✅ Data converted successfully!");
+	Ok(())
 }
 
-async fn handle_address_generation(_pubkey: String, _version: u8) -> Result<(), CliError> {
-	Err(CliError::NotImplemented(
-		"Neo address generation requires comprehensive cryptographic integration. \
-		Professional implementation includes:\n\n\
-		1. Advanced public key validation and point decompression\n\
-		2. Complete Neo N3 address format implementation\n\
-		3. Professional script hash calculation from public key\n\
-		4. Secure Base58Check encoding with proper checksums\n\
-		5. Comprehensive multi-signature address support\n\n\
-		For address generation, use the NeoRust SDK directly or external tools."
-			.to_string(),
-	))
+async fn handle_address_generation(pubkey: String, version: u8) -> Result<(), CliError> {
+	print_section_header("Neo Address Generation");
+
+	if version != NEO_N3_ADDRESS_VERSION {
+		return Err(CliError::InvalidInput(format!(
+			"Unsupported address version {}. Neo N3 uses version {}.",
+			version, NEO_N3_ADDRESS_VERSION
+		)));
+	}
+
+	let pubkey_bytes = decode_hex_input(&pubkey)?;
+	let public_key = Secp256r1PublicKey::from_bytes(&pubkey_bytes)
+		.map_err(|e| CliError::InvalidInput(format!("Invalid public key: {}", e)))?;
+	let address = public_key_to_address(&public_key);
+	let script_hash = public_key_to_script_hash(&public_key);
+
+	let mut table = create_table();
+	table.add_row(vec![Cell::new("Address").fg(Color::Cyan), Cell::new(&address).fg(Color::Green)]);
+	table.add_row(vec![
+		Cell::new("Script Hash").fg(Color::Cyan),
+		Cell::new(script_hash.to_hex_big_endian()).fg(Color::Blue),
+	]);
+	table.add_row(vec![
+		Cell::new("Script Hash LE").fg(Color::Cyan),
+		Cell::new(script_hash.to_hex()).fg(Color::Blue),
+	]);
+	table.add_row(vec![
+		Cell::new("Public Key").fg(Color::Cyan),
+		Cell::new(public_key.get_encoded_compressed_hex()).fg(Color::Yellow),
+	]);
+	table.add_row(vec![
+		Cell::new("Version").fg(Color::Cyan),
+		Cell::new(version.to_string()).fg(Color::Yellow),
+	]);
+
+	println!("{table}");
+	print_success("✅ Address generated successfully!");
+	Ok(())
 }
 
-async fn handle_validate_address(_address: String) -> Result<(), CliError> {
-	Err(CliError::NotImplemented(
-		"Neo address validation requires comprehensive format verification integration. \
-		Professional implementation includes:\n\n\
-		1. Advanced Base58Check decoding and checksum validation\n\
-		2. Complete Neo N3 address format verification\n\
-		3. Professional version byte validation for different address types\n\
-		4. Comprehensive script hash validation and range checking\n\
-		5. Advanced multi-signature address format support\n\n\
-		For address validation, use the NeoRust SDK directly or external tools."
-			.to_string(),
-	))
+async fn handle_validate_address(address: String) -> Result<(), CliError> {
+	print_section_header("Neo Address Validation");
+
+	let script_hash = address
+		.address_to_script_hash()
+		.map_err(|e| CliError::InvalidInput(format!("Invalid Neo address: {}", e)))?;
+
+	let mut table = create_table();
+	table.add_row(vec![Cell::new("Address").fg(Color::Cyan), Cell::new(&address).fg(Color::Green)]);
+	table.add_row(vec![
+		Cell::new("Valid").fg(Color::Cyan),
+		Cell::new(format!("{} Yes", status_indicator("success"))).fg(Color::Green),
+	]);
+	table.add_row(vec![
+		Cell::new("Script Hash").fg(Color::Cyan),
+		Cell::new(script_hash.to_hex_big_endian()).fg(Color::Blue),
+	]);
+	table.add_row(vec![
+		Cell::new("Script Hash LE").fg(Color::Cyan),
+		Cell::new(script_hash.to_hex()).fg(Color::Blue),
+	]);
+
+	println!("{table}");
+	print_success("✅ Address is valid!");
+	Ok(())
 }
 
-async fn handle_script_hash(_script: String) -> Result<(), CliError> {
-	Err(CliError::NotImplemented(
-		"Script hash generation requires comprehensive contract analysis integration. \
-		Professional implementation includes:\n\n\
-		1. Advanced contract script validation and parsing\n\
-		2. Complete OpCode verification and script analysis\n\
-		3. Professional SHA256 + RIPEMD160 hash calculation\n\
-		4. Secure little-endian byte order handling\n\
-		5. Comprehensive script hash to address conversion\n\n\
-		For script hash generation, use the NeoRust SDK directly or Neo compiler tools."
-			.to_string(),
-	))
+async fn handle_script_hash(script: String) -> Result<(), CliError> {
+	print_section_header("Script Hash");
+
+	let script_bytes = decode_hex_input(&script)?;
+	let script_hash = <ScriptHash as ScriptHashExtension>::from_script(&script_bytes);
+
+	let mut table = create_table();
+	table.add_row(vec![
+		Cell::new("Script Size").fg(Color::Cyan),
+		Cell::new(format!("{} bytes", script_bytes.len())).fg(Color::Yellow),
+	]);
+	table.add_row(vec![
+		Cell::new("Script Hash").fg(Color::Cyan),
+		Cell::new(script_hash.to_hex_big_endian()).fg(Color::Blue),
+	]);
+	table.add_row(vec![
+		Cell::new("Script Hash LE").fg(Color::Cyan),
+		Cell::new(script_hash.to_hex()).fg(Color::Blue),
+	]);
+	table.add_row(vec![
+		Cell::new("Address").fg(Color::Cyan),
+		Cell::new(script_hash.to_address()).fg(Color::Green),
+	]);
+
+	println!("{table}");
+	print_success("✅ Script hash generated successfully!");
+	Ok(())
 }
 
 async fn handle_verify_signature(
-	_message: String,
-	_signature: String,
-	_pubkey: String,
+	message: String,
+	signature: String,
+	pubkey: String,
 ) -> Result<(), CliError> {
-	Err(CliError::NotImplemented(
-		"Digital signature verification requires comprehensive cryptographic integration. \
-		Professional implementation includes:\n\n\
-		1. Advanced ECDSA signature validation with secp256r1 curve\n\
-		2. Professional message hash calculation (SHA256)\n\
-		3. Complete public key point validation and decompression\n\
-		4. Secure DER signature format parsing\n\
-		5. Advanced recovery ID and malleability checks\n\n\
-		For signature verification, use the NeoRust SDK directly or cryptographic libraries."
-			.to_string(),
-	))
+	print_section_header("Signature Verification");
+
+	let signature_bytes = decode_hex_input(&signature)?;
+	let pubkey_bytes = decode_hex_input(&pubkey)?;
+	let signature = Secp256r1Signature::from_bytes(&signature_bytes)
+		.map_err(|e| CliError::InvalidInput(format!("Invalid signature: {}", e)))?;
+	let public_key = Secp256r1PublicKey::from_bytes(&pubkey_bytes)
+		.map_err(|e| CliError::InvalidInput(format!("Invalid public key: {}", e)))?;
+
+	public_key
+		.verify(message.as_bytes(), &signature)
+		.map_err(|e| CliError::InvalidInput(format!("Signature verification failed: {}", e)))?;
+
+	let mut table = create_table();
+	table.add_row(vec![
+		Cell::new("Message Size").fg(Color::Cyan),
+		Cell::new(format!("{} bytes", message.len())).fg(Color::Yellow),
+	]);
+	table.add_row(vec![
+		Cell::new("Public Key").fg(Color::Cyan),
+		Cell::new(public_key.get_encoded_compressed_hex()).fg(Color::Blue),
+	]);
+	table.add_row(vec![
+		Cell::new("Valid").fg(Color::Cyan),
+		Cell::new(format!("{} Yes", status_indicator("success"))).fg(Color::Green),
+	]);
+
+	println!("{table}");
+	print_success("✅ Signature is valid!");
+	Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+	use super::*;
+
+	#[test]
+	fn base58_known_vectors() {
+		let cases = [
+			("", ""),
+			(" ", "Z"),
+			("-", "n"),
+			("0", "q"),
+			("1", "r"),
+			("-1", "4SU"),
+			("11", "4k8"),
+			("abc", "ZiCa"),
+			("1234598760", "3mJr7AoUXx2Wqd"),
+		];
+
+		for (plain, encoded) in cases {
+			assert_eq!(encode_base58(plain.as_bytes()), encoded);
+			assert_eq!(decode_base58(encoded).unwrap(), plain.as_bytes());
+		}
+	}
+
+	#[test]
+	fn base58_preserves_leading_zeroes() {
+		let data = [0, 0, 1, 2, 3, 255];
+		let encoded = encode_base58(&data);
+		assert!(encoded.starts_with("11"));
+		assert_eq!(decode_base58(&encoded).unwrap(), data);
+	}
+
+	#[test]
+	fn base58_rejects_invalid_characters() {
+		assert!(decode_base58("0OIl").is_err());
+	}
 }

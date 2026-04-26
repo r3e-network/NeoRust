@@ -185,7 +185,7 @@ mod test_provider {
 		NeoConstants::SEED_5,
 	];
 	const TESTNET_ENDPOINTS: &[&str] =
-		&["https://testnet1.neo.org:443", "https://testnet2.neo.org:443"];
+		&["https://testnet1.neo.coz.io:443", "https://testnet2.neo.coz.io:443"];
 
 	pub static MAINNET: Lazy<TestProvider> =
 		Lazy::new(|| TestProvider::new(MAINNET_ENDPOINTS, "mainnet"));

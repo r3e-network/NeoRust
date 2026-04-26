@@ -103,7 +103,7 @@ impl InvocationScript {
 		message: Vec<u8>,
 		key_pair: &KeyPair,
 	) -> Result<Self, BuilderError> {
-		let signature = key_pair.private_key.sign_tx(&message)?;
+		let signature = key_pair.private_key_ref()?.sign_tx(&message)?;
 		Ok(Self::from_signature(signature))
 	}
 
@@ -229,7 +229,7 @@ mod tests {
 		let key_pair = KeyPair::new_random();
 		let script =
 			InvocationScript::from_message_and_key_pair(message.clone(), &key_pair).unwrap();
-		let expected_signature = key_pair.private_key().sign_tx(&message).unwrap();
+		let expected_signature = key_pair.private_key_ref().unwrap().sign_tx(&message).unwrap();
 		let expected = format!(
 			"{}40{}",
 			OpCode::PushData1.to_hex_string(),
@@ -260,7 +260,7 @@ mod tests {
 	fn test_deserialize_signature_invocation_script() {
 		let message = vec![0u8; 10];
 		let key_pair = KeyPair::new_random();
-		let signature = key_pair.private_key().sign_tx(&message).unwrap();
+		let signature = key_pair.private_key_ref().unwrap().sign_tx(&message).unwrap();
 		let script =
 			format!("{}40{}", OpCode::PushData1.to_hex_string(), hex::encode(signature.to_bytes()));
 		let deserialized =
@@ -279,7 +279,7 @@ mod tests {
 	fn test_get_signatures() {
 		let message = vec![0u8; 10];
 		let key_pair = KeyPair::new_random();
-		let signature = key_pair.private_key.sign_tx(&message).unwrap();
+		let signature = key_pair.private_key_ref().unwrap().sign_tx(&message).unwrap();
 		let inv = InvocationScript::from_signatures(&[
 			signature.clone(),
 			signature.clone(),
@@ -292,7 +292,7 @@ mod tests {
 	fn test_from_serialized_script_accepts_raw_script() {
 		let message = vec![0u8; 10];
 		let key_pair = KeyPair::new_random();
-		let signature = key_pair.private_key().sign_tx(&message).unwrap();
+		let signature = key_pair.private_key_ref().unwrap().sign_tx(&message).unwrap();
 		let script =
 			format!("{}40{}", OpCode::PushData1.to_hex_string(), hex::encode(signature.to_bytes()));
 		let raw = hex::decode(&script).unwrap();

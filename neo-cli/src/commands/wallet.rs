@@ -13,6 +13,7 @@ use comfy_table::{Cell, Color};
 use hex;
 use neo3::{
 	neo_clients::{APITrait, HttpProvider, RpcClient},
+	neo_crypto::Secp256r1PublicKey,
 	neo_protocol::{Account, AccountTrait},
 	neo_types::AddressExtension,
 	neo_wallets::{Wallet, WalletBackup, WalletTrait},
@@ -150,6 +151,58 @@ pub enum WalletCommands {
 		label: Option<String>,
 	},
 
+	/// Import a watch-only address
+	#[command(about = "Import a watch-only address into the wallet")]
+	ImportAddress {
+		/// Neo address to import
+		#[arg(short, long, help = "Neo address")]
+		address: String,
+
+		/// Label for the imported address
+		#[arg(short, long, help = "Label for the imported address")]
+		label: Option<String>,
+	},
+
+	/// Create a multi-signature account
+	#[command(about = "Create a multi-signature account from public keys")]
+	CreateMultisig {
+		/// Minimum number of signatures required
+		#[arg(short = 'm', long, help = "Required signature threshold")]
+		min_signatures: u32,
+
+		/// Participant public keys as repeated values or comma-separated list
+		#[arg(short, long, value_delimiter = ',', num_args = 1.., help = "Compressed or uncompressed public keys in hex")]
+		pubkeys: Vec<String>,
+
+		/// Label for the multi-signature account
+		#[arg(short, long, help = "Label for the account")]
+		label: Option<String>,
+	},
+
+	/// Set the default wallet account
+	#[command(about = "Set the default wallet account")]
+	SetDefault {
+		/// Address to use as the default account
+		#[arg(short, long, help = "Address in the wallet")]
+		address: String,
+	},
+
+	/// Sign an arbitrary message with a wallet account
+	#[command(about = "Sign a message with a wallet account")]
+	SignMessage {
+		/// Message to sign
+		#[arg(short, long, help = "Message text")]
+		message: String,
+
+		/// Signing address (uses default account if omitted)
+		#[arg(short, long, help = "Address to sign with")]
+		address: Option<String>,
+
+		/// Wallet password (prompts if omitted)
+		#[arg(long, help = "Wallet password")]
+		password: Option<String>,
+	},
+
 	/// Export private keys
 	#[command(about = "Export private keys from the wallet")]
 	Export {
@@ -190,15 +243,15 @@ pub enum WalletCommands {
 		to: String,
 
 		/// Amount to transfer
-		#[arg(short, long, help = "Amount to transfer")]
+		#[arg(short = 'm', long, help = "Amount to transfer")]
 		amount: String,
 
 		/// Sender address (if not specified, uses the first account)
 		#[arg(short, long, help = "Sender address")]
 		from: Option<String>,
 
-		/// Transaction fee
-		#[arg(short, long, help = "Network fee for the transaction")]
+		/// Extra network fee in GAS
+		#[arg(long, help = "Additional network fee in GAS")]
 		fee: Option<String>,
 	},
 
@@ -282,7 +335,7 @@ pub enum WalletCommands {
 		script: String,
 
 		/// Signers for the transaction
-		#[arg(short, long, help = "Transaction signers")]
+		#[arg(long, help = "Transaction signers")]
 		signers: Vec<String>,
 
 		/// Show detailed simulation results
@@ -306,6 +359,16 @@ pub async fn handle_wallet_command(args: WalletArgs, state: &mut CliState) -> Re
 		},
 		WalletCommands::Import { wif_or_file, label } => {
 			handle_import_key(wif_or_file, label, state).await
+		},
+		WalletCommands::ImportAddress { address, label } => {
+			handle_import_address(address, label, state).await
+		},
+		WalletCommands::CreateMultisig { min_signatures, pubkeys, label } => {
+			handle_create_multisig(min_signatures, pubkeys, label, state).await
+		},
+		WalletCommands::SetDefault { address } => handle_set_default(address, state).await,
+		WalletCommands::SignMessage { message, address, password } => {
+			handle_sign_message(message, address, password, state).await
 		},
 		WalletCommands::Export { path, address, format } => {
 			handle_export_key(path, address, format, state).await
@@ -380,7 +443,9 @@ async fn handle_create_wallet(
 	let wallet = with_loading("Creating wallet...", async {
 		let mut wallet = Wallet::new();
 		wallet.name = wallet_name.clone();
-		wallet.encrypt_accounts(&password);
+		wallet
+			.encrypt_accounts(&password)
+			.map_err(|e| CliError::WalletOperation(format!("Failed to encrypt wallet: {e}")))?;
 		wallet
 			.save_to_file(wallet_path.clone())
 			.map_err(|e| CliError::Wallet(format!("Failed to save wallet: {e}")))?;
@@ -599,7 +664,9 @@ async fn handle_create_address(
 	}
 
 	// Ensure all private keys are encrypted before saving.
-	wallet.encrypt_accounts(&password);
+	wallet
+		.encrypt_accounts(&password)
+		.map_err(|e| CliError::WalletOperation(format!("Failed to encrypt wallet: {e}")))?;
 	wallet
 		.save_to_file(wallet_path)
 		.map_err(|e| CliError::WalletOperation(format!("Failed to save wallet: {e}")))?;
@@ -679,7 +746,9 @@ async fn handle_import_key(
 	}
 
 	// Encrypt imported private keys and persist the wallet.
-	wallet.encrypt_accounts(&password);
+	wallet
+		.encrypt_accounts(&password)
+		.map_err(|e| CliError::WalletOperation(format!("Failed to encrypt wallet: {e}")))?;
 	wallet
 		.save_to_file(wallet_path)
 		.map_err(|e| CliError::WalletOperation(format!("Failed to save wallet: {e}")))?;
@@ -693,6 +762,208 @@ async fn handle_import_key(
 	}
 	println!("{table}");
 	print_success(&format!("✅ Imported {} account(s)", imported.len()));
+	Ok(())
+}
+
+async fn handle_import_address(
+	address: String,
+	label: Option<String>,
+	state: &mut CliState,
+) -> Result<(), CliError> {
+	let wallet = state.wallet.as_mut().ok_or_else(|| {
+		CliError::WalletNotLoaded("No wallet open. Use 'wallet open' first.".into())
+	})?;
+	let wallet_path = state.wallet_path.clone().ok_or_else(|| {
+		CliError::Config("Wallet path unknown. Re-open the wallet with 'wallet open'.".into())
+	})?;
+
+	address
+		.address_to_script_hash()
+		.map_err(|e| CliError::InvalidInput(format!("Invalid Neo address '{address}': {e}")))?;
+
+	let mut account = Account::from_address(&address).map_err(|e| {
+		CliError::WalletOperation(format!("Failed to create watch-only account: {e}"))
+	})?;
+	if let Some(label) = label {
+		account.label = Some(label);
+	}
+
+	let script_hash = account.get_script_hash();
+	if wallet.accounts.contains_key(&script_hash) {
+		return Err(CliError::Wallet(format!("Address already exists in wallet: {address}")));
+	}
+
+	wallet.add_account(account);
+	wallet
+		.save_to_file(wallet_path)
+		.map_err(|e| CliError::WalletOperation(format!("Failed to save wallet: {e}")))?;
+
+	let mut table = create_table();
+	table.add_row(vec![Cell::new("Address").fg(Color::Cyan), Cell::new(&address).fg(Color::Green)]);
+	table.add_row(vec![
+		Cell::new("Type").fg(Color::Cyan),
+		Cell::new("Watch-only").fg(Color::Yellow),
+	]);
+	println!("{table}");
+	print_success("✅ Watch-only address imported");
+	Ok(())
+}
+
+async fn handle_create_multisig(
+	min_signatures: u32,
+	pubkeys: Vec<String>,
+	label: Option<String>,
+	state: &mut CliState,
+) -> Result<(), CliError> {
+	let wallet = state.wallet.as_mut().ok_or_else(|| {
+		CliError::WalletNotLoaded("No wallet open. Use 'wallet open' first.".into())
+	})?;
+	let wallet_path = state.wallet_path.clone().ok_or_else(|| {
+		CliError::Config("Wallet path unknown. Re-open the wallet with 'wallet open'.".into())
+	})?;
+
+	if pubkeys.is_empty() {
+		return Err(CliError::InvalidInput("At least one public key is required".to_string()));
+	}
+	if min_signatures == 0 || min_signatures as usize > pubkeys.len() {
+		return Err(CliError::InvalidInput(format!(
+			"min-signatures must be between 1 and the number of public keys ({})",
+			pubkeys.len()
+		)));
+	}
+
+	let mut public_keys = pubkeys
+		.iter()
+		.map(|pubkey| {
+			let bytes = hex::decode(pubkey.trim_start_matches("0x"))
+				.map_err(|e| CliError::InvalidInput(format!("Invalid public key hex: {e}")))?;
+			Secp256r1PublicKey::from_bytes(&bytes)
+				.map_err(|e| CliError::InvalidInput(format!("Invalid public key: {e}")))
+		})
+		.collect::<Result<Vec<_>, _>>()?;
+
+	let mut account = Account::multi_sig_from_public_keys(&mut public_keys, min_signatures)
+		.map_err(|e| {
+			CliError::WalletOperation(format!("Failed to create multi-sig account: {e}"))
+		})?;
+	if let Some(label) = label {
+		account.label = Some(label);
+	}
+
+	let address = account.get_address();
+	let script_hash = account.get_script_hash();
+	if wallet.accounts.contains_key(&script_hash) {
+		return Err(CliError::Wallet(format!(
+			"Multi-signature account already exists in wallet: {address}"
+		)));
+	}
+
+	wallet.add_account(account);
+	wallet
+		.save_to_file(wallet_path)
+		.map_err(|e| CliError::WalletOperation(format!("Failed to save wallet: {e}")))?;
+
+	let mut table = create_table();
+	table.add_row(vec![Cell::new("Address").fg(Color::Cyan), Cell::new(&address).fg(Color::Green)]);
+	table.add_row(vec![
+		Cell::new("Required Signatures").fg(Color::Cyan),
+		Cell::new(min_signatures.to_string()).fg(Color::Yellow),
+	]);
+	table.add_row(vec![
+		Cell::new("Participants").fg(Color::Cyan),
+		Cell::new(pubkeys.len().to_string()).fg(Color::Yellow),
+	]);
+	table.add_row(vec![
+		Cell::new("Script Hash").fg(Color::Cyan),
+		Cell::new(format!("{:x}", script_hash)).fg(Color::Blue),
+	]);
+	println!("{table}");
+	print_success("✅ Multi-signature account created");
+	Ok(())
+}
+
+async fn handle_set_default(address: String, state: &mut CliState) -> Result<(), CliError> {
+	let wallet = state.wallet.as_mut().ok_or_else(|| {
+		CliError::WalletNotLoaded("No wallet open. Use 'wallet open' first.".into())
+	})?;
+	let wallet_path = state.wallet_path.clone().ok_or_else(|| {
+		CliError::Config("Wallet path unknown. Re-open the wallet with 'wallet open'.".into())
+	})?;
+
+	let script_hash = address
+		.address_to_script_hash()
+		.map_err(|e| CliError::InvalidInput(format!("Invalid Neo address '{address}': {e}")))?;
+	if !wallet.accounts.contains_key(&script_hash) {
+		return Err(CliError::Wallet(format!("Address not found in wallet: {address}")));
+	}
+
+	wallet.set_default_account(script_hash);
+	wallet
+		.save_to_file(wallet_path)
+		.map_err(|e| CliError::WalletOperation(format!("Failed to save wallet: {e}")))?;
+
+	print_success(&format!("✅ Default account set to {address}"));
+	Ok(())
+}
+
+async fn handle_sign_message(
+	message: String,
+	address: Option<String>,
+	password: Option<String>,
+	state: &mut CliState,
+) -> Result<(), CliError> {
+	let wallet = state.wallet.as_ref().ok_or_else(|| {
+		CliError::WalletNotLoaded("No wallet open. Use 'wallet open' first.".into())
+	})?;
+
+	let mut account =
+		if let Some(address) = address {
+			let script_hash = address.address_to_script_hash().map_err(|e| {
+				CliError::InvalidInput(format!("Invalid Neo address '{address}': {e}"))
+			})?;
+			wallet.accounts.get(&script_hash).cloned().ok_or_else(|| {
+				CliError::Wallet(format!("Address not found in wallet: {address}"))
+			})?
+		} else {
+			state.get_account()?
+		};
+
+	if account.is_multi_sig() {
+		return Err(CliError::InvalidInput(
+			"Multi-signature accounts require transaction-specific multi-signing".to_string(),
+		));
+	}
+	if account.key_pair().is_none() {
+		let password = password
+			.or_else(|| state.wallet_password.clone())
+			.ok_or_else(|| CliError::Authentication("Wallet password is required".to_string()))?;
+		account
+			.decrypt_private_key(&password)
+			.map_err(|e| CliError::WalletOperation(format!("Failed to decrypt account: {e}")))?;
+	}
+
+	let key_pair = account
+		.key_pair()
+		.as_ref()
+		.ok_or_else(|| CliError::Wallet("Account does not contain a private key".to_string()))?;
+	let signature = key_pair
+		.sign(message.as_bytes())
+		.map_err(|e| CliError::WalletOperation(format!("Failed to sign message: {e}")))?;
+
+	let mut table = create_table();
+	table.add_row(vec![
+		Cell::new("Address").fg(Color::Cyan),
+		Cell::new(account.get_address()).fg(Color::Green),
+	]);
+	table.add_row(vec![
+		Cell::new("Message Size").fg(Color::Cyan),
+		Cell::new(format!("{} bytes", message.len())).fg(Color::Yellow),
+	]);
+	table.add_row(vec![
+		Cell::new("Signature").fg(Color::Cyan),
+		Cell::new(hex::encode(signature.to_bytes())).fg(Color::Blue),
+	]);
+	println!("{table}");
 	Ok(())
 }
 
@@ -761,7 +1032,9 @@ async fn handle_export_key(
 			.as_ref()
 			.ok_or_else(|| CliError::Wallet("No key pair available after decryption".to_string()))?
 			.clone();
-		let wif = key_pair.export_as_wif();
+		let wif = key_pair
+			.export_as_wif()
+			.map_err(|e| CliError::WalletOperation(format!("Failed to export WIF: {e}")))?;
 		exported.push((account_clone.get_address(), wif));
 	}
 
@@ -918,11 +1191,17 @@ async fn handle_transfer(
 	fee: Option<String>,
 	state: &mut CliState,
 ) -> Result<(), CliError> {
-	if fee.is_some() {
-		return Err(CliError::NotImplemented(
-			"Custom fees are not supported by this command yet.".to_string(),
-		));
-	}
+	let extra_network_fee = fee
+		.as_deref()
+		.map(|fee| {
+			let amount = neo3::sdk::DecimalAmount::parse(fee, 8)
+				.map_err(|e| CliError::InvalidInput(format!("Invalid fee amount '{fee}': {e}")))?;
+			amount
+				.raw()
+				.parse::<i64>()
+				.map_err(|e| CliError::InvalidInput(format!("Invalid fee amount '{fee}': {e}")))
+		})
+		.transpose()?;
 
 	let original_default = state
 		.wallet
@@ -946,7 +1225,14 @@ async fn handle_transfer(
 		wallet.set_default_account(from_hash);
 	}
 
-	let result = crate::commands::defi::tokens::transfer_token(&asset, &to, &amount, state).await;
+	let result = crate::commands::defi::tokens::transfer_token_with_fee(
+		&asset,
+		&to,
+		&amount,
+		extra_network_fee,
+		state,
+	)
+	.await;
 
 	if let Some(hash) = original_default {
 		if let Some(wallet) = state.wallet.as_mut() {

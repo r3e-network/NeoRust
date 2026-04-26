@@ -3,9 +3,6 @@
 //
 // This module provides commands for interacting with NEP-17 tokens on the Neo N3 blockchain.
 // It supports token information retrieval, balance checking, and token transfers.
-//
-// NOTE: This is currently an early implementation with some functional limitations.
-// Token operations require connection to a Neo N3 RPC node and a properly configured wallet.
 
 use super::utils::{
 	format_token_amount, get_token_decimals, parse_amount,
@@ -267,6 +264,17 @@ pub async fn transfer_token(
 	amount: &str,
 	state: &mut CliState,
 ) -> Result<(), CliError> {
+	transfer_token_with_fee(contract, to_address, amount, None, state).await
+}
+
+/// Transfer tokens to an address with an optional extra network fee.
+pub async fn transfer_token_with_fee(
+	contract: &str,
+	to_address: &str,
+	amount: &str,
+	extra_network_fee: Option<i64>,
+	state: &mut CliState,
+) -> Result<(), CliError> {
 	// Ensure account is loaded
 	let account = ensure_account_loaded(state)?;
 
@@ -423,6 +431,12 @@ pub async fn transfer_token(
 			.build()
 			.await
 			.map_err(|e| CliError::Transaction(format!("Failed to build transaction: {}", e)))?;
+		if let Some(extra_network_fee) = extra_network_fee {
+			tx.net_fee = tx.net_fee.checked_add(extra_network_fee).ok_or_else(|| {
+				CliError::Transaction("Network fee overflow while applying extra fee".to_string())
+			})?;
+			print_info(&format!("Added extra network fee: {} datoshi", extra_network_fee));
+		}
 
 		// Sign the transaction if we have a password
 		if let Some(password) = password {

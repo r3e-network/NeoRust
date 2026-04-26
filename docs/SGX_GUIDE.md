@@ -1,9 +1,9 @@
-# SGX Support Guide - NeoRust (updated for v1.0.9)
-> Note: This guide originated with v1.0.9; the SGX/no_std feature set remains the same. Use the latest published crate version in the snippets below.
+# SGX Support Guide - NeoRust (experimental)
+> Note: This guide documents an experimental SGX/no_std surface. Host builds with `sgx` compile, but enclave builds require an SGX target/toolchain and deployment-specific validation.
 
 ## Overview
 
-NeoRust v1.0.9 continues to support Intel SGX (Software Guard Extensions), enabling blockchain operations to run in secure enclaves with hardware-based security. This feature provides `no_std` compatibility and enhanced security for sensitive operations like key management and transaction signing.
+NeoRust exposes compile gates and scaffolding for Intel SGX (Software Guard Extensions). Treat this as an integration starting point, not certified enclave support. The general SDK still depends on `std` for normal host targets, and `no_std` is not certified for arbitrary embedded or WASM targets.
 
 > Security note: The SGX module is still evolving. In particular, remote attestation quote verification is **not implemented** in the current SDK (`QuoteVerifier::verify_quote` returns an error). Do not treat quotes as verified unless you integrate a real verifier (DCAP/IAS) in your deployment.
 
@@ -86,7 +86,7 @@ chmod +x sgx_linux_x64_sdk_2.19.100.3.bin
 ```toml
 # Cargo.toml
 [dependencies]
-neo3 = { version = "1.0.9", features = ["sgx", "no_std"] }
+neo3 = { version = "1.3.0", features = ["sgx", "no_std"] }
 
 [target.'cfg(target_env = "sgx")'.dependencies]
 sgx_tstd = { git = "https://github.com/apache/teaclave-sgx-sdk.git", rev = "v2.0.0" }
@@ -420,7 +420,7 @@ let config = EnclaveConfig {
 
 ## Summary
 
-SGX support in NeoRust v1.0.9 provides:
+SGX support in NeoRust v1.3.0 provides:
 
 - **Hardware Security**: CPU-based memory encryption and isolation
 - **Key Protection**: Secure key generation and sealed storage

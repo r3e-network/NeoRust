@@ -235,7 +235,7 @@ impl Account {
 		self.verification_script.clone()
 	}
 	pub fn get_public_key(&self) -> Option<Secp256r1PublicKey> {
-		self.key_pair.as_ref().map(|k| k.public_key.clone())
+		self.key_pair.as_ref().map(|k| k.public_key())
 	}
 }
 
@@ -402,13 +402,13 @@ impl AccountTrait for Account {
 		signing_threshold: Option<u32>,
 		nr_of_participants: Option<u32>,
 	) -> Result<Self, Self::Error> {
-		let address = public_key_to_address(&key_pair.public_key);
+		let address = public_key_to_address(key_pair.public_key_ref());
 		Ok(Self {
 			key_pair: Some(key_pair.clone()),
 			address_or_scripthash: AddressOrScriptHash::Address(address.clone()),
 			label: Some(address),
 			verification_script: Some(VerificationScript::from_public_key(
-				&key_pair.clone().public_key(),
+				key_pair.public_key_ref(),
 			)),
 			is_default: false,
 			is_locked: false,
@@ -493,7 +493,10 @@ impl AccountTrait for Account {
 			"The account does not hold a decrypted private key.".to_string(),
 		))?;
 
-		let mut hex_key = key_pair.private_key.to_raw_bytes().to_hex_string();
+		let mut hex_key = key_pair
+			.private_key_bytes()
+			.map_err(|e| Self::Error::IllegalState(format!("Failed to read private key: {e}")))?
+			.to_hex_string();
 		let encrypted_private_key = get_nep2_from_private_key(&hex_key, password)
 			.map_err(|e| Self::Error::IllegalState(format!("Failed to encrypt private key: {e}")));
 		hex_key.zeroize(); // Clear sensitive data
@@ -699,7 +702,11 @@ impl PrehashSigner<Secp256r1Signature> for Account {
 	fn sign_prehash(&self, _prehash: &[u8]) -> Result<Secp256r1Signature, Error> {
 		let key_pair = self.key_pair.as_ref().ok_or_else(Error::new)?;
 
-		let signature = key_pair.private_key.sign_prehash(_prehash).map_err(|_| Error::new())?;
+		let signature = key_pair
+			.private_key_ref()
+			.map_err(|_| Error::new())?
+			.sign_prehash(_prehash)
+			.map_err(|_| Error::new())?;
 
 		Ok(signature)
 	}

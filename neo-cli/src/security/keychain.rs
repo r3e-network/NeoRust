@@ -186,23 +186,23 @@ impl KeychainManager {
 	}
 
 	#[cfg(target_os = "linux")]
-	fn store_linux_secret(&self, _service: &(), _key: &str, _data: &[u8]) -> Result<(), CliError> {
-		Ok(())
+	fn store_linux_secret(&self, _service: &(), key: &str, data: &[u8]) -> Result<(), CliError> {
+		self.store_encrypted_file(key, data)
 	}
 
 	#[cfg(target_os = "linux")]
-	fn get_linux_secret(&self, _service: &(), _key: &str) -> Result<SecureCredential, CliError> {
-		Err(CliError::Security("Not implemented".to_string()))
+	fn get_linux_secret(&self, _service: &(), key: &str) -> Result<SecureCredential, CliError> {
+		self.get_encrypted_file(key)
 	}
 
 	#[cfg(target_os = "linux")]
-	fn delete_linux_secret(&self, _service: &(), _key: &str) -> Result<(), CliError> {
-		Ok(())
+	fn delete_linux_secret(&self, _service: &(), key: &str) -> Result<(), CliError> {
+		self.delete_encrypted_file(key)
 	}
 
 	#[cfg(target_os = "linux")]
 	fn list_linux_secrets(&self, _service: &()) -> Result<Vec<String>, CliError> {
-		Ok(vec![])
+		self.list_encrypted_files()
 	}
 
 	#[cfg(target_os = "linux")]
@@ -213,28 +213,63 @@ impl KeychainManager {
 		};
 		use rand::RngCore;
 
-		// Generate or derive encryption key
-		let mut key_bytes = [0u8; 32];
-		rand::thread_rng().fill_bytes(&mut key_bytes);
-
-		let cipher = Aes256Gcm::new(&key_bytes.into());
-		let nonce = Nonce::from_slice(b"unique nonce");
+		const MAGIC: &[u8; 8] = b"NEOCLI01";
+		let key_bytes = self.get_or_create_linux_master_key()?;
+		let cipher = Aes256Gcm::new((&key_bytes).into());
+		let mut nonce_bytes = [0u8; 12];
+		rand::rng().fill_bytes(&mut nonce_bytes);
+		let nonce = Nonce::from_slice(&nonce_bytes);
 
 		let ciphertext = cipher
 			.encrypt(nonce, data)
 			.map_err(|e| CliError::Security(format!("Encryption failed: {}", e)))?;
 
-		// Store encrypted data
 		let path = self.get_secure_storage_path(key)?;
-		std::fs::write(path, ciphertext)
+		let mut payload = Vec::with_capacity(MAGIC.len() + nonce_bytes.len() + ciphertext.len());
+		payload.extend_from_slice(MAGIC);
+		payload.extend_from_slice(&nonce_bytes);
+		payload.extend_from_slice(&ciphertext);
+		std::fs::write(&path, payload)
 			.map_err(|e| CliError::Security(format!("Failed to write encrypted file: {}", e)))?;
+		#[cfg(unix)]
+		{
+			use std::os::unix::fs::PermissionsExt;
+			std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o600)).map_err(
+				|e| CliError::Security(format!("Failed to secure credential file: {e}")),
+			)?;
+		}
 
 		Ok(())
 	}
 
 	#[cfg(target_os = "linux")]
 	fn get_encrypted_file(&self, key: &str) -> Result<SecureCredential, CliError> {
-		Err(CliError::Security("Not implemented".to_string()))
+		use aes_gcm::{
+			aead::{Aead, KeyInit},
+			Aes256Gcm, Nonce,
+		};
+
+		const MAGIC: &[u8; 8] = b"NEOCLI01";
+		let path = self.get_secure_storage_path(key)?;
+		let payload = std::fs::read(path)
+			.map_err(|e| CliError::Security(format!("Failed to read encrypted file: {}", e)))?;
+		if payload.len() <= MAGIC.len() + 12 || &payload[..MAGIC.len()] != MAGIC {
+			return Err(CliError::Security(
+				"Unsupported credential file format; re-store the credential".to_string(),
+			));
+		}
+
+		let nonce_start = MAGIC.len();
+		let cipher_start = nonce_start + 12;
+		let nonce = Nonce::from_slice(&payload[nonce_start..cipher_start]);
+		let key_bytes = self.get_or_create_linux_master_key()?;
+		let cipher = Aes256Gcm::new((&key_bytes).into());
+		let plaintext = cipher
+			.decrypt(nonce, &payload[cipher_start..])
+			.map_err(|e| CliError::Security(format!("Failed to decrypt credential: {}", e)))?;
+
+		serde_json::from_slice(&plaintext)
+			.map_err(|e| CliError::Security(format!("Failed to deserialize credential: {}", e)))
 	}
 
 	#[cfg(target_os = "linux")]
@@ -247,17 +282,80 @@ impl KeychainManager {
 
 	#[cfg(target_os = "linux")]
 	fn list_encrypted_files(&self) -> Result<Vec<String>, CliError> {
-		Ok(vec![])
+		let secure_dir = self.get_secure_storage_dir()?;
+		let mut keys = Vec::new();
+		if !secure_dir.exists() {
+			return Ok(keys);
+		}
+		for entry in std::fs::read_dir(secure_dir)
+			.map_err(|e| CliError::Security(format!("Failed to list credentials: {}", e)))?
+		{
+			let entry = entry
+				.map_err(|e| CliError::Security(format!("Failed to read credential entry: {e}")))?;
+			let path = entry.path();
+			if path.extension().and_then(|ext| ext.to_str()) != Some("enc") {
+				continue;
+			}
+			let Some(stem) = path.file_stem().and_then(|stem| stem.to_str()) else {
+				continue;
+			};
+			let decoded = hex::decode(stem)
+				.ok()
+				.and_then(|bytes| String::from_utf8(bytes).ok())
+				.unwrap_or_else(|| stem.to_string());
+			keys.push(decoded);
+		}
+		keys.sort();
+		Ok(keys)
 	}
 
 	#[cfg(target_os = "linux")]
 	fn get_secure_storage_path(&self, key: &str) -> Result<std::path::PathBuf, CliError> {
+		let secure_dir = self.get_secure_storage_dir()?;
+		Ok(secure_dir.join(format!("{}.enc", hex::encode(key.as_bytes()))))
+	}
+
+	#[cfg(target_os = "linux")]
+	fn get_secure_storage_dir(&self) -> Result<std::path::PathBuf, CliError> {
 		let home = dirs::home_dir()
 			.ok_or_else(|| CliError::Security("Cannot find home directory".to_string()))?;
 		let secure_dir = home.join(".neo-cli").join("secure");
 		std::fs::create_dir_all(&secure_dir)
 			.map_err(|e| CliError::Security(format!("Failed to create secure directory: {}", e)))?;
-		Ok(secure_dir.join(format!("{}.enc", key)))
+		#[cfg(unix)]
+		{
+			use std::os::unix::fs::PermissionsExt;
+			std::fs::set_permissions(&secure_dir, std::fs::Permissions::from_mode(0o700))
+				.map_err(|e| CliError::Security(format!("Failed to secure storage dir: {e}")))?;
+		}
+		Ok(secure_dir)
+	}
+
+	#[cfg(target_os = "linux")]
+	fn get_or_create_linux_master_key(&self) -> Result<[u8; 32], CliError> {
+		use rand::RngCore;
+
+		let path = self.get_secure_storage_dir()?.join(".master-key");
+		if path.exists() {
+			let bytes = std::fs::read(&path)
+				.map_err(|e| CliError::Security(format!("Failed to read master key: {}", e)))?;
+			let key: [u8; 32] = bytes.try_into().map_err(|_| {
+				CliError::Security("Stored keychain master key has invalid length".to_string())
+			})?;
+			return Ok(key);
+		}
+
+		let mut key = [0u8; 32];
+		rand::rng().fill_bytes(&mut key);
+		std::fs::write(&path, key)
+			.map_err(|e| CliError::Security(format!("Failed to write master key: {}", e)))?;
+		#[cfg(unix)]
+		{
+			use std::os::unix::fs::PermissionsExt;
+			std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o600))
+				.map_err(|e| CliError::Security(format!("Failed to secure master key: {e}")))?;
+		}
+		Ok(key)
 	}
 }
 

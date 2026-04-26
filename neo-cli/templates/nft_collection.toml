@@ -1,20 +1,20 @@
 # NFT Collection Template (NEP-11)
-# Scaffold for building an NFT collection dApp + contract stub.
+# Starter for building an NFT collection dApp.
 
 [template]
 name = "nft-collection"
-description = "NEP-11 NFT collection scaffold (dApp + contract stub)"
+description = "NEP-11 NFT collection starter"
 version = "1.0.6"
 author = "NeoRust Team"
 
 [files]
 "src/main.rs" = '''
-//! NFT Collection dApp scaffold (NEP-11)
+//! NFT Collection dApp starter (NEP-11)
 //!
 //! This template demonstrates:
 //! - Connecting to Neo TestNet
 //! - Basic project structure for an NFT collection app
-//! - Placeholder for interacting with an on-chain NEP-11 contract
+//! - Loading an on-chain NEP-11 contract hash from configuration
 
 use neo3::neo_types::ScriptHash;
 use neo3::sdk::Neo;
@@ -30,9 +30,10 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let height = neo.get_block_height().await?;
     println!("✅ Connected (height = {})", height);
 
-    // Replace with your NEP-11 contract hash
-    let contract = ScriptHash::from_str("0x...").unwrap_or_default();
-    println!("📦 NFT contract (placeholder): {:?}", contract);
+    let contract_hash = std::env::var("NEP11_CONTRACT_HASH")
+        .expect("set NEP11_CONTRACT_HASH to an existing NEP-11 contract script hash");
+    let contract = ScriptHash::from_str(&contract_hash)?;
+    println!("📦 NFT contract: {:?}", contract);
 
     Ok(())
 }
@@ -51,9 +52,9 @@ anyhow = "1.0"
 '''
 
 "README.md" = '''
-# {{project_name}} - NFT Collection (NEP-11)
+# {{project_name}} - NFT Collection Starter (NEP-11)
 
-NFT collection scaffold built with NeoRust SDK v{{neo3_version}}.
+NFT collection starter built with NeoRust SDK v{{neo3_version}}.
 
 ## Next Steps
 
@@ -64,9 +65,9 @@ NFT collection scaffold built with NeoRust SDK v{{neo3_version}}.
 
 "contracts/nft.py" = '''
 """
-NEP-11 NFT Contract Stub (Neo N3 / boa3)
+NEP-11 NFT Contract Entry Point (Neo N3 / boa3)
 
-This is a minimal placeholder contract to show where NFT smart-contract code would live.
-Replace with a full NEP-11 implementation using neo3-boa.
+Use this file for your audited NEP-11 contract implementation. The generated
+Rust client expects a deployed contract hash in NEP11_CONTRACT_HASH.
 """
 '''

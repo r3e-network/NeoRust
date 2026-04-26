@@ -18,3 +18,4 @@ neo_csharp/
 # Local wallet artifacts (examples/tests)
 /my_wallet.json
 /wallet.json
+.omx/

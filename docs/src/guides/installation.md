@@ -4,7 +4,7 @@
 
 - Rust and Cargo (stable or nightly)
 - Optional: Ledger hardware device (for ledger features)
-- Optional: AWS account (for AWS KMS features)
+- Optional: YubiHSM device (for hardware security module features)
 
 ## Installation
 
@@ -12,7 +12,7 @@ Add NeoRust to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-neo3 = "1.0.9"
+neo3 = "1.3.0"
 ```
 
 Note: The crate is published as `neo3` but is imported as `neo` in code:
@@ -32,18 +32,20 @@ NeoRust provides several features to customize functionality:
 - `yubi` / `mock-hsm`: YubiHSM support and its mock for testing
 - `legacy-ws`: Compatibility WebSocket transport (fallback)
 
+Hardware wallet feature gates are compile-checked, but production releases should include real-device tests. The `sgx` and `no_std` flags are experimental specialized build gates and are not certified as general embedded or WASM support.
+
 Example of enabling specific features:
 
 ```toml
 [dependencies]
-neo3 = { version = "1.0.9", features = ["futures", "ws", "ledger"] }
+neo3 = { version = "1.3.0", features = ["futures", "ws", "ledger"] }
 ```
 
 You can disable default features with:
 
 ```toml
 [dependencies]
-neo3 = { version = "1.0.9", default-features = false, features = ["futures"] }
+neo3 = { version = "1.3.0", default-features = false, features = ["futures"] }
 ```
 
 ## Verifying Installation

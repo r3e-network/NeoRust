@@ -179,27 +179,19 @@ Key components:
 - `NeoXTransaction`: Transaction for Neo X
 - `NeoXBridgeContract`: Interface for the Neo X bridge
 
-### neo_sgx
+### SGX and `no_std`
 
-The `neo_sgx` module provides support for Intel SGX (Software Guard Extensions) for secure operations.
+The `sgx` and `no_std` feature flags are experimental compile gates for specialized builds. They are not part of the default host API, and they require an SGX target/toolchain plus enclave-specific validation before production use.
 
 ```rust,no_run
 use neo3::prelude::*;
 
-// Initialize the SGX enclave
-let enclave_manager = SgxEnclaveManager::new("path/to/enclave.so")?;
-
-// Create a wallet with a password
-let wallet = enclave_manager.create_wallet("password")?;
-
-// Sign a transaction securely within the enclave
-let signed_tx = wallet.sign_transaction(&transaction)?;
+// Host builds can compile feature-gated code, but enclave setup is environment-specific.
 ```
 
 Key components:
-- `SgxEnclaveManager`: Manager for SGX enclaves
-- `SgxWallet`: Secure wallet implementation
-- `SgxRpcClient`: Secure RPC client
+- `sgx`: Experimental SGX compile gate
+- `no_std`: Experimental dependency feature forwarding for specialized targets
 
 ## Prelude
 
@@ -216,14 +208,16 @@ This imports all the essential types and functions you need for most operations 
 The NeoRust SDK supports various feature flags to enable specific functionality:
 
 - `ledger`: Support for Ledger hardware wallets
-- `aws`: AWS integration
-- `sgx`: Intel SGX support
+- `yubi`: Support for YubiHSM signing
+- `mock-hsm`: YubiHSM mock backend for tests
+- `ws`: Modern WebSocket transport
+- `sgx` / `no_std`: Experimental specialized build gates
 
 Enable these features in your Cargo.toml:
 
 ```toml
 [dependencies]
-neo3 = { git = "https://github.com/R3E-Network/NeoRust", features = ["ledger", "aws", "sgx"] }
+neo3 = { version = "1.3.0", features = ["ledger", "ws"] }
 ```
 
 ## Error Handling

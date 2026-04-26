@@ -9,19 +9,19 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Crates.io](https://img.shields.io/crates/v/neo3.svg)](https://crates.io/crates/neo3)
 [![Documentation](https://docs.rs/neo3/badge.svg)](https://docs.rs/neo3)
-[![MSRV](https://img.shields.io/badge/MSRV-1.70.0-blue)](https://blog.rust-lang.org/2023/06/01/Rust-1.70.0.html)
+[![MSRV](https://img.shields.io/badge/MSRV-1.83.0-blue)](https://blog.rust-lang.org/2024/11/28/Rust-1.83.0.html)
 
-A comprehensive, production-ready Rust SDK for the Neo N3 blockchain platform. NeoRust provides an enterprise-grade toolkit with simplified APIs, real-time features, and professional developer tools for building blockchain applications.
+A comprehensive Rust SDK for the Neo N3 blockchain platform. NeoRust provides a production-focused toolkit with simplified APIs, real-time features, and developer tools for building blockchain applications.
 
 ## 📊 Project Status
 
-- **Version**: 1.0.9 (Production Ready - Security Hardened)
-- **Rust Version**: 1.70.0+
-- **Neo Version**: v3.9.1 (Latest)
-- **Platform Support**: Windows, macOS, Linux
-- **Security**: Dependencies audited; no known CVEs, with tracked unmaintained transitive crates only
+- **Version**: 1.3.0
+- **Rust Version**: 1.83.0+
+- **Neo Version**: Neo N3 compatible
+- **Platform Support**: Linux verified locally; Windows and macOS are intended targets and should be validated in your CI before release
+- **Security**: Dependency auditing via `cargo deny`; wallet exports use authenticated encryption
 - **Coverage**: Comprehensive testing with property-based tests
-- **Production Readiness**: Enterprise-grade with WebSocket support, HD wallets, and transaction simulation
+- **Production Readiness**: Core wallet, cryptography, RPC, WebSocket, and simulation paths are tested; hardware devices, SGX/no_std, and live broadcasts require environment-specific validation
 - **Performance**: <100ms WebSocket latency, <10ms HD derivation, 50-70% code reduction
 
 ## Features
@@ -34,7 +34,7 @@ A comprehensive, production-ready Rust SDK for the Neo N3 blockchain platform. N
 - 🪙 **Token Support** - Native NEP-17 token operations and custom token support
 - 🌐 **Network Support** - Mainnet, Testnet, and custom network configurations
 
-### New in v1.0.x 🚀
+### Highlights
 - 🌉 **Neo X EVM Integration** - Full `ethers-rs` compatibility with unified cross-chain `EcosystemClient`
 - 🛡️ **Anti-MEV Support** - Built-in secure mempool routing for Neo X to prevent front-running
 - 🌐 **WebSocket Support** - Real-time blockchain events with auto-reconnection
@@ -56,12 +56,12 @@ Add NeoRust to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-neo3 = "1.0.9"
+neo3 = "1.3.0"
 ```
 
 ## Basic Usage
 
-### New Simplified API (v1.0.x+)
+### Simplified API
 
 ```rust
 use neo3::sdk::{Neo, Network};
@@ -131,15 +131,16 @@ let client = RpcClient::new(http);
 - `ipc`: enable IPC (Unix domain sockets / Windows named pipes)
 - `legacy-ws`: legacy WebSocket compatibility layer (fallback)
 - `mock`: enable `MockClient` and in-memory mocking helpers
-- `ledger`, `yubi`: opt into hardware wallet support
-- `no_std`, `sgx`: specialized environments
+- `ledger`, `yubi`: opt into hardware wallet support; feature gates compile, but real devices must be tested before production use
+- `mock-hsm`: enables the YubiHSM mock backend for tests
+- `no_std`, `sgx`: experimental compile-gated specialized environments; not certified as general `no_std` target support
 
 ### WebSocket Real-time Events
 
 Requires the `ws` feature:
 
 ```toml
-neo3 = { version = "1.0.9", features = ["ws"] }
+neo3 = { version = "1.3.0", features = ["ws"] }
 ```
 
 ```rust

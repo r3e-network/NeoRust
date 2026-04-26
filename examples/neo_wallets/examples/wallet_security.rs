@@ -28,7 +28,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 	// Export WIF for backup (should be done securely)
 	if let Some(first_account) = accounts.first() {
 		if let Some(key_pair) = first_account.key_pair() {
-			let wif = key_pair.export_as_wif();
+			let wif = key_pair.export_as_wif()?;
 			println!("   🔑 WIF backup (store securely): {}...", &wif[..10]);
 		}
 	}

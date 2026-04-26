@@ -1,6 +1,6 @@
 # SDK Safety Refactor Implementation Plan
 
-> **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
+> **For Implementer:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
 
 **Goal:** Replace a focused set of silent-fallback conversion behaviors with explicit, testable APIs that better match Rust SDK best practices.
 

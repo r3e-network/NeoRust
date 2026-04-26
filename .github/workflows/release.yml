@@ -116,7 +116,7 @@ jobs:
   # Create GitHub release
   release:
     name: Create GitHub Release
-    needs: [prepare, build]
+    needs: [prepare, build, publish]
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
@@ -159,3 +159,30 @@ jobs:
             artifacts/**/*.tar.gz
             artifacts/**/*.zip
           token: ${{ secrets.GITHUB_TOKEN }}
+
+  # Publish crate
+  publish:
+    name: Publish neo3 crate
+    needs: [prepare, build]
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      CARGO_TOKEN: ${{ secrets.CARGO_TOKEN }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Verify package
+        run: cargo publish --dry-run --locked
+
+      - name: Publish to crates.io
+        if: env.CARGO_TOKEN != ''
+        run: cargo publish --locked --token "$CARGO_TOKEN"
+
+      - name: Skip publish without token
+        if: env.CARGO_TOKEN == ''
+        run: |
+          echo "CARGO_TOKEN is not configured; skipping crates.io publish."

@@ -241,7 +241,15 @@ impl<'a> EcosystemClient<'a> {
 						field: Some("evm_provider".into()),
 						recovery: ErrorRecovery::default(),
 					})?;
-				let bridge = NeoXBridgeContractEVM::default_bridge(evm.clone());
+				let bridge = NeoXBridgeContractEVM::default_bridge(evm.clone()).map_err(|e| {
+					NeoError::Contract {
+						message: e.to_string(),
+						contract: Some("NeoXBridgeEVM".into()),
+						method: Some("default_bridge".into()),
+						source: None,
+						recovery: ErrorRecovery::default(),
+					}
+				})?;
 
 				// Generate the ContractCall builder
 				let call = bridge.withdraw(token_addr, amount_wei, destination_address.to_string());

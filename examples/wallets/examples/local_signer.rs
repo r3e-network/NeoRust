@@ -35,7 +35,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
 	println!("   📍 Address: {}", random_account.get_address());
 	// Get the WIF from the key pair
 	if let Some(key_pair) = random_account.key_pair() {
-		let wif = key_pair.export_as_wif();
+		let wif = key_pair.export_as_wif()?;
 		let wif_preview = if wif.len() > 16 {
 			format!("{}...{}", &wif[..10], &wif[wif.len() - 6..])
 		} else {
@@ -118,7 +118,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
 	// Sign the message
 	if let Some(key_pair) = account.key_pair() {
-		let signature = key_pair.private_key().sign_tx(message_bytes)?;
+		let signature = key_pair.sign(message_bytes)?;
 		println!("   ✅ Message signed");
 		println!("   📝 Message: {message}");
 		println!("   🔏 Signature length: {} bytes", signature.to_bytes().len());

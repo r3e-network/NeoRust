@@ -175,14 +175,35 @@ jobs:
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
 
+      - name: Check crates.io publication
+        id: crates
+        shell: bash
+        run: |
+          VERSION="${{ needs.prepare.outputs.version }}"
+          VERSION_NUM="${VERSION#v}"
+
+          if cargo search neo3 --limit 1 | grep -q "^neo3 = \"${VERSION_NUM}\""; then
+            echo "published=true" >> "$GITHUB_OUTPUT"
+            echo "neo3 ${VERSION_NUM} is already published on crates.io."
+          else
+            echo "published=false" >> "$GITHUB_OUTPUT"
+            echo "neo3 ${VERSION_NUM} is not published on crates.io."
+          fi
+
       - name: Verify package
+        if: steps.crates.outputs.published != 'true'
         run: cargo publish --dry-run --locked
 
       - name: Publish to crates.io
-        if: env.CARGO_TOKEN != ''
+        if: steps.crates.outputs.published != 'true' && env.CARGO_TOKEN != ''
         run: cargo publish --locked --token "$CARGO_TOKEN"
 
       - name: Skip publish without token
-        if: env.CARGO_TOKEN == ''
+        if: steps.crates.outputs.published != 'true' && env.CARGO_TOKEN == ''
         run: |
           echo "CARGO_TOKEN is not configured; skipping crates.io publish."
+
+      - name: Skip already published crate
+        if: steps.crates.outputs.published == 'true'
+        run: |
+          echo "neo3 ${{ needs.prepare.outputs.version }} is already published; skipping crates.io publish."

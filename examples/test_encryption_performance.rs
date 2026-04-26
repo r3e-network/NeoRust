@@ -4,7 +4,7 @@ use neo3::{
 };
 use std::time::Instant;
 
-fn main() {
+fn main() -> Result<(), Box<dyn std::error::Error>> {
 	println!("Testing wallet encryption performance...");
 
 	// Test with different numbers of accounts
@@ -19,10 +19,11 @@ fn main() {
 
 		println!("\nEncrypting {account_count} accounts...");
 		let start = Instant::now();
-		wallet.encrypt_accounts("test_password");
+		wallet.encrypt_accounts("test_password")?;
 		let duration = start.elapsed();
 
 		println!("Time taken: {duration:?}");
 		println!("Average per account: {:?}", duration / account_count as u32);
 	}
+	Ok(())
 }

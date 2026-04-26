@@ -166,8 +166,8 @@ impl NeoFSClient {
 
 		if let Some(auth) = &self.config.auth {
 			if auth.private_key.is_some() {
-				return Err(NeoFSError::NotImplemented(
-					"NeoFS request signing is not implemented; do not provide private_key"
+				return Err(NeoFSError::UnsupportedOperation(
+					"raw private-key request signing is not supported by the REST gateway client; use an Account-backed native NeoFS client for signed container, ACL, or token operations"
 						.to_string(),
 				));
 			}
@@ -466,15 +466,15 @@ impl NeoFSService for NeoFSClient {
 		expires_sec: u64,
 	) -> NeoFSResult<BearerToken> {
 		let _ = (container_id, permissions, expires_sec);
-		Err(NeoFSError::NotImplemented(
-			"Bearer token creation is not implemented (requires NeoFS token signing/verification)"
+		Err(NeoFSError::UnsupportedOperation(
+			"bearer token creation requires native NeoFS token signing; the REST gateway client does not fabricate tokens"
 				.to_string(),
 		))
 	}
 
 	async fn get_session_token(&self) -> NeoFSResult<SessionToken> {
-		Err(NeoFSError::NotImplemented(
-			"Session token retrieval is not implemented (requires NeoFS authentication integration)"
+		Err(NeoFSError::UnsupportedOperation(
+			"session token retrieval requires a native NeoFS authentication flow; the REST gateway client does not fabricate sessions"
 				.to_string(),
 		))
 	}

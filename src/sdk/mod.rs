@@ -1256,7 +1256,7 @@ impl NeoBuilder {
 
 		let endpoint = match &self.network {
 			Network::MainNet => "https://mainnet1.neo.org:443".to_string(),
-			Network::TestNet => "https://testnet1.neo.org:443".to_string(),
+			Network::TestNet => "https://testnet1.neo.coz.io:443".to_string(),
 			Network::Custom(url) => url.clone(),
 		};
 

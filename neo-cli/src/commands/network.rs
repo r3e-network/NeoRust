@@ -11,6 +11,7 @@ use clap::{Args, Subcommand};
 use comfy_table::{Cell, Color};
 use neo3::neo_clients::{APITrait, HttpProvider, RpcClient};
 use serde::{Deserialize, Serialize};
+use std::time::Instant;
 use url::Url;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -164,7 +165,7 @@ async fn handle_connect_network(
 	let client = with_loading("Testing connection...", async {
 		let url =
 			Url::parse(&target_network.rpc_url).map_err(|e| format!("Invalid RPC URL: {}", e))?;
-		let provider = HttpProvider::new(url).unwrap();
+		let provider = HttpProvider::new(url).map_err(|e| format!("Invalid RPC URL: {}", e))?;
 		Ok::<_, String>(RpcClient::new(provider))
 	})
 	.await
@@ -329,7 +330,7 @@ async fn handle_add_network(
 	// Test the connection first
 	let client = with_loading("Testing network connection...", async {
 		let url = Url::parse(&url).map_err(|e| format!("Invalid RPC URL: {}", e))?;
-		let provider = HttpProvider::new(url).unwrap();
+		let provider = HttpProvider::new(url).map_err(|e| format!("Invalid RPC URL: {}", e))?;
 		Ok::<_, String>(RpcClient::new(provider))
 	})
 	.await
@@ -409,47 +410,242 @@ async fn handle_remove_network(name: String, state: &mut CliState) -> Result<(),
 	Ok(())
 }
 
-// Professional implementation functions with comprehensive error handling and user guidance
-async fn handle_show_peers(_state: &CliState) -> Result<(), CliError> {
-	Err(CliError::NotImplemented(
-		"Network peers query requires comprehensive network topology integration. \
-		Professional implementation includes:\n\n\
-		1. Advanced RPC getpeers method implementation\n\
-		2. Complete peer connection status and health monitoring\n\
-		3. Professional geographical location and latency tracking\n\
-		4. Comprehensive connection quality and version compatibility\n\
-		5. Advanced network topology visualization\n\n\
-		For peer information, check the Neo network explorer or node status directly."
-			.to_string(),
-	))
+async fn handle_show_peers(state: &CliState) -> Result<(), CliError> {
+	print_section_header("Network Peers");
+
+	let client = state.get_rpc_client()?;
+	let peers = with_loading("Fetching peer list...", async { client.get_peers().await })
+		.await
+		.map_err(|e| CliError::Network(format!("Failed to fetch peers: {}", e)))?;
+
+	let mut table = create_table();
+	table.set_header(vec![
+		Cell::new("Status").fg(Color::Cyan),
+		Cell::new("Address").fg(Color::Cyan),
+		Cell::new("Port").fg(Color::Cyan),
+	]);
+
+	for peer in &peers.connected {
+		table.add_row(vec![
+			Cell::new("Connected").fg(Color::Green),
+			Cell::new(&peer.address).fg(Color::White),
+			Cell::new(peer.port.to_string()).fg(Color::Yellow),
+		]);
+	}
+	for peer in &peers.unconnected {
+		table.add_row(vec![
+			Cell::new("Unconnected").fg(Color::Yellow),
+			Cell::new(&peer.address).fg(Color::White),
+			Cell::new(peer.port.to_string()).fg(Color::Yellow),
+		]);
+	}
+	for peer in &peers.bad {
+		table.add_row(vec![
+			Cell::new("Bad").fg(Color::Red),
+			Cell::new(&peer.address).fg(Color::White),
+			Cell::new(peer.port.to_string()).fg(Color::Yellow),
+		]);
+	}
+
+	println!("{table}");
+	print_info(&format!(
+		"Connected: {}, unconnected: {}, bad: {}",
+		peers.connected.len(),
+		peers.unconnected.len(),
+		peers.bad.len()
+	));
+
+	Ok(())
 }
 
-async fn handle_show_block(_height: Option<u32>, _state: &CliState) -> Result<(), CliError> {
-	Err(CliError::NotImplemented(
-		"Block information query requires comprehensive blockchain integration. \
-		Professional implementation includes:\n\n\
-		1. Advanced RPC getblock method with detailed parsing\n\
-		2. Complete transaction list and witness data formatting\n\
-		3. Professional block validation and merkle root verification\n\
-		4. Comprehensive historical block navigation and search\n\
-		5. Advanced performance optimization for large blocks\n\n\
-		For block information, use blockchain explorers or direct RPC calls."
-			.to_string(),
-	))
+async fn handle_show_block(height: Option<u32>, state: &CliState) -> Result<(), CliError> {
+	print_section_header("Block Information");
+
+	let client = state.get_rpc_client()?;
+	let block_index = if let Some(height) = height {
+		height
+	} else {
+		let block_count = client
+			.get_block_count()
+			.await
+			.map_err(|e| CliError::Network(format!("Failed to get block count: {}", e)))?;
+		block_count
+			.checked_sub(1)
+			.ok_or_else(|| CliError::Network("The chain has no blocks to display".to_string()))?
+	};
+
+	let loading = format!("Fetching block {}...", block_index);
+	let block =
+		with_loading(&loading, async { client.get_block_by_index(block_index, true).await })
+			.await
+			.map_err(|e| {
+				CliError::Network(format!("Failed to fetch block {}: {}", block_index, e))
+			})?;
+
+	let tx_count = block.transactions.as_ref().map_or(0, |txs| txs.len());
+	let mut table = create_table();
+	table.add_row(vec![Cell::new("Hash").fg(Color::Cyan), Cell::new(block.hash.to_string())]);
+	table.add_row(vec![
+		Cell::new("Index").fg(Color::Cyan),
+		Cell::new(block.index.to_string()).fg(Color::Green),
+	]);
+	table.add_row(vec![
+		Cell::new("Timestamp").fg(Color::Cyan),
+		Cell::new(block.time.to_string()).fg(Color::Green),
+	]);
+	table.add_row(vec![
+		Cell::new("Size").fg(Color::Cyan),
+		Cell::new(format!("{} bytes", block.size)).fg(Color::Yellow),
+	]);
+	table.add_row(vec![
+		Cell::new("Transactions").fg(Color::Cyan),
+		Cell::new(tx_count.to_string()).fg(Color::Yellow),
+	]);
+	table.add_row(vec![
+		Cell::new("Merkle Root").fg(Color::Cyan),
+		Cell::new(block.merkle_root_hash.to_string()),
+	]);
+	table.add_row(vec![
+		Cell::new("Previous Block").fg(Color::Cyan),
+		Cell::new(block.prev_block_hash.to_string()),
+	]);
+	table.add_row(vec![
+		Cell::new("Next Consensus").fg(Color::Cyan),
+		Cell::new(block.next_consensus),
+	]);
+	println!("{table}");
+
+	if let Some(transactions) = block.transactions {
+		if !transactions.is_empty() {
+			let mut tx_table = create_table();
+			tx_table.set_header(vec![
+				Cell::new("#").fg(Color::Cyan),
+				Cell::new("Transaction Hash").fg(Color::Cyan),
+			]);
+			for (index, tx) in transactions.iter().enumerate() {
+				tx_table.add_row(vec![
+					Cell::new((index + 1).to_string()).fg(Color::Yellow),
+					Cell::new(tx.hash.to_string()).fg(Color::White),
+				]);
+			}
+			println!("{tx_table}");
+		}
+	}
+
+	print_success("Block information retrieved successfully");
+	Ok(())
 }
 
-async fn handle_ping_network(_network: Option<String>, _state: &CliState) -> Result<(), CliError> {
-	Err(CliError::NotImplemented(
-		"Network connectivity testing requires comprehensive network analysis integration. \
-		Professional implementation includes:\n\n\
-		1. Advanced multi-endpoint latency measurement\n\
-		2. Complete connection stability and timeout handling\n\
-		3. Professional bandwidth and throughput testing\n\
-		4. Comprehensive network health scoring and recommendations\n\
-		5. Advanced continuous monitoring and alerting\n\n\
-		For network testing, use external monitoring tools or manual RPC calls."
-			.to_string(),
-	))
+async fn handle_ping_network(network: Option<String>, state: &CliState) -> Result<(), CliError> {
+	print_section_header("Network Connectivity");
+
+	let target_network = resolve_network_selection(network, state)?;
+	let provider = HttpProvider::new(target_network.rpc_url.as_str()).map_err(|e| {
+		CliError::Network(format!("Invalid RPC URL '{}': {}", target_network.rpc_url, e))
+	})?;
+	let client = RpcClient::new(provider);
+
+	let start = Instant::now();
+	let (version, block_count, connection_count) = with_loading("Testing RPC endpoint...", async {
+		let version = client.get_version().await?;
+		let block_count = client.get_block_count().await?;
+		let connection_count = client.get_connection_count().await.ok();
+		Ok::<_, <RpcClient<HttpProvider> as APITrait>::Error>((
+			version,
+			block_count,
+			connection_count,
+		))
+	})
+	.await
+	.map_err(|e| CliError::Network(format!("Network ping failed: {}", e)))?;
+
+	let elapsed = start.elapsed();
+	let mut table = create_table();
+	table.add_row(vec![
+		Cell::new("Network").fg(Color::Cyan),
+		Cell::new(&target_network.name).fg(Color::Green),
+	]);
+	table.add_row(vec![
+		Cell::new("RPC URL").fg(Color::Cyan),
+		Cell::new(&target_network.rpc_url).fg(Color::Blue),
+	]);
+	table.add_row(vec![
+		Cell::new("Latency").fg(Color::Cyan),
+		Cell::new(format!("{} ms", elapsed.as_millis())).fg(Color::Green),
+	]);
+	table.add_row(vec![
+		Cell::new("Block Height").fg(Color::Cyan),
+		Cell::new(block_count.to_string()).fg(Color::Green),
+	]);
+	table.add_row(vec![
+		Cell::new("Node").fg(Color::Cyan),
+		Cell::new(version.user_agent).fg(Color::Yellow),
+	]);
+	if let Some(protocol) = version.protocol {
+		table.add_row(vec![
+			Cell::new("Protocol Network").fg(Color::Cyan),
+			Cell::new(protocol.network.to_string()).fg(Color::Yellow),
+		]);
+	}
+	table.add_row(vec![
+		Cell::new("Connections").fg(Color::Cyan),
+		Cell::new(
+			connection_count.map_or_else(|| "Unavailable".to_string(), |count| count.to_string()),
+		)
+		.fg(Color::Yellow),
+	]);
+	table.add_row(vec![
+		Cell::new("Status").fg(Color::Cyan),
+		Cell::new(format!("{} Reachable", status_indicator("success"))).fg(Color::Green),
+	]);
+
+	println!("{table}");
+	print_success("Network endpoint is reachable");
+	Ok(())
+}
+
+fn resolve_network_selection(
+	network: Option<String>,
+	state: &CliState,
+) -> Result<NetworkConfig, CliError> {
+	let Some(selection) = network else {
+		return state
+			.current_network
+			.clone()
+			.ok_or_else(|| CliError::Network("No current network configured".to_string()));
+	};
+
+	if selection.starts_with("http://") || selection.starts_with("https://") {
+		return Ok(NetworkConfig {
+			name: "Custom".to_string(),
+			rpc_url: selection,
+			network_type: "custom".to_string(),
+			chain_id: 0,
+			is_default: false,
+		});
+	}
+
+	let selection_lower = selection.to_lowercase();
+	if selection_lower == "local" {
+		return Ok(NetworkConfig {
+			name: "Local".to_string(),
+			rpc_url: "http://localhost:10332".to_string(),
+			network_type: "local".to_string(),
+			chain_id: 0,
+			is_default: false,
+		});
+	}
+
+	state
+		.networks
+		.iter()
+		.find(|network| {
+			network.name.to_lowercase() == selection_lower
+				|| network.network_type.to_lowercase() == selection_lower
+				|| network.name.to_lowercase().contains(&selection_lower)
+		})
+		.cloned()
+		.ok_or_else(|| CliError::Network(format!("Network '{}' not found", selection)))
 }
 
 async fn connect_to_network(network_index: usize, state: &mut CliState) -> Result<(), CliError> {
@@ -461,7 +657,8 @@ async fn connect_to_network(network_index: usize, state: &mut CliState) -> Resul
 	let url = Url::parse(&target_network.rpc_url)
 		.map_err(|e| CliError::Network(format!("Invalid RPC URL: {}", e)))?;
 
-	let provider = HttpProvider::new(url).unwrap();
+	let provider =
+		HttpProvider::new(url).map_err(|e| CliError::Network(format!("Invalid RPC URL: {}", e)))?;
 	let client = RpcClient::new(provider);
 
 	// Test the connection
@@ -490,7 +687,8 @@ async fn test_network_connection(url: String) -> Result<(), CliError> {
 	let parsed_url =
 		Url::parse(&url).map_err(|e| CliError::Network(format!("Invalid RPC URL: {}", e)))?;
 
-	let provider = HttpProvider::new(parsed_url).unwrap();
+	let provider = HttpProvider::new(parsed_url)
+		.map_err(|e| CliError::Network(format!("Invalid RPC URL: {}", e)))?;
 	let client = RpcClient::new(provider);
 
 	match client.get_version().await {

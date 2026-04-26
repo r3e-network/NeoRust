@@ -45,9 +45,6 @@ pub enum CliError {
 	#[error("Timeout error: {0}")]
 	Timeout(String),
 
-	#[error("Not implemented: {0}")]
-	NotImplemented(String),
-
 	#[error("Configuration error: {0}")]
 	Config(String),
 

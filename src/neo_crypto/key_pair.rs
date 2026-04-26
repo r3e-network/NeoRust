@@ -23,21 +23,21 @@ use crate::{
 };
 use p256::elliptic_curve::zeroize::{Zeroize, ZeroizeOnDrop};
 
-/// Represents an Elliptic Curve Key Pair containing both a private and a public key.
+/// Represents an elliptic-curve key pair or a public-key-only identity.
 #[derive(Debug, Clone)]
 pub struct KeyPair {
 	/// The private key component of the key pair.
-	pub private_key: Secp256r1PrivateKey,
+	private_key: Option<Secp256r1PrivateKey>,
 
 	/// The public key component of the key pair.
-	pub public_key: Secp256r1PublicKey,
-
-	/// Whether this key pair contains a real private key.
-	/// `false` when created via `from_public_key()`, which uses a placeholder.
-	pub has_private_key: bool,
+	public_key: Secp256r1PublicKey,
 }
 
 impl KeyPair {
+	fn missing_private_key_error() -> CryptoError {
+		CryptoError::KeyError("Key pair does not contain a private key".to_string())
+	}
+
 	/// Creates a new `KeyPair` instance given a private key and its corresponding public key.
 	///
 	/// # Arguments
@@ -45,24 +45,27 @@ impl KeyPair {
 	/// * `private_key` - A `Secp256r1PrivateKey` representing the private key.
 	/// * `public_key` - A `Secp256r1PublicKey` representing the public key.
 	pub fn new(private_key: Secp256r1PrivateKey, public_key: Secp256r1PublicKey) -> Self {
-		Self { private_key, public_key, has_private_key: true }
+		Self { private_key: Some(private_key), public_key }
 	}
 
 	/// Returns a clone of the private key.
 	///
+	/// Returns an error if this is a public-key-only key pair created with
+	/// [`KeyPair::from_public_key`].
+	///
 	/// PERFORMANCE NOTE: Consider using `private_key_ref()` to avoid cloning
 	/// when you only need to read the key.
-	pub fn private_key(&self) -> Secp256r1PrivateKey {
-		self.private_key.clone()
+	pub fn private_key(&self) -> Result<Secp256r1PrivateKey, CryptoError> {
+		self.private_key.as_ref().cloned().ok_or_else(Self::missing_private_key_error)
 	}
 
 	/// Returns a reference to the private key without cloning.
 	///
-	/// Use this method when you only need to read the private key
-	/// to avoid unnecessary memory allocation.
+	/// Returns an error if this is a public-key-only key pair created with
+	/// [`KeyPair::from_public_key`].
 	#[inline]
-	pub fn private_key_ref(&self) -> &Secp256r1PrivateKey {
-		&self.private_key
+	pub fn private_key_ref(&self) -> Result<&Secp256r1PrivateKey, CryptoError> {
+		self.private_key.as_ref().ok_or_else(Self::missing_private_key_error)
 	}
 
 	/// Returns a clone of the public key.
@@ -82,6 +85,12 @@ impl KeyPair {
 		&self.public_key
 	}
 
+	/// Returns true when this key pair contains a usable private key.
+	#[inline]
+	pub fn has_private_key(&self) -> bool {
+		self.private_key.is_some()
+	}
+
 	/// Derives a new `KeyPair` instance from just a private key.
 	/// The public key is derived from the given private key.
 	///
@@ -94,8 +103,8 @@ impl KeyPair {
 	}
 
 	/// Returns the 32-byte representation of the private key.
-	pub fn private_key_bytes(&self) -> [u8; 32] {
-		self.private_key.to_raw_bytes()
+	pub fn private_key_bytes(&self) -> Result<[u8; 32], CryptoError> {
+		Ok(self.private_key_ref()?.to_raw_bytes())
 	}
 
 	/// Returns the 64-byte uncompressed representation of the public key.
@@ -121,10 +130,7 @@ impl KeyPair {
 	/// Returns an error if this key pair was created via `from_public_key()`
 	/// and does not contain a real private key.
 	pub fn sign(&self, message: &[u8]) -> Result<Secp256r1Signature, CryptoError> {
-		if !self.has_private_key {
-			return Err(CryptoError::SigningError);
-		}
-		self.private_key.sign_tx(message)
+		self.private_key_ref()?.sign_tx(message)
 	}
 
 	/// Verifies a signature against a message using this key pair's public key.
@@ -179,21 +185,19 @@ impl KeyPair {
 	/// * `public_key` - The 64-byte uncompressed public key (x || y, without the 0x04 prefix).
 	pub fn from_public_key(public_key: &[u8; 64]) -> Result<Self, CryptoError> {
 		let public_key = Secp256r1PublicKey::from_slice(public_key)?;
-		let mut placeholder_private_key = [0u8; 32];
-		placeholder_private_key[31] = 1; // secp256r1 private keys must be in the range [1, n-1]
-		let secret_key = Secp256r1PrivateKey::from_bytes(&placeholder_private_key)?;
-		Ok(Self { private_key: secret_key, public_key, has_private_key: false })
+		Ok(Self { private_key: None, public_key })
 	}
 
-	/// Exports the key pair as a Wallet Import Format (WIF) string
+	/// Exports the key pair as a Wallet Import Format (WIF) string.
 	///
-	/// Returns: The WIF encoding of this key pair
-	pub fn export_as_wif(&self) -> String {
-		wif_from_private_key(&self.private_key())
+	/// Returns an error when this is a public-key-only key pair created with
+	/// [`KeyPair::from_public_key`].
+	pub fn export_as_wif(&self) -> Result<String, CryptoError> {
+		Ok(wif_from_private_key(self.private_key_ref()?))
 	}
 
 	pub fn get_script_hash(&self) -> ScriptHash {
-		let vs = VerificationScript::from_public_key(&self.public_key());
+		let vs = VerificationScript::from_public_key(self.public_key_ref());
 		vs.hash()
 	}
 
@@ -204,16 +208,16 @@ impl KeyPair {
 
 impl PartialEq for KeyPair {
 	fn eq(&self, other: &Self) -> bool {
-		self.private_key == other.private_key
-			&& self.public_key == other.public_key
-			&& self.has_private_key == other.has_private_key
+		self.private_key == other.private_key && self.public_key == other.public_key
 	}
 }
 
 // Implement Zeroize for manual zeroization if needed
 impl Zeroize for KeyPair {
 	fn zeroize(&mut self) {
-		self.private_key.zeroize();
+		if let Some(private_key) = self.private_key.as_mut() {
+			private_key.zeroize();
+		}
 		// Note: public_key is not sensitive, so we don't zeroize it
 	}
 }
@@ -223,7 +227,11 @@ impl ZeroizeOnDrop for KeyPair {}
 
 #[cfg(test)]
 mod tests {
-	use crate::{config::TestConstants, crypto::KeyPair, ScriptHash, ScriptHashExtension};
+	use crate::{
+		config::TestConstants,
+		crypto::{CryptoError, KeyPair},
+		ScriptHash, ScriptHashExtension,
+	};
 	use hex;
 
 	#[test]
@@ -234,9 +242,22 @@ mod tests {
 		let private_key_arr: &[u8; 32] = private_key.as_slice().try_into().unwrap();
 		let key_pair = KeyPair::from_private_key(private_key_arr).unwrap();
 		assert_eq!(
-			key_pair.export_as_wif(),
+			key_pair.export_as_wif().unwrap(),
 			"L3tgppXLgdaeqSGSFw1Go3skBiy8vQAM7YMXvTHsKQtE16PBncSU"
 		);
+	}
+
+	#[test]
+	fn test_public_key_only_wif_export_fails() {
+		let key_pair = KeyPair::new_random();
+		let public_key = key_pair.public_key_bytes();
+		let watch_only = KeyPair::from_public_key(&public_key).unwrap();
+
+		assert!(!watch_only.has_private_key());
+		assert!(matches!(watch_only.private_key_ref(), Err(CryptoError::KeyError(_))));
+		assert!(matches!(watch_only.private_key_bytes(), Err(CryptoError::KeyError(_))));
+		assert!(matches!(watch_only.sign(b"message"), Err(CryptoError::KeyError(_))));
+		assert!(matches!(watch_only.export_as_wif(), Err(CryptoError::KeyError(_))));
 	}
 
 	#[test]

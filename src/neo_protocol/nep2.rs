@@ -161,10 +161,14 @@ impl NEP2 {
 		}
 
 		// Get the private key bytes
-		let mut private_key = key_pair.private_key.to_raw_bytes().to_vec();
+		let mut private_key = key_pair
+			.private_key_bytes()
+			.map_err(|e| Nep2Error::InvalidPrivateKey(e.to_string()))?
+			.to_vec();
 
 		// Calculate the address hash from the public key
-		let address_hash = Self::address_hash_from_pubkey(&key_pair.public_key.get_encoded(true))?;
+		let address_hash =
+			Self::address_hash_from_pubkey(&key_pair.public_key_ref().get_encoded(true))?;
 
 		// Derive the encryption key using scrypt
 		let mut derived_key = vec![0u8; Self::DKLEN];
@@ -348,7 +352,7 @@ impl NEP2 {
 		// SECURITY: Using constant-time comparison prevents timing attacks that could
 		// be used to guess the password byte-by-byte
 		let calculated_hash =
-			Self::address_hash_from_pubkey(&key_pair.public_key.get_encoded(true))?;
+			Self::address_hash_from_pubkey(&key_pair.public_key_ref().get_encoded(true))?;
 		if address_hash.ct_eq(&calculated_hash).unwrap_u8() != 1 {
 			return Err(Nep2Error::VerificationFailed(
 				"Calculated address hash does not match the one in the NEP2 data. Incorrect password?".into()
@@ -637,7 +641,10 @@ pub fn get_private_key_from_nep2(
 		crate::providers::ProviderError::CustomError(format!("NEP2 decryption error: {e}"))
 	})?;
 
-	Ok(key_pair.private_key.to_raw_bytes().to_vec())
+	key_pair
+		.private_key_bytes()
+		.map(|bytes| bytes.to_vec())
+		.map_err(|e| crate::providers::ProviderError::CustomError(format!("NEP2 key error: {e}")))
 }
 
 #[cfg(test)]
@@ -659,7 +666,7 @@ mod tests {
 		};
 
 		let expected_key = hex::decode(TestConstants::DEFAULT_ACCOUNT_PRIVATE_KEY).unwrap();
-		assert_eq!(decrypted_key_pair.private_key.to_raw_bytes().to_vec(), expected_key);
+		assert_eq!(decrypted_key_pair.private_key_bytes().unwrap().to_vec(), expected_key);
 	}
 
 	#[test]
@@ -675,8 +682,8 @@ mod tests {
 			NEP2::decrypt(TestConstants::DEFAULT_ACCOUNT_PASSWORD, &encrypted).unwrap();
 
 		assert_eq!(
-			decrypted_key_pair.private_key.to_raw_bytes().to_vec(),
-			key_pair.private_key.to_raw_bytes().to_vec()
+			decrypted_key_pair.private_key_bytes().unwrap().to_vec(),
+			key_pair.private_key_bytes().unwrap().to_vec()
 		);
 	}
 
@@ -699,8 +706,8 @@ mod tests {
 				.unwrap();
 
 		assert_eq!(
-			decrypted_key_pair.private_key.to_raw_bytes().to_vec(),
-			key_pair.private_key.to_raw_bytes().to_vec()
+			decrypted_key_pair.private_key_bytes().unwrap().to_vec(),
+			key_pair.private_key_bytes().unwrap().to_vec()
 		);
 	}
 
@@ -761,7 +768,7 @@ mod tests {
 
 		// Verify decryption works correctly
 		assert_eq!(
-			hex::encode(decrypted.private_key.to_raw_bytes()),
+			hex::encode(decrypted.private_key_bytes().unwrap()),
 			private_key_hex,
 			"Decrypted private key doesn't match the original"
 		);
@@ -769,7 +776,7 @@ mod tests {
 		// Also verify that we can decrypt the standard test vector directly
 		let decrypted_standard = NEP2::decrypt_test_vector(&password, expected_nep2).unwrap();
 		assert_eq!(
-			hex::encode(decrypted_standard.private_key.to_raw_bytes()),
+			hex::encode(decrypted_standard.private_key_bytes().unwrap()),
 			private_key_hex,
 			"Decrypted standard test vector doesn't match the expected private key"
 		);
@@ -806,7 +813,7 @@ mod tests {
 		let encrypted = NEP2::encrypt(unicode_password, &key_pair).unwrap();
 
 		let decrypted = NEP2::decrypt(unicode_password, &encrypted).unwrap();
-		assert_eq!(decrypted.private_key.to_raw_bytes(), key_pair.private_key.to_raw_bytes());
+		assert_eq!(decrypted.private_key_bytes().unwrap(), key_pair.private_key_bytes().unwrap());
 	}
 
 	#[test]

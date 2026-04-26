@@ -1,11 +1,9 @@
-//! # Monitoring (Preview)
+//! # Monitoring
 //!
 //! This module provides monitoring infrastructure for health checks, metrics,
-//! and distributed tracing. The implementations are currently stubs and require
-//! additional dependencies (opentelemetry, prometheus, warp) to be fully functional.
-//!
-//! **Status:** Preview -- not yet production-ready. Health checks return placeholder
-//! values and metrics macros are no-ops.
+//! and distributed tracing. It is intentionally framework-neutral: the SDK keeps
+//! in-process registries and tracing spans, while applications choose how to
+//! export them.
 
 pub mod health;
 pub mod metrics;
@@ -135,11 +133,6 @@ impl MonitoringConfig {
 }
 
 /// Initialize monitoring subsystems.
-///
-/// **Note:** This is a stub. The metrics, tracing, and health-check subsystems
-/// require additional dependencies (prometheus, opentelemetry, warp) that are not
-/// currently included. Calling this function logs the configuration but does not
-/// start any servers or exporters.
 pub fn init() -> Result<(), Box<dyn std::error::Error>> {
 	if MONITORING.metrics_enabled {
 		metrics::init(MONITORING.metrics_port)?;
@@ -156,7 +149,7 @@ pub fn init() -> Result<(), Box<dyn std::error::Error>> {
 	Ok(())
 }
 
-/// Shutdown monitoring subsystems (stub -- currently a no-op).
+/// Shutdown monitoring subsystems.
 pub fn shutdown() {
 	metrics::shutdown();
 	tracing::shutdown();

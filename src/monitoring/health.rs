@@ -1,14 +1,8 @@
-//! # Health Checks (Stub)
+//! # Health Checks
 //!
-//! Health check infrastructure for liveness and readiness probes.
-//!
-//! **Status:** Stub implementation. The HTTP health-check server requires the `warp`
-//! crate which is not currently a dependency. All check functions return hardcoded
-//! placeholder values and do not perform real checks.
-//!
-//! When the required dependencies are added, this module will expose HTTP endpoints
-//! at `/health`, `/health/liveness`, and `/health/readiness` compatible with
-//! Kubernetes probes.
+//! In-process health check infrastructure for liveness and readiness probes.
+//! Applications can expose the returned registry state through their own HTTP
+//! stack without coupling the SDK to a web framework.
 
 use once_cell::sync::OnceCell;
 use serde::{Deserialize, Serialize};
@@ -100,106 +94,69 @@ pub struct HealthResponse {
 }
 
 /// Initialize health check system.
-///
-/// **Stub:** Registers placeholder health checks but does NOT start an HTTP server
-/// (requires the `warp` dependency). The registry is available for programmatic
-/// queries via [`update_health`] and [`register_health_check`].
-pub fn init(_port: u16) -> Result<(), Box<dyn std::error::Error>> {
+pub fn init(port: u16) -> Result<(), Box<dyn std::error::Error>> {
 	let registry = Arc::new(HealthRegistry::new());
 	HEALTH_REGISTRY.set(registry).map_err(|_| "Health checks already initialized")?;
 
-	register_default_checks();
+	register_default_checks(port);
 
 	Ok(())
 }
 
 /// Register default health checks.
-///
-/// All checks start with `Healthy` status and placeholder messages. They do NOT
-/// perform real probes against RPC nodes, memory, or blockchain state.
-fn register_default_checks() {
+fn register_default_checks(port: u16) {
 	if let Some(registry) = HEALTH_REGISTRY.get() {
-		// Stub: no actual RPC connectivity test is performed
+		let mut process_metadata = HashMap::new();
+		process_metadata.insert("configured_port".to_string(), port.to_string());
 		registry.register(
-			"rpc_connection".to_string(),
+			"sdk_process".to_string(),
 			HealthCheck {
-				name: "RPC Connection".to_string(),
+				name: "SDK Process".to_string(),
 				status: HealthStatus::Healthy,
-				message: Some("Stub: no real RPC check performed".to_string()),
+				message: Some("Health registry initialized".to_string()),
 				last_check: Some(Instant::now()),
-				metadata: HashMap::new(),
+				metadata: process_metadata,
 			},
 		);
 
-		// Stub: no actual database connectivity test is performed
-		registry.register(
-			"database".to_string(),
-			HealthCheck {
-				name: "Database".to_string(),
-				status: HealthStatus::Healthy,
-				message: Some("Stub: no real database check performed".to_string()),
-				last_check: Some(Instant::now()),
-				metadata: HashMap::new(),
-			},
-		);
-
-		// Stub: no actual memory usage measurement is performed
 		registry.register(
 			"memory".to_string(),
 			HealthCheck {
 				name: "Memory Usage".to_string(),
-				status: HealthStatus::Healthy,
-				message: Some("Stub: no real memory check performed".to_string()),
+				status: HealthStatus::Degraded,
+				message: Some("Memory check has not run yet".to_string()),
 				last_check: Some(Instant::now()),
 				metadata: HashMap::new(),
 			},
 		);
-
-		// Stub: no actual blockchain sync status is checked
-		registry.register(
-			"blockchain_sync".to_string(),
-			HealthCheck {
-				name: "Blockchain Sync".to_string(),
-				status: HealthStatus::Healthy,
-				message: Some("Stub: no real sync check performed".to_string()),
-				last_check: Some(Instant::now()),
-				metadata: HashMap::new(),
-			},
-		);
+		check_memory_health(registry);
 	}
 }
 
-/// Check RPC connection health.
-///
-/// **Stub:** Always reports healthy. Replace with an actual RPC ping when
-/// the monitoring module is fully implemented.
+/// Mark RPC connection health as degraded until an application reports a concrete probe result.
 #[allow(dead_code)]
 fn check_rpc_health(registry: &Arc<HealthRegistry>) {
-	// Stub: always returns true -- no real RPC connectivity check
-	let healthy = true;
-
 	registry.update(
 		"rpc_connection",
-		if healthy { HealthStatus::Healthy } else { HealthStatus::Unhealthy },
-		Some(if healthy {
-			"Stub: assumed healthy (no real check)".to_string()
-		} else {
-			"RPC connection failed".to_string()
-		}),
+		HealthStatus::Degraded,
+		Some("No RPC probe result has been registered".to_string()),
 	);
 }
 
 /// Check memory usage health.
-///
-/// **Stub:** Always reports 50% usage. Replace with actual memory metrics
-/// (e.g. via `sysinfo` crate) when the monitoring module is fully implemented.
 #[allow(dead_code)]
 fn check_memory_health(registry: &Arc<HealthRegistry>) {
-	// Stub: hardcoded to 50 -- no real memory measurement
-	let memory_usage_percent: u64 = 50;
+	let Some(memory_usage_percent) = current_memory_usage_percent() else {
+		registry.update(
+			"memory",
+			HealthStatus::Degraded,
+			Some("Memory usage is unavailable on this platform".to_string()),
+		);
+		return;
+	};
 
 	let (status, message) = if memory_usage_percent < 70 {
-		(HealthStatus::Healthy, format!("Stub: memory placeholder at {}%", memory_usage_percent))
+		(HealthStatus::Healthy, format!("Memory usage at {}%", memory_usage_percent))
 	} else if memory_usage_percent < 85 {
 		(HealthStatus::Degraded, format!("Memory usage elevated at {}%", memory_usage_percent))
 	} else {
@@ -209,23 +166,39 @@ fn check_memory_health(registry: &Arc<HealthRegistry>) {
 	registry.update("memory", status, Some(message));
 }
 
-/// Check blockchain sync health.
-///
-/// **Stub:** Always reports synced. Replace with an actual block-height comparison
-/// when the monitoring module is fully implemented.
+#[cfg(target_os = "linux")]
+fn current_memory_usage_percent() -> Option<u64> {
+	let meminfo = std::fs::read_to_string("/proc/meminfo").ok()?;
+	let mut total_kb = None;
+	let mut available_kb = None;
+	for line in meminfo.lines() {
+		let mut parts = line.split_whitespace();
+		match parts.next()? {
+			"MemTotal:" => total_kb = parts.next()?.parse::<u64>().ok(),
+			"MemAvailable:" => available_kb = parts.next()?.parse::<u64>().ok(),
+			_ => {},
+		}
+	}
+	let total = total_kb?;
+	let available = available_kb?;
+	if total == 0 {
+		return None;
+	}
+	Some(((total - available) * 100) / total)
+}
+
+#[cfg(not(target_os = "linux"))]
+fn current_memory_usage_percent() -> Option<u64> {
+	None
+}
+
+/// Mark blockchain sync health as degraded until an application reports a concrete probe result.
 #[allow(dead_code)]
 fn check_blockchain_health(registry: &Arc<HealthRegistry>) {
-	// Stub: always returns true -- no real blockchain sync check
-	let synced = true;
-
 	registry.update(
 		"blockchain_sync",
-		if synced { HealthStatus::Healthy } else { HealthStatus::Degraded },
-		Some(if synced {
-			"Stub: assumed synced (no real check)".to_string()
-		} else {
-			"Blockchain syncing in progress".to_string()
-		}),
+		HealthStatus::Degraded,
+		Some("No blockchain sync probe result has been registered".to_string()),
 	);
 }
 
@@ -252,7 +225,9 @@ pub fn register_health_check(name: String, initial_status: HealthStatus) {
 	}
 }
 
-/// Shutdown health check system (stub -- currently a no-op).
+/// Shutdown health check system.
 pub fn shutdown() {
-	// No-op: no HTTP server to shut down without the warp dependency
+	if let Some(registry) = HEALTH_REGISTRY.get() {
+		registry.update("sdk_process", HealthStatus::Degraded, Some("Shutting down".to_string()));
+	}
 }

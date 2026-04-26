@@ -1,4 +1,4 @@
-use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion};
+use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion};
 use neo3::neo_builder::{GasEstimator, ScriptBuilder};
 use neo3::neo_types::OpCode;
 use num_bigint::BigInt;
@@ -10,8 +10,8 @@ fn benchmark_script_building(c: &mut Criterion) {
 	group.bench_function("simple_script", |b| {
 		b.iter(|| {
 			ScriptBuilder::new()
-				.push_integer(black_box(BigInt::from(42)))
-				.push_integer(black_box(BigInt::from(13)))
+				.push_integer(std::hint::black_box(BigInt::from(42)))
+				.push_integer(std::hint::black_box(BigInt::from(13)))
 				.op_code(&[OpCode::Add])
 				.to_bytes()
 		})
@@ -22,9 +22,9 @@ fn benchmark_script_building(c: &mut Criterion) {
 		b.iter(|| {
 			let mut builder = ScriptBuilder::new();
 			for i in 0..100 {
-				builder.push_integer(black_box(BigInt::from(i)));
+				builder.push_integer(std::hint::black_box(BigInt::from(i)));
 			}
-			builder.push_integer(black_box(BigInt::from(100)));
+			builder.push_integer(std::hint::black_box(BigInt::from(100)));
 			builder.pack().to_bytes()
 		})
 	});
@@ -36,8 +36,8 @@ fn benchmark_script_building(c: &mut Criterion) {
 		let world_bytes = "World".as_bytes().to_vec();
 		b.iter(|| {
 			ScriptBuilder::new()
-				.push_data(black_box(test_string_bytes.clone()))
-				.push_data(black_box(world_bytes.clone()))
+				.push_data(std::hint::black_box(test_string_bytes.clone()))
+				.push_data(std::hint::black_box(world_bytes.clone()))
 				.op_code(&[OpCode::Cat])
 				.to_bytes()
 		})
@@ -51,7 +51,12 @@ fn benchmark_gas_calculations(c: &mut Criterion) {
 
 	// Benchmark accuracy calculation
 	group.bench_function("accuracy_calculation", |b| {
-		b.iter(|| GasEstimator::calculate_estimation_accuracy(black_box(1100), black_box(1000)))
+		b.iter(|| {
+			GasEstimator::calculate_estimation_accuracy(
+				std::hint::black_box(1100),
+				std::hint::black_box(1000),
+			)
+		})
 	});
 
 	// Benchmark with different gas values
@@ -61,8 +66,8 @@ fn benchmark_gas_calculations(c: &mut Criterion) {
 			gas_value,
 			|b, &gas| {
 				b.iter(|| {
-					let base = black_box(gas);
-					let margin_percent = black_box(15);
+					let base = std::hint::black_box(gas);
+					let margin_percent = std::hint::black_box(15);
 					let margin = (base as f64 * (margin_percent as f64 / 100.0)) as i64;
 					base + margin
 				})
@@ -82,7 +87,7 @@ fn benchmark_script_sizes(c: &mut Criterion) {
 			b.iter(|| {
 				let mut builder = ScriptBuilder::new();
 				for i in 0..size {
-					builder.push_integer(black_box(BigInt::from(i)));
+					builder.push_integer(std::hint::black_box(BigInt::from(i)));
 				}
 				builder.to_bytes()
 			})
@@ -98,7 +103,7 @@ fn benchmark_opcode_emission(c: &mut Criterion) {
 	// Benchmark single opcode emission
 	group.bench_function("single_opcode", |b| {
 		b.iter(|| {
-			let opcode = black_box(OpCode::Nop);
+			let opcode = std::hint::black_box(OpCode::Nop);
 			ScriptBuilder::new().op_code(&[opcode]).to_bytes()
 		})
 	});
@@ -108,11 +113,11 @@ fn benchmark_opcode_emission(c: &mut Criterion) {
 		b.iter(|| {
 			ScriptBuilder::new()
 				.op_code(&[
-					black_box(OpCode::Push1),
-					black_box(OpCode::Push2),
-					black_box(OpCode::Add),
-					black_box(OpCode::Push3),
-					black_box(OpCode::Mul),
+					std::hint::black_box(OpCode::Push1),
+					std::hint::black_box(OpCode::Push2),
+					std::hint::black_box(OpCode::Add),
+					std::hint::black_box(OpCode::Push3),
+					std::hint::black_box(OpCode::Mul),
 				])
 				.to_bytes()
 		})
@@ -123,7 +128,7 @@ fn benchmark_opcode_emission(c: &mut Criterion) {
 		let syscall_arg = vec![0u8; 4];
 		b.iter(|| {
 			ScriptBuilder::new()
-				.op_code_with_arg(OpCode::Syscall, black_box(syscall_arg.clone()))
+				.op_code_with_arg(OpCode::Syscall, std::hint::black_box(syscall_arg.clone()))
 				.to_bytes()
 		})
 	});

@@ -69,13 +69,13 @@ mod proptest_tests {
     proptest! {
         #[test]
         fn prop_keypair_deterministic(seed in prop::array::uniform32(any::<u8>())) {
-            // Skip seeds that are invalid private keys (0 or >= curve order)
-            if let Ok(keypair1) = KeyPair::from_private_key(&seed) {
-                let keypair2 = KeyPair::from_private_key(&seed).unwrap();
-                prop_assert_eq!(keypair1.private_key(), keypair2.private_key());
-                prop_assert_eq!(keypair1.public_key(), keypair2.public_key());
-            }
-        }
+			// Skip seeds that are invalid private keys (0 or >= curve order)
+			if let Ok(keypair1) = KeyPair::from_private_key(&seed) {
+				let keypair2 = KeyPair::from_private_key(&seed).unwrap();
+				prop_assert_eq!(keypair1.private_key_bytes().unwrap(), keypair2.private_key_bytes().unwrap());
+				prop_assert_eq!(keypair1.public_key(), keypair2.public_key());
+			}
+		}
     }
 
     // Property: signing and verification should work correctly

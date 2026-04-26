@@ -9,8 +9,8 @@ use crate::{
 	neo_contract::ContractError,
 };
 
-/// Known Anti-MEV endpoints for Neo X (placeholder/example for MEV-protected RPCs)
-pub const NEO_X_MAINNET_MEV_RPC: &str = "https://rpc.neo-x.org/mempool"; // Example URL
+/// Neo X MainNet Anti-MEV RPC endpoint.
+pub const NEO_X_MAINNET_MEV_RPC: &str = "https://mainnet-1.rpc.banelabs.org";
 
 /// Neo X EVM provider for interacting with the Neo X EVM-compatible chain
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -141,7 +141,7 @@ mod tests {
 		let provider = MockProvider::new();
 		provider.push_result("neo_chainId", Value::String("0xba93".to_string()));
 		let client = RpcClient::new(provider);
-		let provider = NeoXProvider::new("https://rpc.neo-x.org", Some(&client));
+		let provider = NeoXProvider::new("invalid://url", Some(&client));
 
 		let chain_id = provider.chain_id().await.unwrap();
 		assert_eq!(chain_id, 47763);

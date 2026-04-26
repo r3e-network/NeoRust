@@ -9,6 +9,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 _No changes yet._
 
+## [1.3.0] - 2026-04-26
+
+### Added
+
+- Expanded `neo-cli` blockchain, contract, wallet, NFT, network, and tools command groups with real RPC-backed operations, transaction construction, signing, and broadcast paths.
+- Added production-backed NFT read/write flows for NEP-11 collections, including metadata/property reads and simulated-before-send mint, transfer, burn, and property update transactions.
+- Added in-process monitoring registries for health, metrics, and tracing using the SDK's existing dependencies.
+- Added Linux encrypted keychain retrieval/listing support for the CLI fallback secure store.
+
+### Changed
+
+- Removed unimplemented protocol-specific DeFi CLI adapters and kept the `de-fi` surface limited to production-backed NEP-17 token metadata, balance, and transfer operations.
+- Hardened NeoFS CLI/SDK behavior so gateway clients parse real responses strictly and report native signed-only operations as unsupported instead of fabricating status, object IDs, ACL changes, tokens, or sessions.
+- Updated default TestNet endpoints to reachable COZ RPC endpoints and added a CLI migration for legacy `testnet1.neo.org` / `seed1.neo.org` config entries.
+- Replaced the Neo X EVM bridge zero-address default with an explicit `NEOX_BRIDGE_EVM_ADDRESS` requirement.
+- Updated CLI templates and documentation to remove scaffold/placeholder language from production command surfaces.
+
+### Fixed
+
+- Fixed raw transaction submission paths in contract deploy/update/invoke commands to send transaction hex rather than JSON-RPC envelope data.
+- Fixed duplicate CLI short flags across wallet, blockchain, contract, NFT, NeoFS, filesystem, and tools commands.
+- Fixed release automation so tagged releases can publish `neo3` to crates.io when `CARGO_TOKEN` is configured.
+- Fixed deterministic network-fee estimation naming around temporary verification scripts to avoid implying usable placeholder witnesses.
+
+### Testing
+
+- Verified `cargo fmt --all --check`, `cargo check --workspace --all-features --all-targets`, `cargo test --workspace --all-features --all-targets`, `cargo clippy -p neo-cli --all-targets -- -D warnings`, `cargo clippy --lib -- -D warnings`, `cargo publish --dry-run --allow-dirty --locked`, optimized workspace/CLI release builds, and live COZ TestNet CLI smoke checks.
+
 ## [1.2.0] - 2026-03-27
 
 ### ✨ Added

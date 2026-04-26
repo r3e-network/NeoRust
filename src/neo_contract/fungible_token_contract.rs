@@ -59,7 +59,8 @@ impl<'a, P: JsonRpcProvider> TokenTrait<'a, P> for FungibleTokenContract<'a, P> 
 
 	async fn resolve_nns_text_record(&self, _name: &NNSName) -> Result<H160, ContractError> {
 		Err(ContractError::UnsupportedOperation(
-							"NNS text record resolution requires comprehensive domain name integration for fungible tokens".to_string(),
+			"NNS text record resolution is not part of the fungible token contract interface"
+				.to_string(),
 		))
 	}
 }

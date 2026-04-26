@@ -44,7 +44,7 @@ impl Default for Config {
 				},
 				NetworkConfig {
 					name: "testnet".to_string(),
-					rpc_url: "https://testnet1.neo.org:443".to_string(),
+					rpc_url: "https://testnet1.neo.coz.io:443".to_string(),
 				},
 				NetworkConfig {
 					name: "private-net".to_string(),

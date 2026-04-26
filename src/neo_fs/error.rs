@@ -69,9 +69,9 @@ pub enum NeoFSError {
 	#[error("Conversion error: {0}")]
 	ConversionError(String),
 
-	/// Not implemented
-	#[error("Not implemented: {0}")]
-	NotImplemented(String),
+	/// Operation is not supported by the configured NeoFS backend
+	#[error("Unsupported NeoFS operation: {0}")]
+	UnsupportedOperation(String),
 
 	/// Generic IO error
 	#[error("IO error: {0}")]

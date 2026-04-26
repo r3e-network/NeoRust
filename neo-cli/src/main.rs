@@ -17,6 +17,7 @@
 use clap::{Parser, Subcommand, ValueEnum};
 use colored::*;
 use commands::{
+	blockchain::{handle_blockchain_command, BlockchainArgs},
 	contract::{handle_contract_command, ContractArgs},
 	defi::{handle_defi_command, DefiArgs},
 	fs::handle_fs_command,
@@ -122,6 +123,10 @@ enum Commands {
 	/// Network operations and monitoring
 	#[command(about = "Network status and blockchain operations")]
 	Network(NetworkArgs),
+
+	/// Blockchain data inspection operations
+	#[command(about = "Inspect blocks, transactions, contracts, and export chain data")]
+	Blockchain(BlockchainArgs),
 
 	/// DeFi operations and protocols
 	#[command(about = "DeFi protocols and token operations")]
@@ -375,9 +380,19 @@ async fn main() -> Result<(), CliError> {
 					("custom".to_string(), 0)
 				};
 
+				let rpc_url = match (network_type.as_str(), n.rpc_url.as_str()) {
+					("mainnet", "https://seed1.neo.org:10331") => {
+						default_networks[0].rpc_url.clone()
+					},
+					("testnet", "https://testnet1.neo.org:443") => {
+						default_networks[1].rpc_url.clone()
+					},
+					_ => n.rpc_url.clone(),
+				};
+
 				NetworkConfig {
 					name: n.name.clone(),
-					rpc_url: n.rpc_url.clone(),
+					rpc_url,
 					network_type,
 					chain_id,
 					is_default: false,
@@ -470,6 +485,7 @@ async fn main() -> Result<(), CliError> {
 		Commands::Wallet(args) => handle_wallet_command(args, &mut state).await,
 		Commands::Contract(args) => handle_contract_command(args, &mut state).await,
 		Commands::Network(args) => handle_network_command(args, &mut state).await,
+		Commands::Blockchain(args) => handle_blockchain_command(args, &mut state).await,
 		Commands::DeFi(args) => handle_defi_command(args, &mut state).await,
 		Commands::Nft(args) => handle_nft_command(args, &mut state).await,
 		Commands::NeoFS(args) => handle_neofs_command(args, &mut state).await,
@@ -499,5 +515,16 @@ async fn main() -> Result<(), CliError> {
 					.map_err(|e| CliError::Other(e.to_string()))
 			}
 		},
+	}
+}
+
+#[cfg(test)]
+mod tests {
+	use super::*;
+	use clap::CommandFactory;
+
+	#[test]
+	fn cli_definition_is_valid() {
+		Cli::command().debug_assert();
 	}
 }

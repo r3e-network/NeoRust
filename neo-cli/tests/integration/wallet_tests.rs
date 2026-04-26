@@ -42,7 +42,7 @@ fn test_wallet_open_and_close() {
 }
 
 #[test]
-#[ignore] // Address creation not implemented yet
+#[ignore] // Requires deterministic wallet fixture
 fn test_wallet_create_address() {
 	let cli = CliTest::new();
 
@@ -82,7 +82,7 @@ fn test_wallet_list_address() {
 }
 
 #[test]
-#[ignore] // Address creation not implemented yet
+#[ignore] // Requires deterministic wallet fixture
 fn test_wallet_balance() {
 	let cli = CliTest::new();
 

@@ -96,7 +96,7 @@ mod tests {
 		wallet.add_account(account);
 
 		// Encrypt the accounts to avoid the "Account private key is available but not encrypted" error
-		wallet.encrypt_accounts("test_password");
+		wallet.encrypt_accounts("test_password").unwrap();
 
 		// Create a secure temporary backup file
 		let temp_file = tempfile::NamedTempFile::new()

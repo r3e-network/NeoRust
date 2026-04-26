@@ -169,11 +169,8 @@ impl QuoteVerifier {
 
 	/// Verify quote with Intel Attestation Service
 	fn verify_with_ias(&self, _quote: &[u8], _api_key: &str, _url: &str) -> Result<bool, SgxError> {
-		// IAS verification implementation
-		// This would make HTTPS request to IAS in production
-		// Returns verification status
 		Err(SgxError::AttestationError(
-			"IAS quote verification is not implemented; do not treat quotes as verified".into(),
+			"IAS quote verification requires an application-provided verifier; this SDK does not mark quotes as verified without IAS evidence".into(),
 		))
 	}
 

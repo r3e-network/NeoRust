@@ -365,10 +365,8 @@ mod tests {
 		)
 		.expect("Failed to decode signature");
 
-		// Note: The signature above is a placeholder. In practice, you would use
-		// a properly generated signature from a known keypair.
-		// For this test, we verify the function accepts valid length inputs
-		// and either returns Some(recovered_key) or None based on signature validity.
+		// This deliberately malformed signature has a valid encoded length. The test verifies
+		// that recovery handles length-valid but cryptographically invalid input without panics.
 
 		// This test validates that the function doesn't panic with valid inputs
 		// The actual recovery depends on valid signature data

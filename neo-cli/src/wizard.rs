@@ -82,7 +82,7 @@ async fn connect_to_network() -> Result<()> {
 		2 => {
 			let url: String = Input::with_theme(&ColorfulTheme::default())
 				.with_prompt("Enter custom RPC URL")
-				.default("https://testnet1.neo.org:443".to_string())
+				.default("https://testnet1.neo.coz.io:443".to_string())
 				.interact()?;
 
 			Neo::builder()

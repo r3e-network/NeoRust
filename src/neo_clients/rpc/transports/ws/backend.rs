@@ -84,11 +84,9 @@ impl WsBackend {
 		details: ConnectionDetails,
 	) -> Result<(Self, BackendDriver), WsClientError> {
 		let max_message_size = NeoConstants::max_rpc_message_size();
-		let config = WebSocketConfig {
-			max_message_size: Some(max_message_size),
-			max_frame_size: Some(max_message_size),
-			..Default::default()
-		};
+		let config = WebSocketConfig::default()
+			.max_message_size(Some(max_message_size))
+			.max_frame_size(Some(max_message_size));
 
 		let connect_fut = connect_async_with_config(details, Some(config), false);
 		let ws = if let Some(timeout) = NeoConstants::rpc_request_timeout() {
@@ -178,13 +176,13 @@ impl WsBackend {
 	async fn handle(&mut self, item: WsStreamItem) -> Result<(), WsClientError> {
 		match item {
 			Ok(item) => match item {
-				Message::Text(t) => self.handle_text(t).await,
+				Message::Text(t) => self.handle_text(t.to_string()).await,
 				// https://github.com/snapview/tungstenite-rs/blob/42b8797e8b7f39efb7d9322dc8af3e9089db4f7d/src/protocol/mod.rs#L172-L175
 				Message::Ping(_) => Ok(()),
 				Message::Pong(_) => Ok(()),
 				Message::Frame(_) => Ok(()),
 
-				Message::Binary(buf) => Err(WsClientError::UnexpectedBinary(buf)),
+				Message::Binary(buf) => Err(WsClientError::UnexpectedBinary(buf.to_vec())),
 				Message::Close(frame) => {
 					if let Some(frame) = frame {
 						error!("Close frame: {}", frame);
@@ -223,7 +221,7 @@ impl WsBackend {
 				select! {
 					_ = keepalive => {
 						#[cfg(not(target_arch = "wasm32"))]
-						if let Err(e) = self.server.send(Message::Ping(vec![])).await {
+						if let Err(e) = self.server.send(Message::Ping(Vec::new().into())).await {
 							error!(err = %e, "WS connection error");
 							err = true;
 							break
@@ -251,7 +249,9 @@ impl WsBackend {
 					inst = self.to_dispatch.next() => {
 						match inst {
 							Some(msg) => {
-								if let Err(e) = self.server.send(Message::Text(msg.to_string())).await {
+								if let Err(e) =
+									self.server.send(Message::Text(msg.to_string().into())).await
+								{
 									error!(err = %e, "WS connection error");
 									err = true;
 									break

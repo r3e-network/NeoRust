@@ -1,4 +1,4 @@
-# NeoRust v1.0.9 - Complete Neo N3 Development Suite
+# NeoRust v1.3.0 - Complete Neo N3 Development Suite
 
 <div align="center">
   <h1>🚀 NeoRust - Production-Ready Neo N3 SDK</h1>
@@ -17,10 +17,10 @@
 
 ## 🌟 What Makes NeoRust Special
 
-**NeoRust** is the most comprehensive and production-ready toolkit for Neo N3 blockchain development. It's not just an SDK - it's a complete development suite that includes:
+**NeoRust** is a comprehensive, production-focused toolkit for Neo N3 blockchain development. It's not just an SDK - it's a complete development suite that includes:
 
 - 💻 **Powerful CLI** - Professional command-line interface
-- 📚 **Comprehensive SDK** - Production-ready Rust library
+- 📚 **Comprehensive SDK** - Tested core Rust library with optional surfaces that require target-environment validation
 - 🔧 **Developer Tools** - Everything you need to build on Neo
 - 🌐 **Flexible Transports** - HTTP by default, opt-in WebSocket/IPC support, and mockable clients for tests/CI
 
@@ -58,7 +58,7 @@ cargo build --release
 
 ```toml
 [dependencies]
-neo3 = "1.0.9"
+neo3 = "1.3.0"
 ```
 
 ```rust,no_run
@@ -192,7 +192,7 @@ cargo build --release
 #### For Integration (SDK)
 ```toml
 [dependencies]
-neo3 = "1.0.9"
+neo3 = "1.3.0"
 ```
 
 ### Step 2: Create Your First Wallet

@@ -48,13 +48,22 @@ use std::sync::Arc;
 use std::time::Duration;
 use tokio::net::TcpStream;
 use tokio::sync::{mpsc, oneshot, RwLock};
-use tokio_tungstenite::{connect_async_with_config, MaybeTlsStream, WebSocketStream};
-use tungstenite::protocol::{Message, WebSocketConfig};
+use tokio_tungstenite::{
+	connect_async_with_config,
+	tungstenite::protocol::{Message, WebSocketConfig},
+	MaybeTlsStream, WebSocketStream,
+};
 
 #[derive(Debug)]
 enum Command {
 	Send(Message),
 	Shutdown,
+}
+
+fn limited_websocket_config(max_message_size: usize) -> WebSocketConfig {
+	WebSocketConfig::default()
+		.max_message_size(Some(max_message_size))
+		.max_frame_size(Some(max_message_size))
 }
 /// WebSocket subscription types
 ///
@@ -221,11 +230,7 @@ impl WebSocketClient {
 		}
 
 		let max_message_size = NeoConstants::max_rpc_message_size();
-		let config = WebSocketConfig {
-			max_message_size: Some(max_message_size),
-			max_frame_size: Some(max_message_size),
-			..Default::default()
-		};
+		let config = limited_websocket_config(max_message_size);
 		let recovery = ErrorRecovery::new()
 			.suggest("Check network connection")
 			.suggest("Verify the WebSocket server is running")
@@ -338,7 +343,7 @@ impl WebSocketClient {
 			};
 
 			let request = Self::create_unsubscribe_request_static(&subscription_id_for_task);
-			let _ = command_tx.send(Command::Send(Message::Text(request)));
+			let _ = command_tx.send(Command::Send(Message::Text(request.into())));
 		});
 
 		Ok(SubscriptionHandle { id: subscription_id, subscription_type, cancel_tx })
@@ -491,11 +496,7 @@ impl WebSocketClient {
 
 							tokio::time::sleep(reconnect_interval).await;
 
-							let config = WebSocketConfig {
-								max_message_size: Some(max_message_size),
-								max_frame_size: Some(max_message_size),
-								..Default::default()
-							};
+							let config = limited_websocket_config(max_message_size);
 							let connect_fut =
 								connect_async_with_config(url.as_str(), Some(config), false);
 							let connect_result =
@@ -527,7 +528,9 @@ impl WebSocketClient {
 										}
 
 										let request = Self::create_subscription_request_static(sub_type, id);
-										if let Err(e) = ws_write.send(Message::Text(request)).await {
+										if let Err(e) =
+											ws_write.send(Message::Text(request.into())).await
+										{
 											tracing::warn!(
 												subscription_id = %id,
 												error = %e,
@@ -729,11 +732,14 @@ impl WebSocketClient {
 			});
 		};
 
-		tx.send(Command::Send(Message::Text(message))).map_err(|e| NeoError::Network {
-			message: format!("Failed to queue WebSocket message: {}", e),
-			source: None,
-			recovery: ErrorRecovery::new().suggest("Check WebSocket connection").retryable(true),
-		})?;
+		tx.send(Command::Send(Message::Text(message.into())))
+			.map_err(|e| NeoError::Network {
+				message: format!("Failed to queue WebSocket message: {}", e),
+				source: None,
+				recovery: ErrorRecovery::new()
+					.suggest("Check WebSocket connection")
+					.retryable(true),
+			})?;
 
 		Ok(())
 	}

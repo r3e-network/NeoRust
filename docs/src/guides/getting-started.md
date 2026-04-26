@@ -4,7 +4,7 @@ This guide will help you get started with the NeoRust SDK for interacting with t
 
 ## Prerequisites
 
-- Rust 1.70.0 or later
+- Rust 1.83.0 or later
 - Cargo package manager
 - Basic knowledge of the Neo blockchain
 

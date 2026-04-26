@@ -266,7 +266,7 @@ mod tests {
 		let cargo_contents = std::fs::read_to_string(&cargo_file).unwrap();
 		assert!(
 			!cargo_contents.contains("{{neo3_version}}"),
-			"Generated Cargo.toml should not contain unresolved placeholders"
+			"Generated Cargo.toml should not contain unresolved template variables"
 		);
 		assert!(
 			cargo_contents.contains(&format!("neo3 = \"{}\"", neo3::VERSION)),

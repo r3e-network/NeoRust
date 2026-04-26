@@ -39,7 +39,7 @@
 //!     println!("New account address: {}", account.get_address());
 //!     
 //!     // Encrypt accounts before persisting to NEP-6 JSON.
-//!     wallet.encrypt_accounts("strong_password");
+//!     wallet.encrypt_accounts("strong_password")?;
 //!
 //!     // Save the wallet to a file
 //!     // SECURITY: Wallet files can contain private keys. Do not commit them to version control.

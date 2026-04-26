@@ -292,7 +292,7 @@ impl<'a, P: JsonRpcProvider> TokenTrait<'a, P> for NeoNameService<'a, P> {
 
 	fn set_total_supply(&mut self, _total_supply: u64) {
 		// NNS doesn't have a total supply concept
-		// This is intentionally a no-op as NNS is not a fungible token
+		// This setter is intentionally ignored because NNS is not a fungible token
 		tracing::warn!("Cannot set total supply for NNS contract - operation not supported");
 	}
 
@@ -302,7 +302,7 @@ impl<'a, P: JsonRpcProvider> TokenTrait<'a, P> for NeoNameService<'a, P> {
 
 	fn set_decimals(&mut self, _decimals: u8) {
 		// NNS doesn't have a decimals concept
-		// This is intentionally a no-op as NNS is not a fungible token
+		// This setter is intentionally ignored because NNS is not a fungible token
 	}
 
 	fn symbol(&self) -> Option<String> {
@@ -311,7 +311,7 @@ impl<'a, P: JsonRpcProvider> TokenTrait<'a, P> for NeoNameService<'a, P> {
 
 	fn set_symbol(&mut self, _symbol: String) {
 		// NNS doesn't have a symbol concept
-		// This is intentionally a no-op as NNS is not a fungible token
+		// This setter is intentionally ignored because NNS is not a fungible token
 	}
 
 	async fn resolve_nns_text_record(&self, name: &NNSName) -> Result<H160, ContractError> {

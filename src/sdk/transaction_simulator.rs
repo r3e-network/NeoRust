@@ -67,7 +67,7 @@ use std::sync::Arc;
 
 /// Transaction simulation result
 ///
-/// Contains comprehensive information about the simulated transaction,
+/// Contains comprehensive information about the transaction simulation,
 /// including gas costs, state changes, and potential issues. Use this
 /// to make informed decisions before submitting transactions.
 #[derive(Debug, Clone, Serialize, Deserialize)]

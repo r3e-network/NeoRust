@@ -55,12 +55,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 /// Display comprehensive information about a key pair and account
 fn display_key_pair_info(label: &str, key_pair: &KeyPair, account: &Account) {
 	println!("\n   📋 {label}:");
-	println!("      🔑 Public Key:    {}", hex::encode(key_pair.public_key.get_encoded(true)));
 	println!(
-		"      🗝️  Private Key:   {}...{} (truncated for security)",
-		&hex::encode(key_pair.private_key.to_raw_bytes())[..8],
-		&hex::encode(key_pair.private_key.to_raw_bytes())[56..]
+		"      🔑 Public Key:    {}",
+		hex::encode(key_pair.public_key_ref().get_encoded(true))
 	);
+	println!("      🗝️  Private Key:   <redacted>");
 	println!("      #️⃣  Script Hash:   {}", key_pair.get_script_hash());
 	println!("      🏠 Address:       {}", account.get_address());
 	println!("      🆔 Script Hash:   {:?}", account.get_script_hash());
@@ -70,7 +69,7 @@ fn display_key_pair_info(label: &str, key_pair: &KeyPair, account: &Account) {
 fn export_key_examples(account: &Account) -> Result<(), Box<dyn std::error::Error>> {
 	// Export as WIF (Wallet Import Format) - using key_pair
 	if let Some(key_pair) = &account.key_pair {
-		let wif = key_pair.export_as_wif();
+		let wif = key_pair.export_as_wif()?;
 		println!("   📋 WIF Export:     {}...{} (truncated)", &wif[..10], &wif[wif.len() - 6..]);
 	}
 
@@ -94,7 +93,7 @@ fn import_key_examples() -> Result<(), Box<dyn std::error::Error>> {
 	// Generate a test key for import demonstration
 	let test_account = Account::create()?;
 	let test_wif = if let Some(key_pair) = &test_account.key_pair {
-		key_pair.export_as_wif()
+		key_pair.export_as_wif()?
 	} else {
 		return Err("Test account has no key pair".into());
 	};
@@ -122,7 +121,7 @@ fn signature_verification_example(key_pair: &KeyPair) -> Result<(), Box<dyn std:
 	let message_hash = message.hash256();
 
 	// Create signature using private key
-	let signature = key_pair.private_key.sign_prehash(&message_hash)?;
+	let signature = key_pair.private_key_ref()?.sign_prehash(&message_hash)?;
 	let signature_bytes = signature.to_bytes();
 
 	println!("   ✍️  Message:        \"{}\"", String::from_utf8_lossy(message));
@@ -133,7 +132,7 @@ fn signature_verification_example(key_pair: &KeyPair) -> Result<(), Box<dyn std:
 	);
 
 	// Verify signature using public key
-	let is_valid = key_pair.public_key.verify(&message_hash, &signature).is_ok();
+	let is_valid = key_pair.public_key_ref().verify(&message_hash, &signature).is_ok();
 	println!(
 		"   {} Verification:   Signature is {}",
 		if is_valid { "✅" } else { "❌" },
@@ -144,7 +143,7 @@ fn signature_verification_example(key_pair: &KeyPair) -> Result<(), Box<dyn std:
 	let tampered_message =
 		b"Hello Neo N3 Blockchain! This is a TAMPERED message for signature verification.";
 	let tampered_hash = tampered_message.hash256();
-	let is_tampered_valid = key_pair.public_key.verify(&tampered_hash, &signature).is_ok();
+	let is_tampered_valid = key_pair.public_key_ref().verify(&tampered_hash, &signature).is_ok();
 	println!(
 		"   {} Tamper Test:    Tampered message signature is {}",
 		if !is_tampered_valid { "✅" } else { "❌" },

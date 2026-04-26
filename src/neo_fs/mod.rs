@@ -26,11 +26,13 @@
 //! - **Access Control**: Manage permissions and generate access tokens
 //! - **Extended Features**: Support for multipart uploads and specialized storage operations
 //!
-//! ## Status
+//! ## Backend Scope
 //!
-//! NeoFS support in this SDK is currently **experimental** and focuses on a REST-style client
-//! scaffold. Authentication and token signing/verification are not implemented yet; providing
-//! `NeoFSAuth.private_key` is intentionally rejected to avoid a false sense of security.
+//! The bundled client targets NeoFS REST and HTTP gateways. Gateway-backed object and container
+//! requests are sent to the configured endpoint and parsed strictly. Native signed operations
+//! such as bearer-token minting, session-token negotiation, and owner-only ACL updates require a
+//! native NeoFS signer/backend; the REST gateway client reports those as unsupported instead of
+//! fabricating credentials.
 //!
 //! ## Example (TestNet)
 //!

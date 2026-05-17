@@ -167,7 +167,10 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     env:
-      CARGO_TOKEN: ${{ secrets.CARGO_TOKEN }}
+      # The repo historically used `CRATES_IO_TOKEN`; we keep `CARGO_TOKEN`
+      # as the canonical name (matches `docs/RELEASE_PROCESS.md`) and fall
+      # back to the legacy secret so a single token works either way.
+      CARGO_TOKEN: ${{ secrets.CARGO_TOKEN || secrets.CRATES_IO_TOKEN }}
 
     steps:
       - uses: actions/checkout@v4

@@ -1,3 +1,4 @@
+#![deny(missing_docs)]
 //! Unified error handling system for improved developer experience
 //!
 //! This module provides a hierarchical error system with context,
@@ -12,76 +13,128 @@ use thiserror::Error;
 #[derive(Debug, Error)]
 #[non_exhaustive]
 pub enum NeoError {
-	/// Network-related errors
+	/// Network / RPC transport failure.
 	#[error("Network error: {message}")]
 	Network {
+		/// Human-readable description of the failure (sans source error).
 		message: String,
+		/// Underlying transport error, if any (`reqwest`, JSON-RPC, etc.).
 		#[source]
 		source: Option<Box<dyn std::error::Error + Send + Sync>>,
+		/// Recovery hints (retryable flag, suggested actions, doc links).
 		recovery: ErrorRecovery,
 	},
 
-	/// Wallet and account errors
+	/// Wallet / account / key-material problem.
 	#[error("Wallet error: {message}")]
 	Wallet {
+		/// Human-readable description.
 		message: String,
+		/// Underlying wallet/crypto error, if any.
 		#[source]
 		source: Option<Box<dyn std::error::Error + Send + Sync>>,
+		/// Recovery hints.
 		recovery: ErrorRecovery,
 	},
 
-	/// Smart contract errors
+	/// Smart-contract invocation problem (missing method, VM fault, …).
 	#[error("Contract error: {message}")]
 	Contract {
+		/// Human-readable description.
 		message: String,
+		/// Contract hash (hex) the failure was associated with, if known.
 		contract: Option<String>,
+		/// Contract method name the failure was associated with, if known.
 		method: Option<String>,
+		/// Underlying error, if any.
 		#[source]
 		source: Option<Box<dyn std::error::Error + Send + Sync>>,
+		/// Recovery hints.
 		recovery: ErrorRecovery,
 	},
 
-	/// Transaction errors
+	/// Transaction construction, signing, or submission failure.
 	#[error("Transaction failed: {message}")]
 	Transaction {
+		/// Human-readable description.
 		message: String,
+		/// Transaction hash (hex) involved in the failure, if known.
 		tx_hash: Option<String>,
+		/// Underlying error, if any.
 		#[source]
 		source: Option<Box<dyn std::error::Error + Send + Sync>>,
+		/// Recovery hints.
 		recovery: ErrorRecovery,
 	},
 
-	/// Configuration errors
+	/// Bad SDK/client configuration.
 	#[error("Configuration error: {message}")]
-	Configuration { message: String, field: Option<String>, recovery: ErrorRecovery },
+	Configuration {
+		/// Human-readable description.
+		message: String,
+		/// Name of the offending configuration field, if applicable.
+		field: Option<String>,
+		/// Recovery hints.
+		recovery: ErrorRecovery,
+	},
 
-	/// Validation errors
+	/// User-supplied input validation failure.
 	#[error("Validation error: {message}")]
-	Validation { message: String, field: String, value: Option<String>, recovery: ErrorRecovery },
+	Validation {
+		/// Human-readable description.
+		message: String,
+		/// Name of the offending input field.
+		field: String,
+		/// Offending value (when safe to echo back).
+		value: Option<String>,
+		/// Recovery hints.
+		recovery: ErrorRecovery,
+	},
 
-	/// Insufficient funds error
+	/// Account balance is too low for the requested operation.
 	#[error("Insufficient funds: need {required} but have {available}")]
 	InsufficientFunds {
+		/// Required amount, formatted for display.
 		required: String,
+		/// Available amount, formatted for display.
 		available: String,
+		/// Token symbol or contract identifier.
 		token: String,
+		/// Recovery hints.
 		recovery: ErrorRecovery,
 	},
 
-	/// Timeout error
+	/// Operation exceeded its deadline.
 	#[error("Operation timed out after {duration:?}")]
-	Timeout { duration: std::time::Duration, operation: String, recovery: ErrorRecovery },
+	Timeout {
+		/// How long the operation was waited on before giving up.
+		duration: std::time::Duration,
+		/// Name of the operation that timed out.
+		operation: String,
+		/// Recovery hints.
+		recovery: ErrorRecovery,
+	},
 
-	/// Rate limit error
+	/// Provider applied a rate limit.
 	#[error("Rate limit exceeded: {message}")]
-	RateLimit { message: String, retry_after: Option<std::time::Duration>, recovery: ErrorRecovery },
+	RateLimit {
+		/// Human-readable description.
+		message: String,
+		/// Suggested wait duration before retrying, if the provider returned one.
+		retry_after: Option<std::time::Duration>,
+		/// Recovery hints.
+		recovery: ErrorRecovery,
+	},
 
-	/// Generic error with context
+	/// Uncategorised / future-compatible bucket.
 	#[error("{message}")]
 	Other {
+		/// Human-readable description.
 		message: String,
+		/// Underlying error, if any.
 		#[source]
 		source: Option<Box<dyn std::error::Error + Send + Sync>>,
+		/// Recovery hints.
 		recovery: ErrorRecovery,
 	},
 }
@@ -162,6 +215,158 @@ impl fmt::Display for ErrorRecovery {
 /// Result type alias for Neo operations
 pub type Result<T> = std::result::Result<T, NeoError>;
 
+/// AWS-SDK-style metadata accessor for SDK errors.
+///
+/// This trait mirrors `aws_smithy_types::error::metadata::ProvideErrorMetadata`
+/// from the AWS Rust SDK, giving callers a stable, vendor-neutral way to
+/// extract a short error `code()` and human-readable `message()` for logging,
+/// telemetry, and structured error reporting — without having to match on
+/// every `#[non_exhaustive]` variant.
+///
+/// # Example
+///
+/// ```
+/// use neo3::neo_error::unified::{NeoError, ProvideErrorMetadata};
+///
+/// let err = NeoError::network("connect", "boom");
+/// assert_eq!(ProvideErrorMetadata::code(&err), Some("Network"));
+/// assert!(ProvideErrorMetadata::message(&err).is_some());
+/// ```
+pub trait ProvideErrorMetadata {
+	/// Returns a short, stable identifier for this error (e.g. `"Network"`,
+	/// `"RateLimit"`). Returns `None` only if no classification is available
+	/// — every variant of [`NeoError`] produces a `Some`.
+	fn code(&self) -> Option<&str>;
+
+	/// Returns the human-readable error message (without source chain or
+	/// recovery hints). Returns `None` only if no message is available.
+	fn message(&self) -> Option<&str>;
+}
+
+impl ProvideErrorMetadata for NeoError {
+	fn code(&self) -> Option<&str> {
+		Some(match self.kind() {
+			NeoErrorKind::Network => "Network",
+			NeoErrorKind::Wallet => "Wallet",
+			NeoErrorKind::Contract => "Contract",
+			NeoErrorKind::Transaction => "Transaction",
+			NeoErrorKind::Configuration => "Configuration",
+			NeoErrorKind::Validation => "Validation",
+			NeoErrorKind::InsufficientFunds => "InsufficientFunds",
+			NeoErrorKind::Timeout => "Timeout",
+			NeoErrorKind::RateLimit => "RateLimit",
+			NeoErrorKind::Other => "Other",
+		})
+	}
+
+	fn message(&self) -> Option<&str> {
+		Some(NeoError::message(self))
+	}
+}
+
+/// Coarse classification of [`NeoError`] variants, modeled after the
+/// AWS SDK's `ProvideErrorMetadata` / `ErrorKind` accessors.
+///
+/// Use this to route errors into telemetry buckets, structured logs, or
+/// retry decisions without depending on the exact enum variant layout
+/// (which is `#[non_exhaustive]`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[non_exhaustive]
+pub enum NeoErrorKind {
+	/// Transport / RPC / connectivity failure.
+	Network,
+	/// Wallet, key material, or account-state problem.
+	Wallet,
+	/// Smart-contract invocation problem (VM fault, missing method, …).
+	Contract,
+	/// Transaction construction, signing, or submission problem.
+	Transaction,
+	/// Bad client/SDK configuration.
+	Configuration,
+	/// User-input validation failure.
+	Validation,
+	/// Account balance is too low for the requested operation.
+	InsufficientFunds,
+	/// Operation exceeded its deadline.
+	Timeout,
+	/// Provider applied a rate limit.
+	RateLimit,
+	/// Uncategorised / future-compatible bucket.
+	Other,
+}
+
+impl NeoError {
+	/// Returns the coarse [`NeoErrorKind`] for this error.
+	///
+	/// Stable across non-exhaustive variant additions — prefer this in
+	/// `match` arms over destructuring the enum directly.
+	pub fn kind(&self) -> NeoErrorKind {
+		match self {
+			NeoError::Network { .. } => NeoErrorKind::Network,
+			NeoError::Wallet { .. } => NeoErrorKind::Wallet,
+			NeoError::Contract { .. } => NeoErrorKind::Contract,
+			NeoError::Transaction { .. } => NeoErrorKind::Transaction,
+			NeoError::Configuration { .. } => NeoErrorKind::Configuration,
+			NeoError::Validation { .. } => NeoErrorKind::Validation,
+			NeoError::InsufficientFunds { .. } => NeoErrorKind::InsufficientFunds,
+			NeoError::Timeout { .. } => NeoErrorKind::Timeout,
+			NeoError::RateLimit { .. } => NeoErrorKind::RateLimit,
+			NeoError::Other { .. } => NeoErrorKind::Other,
+		}
+	}
+
+	/// Returns the recovery hints attached to the error, if any.
+	pub fn recovery(&self) -> &ErrorRecovery {
+		match self {
+			NeoError::Network { recovery, .. }
+			| NeoError::Wallet { recovery, .. }
+			| NeoError::Contract { recovery, .. }
+			| NeoError::Transaction { recovery, .. }
+			| NeoError::Configuration { recovery, .. }
+			| NeoError::Validation { recovery, .. }
+			| NeoError::InsufficientFunds { recovery, .. }
+			| NeoError::Timeout { recovery, .. }
+			| NeoError::RateLimit { recovery, .. }
+			| NeoError::Other { recovery, .. } => recovery,
+		}
+	}
+
+	/// Whether the underlying operation can sensibly be retried.
+	///
+	/// Mirrors `aws-smithy-runtime-api::client::retries::classifiers::RetryAction`
+	/// — returns `true` for transient failures (timeouts, rate limits, network
+	/// blips, RPC 5xx), `false` for deterministic failures (validation, signing,
+	/// insufficient funds).
+	pub fn is_retryable(&self) -> bool {
+		matches!(self, NeoError::RateLimit { .. } | NeoError::Timeout { .. })
+			|| self.recovery().retryable
+	}
+
+	/// Suggested delay before retry, if the error carries one.
+	pub fn retry_after(&self) -> Option<std::time::Duration> {
+		match self {
+			NeoError::RateLimit { retry_after, .. } => *retry_after,
+			_ => self.recovery().retry_after,
+		}
+	}
+
+	/// Returns the human-readable message portion of the error (no source / recovery).
+	pub fn message(&self) -> &str {
+		match self {
+			NeoError::Network { message, .. }
+			| NeoError::Wallet { message, .. }
+			| NeoError::Contract { message, .. }
+			| NeoError::Transaction { message, .. }
+			| NeoError::Configuration { message, .. }
+			| NeoError::Validation { message, .. }
+			| NeoError::Timeout { operation: message, .. }
+			| NeoError::RateLimit { message, .. }
+			| NeoError::Other { message, .. } => message,
+			NeoError::InsufficientFunds { token, .. } => token,
+		}
+	}
+}
+
 /// Convert legacy `Neo3Error` values into the unified error type.
 ///
 /// This is a best-effort mapping intended to ease migration for callers that
@@ -234,6 +439,72 @@ impl From<super::Neo3Error> for NeoError {
 			Neo3Error::UnsupportedOperation(message) => {
 				NeoError::Other { message, source: None, recovery: ErrorRecovery::new() }
 			},
+		}
+	}
+}
+
+/// Convenience constructors used by the high-level `sdk` module to keep call
+/// sites concise. Each helper attaches the most common recovery hints for the
+/// situation so callers don't repeat the same boilerplate.
+impl NeoError {
+	/// Construct a [`NeoError::Network`] from any `Display`-able source error.
+	///
+	/// Marks the failure retryable and includes generic connectivity hints —
+	/// matches the AWS SDK convention where transport failures are retryable
+	/// by default.
+	pub fn network<E: fmt::Display>(context: &str, err: E) -> Self {
+		NeoError::Network {
+			message: format!("{}: {}", context, err),
+			source: None,
+			recovery: ErrorRecovery::new()
+				.suggest("Check network connectivity")
+				.suggest("Verify the RPC endpoint is accessible")
+				.retryable(true),
+		}
+	}
+
+	/// Construct a [`NeoError::Transaction`] from any `Display`-able source error.
+	pub fn transaction<E: fmt::Display>(context: &str, err: E) -> Self {
+		NeoError::Transaction {
+			message: format!("{}: {}", context, err),
+			tx_hash: None,
+			source: None,
+			recovery: ErrorRecovery::new(),
+		}
+	}
+
+	/// Construct a [`NeoError::Contract`] error tagged with the contract hash and method.
+	pub fn contract<E: fmt::Display>(
+		context: &str,
+		contract: Option<String>,
+		method: Option<String>,
+		err: E,
+	) -> Self {
+		NeoError::Contract {
+			message: format!("{}: {}", context, err),
+			contract,
+			method,
+			source: None,
+			recovery: ErrorRecovery::new(),
+		}
+	}
+
+	/// Construct a [`NeoError::Validation`] error for an invalid input value.
+	pub fn validation<V: Into<String>>(field: &str, value: Option<V>, message: &str) -> Self {
+		NeoError::Validation {
+			message: message.to_string(),
+			field: field.to_string(),
+			value: value.map(Into::into),
+			recovery: ErrorRecovery::new().suggest("Check the input value"),
+		}
+	}
+
+	/// Construct a [`NeoError::Wallet`] error from any `Display`-able source error.
+	pub fn wallet<E: fmt::Display>(context: &str, err: E) -> Self {
+		NeoError::Wallet {
+			message: format!("{}: {}", context, err),
+			source: None,
+			recovery: ErrorRecovery::new(),
 		}
 	}
 }
@@ -861,5 +1132,109 @@ mod tests {
 		let display = format!("{}", error);
 		assert!(display.contains("Insufficient funds"));
 		assert!(display.contains("need 100 GAS but have 50 GAS"));
+	}
+
+	#[test]
+	fn kind_returns_stable_variant_classification() {
+		let err = NeoError::network("connect", "boom");
+		assert_eq!(err.kind(), NeoErrorKind::Network);
+		assert!(err.is_retryable());
+
+		let err = NeoError::validation("amount", Some("-1"), "must be positive");
+		assert_eq!(err.kind(), NeoErrorKind::Validation);
+		assert!(!err.is_retryable());
+	}
+
+	#[test]
+	fn retry_after_round_trips_for_rate_limit() {
+		let err = NeoError::RateLimit {
+			message: "throttled".to_string(),
+			retry_after: Some(std::time::Duration::from_secs(2)),
+			recovery: ErrorRecovery::new(),
+		};
+		assert!(err.is_retryable());
+		assert_eq!(err.retry_after(), Some(std::time::Duration::from_secs(2)));
+	}
+
+	#[test]
+	fn convenience_constructors_attach_recovery_hints() {
+		let err = NeoError::contract(
+			"invoke failed",
+			Some("abc".into()),
+			Some("transfer".into()),
+			"vm fault",
+		);
+		match err {
+			NeoError::Contract { contract, method, .. } => {
+				assert_eq!(contract.as_deref(), Some("abc"));
+				assert_eq!(method.as_deref(), Some("transfer"));
+			},
+			other => panic!("expected Contract variant, got {other:?}"),
+		}
+	}
+
+	#[test]
+	fn provide_error_metadata_exposes_code_and_message() {
+		// Cover every kind end-to-end via the trait
+		let cases: &[(&str, NeoError)] = &[
+			("Network", NeoError::network("connect", "boom")),
+			("Wallet", NeoError::wallet("decrypt", "bad key")),
+			("Contract", NeoError::contract("invoke", None, None, "fault")),
+			("Transaction", NeoError::transaction("sign", "no key")),
+			(
+				"Configuration",
+				NeoError::Configuration {
+					message: "missing endpoint".into(),
+					field: None,
+					recovery: ErrorRecovery::new(),
+				},
+			),
+			("Validation", NeoError::validation("amount", Some("-1"), "must be positive")),
+			(
+				"InsufficientFunds",
+				NeoError::InsufficientFunds {
+					required: "1".into(),
+					available: "0".into(),
+					token: "GAS".into(),
+					recovery: ErrorRecovery::new(),
+				},
+			),
+			(
+				"Timeout",
+				NeoError::Timeout {
+					duration: std::time::Duration::from_secs(1),
+					operation: "wait".into(),
+					recovery: ErrorRecovery::new(),
+				},
+			),
+			(
+				"RateLimit",
+				NeoError::RateLimit {
+					message: "throttled".into(),
+					retry_after: None,
+					recovery: ErrorRecovery::new(),
+				},
+			),
+			(
+				"Other",
+				NeoError::Other {
+					message: "misc".into(),
+					source: None,
+					recovery: ErrorRecovery::new(),
+				},
+			),
+		];
+
+		for (expected_code, err) in cases {
+			assert_eq!(
+				ProvideErrorMetadata::code(err),
+				Some(*expected_code),
+				"code mismatch for {expected_code}"
+			);
+			assert!(
+				ProvideErrorMetadata::message(err).is_some(),
+				"missing message for {expected_code}"
+			);
+		}
 	}
 }

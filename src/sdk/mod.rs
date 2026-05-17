@@ -1,15 +1,100 @@
-//! High-level SDK API for simplified Neo blockchain interaction
+#![deny(missing_docs)]
+//! High-level, AWS-style entrypoint for Neo N3.
 //!
-//! This module provides a user-friendly interface that wraps the lower-level
-//! components, making common operations simple while still allowing access
-//! to advanced features when needed.
+//! The `sdk` module is the recommended starting point for application code.
+//! It exposes a small, opinionated surface ([`Neo`], [`NeoBuilder`],
+//! [`SdkConfig`], [`Token`], [`Balance`], …) that handles boilerplate the
+//! lower-level modules leave to the caller: endpoint selection, retry,
+//! caching, error normalization, and decimal-safe balance handling.
+//!
+//! ## Quick start
+//!
+//! ```no_run
+//! use neo3::sdk::Neo;
+//!
+//! # #[tokio::main]
+//! # async fn main() -> Result<(), Box<dyn std::error::Error>> {
+//! // Connect to TestNet with sensible defaults (30s timeout, 3 retries, caching on).
+//! let neo = Neo::testnet().await?;
+//!
+//! // Connect to any RPC endpoint (private nodes, load balancers, sandboxes).
+//! let neo = Neo::connect("https://my-node.example.com:443").await?;
+//!
+//! // Or honour `NEO_RPC_URL` from the environment for 12-factor deployments.
+//! let neo = Neo::from_env().await?;
+//! # Ok(()) }
+//! ```
+//!
+//! ## Builder pattern
+//!
+//! When defaults don't fit (longer timeouts, more retries, custom endpoints,
+//! disabling cache), reach for the builder:
+//!
+//! ```no_run
+//! use neo3::sdk::{Neo, Network};
+//! use std::time::Duration;
+//!
+//! # #[tokio::main]
+//! # async fn main() -> Result<(), Box<dyn std::error::Error>> {
+//! let neo = Neo::builder()
+//!     .network(Network::MainNet)
+//!     .timeout(Duration::from_secs(60))
+//!     .retries(5)
+//!     .cache(true)
+//!     .build()
+//!     .await?;
+//! # Ok(()) }
+//! ```
+//!
+//! ## Error handling
+//!
+//! Every fallible method returns the unified
+//! [`crate::neo_error::unified::NeoError`] type. It supports
+//! AWS-SDK-style classification:
+//!
+//! ```no_run
+//! use neo3::sdk::Neo;
+//! use neo3::neo_error::unified::NeoErrorKind;
+//!
+//! # #[tokio::main]
+//! # async fn main() {
+//! let neo = Neo::testnet().await.unwrap();
+//! if let Err(err) = neo.get_block_height().await {
+//!     if err.is_retryable() {
+//!         tracing::warn!(kind = ?err.kind(), "transient failure; retrying");
+//!     } else {
+//!         tracing::error!(?err, "fatal");
+//!     }
+//!     match err.kind() {
+//!         NeoErrorKind::RateLimit => { /* back off */ }
+//!         NeoErrorKind::Network   => { /* health-check endpoint */ }
+//!         _ => {}
+//!     }
+//! }
+//! # }
+//! ```
+//!
+//! ## Sub-modules
+//!
+//! - [`hd_wallet`] — BIP-39/44 hierarchical deterministic wallets.
+//! - [`transaction_simulator`] — preview VM state, gas, and effects before
+//!   submitting a transaction.
+//! - [`unified`] — cross-chain [`EcosystemClient`](unified::EcosystemClient)
+//!   bridging Neo N3 ↔ Neo X (EVM).
+//! - `websocket` — push-based event subscriptions (requires `ws` feature).
 
 pub mod hd_wallet;
+mod retry;
 pub mod transaction_simulator;
+/// Cross-chain unified client bridging Neo N3 and Neo X (EVM).
+///
+/// See [`unified::EcosystemClient`] for the entry point. This is currently
+/// the only ethers-rs-style cross-chain wrapper the SDK ships with.
 pub mod unified;
 #[cfg(feature = "ws")]
 pub mod websocket;
 
+use self::retry::{retry_network, DEFAULT_RETRY_DELAY};
 use crate::{
 	neo_clients::{APITrait, HttpProvider, RpcCache, RpcClient},
 	neo_error::unified::{ErrorRecovery, NeoError},
@@ -156,13 +241,25 @@ pub struct DecimalAmount {
 	decimals: u8,
 }
 
+/// Reasons [`DecimalAmount::parse`] can reject a string input.
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum DecimalAmountParseError {
+	/// The supplied input was empty after trimming whitespace.
 	Empty,
+	/// The input started with `-`; negative balances are not representable.
 	NegativeNotAllowed,
+	/// The input did not match the expected `<digits>[.<digits>]` shape.
 	InvalidFormat,
+	/// The input contained a non-digit, non-`.` character.
 	InvalidCharacter,
-	TooManyFractionalDigits { provided: usize, allowed: u8 },
+	/// The fractional part contained more digits than the declared `decimals` allow.
+	TooManyFractionalDigits {
+		/// How many fractional digits the input supplied.
+		provided: usize,
+		/// How many fractional digits are allowed (== the token's `decimals`).
+		allowed: u8,
+	},
 }
 
 impl fmt::Display for DecimalAmountParseError {
@@ -334,6 +431,80 @@ pub enum Token {
 	Custom(ScriptHash),
 }
 
+impl Token {
+	/// Native NEO governance token script hash.
+	pub const NEO_HASH: [u8; 20] = hex!("ef4073a0f2b305a38ec4050e4d3d28bc40ea63f5");
+	/// Native GAS utility token script hash.
+	pub const GAS_HASH: [u8; 20] = hex!("d2a4cff31913016155e38e474a2c06d08be276cf");
+
+	/// Returns the on-chain script hash for this token.
+	pub fn contract_hash(&self) -> ScriptHash {
+		match self {
+			Token::NEO => ScriptHash::from(Self::NEO_HASH),
+			Token::GAS => ScriptHash::from(Self::GAS_HASH),
+			Token::Custom(hash) => *hash,
+		}
+	}
+}
+
+/// Recovery hints shared by every "no default account configured" error.
+fn no_default_account_error() -> NeoError {
+	NeoError::Wallet {
+		message: "No default account set in wallet".to_string(),
+		source: None,
+		recovery: ErrorRecovery::new()
+			.suggest("Set a default account using set_default_account()")
+			.suggest("Add an account to the wallet first"),
+	}
+}
+
+/// Validation error helper for address-shaped inputs.
+fn invalid_address_error<E: fmt::Display>(field: &str, value: &str, err: E) -> NeoError {
+	NeoError::Validation {
+		message: format!("Invalid {} address: {}", field, err),
+		field: field.to_string(),
+		value: Some(value.to_string()),
+		recovery: ErrorRecovery::new()
+			.suggest("Check the address format")
+			.suggest("Ensure it's a valid Neo N3 address"),
+	}
+}
+
+/// Send a signed transaction with bounded retry.
+///
+/// Mirrors [`retry_network`] but handles the borrow-checker constraint that
+/// `Transaction::send_tx` takes `&mut self` — repeatedly borrowing the
+/// transaction inside an `FnMut` closure is illegal, so we expand the loop
+/// inline.
+async fn send_tx_with_retry<'a>(
+	tx: &mut crate::neo_builder::Transaction<'a, HttpProvider>,
+	attempts: u32,
+	delay: Duration,
+	context: &str,
+) -> Result<crate::neo_protocol::RawTransaction, NeoError> {
+	let attempts = attempts.max(1);
+	let mut last_err: Option<String> = None;
+	for attempt in 1..=attempts {
+		match tx.send_tx().await {
+			Ok(result) => return Ok(result),
+			Err(err) => {
+				if attempt < attempts {
+					tracing::warn!(
+						attempt = attempt,
+						max_attempts = attempts,
+						context = %context,
+						error = %err,
+						"send_tx failed; retrying"
+					);
+					tokio::time::sleep(delay).await;
+				}
+				last_err = Some(err.to_string());
+			},
+		}
+	}
+	Err(NeoError::network(context, last_err.expect("loop ran at least once")))
+}
+
 impl Neo {
 	/// Connect to Neo TestNet with default configuration
 	///
@@ -367,6 +538,57 @@ impl Neo {
 	/// ```
 	pub async fn mainnet() -> Result<Self, NeoError> {
 		Self::builder().network(Network::MainNet).build().await
+	}
+
+	/// Connect to a custom RPC endpoint with default configuration.
+	///
+	/// Convenience for `Neo::builder().network(Network::Custom(...)).build()`,
+	/// modeled after the AWS SDK's `Client::from_conf` quick path. Useful for
+	/// private networks, local dev nodes, and load-balanced endpoints.
+	///
+	/// # Examples
+	///
+	/// ```no_run
+	/// use neo3::sdk::Neo;
+	///
+	/// # #[tokio::main]
+	/// # async fn main() -> Result<(), Box<dyn std::error::Error>> {
+	/// let neo = Neo::connect("https://my-node.example.com:443").await?;
+	/// # Ok(())
+	/// # }
+	/// ```
+	pub async fn connect(endpoint: impl Into<String>) -> Result<Self, NeoError> {
+		Self::builder().network(Network::Custom(endpoint.into())).build().await
+	}
+
+	/// Build a [`Neo`] using `$NEO_RPC_URL` from the environment, falling back to TestNet.
+	///
+	/// Mirrors the AWS SDK's `from_env()` / `load_defaults_from_env()`
+	/// convention so 12-factor apps and CI pipelines can configure the SDK
+	/// without touching code.
+	///
+	/// | Env var | Effect |
+	/// |---------|--------|
+	/// | `NEO_RPC_URL` | Connect to this RPC endpoint (overrides everything). |
+	/// | _unset_ | Falls back to TestNet for safety. |
+	///
+	/// # Examples
+	///
+	/// ```no_run
+	/// use neo3::sdk::Neo;
+	///
+	/// # #[tokio::main]
+	/// # async fn main() -> Result<(), Box<dyn std::error::Error>> {
+	/// // export NEO_RPC_URL=https://mainnet1.neo.org:443
+	/// let neo = Neo::from_env().await?;
+	/// # Ok(())
+	/// # }
+	/// ```
+	pub async fn from_env() -> Result<Self, NeoError> {
+		match std::env::var("NEO_RPC_URL") {
+			Ok(url) if !url.is_empty() => Self::connect(url).await,
+			_ => Self::testnet().await,
+		}
 	}
 
 	/// Create a new SDK builder for custom configuration
@@ -413,17 +635,9 @@ impl Neo {
 	pub async fn get_balance(&self, address: &str) -> Result<Balance, NeoError> {
 		use crate::neo_types::ScriptHashExtension;
 
-		// Parse the address to script hash
-		let script_hash = ScriptHash::from_address(address).map_err(|e| NeoError::Validation {
-			message: format!("Invalid address: {}", e),
-			field: "address".to_string(),
-			value: Some(address.to_string()),
-			recovery: crate::neo_error::unified::ErrorRecovery::new()
-				.suggest("Check the address format")
-				.suggest("Ensure it's a valid Neo N3 address"),
-		})?;
+		let script_hash = ScriptHash::from_address(address)
+			.map_err(|e| invalid_address_error("address", address, e))?;
 
-		// Serve cached balance when enabled.
 		if let Some(cache) = &self.cache {
 			let cache_key = format!("balance:{}", address);
 			if let Some(cached) = cache.get(&cache_key).await {
@@ -433,13 +647,11 @@ impl Neo {
 			}
 		}
 
-		let max_attempts = self.config.retries.saturating_add(1) as usize;
-		let retry_delay = Duration::from_millis(250);
+		let max_attempts = self.config.retries.saturating_add(1);
 
-		// Get NEO balance
-		let neo_hash = ScriptHash::from(hex!("ef4073a0f2b305a38ec4050e4d3d28bc40ea63f5"));
-		let neo_balance = crate::neo_utils::error::retry(
-			|| async {
+		let neo_hash = ScriptHash::from(Token::NEO_HASH);
+		let neo_balance =
+			retry_network("fetch NEO balance", max_attempts, DEFAULT_RETRY_DELAY, || async {
 				self.client
 					.invoke_function(
 						&neo_hash,
@@ -448,23 +660,12 @@ impl Neo {
 						None,
 					)
 					.await
-			},
-			max_attempts,
-			retry_delay,
-		)
-		.await
-		.map_err(|e| NeoError::Network {
-			message: format!("Failed to get NEO balance: {}", e),
-			source: None,
-			recovery: crate::neo_error::unified::ErrorRecovery::new()
-				.suggest("Check network connection")
-				.retryable(true),
-		})?;
+			})
+			.await?;
 
-		// Get GAS balance
-		let gas_hash = ScriptHash::from(hex!("d2a4cff31913016155e38e474a2c06d08be276cf"));
-		let gas_balance = crate::neo_utils::error::retry(
-			|| async {
+		let gas_hash = ScriptHash::from(Token::GAS_HASH);
+		let gas_balance =
+			retry_network("fetch GAS balance", max_attempts, DEFAULT_RETRY_DELAY, || async {
 				self.client
 					.invoke_function(
 						&gas_hash,
@@ -473,18 +674,8 @@ impl Neo {
 						None,
 					)
 					.await
-			},
-			max_attempts,
-			retry_delay,
-		)
-		.await
-		.map_err(|e| NeoError::Network {
-			message: format!("Failed to get GAS balance: {}", e),
-			source: None,
-			recovery: crate::neo_error::unified::ErrorRecovery::new()
-				.suggest("Check network connection")
-				.retryable(true),
-		})?;
+			})
+			.await?;
 
 		let neo = neo_balance
 			.stack
@@ -499,20 +690,11 @@ impl Neo {
 		let gas_raw = parse_balance_stack_item_u64(gas_raw, "GAS")?;
 		let gas = DecimalAmount::from_raw(gas_raw.to_string(), 8); // GAS has 8 decimals
 
-		// Get other NEP-17 token balances
-		let nep17 = crate::neo_utils::error::retry(
-			|| async { self.client.get_nep17_balances(script_hash).await },
-			max_attempts,
-			retry_delay,
-		)
-		.await
-		.map_err(|e| NeoError::Network {
-			message: format!("Failed to get NEP-17 balances: {}", e),
-			source: None,
-			recovery: crate::neo_error::unified::ErrorRecovery::new()
-				.suggest("Check network connection")
-				.retryable(true),
-		})?;
+		let nep17 =
+			retry_network("fetch NEP-17 balances", max_attempts, DEFAULT_RETRY_DELAY, || async {
+				self.client.get_nep17_balances(script_hash).await
+			})
+			.await?;
 
 		let tokens = nep17
 			.balances
@@ -580,35 +762,17 @@ impl Neo {
 		token: Token,
 	) -> Result<TxHash, NeoError> {
 		use crate::neo_builder::{AccountSigner, CallFlags, ScriptBuilder, TransactionBuilder};
-		use crate::neo_error::unified::ErrorRecovery;
 		use crate::neo_types::ScriptHashExtension;
 		use crate::neo_wallets::WalletTrait;
 
-		let max_attempts = self.config.retries.saturating_add(1) as usize;
-		let retry_delay = Duration::from_millis(250);
+		let max_attempts = self.config.retries.saturating_add(1);
 
-		let from_account = from.default_account().ok_or_else(|| NeoError::Wallet {
-			message: "No default account set in wallet".to_string(),
-			source: None,
-			recovery: ErrorRecovery::new()
-				.suggest("Set a default account using set_default_account()")
-				.suggest("Add an account to the wallet first"),
-		})?;
+		let from_account = from.default_account().ok_or_else(no_default_account_error)?;
 
-		let to_hash = ScriptHash::from_address(to).map_err(|e| NeoError::Validation {
-			message: format!("Invalid recipient address: {}", e),
-			field: "to".to_string(),
-			value: Some(to.to_string()),
-			recovery: ErrorRecovery::new()
-				.suggest("Check the address format")
-				.suggest("Ensure it's a valid Neo N3 address"),
-		})?;
+		let to_hash =
+			ScriptHash::from_address(to).map_err(|e| invalid_address_error("to", to, e))?;
 
-		let contract_hash = match token {
-			Token::NEO => ScriptHash::from(hex!("ef4073a0f2b305a38ec4050e4d3d28bc40ea63f5")),
-			Token::GAS => ScriptHash::from(hex!("d2a4cff31913016155e38e474a2c06d08be276cf")),
-			Token::Custom(hash) => hash,
-		};
+		let contract_hash = token.contract_hash();
 
 		let amount_i64 = i64::try_from(amount).map_err(|_| NeoError::Validation {
 			message: "Amount is too large to fit Neo VM integer".to_string(),
@@ -631,88 +795,45 @@ impl Neo {
 			],
 			Some(CallFlags::All),
 		)
-		.map_err(|e| NeoError::Contract {
-			message: format!("Failed to build transfer script: {}", e),
-			contract: Some(contract_hash.to_hex()),
-			method: Some("transfer".to_string()),
-			source: None,
-			recovery: ErrorRecovery::new()
-				.suggest("Check token contract hash")
-				.suggest("Check transfer parameters"),
+		.map_err(|e| {
+			NeoError::contract(
+				"Failed to build transfer script",
+				Some(contract_hash.to_hex()),
+				Some("transfer".into()),
+				e,
+			)
 		})?;
 
-		let signer =
-			AccountSigner::called_by_entry(from_account).map_err(|e| NeoError::Transaction {
-				message: format!("Failed to create signer: {}", e),
-				tx_hash: None,
-				source: None,
-				recovery: ErrorRecovery::new()
-					.suggest("Ensure the wallet has an unlocked private key")
-					.suggest("Multi-sig accounts require manual signing"),
-			})?;
+		let signer = AccountSigner::called_by_entry(from_account)
+			.map_err(|e| NeoError::transaction("Failed to create signer", e))?;
 
-		let current_height = crate::neo_utils::error::retry(
-			|| async { self.client.get_block_count().await },
+		let current_height = retry_network(
+			"fetch current block height",
 			max_attempts,
-			retry_delay,
+			DEFAULT_RETRY_DELAY,
+			|| async { self.client.get_block_count().await },
 		)
-		.await
-		.map_err(|e| NeoError::Network {
-			message: format!("Failed to fetch current block height: {}", e),
-			source: None,
-			recovery: ErrorRecovery::new().suggest("Check network connection").retryable(true),
-		})?;
+		.await?;
 
 		let mut tb = TransactionBuilder::with_client(self.client.as_ref());
 		tb.extend_script(sb.to_bytes());
-		tb.set_signers(vec![signer.into()]).map_err(|e| NeoError::Transaction {
-			message: format!("Failed to set signers: {}", e),
-			tx_hash: None,
-			source: None,
-			recovery: ErrorRecovery::new().suggest("Ensure signer configuration is valid"),
-		})?;
-		tb.valid_until_block(current_height + 5760).map_err(|e| NeoError::Transaction {
-			message: format!("Invalid valid-until-block: {}", e),
-			tx_hash: None,
-			source: None,
-			recovery: ErrorRecovery::new().suggest("Check network height").retryable(true),
-		})?;
+		tb.set_signers(vec![signer.into()])
+			.map_err(|e| NeoError::transaction("Failed to set signers", e))?;
+		tb.valid_until_block(current_height + 5760)
+			.map_err(|e| NeoError::transaction("Invalid valid-until-block", e))?;
 
-		let mut tx = tb.sign().await.map_err(|e| NeoError::Transaction {
-			message: format!("Failed to sign transfer: {}", e),
-			tx_hash: None,
-			source: None,
-			recovery: ErrorRecovery::new()
-				.suggest("Ensure the wallet has the correct private key")
-				.suggest("Check signer scopes"),
-		})?;
+		let mut tx = tb
+			.sign()
+			.await
+			.map_err(|e| NeoError::transaction("Failed to sign transfer", e))?;
 
-		let result = {
-			let mut attempt = 0usize;
-			loop {
-				attempt += 1;
-				match tx.send_tx().await {
-					Ok(result) => break Ok(result),
-					Err(err) if attempt < max_attempts => {
-						tracing::warn!(
-							attempt = attempt,
-							error = %err,
-							"Send transaction failed; retrying"
-						);
-						tokio::time::sleep(retry_delay).await;
-					},
-					Err(err) => break Err(err),
-				}
-			}
-		}
-		.map_err(|e| NeoError::Transaction {
-			message: format!("Failed to send transfer transaction: {}", e),
-			tx_hash: None,
-			source: None,
-			recovery: ErrorRecovery::new()
-				.suggest("Check RPC endpoint availability")
-				.retryable(true),
-		})?;
+		let result = send_tx_with_retry(
+			&mut tx,
+			max_attempts,
+			DEFAULT_RETRY_DELAY,
+			"send transfer transaction",
+		)
+		.await?;
 
 		Ok(result.hash.to_string())
 	}
@@ -746,20 +867,12 @@ impl Neo {
 		manifest: String,
 	) -> Result<ScriptHash, NeoError> {
 		use crate::neo_builder::{AccountSigner, CallFlags, ScriptBuilder, TransactionBuilder};
-		use crate::neo_error::unified::ErrorRecovery;
 		use crate::neo_types::{ContractManifest, NefFile, ScriptHashExtension};
 		use crate::neo_wallets::WalletTrait;
 
-		let max_attempts = self.config.retries.saturating_add(1) as usize;
-		let retry_delay = Duration::from_millis(250);
+		let max_attempts = self.config.retries.saturating_add(1);
 
-		let deployer_account = deployer.default_account().ok_or_else(|| NeoError::Wallet {
-			message: "No default account set in deployer wallet".to_string(),
-			source: None,
-			recovery: ErrorRecovery::new()
-				.suggest("Set a default account using set_default_account()")
-				.suggest("Add an account to the wallet first"),
-		})?;
+		let deployer_account = deployer.default_account().ok_or_else(no_default_account_error)?;
 
 		let nef_file = NefFile::deserialize(&nef).map_err(|e| NeoError::Validation {
 			message: format!("Invalid NEF file: {}", e),
@@ -810,12 +923,8 @@ impl Neo {
 			nef_checksum,
 			&contract_name,
 		)
-		.map_err(|e| NeoError::Contract {
-			message: format!("Failed to derive contract script: {}", e),
-			contract: None,
-			method: Some("deploy".to_string()),
-			source: None,
-			recovery: ErrorRecovery::new().suggest("Check NEF checksum and manifest name"),
+		.map_err(|e| {
+			NeoError::contract("Failed to derive contract script", None, Some("deploy".into()), e)
 		})?;
 		let expected_hash = ScriptHash::from_script(&contract_script);
 
@@ -831,87 +940,45 @@ impl Neo {
 			],
 			Some(CallFlags::All),
 		)
-		.map_err(|e| NeoError::Contract {
-			message: format!("Failed to build deploy script: {}", e),
-			contract: Some(management_hash.to_hex()),
-			method: Some("deploy".to_string()),
-			source: None,
-			recovery: ErrorRecovery::new().suggest("Check NEF and manifest parameters"),
+		.map_err(|e| {
+			NeoError::contract(
+				"Failed to build deploy script",
+				Some(management_hash.to_hex()),
+				Some("deploy".into()),
+				e,
+			)
 		})?;
 
-		let signer = AccountSigner::called_by_entry(deployer_account).map_err(|e| {
-			NeoError::Transaction {
-				message: format!("Failed to create signer: {}", e),
-				tx_hash: None,
-				source: None,
-				recovery: ErrorRecovery::new()
-					.suggest("Ensure the wallet has an unlocked private key"),
-			}
-		})?;
+		let signer = AccountSigner::called_by_entry(deployer_account)
+			.map_err(|e| NeoError::transaction("Failed to create signer", e))?;
 
-		let current_height = crate::neo_utils::error::retry(
-			|| async { self.client.get_block_count().await },
+		let current_height = retry_network(
+			"fetch current block height",
 			max_attempts,
-			retry_delay,
+			DEFAULT_RETRY_DELAY,
+			|| async { self.client.get_block_count().await },
 		)
-		.await
-		.map_err(|e| NeoError::Network {
-			message: format!("Failed to fetch current block height: {}", e),
-			source: None,
-			recovery: ErrorRecovery::new().suggest("Check network connection").retryable(true),
-		})?;
+		.await?;
 
 		let mut tb = TransactionBuilder::with_client(self.client.as_ref());
 		tb.extend_script(sb.to_bytes());
-		tb.set_signers(vec![signer.into()]).map_err(|e| NeoError::Transaction {
-			message: format!("Failed to set signer: {}", e),
-			tx_hash: None,
-			source: None,
-			recovery: ErrorRecovery::new().suggest("Ensure signer configuration is valid"),
-		})?;
-		tb.valid_until_block(current_height + 2400).map_err(|e| NeoError::Transaction {
-			message: format!("Invalid valid-until-block: {}", e),
-			tx_hash: None,
-			source: None,
-			recovery: ErrorRecovery::new().retryable(true),
-		})?;
+		tb.set_signers(vec![signer.into()])
+			.map_err(|e| NeoError::transaction("Failed to set signer", e))?;
+		tb.valid_until_block(current_height + 2400)
+			.map_err(|e| NeoError::transaction("Invalid valid-until-block", e))?;
 
-		let mut tx = tb.sign().await.map_err(|e| NeoError::Transaction {
-			message: format!("Failed to sign deploy transaction: {}", e),
-			tx_hash: None,
-			source: None,
-			recovery: ErrorRecovery::new()
-				.suggest("Ensure deployer account has a private key")
-				.suggest("Multi-sig accounts require manual signing"),
-		})?;
+		let mut tx = tb
+			.sign()
+			.await
+			.map_err(|e| NeoError::transaction("Failed to sign deploy transaction", e))?;
 
-		{
-			let mut attempt = 0usize;
-			loop {
-				attempt += 1;
-				match tx.send_tx().await {
-					Ok(_) => break,
-					Err(err) if attempt < max_attempts => {
-						tracing::warn!(
-							attempt = attempt,
-							error = %err,
-							"Send transaction failed; retrying"
-						);
-						tokio::time::sleep(retry_delay).await;
-					},
-					Err(err) => {
-						return Err(NeoError::Transaction {
-							message: format!("Failed to send deploy transaction: {}", err),
-							tx_hash: None,
-							source: None,
-							recovery: ErrorRecovery::new()
-								.suggest("Check RPC endpoint availability")
-								.retryable(true),
-						});
-					},
-				}
-			}
-		}
+		let _ = send_tx_with_retry(
+			&mut tx,
+			max_attempts,
+			DEFAULT_RETRY_DELAY,
+			"send deploy transaction",
+		)
+		.await?;
 
 		Ok(expected_hash)
 	}
@@ -942,27 +1009,17 @@ impl Neo {
 		method: &str,
 		params: Vec<ContractParameter>,
 	) -> Result<serde_json::Value, NeoError> {
-		use crate::neo_error::unified::ErrorRecovery;
 		use crate::neo_types::ScriptHashExtension;
 
-		let max_attempts = self.config.retries.saturating_add(1) as usize;
-		let retry_delay = Duration::from_millis(250);
+		let max_attempts = self.config.retries.saturating_add(1);
 
-		let result = crate::neo_utils::error::retry(
-			|| async {
+		let result =
+			retry_network("invoke read-only method", max_attempts, DEFAULT_RETRY_DELAY, || async {
 				self.client
 					.invoke_function(contract, method.to_string(), params.clone(), None)
 					.await
-			},
-			max_attempts,
-			retry_delay,
-		)
-		.await
-		.map_err(|e| NeoError::Network {
-			message: format!("Failed to invoke read-only method: {}", e),
-			source: None,
-			recovery: ErrorRecovery::new().suggest("Check network connection").retryable(true),
-		})?;
+			})
+			.await?;
 
 		if result.has_state_fault() {
 			return Err(NeoError::Contract {
@@ -1017,104 +1074,54 @@ impl Neo {
 		params: Vec<ContractParameter>,
 	) -> Result<TxHash, NeoError> {
 		use crate::neo_builder::{AccountSigner, CallFlags, ScriptBuilder, TransactionBuilder};
-		use crate::neo_error::unified::ErrorRecovery;
 		use crate::neo_types::ScriptHashExtension;
 		use crate::neo_wallets::WalletTrait;
 
-		let max_attempts = self.config.retries.saturating_add(1) as usize;
-		let retry_delay = Duration::from_millis(250);
+		let max_attempts = self.config.retries.saturating_add(1);
 
-		let signer_account = signer.default_account().ok_or_else(|| NeoError::Wallet {
-			message: "No default account set in signer wallet".to_string(),
-			source: None,
-			recovery: ErrorRecovery::new()
-				.suggest("Set a default account using set_default_account()")
-				.suggest("Add an account to the wallet first"),
-		})?;
+		let signer_account = signer.default_account().ok_or_else(no_default_account_error)?;
 
 		let mut sb = ScriptBuilder::new();
 		sb.contract_call(contract, method, params.as_slice(), Some(CallFlags::All))
-			.map_err(|e| NeoError::Contract {
-				message: format!("Failed to build invocation script: {}", e),
-				contract: Some(contract.to_hex()),
-				method: Some(method.to_string()),
-				source: None,
-				recovery: ErrorRecovery::new()
-					.suggest("Check contract hash")
-					.suggest("Check method name and parameters"),
+			.map_err(|e| {
+				NeoError::contract(
+					"Failed to build invocation script",
+					Some(contract.to_hex()),
+					Some(method.to_string()),
+					e,
+				)
 			})?;
 
-		let signer_obj =
-			AccountSigner::called_by_entry(signer_account).map_err(|e| NeoError::Transaction {
-				message: format!("Failed to create signer: {}", e),
-				tx_hash: None,
-				source: None,
-				recovery: ErrorRecovery::new()
-					.suggest("Ensure signer wallet has an unlocked private key"),
-			})?;
+		let signer_obj = AccountSigner::called_by_entry(signer_account)
+			.map_err(|e| NeoError::transaction("Failed to create signer", e))?;
 
-		let current_height = crate::neo_utils::error::retry(
-			|| async { self.client.get_block_count().await },
+		let current_height = retry_network(
+			"fetch current block height",
 			max_attempts,
-			retry_delay,
+			DEFAULT_RETRY_DELAY,
+			|| async { self.client.get_block_count().await },
 		)
-		.await
-		.map_err(|e| NeoError::Network {
-			message: format!("Failed to fetch current block height: {}", e),
-			source: None,
-			recovery: ErrorRecovery::new().suggest("Check network connection").retryable(true),
-		})?;
+		.await?;
 
 		let mut tb = TransactionBuilder::with_client(self.client.as_ref());
 		tb.extend_script(sb.to_bytes());
-		tb.set_signers(vec![signer_obj.into()]).map_err(|e| NeoError::Transaction {
-			message: format!("Failed to set signer: {}", e),
-			tx_hash: None,
-			source: None,
-			recovery: ErrorRecovery::new(),
-		})?;
-		tb.valid_until_block(current_height + 2400).map_err(|e| NeoError::Transaction {
-			message: format!("Invalid valid-until-block: {}", e),
-			tx_hash: None,
-			source: None,
-			recovery: ErrorRecovery::new().retryable(true),
-		})?;
+		tb.set_signers(vec![signer_obj.into()])
+			.map_err(|e| NeoError::transaction("Failed to set signer", e))?;
+		tb.valid_until_block(current_height + 2400)
+			.map_err(|e| NeoError::transaction("Invalid valid-until-block", e))?;
 
-		let mut tx = tb.sign().await.map_err(|e| NeoError::Transaction {
-			message: format!("Failed to sign invocation transaction: {}", e),
-			tx_hash: None,
-			source: None,
-			recovery: ErrorRecovery::new()
-				.suggest("Ensure signer has a private key")
-				.suggest("Multi-sig accounts require manual signing"),
-		})?;
+		let mut tx = tb
+			.sign()
+			.await
+			.map_err(|e| NeoError::transaction("Failed to sign invocation transaction", e))?;
 
-		let result = {
-			let mut attempt = 0usize;
-			loop {
-				attempt += 1;
-				match tx.send_tx().await {
-					Ok(result) => break Ok(result),
-					Err(err) if attempt < max_attempts => {
-						tracing::warn!(
-							attempt = attempt,
-							error = %err,
-							"Send transaction failed; retrying"
-						);
-						tokio::time::sleep(retry_delay).await;
-					},
-					Err(err) => break Err(err),
-				}
-			}
-		}
-		.map_err(|e| NeoError::Transaction {
-			message: format!("Failed to send invocation transaction: {}", e),
-			tx_hash: None,
-			source: None,
-			recovery: ErrorRecovery::new()
-				.suggest("Check RPC endpoint availability")
-				.retryable(true),
-		})?;
+		let result = send_tx_with_retry(
+			&mut tx,
+			max_attempts,
+			DEFAULT_RETRY_DELAY,
+			"send invocation transaction",
+		)
+		.await?;
 
 		Ok(result.hash.to_string())
 	}
@@ -1140,7 +1147,6 @@ impl Neo {
 		tx_hash: &str,
 		timeout: Duration,
 	) -> Result<(), NeoError> {
-		use crate::neo_error::unified::ErrorRecovery;
 		use primitive_types::H256;
 		use std::str::FromStr;
 		use std::time::Instant;
@@ -1172,22 +1178,11 @@ impl Neo {
 
 	/// Get the current block height
 	pub async fn get_block_height(&self) -> Result<u32, NeoError> {
-		let max_attempts = self.config.retries.saturating_add(1) as usize;
-		let retry_delay = Duration::from_millis(250);
-
-		crate::neo_utils::error::retry(
-			|| async { self.client.get_block_count().await },
-			max_attempts,
-			retry_delay,
-		)
-		.await
-		.map_err(|e| NeoError::Network {
-			message: format!("Failed to get block height: {}", e),
-			source: None,
-			recovery: crate::neo_error::unified::ErrorRecovery::new()
-				.suggest("Check network connection")
-				.retryable(true),
+		let max_attempts = self.config.retries.saturating_add(1);
+		retry_network("fetch block height", max_attempts, DEFAULT_RETRY_DELAY, || async {
+			self.client.get_block_count().await
 		})
+		.await
 	}
 
 	/// Get access to the underlying RPC client for advanced operations
@@ -1226,6 +1221,26 @@ impl NeoBuilder {
 		self
 	}
 
+	/// Override the RPC endpoint with a custom URL.
+	///
+	/// Shorthand for `.network(Network::Custom(endpoint.into()))`. Useful when
+	/// pointing the SDK at a private node, local sandbox, or load balancer.
+	pub fn endpoint(mut self, endpoint: impl Into<String>) -> Self {
+		self.network = Network::Custom(endpoint.into());
+		self
+	}
+
+	/// Replace the entire [`SdkConfig`] in one shot.
+	///
+	/// Use this when you have a pre-built `SdkConfig` (e.g. constructed from
+	/// shared application settings) and want to apply it wholesale. Subsequent
+	/// builder methods like [`timeout`](Self::timeout) override fields on the
+	/// supplied config.
+	pub fn config(mut self, config: SdkConfig) -> Self {
+		self.config = config;
+		self
+	}
+
 	/// Set the request timeout
 	pub fn timeout(mut self, timeout: Duration) -> Self {
 		self.config.timeout = timeout;
@@ -1252,8 +1267,6 @@ impl NeoBuilder {
 
 	/// Build the Neo SDK instance
 	pub async fn build(self) -> Result<Neo, NeoError> {
-		use crate::neo_error::unified::ErrorRecovery;
-
 		let endpoint = match &self.network {
 			Network::MainNet => "https://mainnet1.neo.org:443".to_string(),
 			Network::TestNet => "https://testnet1.neo.coz.io:443".to_string(),
@@ -1282,26 +1295,11 @@ impl NeoBuilder {
 		let provider = HttpProvider::new_with_client(url, http_client);
 		let client = Arc::new(RpcClient::new(provider));
 
-		// Test connection
-		let max_attempts = self.config.retries.saturating_add(1) as usize;
-		let connect_delay = Duration::from_millis(250);
-
-		crate::neo_utils::error::retry(
-			|| async { client.get_block_count().await },
-			max_attempts,
-			connect_delay,
-		)
-		.await
-		.map_err(|e| NeoError::Network {
-			message: format!("Failed to connect to Neo network: {}", e),
-			source: None,
-			recovery: ErrorRecovery::new()
-				.suggest("Verify the RPC endpoint is accessible")
-				.suggest("Check your internet connection")
-				.suggest("Try a different RPC endpoint")
-				.retryable(true)
-				.retry_after(std::time::Duration::from_secs(5)),
-		})?;
+		let max_attempts = self.config.retries.saturating_add(1);
+		retry_network("connect to Neo network", max_attempts, DEFAULT_RETRY_DELAY, || async {
+			client.get_block_count().await
+		})
+		.await?;
 
 		let cache = self.config.cache_enabled.then(RpcCache::new_rpc_cache);
 
@@ -1335,32 +1333,15 @@ impl Transfer {
 	/// Execute the transfer
 	pub async fn execute(self, client: &RpcClient<HttpProvider>) -> Result<TxHash, NeoError> {
 		use crate::neo_builder::{AccountSigner, CallFlags, ScriptBuilder, TransactionBuilder};
-		use crate::neo_error::unified::ErrorRecovery;
 		use crate::neo_types::ScriptHashExtension;
 		use crate::neo_wallets::WalletTrait;
 
-		let from_account = self.from.default_account().ok_or_else(|| NeoError::Wallet {
-			message: "No default account set in wallet".to_string(),
-			source: None,
-			recovery: ErrorRecovery::new()
-				.suggest("Set a default account using set_default_account()")
-				.suggest("Add an account to the wallet first"),
-		})?;
+		let from_account = self.from.default_account().ok_or_else(no_default_account_error)?;
 
-		let to_hash = ScriptHash::from_address(&self.to).map_err(|e| NeoError::Validation {
-			message: format!("Invalid recipient address: {}", e),
-			field: "to".to_string(),
-			value: Some(self.to.clone()),
-			recovery: ErrorRecovery::new()
-				.suggest("Check the address format")
-				.suggest("Ensure it's a valid Neo N3 address"),
-		})?;
+		let to_hash = ScriptHash::from_address(&self.to)
+			.map_err(|e| invalid_address_error("to", &self.to, e))?;
 
-		let contract_hash = match self.token {
-			Token::NEO => ScriptHash::from(hex!("ef4073a0f2b305a38ec4050e4d3d28bc40ea63f5")),
-			Token::GAS => ScriptHash::from(hex!("d2a4cff31913016155e38e474a2c06d08be276cf")),
-			Token::Custom(hash) => hash,
-		};
+		let contract_hash = self.token.contract_hash();
 
 		let amount_i64 = i64::try_from(self.amount).map_err(|_| NeoError::Validation {
 			message: "Amount is too large to fit Neo VM integer".to_string(),
@@ -1381,57 +1362,39 @@ impl Transfer {
 			],
 			Some(CallFlags::All),
 		)
-		.map_err(|e| NeoError::Contract {
-			message: format!("Failed to build transfer script: {}", e),
-			contract: Some(contract_hash.to_hex()),
-			method: Some("transfer".to_string()),
-			source: None,
-			recovery: ErrorRecovery::new(),
+		.map_err(|e| {
+			NeoError::contract(
+				"Failed to build transfer script",
+				Some(contract_hash.to_hex()),
+				Some("transfer".into()),
+				e,
+			)
 		})?;
 
-		let signer =
-			AccountSigner::called_by_entry(from_account).map_err(|e| NeoError::Transaction {
-				message: format!("Failed to create signer: {}", e),
-				tx_hash: None,
-				source: None,
-				recovery: ErrorRecovery::new()
-					.suggest("Ensure the wallet has an unlocked private key"),
-			})?;
+		let signer = AccountSigner::called_by_entry(from_account)
+			.map_err(|e| NeoError::transaction("Failed to create signer", e))?;
 
-		let current_height = client.get_block_count().await.map_err(|e| NeoError::Network {
-			message: format!("Failed to fetch current block height: {}", e),
-			source: None,
-			recovery: ErrorRecovery::new().retryable(true),
-		})?;
+		let current_height = client
+			.get_block_count()
+			.await
+			.map_err(|e| NeoError::network("Failed to fetch current block height", e))?;
 
 		let mut tb = TransactionBuilder::with_client(client);
 		tb.extend_script(sb.to_bytes());
-		tb.set_signers(vec![signer.into()]).map_err(|e| NeoError::Transaction {
-			message: format!("Failed to set signers: {}", e),
-			tx_hash: None,
-			source: None,
-			recovery: ErrorRecovery::new(),
-		})?;
-		tb.valid_until_block(current_height + 5760).map_err(|e| NeoError::Transaction {
-			message: format!("Invalid valid-until-block: {}", e),
-			tx_hash: None,
-			source: None,
-			recovery: ErrorRecovery::new(),
-		})?;
+		tb.set_signers(vec![signer.into()])
+			.map_err(|e| NeoError::transaction("Failed to set signers", e))?;
+		tb.valid_until_block(current_height + 5760)
+			.map_err(|e| NeoError::transaction("Invalid valid-until-block", e))?;
 
-		let mut tx = tb.sign().await.map_err(|e| NeoError::Transaction {
-			message: format!("Failed to sign transfer: {}", e),
-			tx_hash: None,
-			source: None,
-			recovery: ErrorRecovery::new(),
-		})?;
+		let mut tx = tb
+			.sign()
+			.await
+			.map_err(|e| NeoError::transaction("Failed to sign transfer", e))?;
 
-		let result = tx.send_tx().await.map_err(|e| NeoError::Transaction {
-			message: format!("Failed to send transfer: {}", e),
-			tx_hash: None,
-			source: None,
-			recovery: ErrorRecovery::new().retryable(true),
-		})?;
+		let result = tx
+			.send_tx()
+			.await
+			.map_err(|e| NeoError::transaction("Failed to send transfer", e))?;
 
 		Ok(result.hash.to_string())
 	}
@@ -1498,6 +1461,96 @@ mod tests {
 		assert_eq!(builder.config.retries, 5);
 		assert!(builder.config.cache_enabled);
 		assert!(!builder.config.metrics_enabled);
+	}
+
+	#[test]
+	fn endpoint_shortcut_picks_custom_network() {
+		let builder = Neo::builder().endpoint("https://example.com:443");
+		match &builder.network {
+			Network::Custom(url) => assert_eq!(url, "https://example.com:443"),
+			other => panic!("expected Network::Custom, got {other:?}"),
+		}
+	}
+
+	#[test]
+	fn config_setter_replaces_entire_config() {
+		let cfg = SdkConfig::builder()
+			.timeout(Duration::from_secs(7))
+			.retries(2)
+			.cache_enabled(false)
+			.metrics_enabled(true)
+			.build();
+		let builder = Neo::builder().config(cfg.clone()).network(Network::TestNet);
+		assert_eq!(builder.config.timeout, Duration::from_secs(7));
+		assert_eq!(builder.config.retries, 2);
+		assert!(!builder.config.cache_enabled);
+		assert!(builder.config.metrics_enabled);
+	}
+
+	#[test]
+	fn token_contract_hash_returns_native_hashes() {
+		let neo = Token::NEO.contract_hash();
+		let gas = Token::GAS.contract_hash();
+		assert_eq!(<[u8; 20]>::from(neo), Token::NEO_HASH);
+		assert_eq!(<[u8; 20]>::from(gas), Token::GAS_HASH);
+		let custom = ScriptHash::zero();
+		assert_eq!(Token::Custom(custom).contract_hash(), custom);
+	}
+
+	#[tokio::test]
+	async fn connect_with_malformed_url_returns_network_error() {
+		// "not-a-url" cannot be parsed as a URL, so `build()` reports a Network
+		// error (the SDK treats endpoint-parse failures as a network-layer issue).
+		let err = Neo::connect("not-a-url").await.unwrap_err();
+		assert_eq!(err.kind(), crate::neo_error::unified::NeoErrorKind::Network);
+		assert!(err.message().to_lowercase().contains("invalid"));
+	}
+
+	#[tokio::test]
+	async fn from_env_without_env_var_falls_back_to_testnet() {
+		// Guard against environment pollution from parallel tests. We snapshot
+		// the prior value, unset the variable, exercise the fallback path, and
+		// restore on the way out. The fallback path only requires that the
+		// builder *chooses* TestNet — we cannot verify the network call without
+		// hitting the network, so we just assert it does not error on
+		// configuration grounds.
+		let prior = std::env::var_os("NEO_RPC_URL");
+		// SAFETY: tests in this crate are not parallelised with set_var elsewhere.
+		std::env::remove_var("NEO_RPC_URL");
+
+		// The build() may succeed or fail depending on network availability;
+		// either way the URL choice should NOT be a config/validation error.
+		let result = Neo::from_env().await;
+
+		// Restore env to whatever it was.
+		if let Some(value) = prior {
+			std::env::set_var("NEO_RPC_URL", value);
+		}
+
+		if let Err(err) = result {
+			let kind = err.kind();
+			assert!(
+				matches!(kind, crate::neo_error::unified::NeoErrorKind::Network),
+				"unexpected error kind {kind:?}: {err}"
+			);
+		}
+	}
+
+	#[tokio::test]
+	async fn from_env_with_malformed_url_yields_network_error() {
+		let prior = std::env::var_os("NEO_RPC_URL");
+		std::env::set_var("NEO_RPC_URL", "::::not a url::::");
+
+		let result = Neo::from_env().await;
+
+		// Restore env first.
+		match prior {
+			Some(value) => std::env::set_var("NEO_RPC_URL", value),
+			None => std::env::remove_var("NEO_RPC_URL"),
+		}
+
+		let err = result.expect_err("malformed NEO_RPC_URL must error");
+		assert_eq!(err.kind(), crate::neo_error::unified::NeoErrorKind::Network);
 	}
 
 	#[test]

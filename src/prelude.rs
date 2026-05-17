@@ -1,30 +1,32 @@
-/// # Neo SDK Prelude
-///
-/// Convenient imports for commonly used types and traits to make working with Neo more ergonomic.
-///
-/// This prelude module provides a single import to access the most commonly used
-/// components of the NeoRust SDK. Import it with:
-///
-/// ```rust
-/// use neo3::prelude::*;
-/// ```
-///
-/// ## Included Categories
-///
-/// The prelude includes:
-///
-/// - **Core Types**: Basic blockchain primitives like Address, ScriptHash
-/// - **Errors**: The legacy `NeoError` alias (see `neo_error::unified` for richer errors)
-/// - **Contracts**: Types for interacting with Neo smart contracts
-/// - **Wallets**: Account and wallet management
-/// - **Clients**: RPC and other client interfaces
-/// - **Builders**: Transaction construction utilities
-/// - **Extensions**: Utility traits and extensions
-///
-/// ## When to Use
-///
-/// The prelude is ideal for applications that use multiple Neo features.
-/// For more targeted imports, you can import specific modules directly.
+//! # NeoRust prelude
+//!
+//! A curated re-export of the most commonly used types, traits, and helpers
+//! from across the crate. Pull it in once and skip the import boilerplate:
+//!
+//! ```rust
+//! use neo3::prelude::*;
+//! ```
+//!
+//! ## What you get
+//!
+//! | Category | Highlights |
+//! |----------|------------|
+//! | Primitives | [`Address`], [`ScriptHash`], [`Bytes`], `H160`, `H256`, `U256` |
+//! | Contracts | [`ContractManifest`], [`ContractParameter`], [`InvocationResult`], [`NefFile`] |
+//! | VM | [`OpCode`], [`StackItem`], [`VMState`] |
+//! | NNS | [`NNSName`] |
+//! | Errors | Legacy `NeoError` alias (see [`crate::neo_error::unified::NeoError`] for the modern type) |
+//! | Module aliases | `builder`, `providers`, `codec`, `config`, `crypto`, `protocol`, `wallets`, `x` |
+//! | Encoding helpers | [`Base64Encode`], [`StringExt`], `ToBase58`, `ToHexString`, … |
+//!
+//! ## When to import the prelude vs explicit paths
+//!
+//! - **Use the prelude** when writing application code that touches many parts
+//!   of the SDK (transactions, contracts, wallets, RPC).
+//! - **Use explicit imports** in library code, or when you only need one or
+//!   two types — it keeps namespaces clean and helps incremental compilation.
+//!
+//! [`neo_error::unified::NeoError`]: crate::neo_error::unified::NeoError
 // Core error type (legacy alias)
 pub use crate::neo_error::NeoError;
 

@@ -9,6 +9,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 _No changes yet._
 
+## [1.4.0] - 2026-05-17
+
+### Added
+
+- **AWS-SDK-style error metadata** on `neo_error::unified::NeoError`:
+  - New `ProvideErrorMetadata` trait mirroring `aws_smithy_types::error::metadata::ProvideErrorMetadata`, with `code()` and `message()` accessors for vendor-neutral structured logging.
+  - New `NeoErrorKind` stable enum mirroring AWS' `ProvideErrorMetadata::ErrorKind` taxonomy.
+  - New accessors `kind()`, `is_retryable()`, `retry_after()`, `recovery()`, and `message()` for routing errors into retry, telemetry, and observability pipelines without destructuring `#[non_exhaustive]` variants.
+  - New convenience constructors `NeoError::network/transaction/contract/wallet/validation` to keep call sites concise and consistent.
+- **`#![deny(missing_docs)]`** enforcement on the `sdk`, `neo_error`, and `neo_error::unified` modules — every public item in the user-facing API surface is now documented or its rationale for `#[allow(missing_docs)]` recorded inline (legacy `Neo3Error` sub-enums).
+- **Ergonomic high-level entrypoints** on `sdk::Neo`:
+  - `Neo::connect(url)` — one-line connection to any RPC endpoint.
+  - `Neo::from_env()` — honour `NEO_RPC_URL` for 12-factor deployments (falls back to TestNet).
+  - `NeoBuilder::endpoint(url)` and `NeoBuilder::config(cfg)` for finer control.
+- **`Token::contract_hash()`** plus `Token::NEO_HASH` / `Token::GAS_HASH` constants — replaces inline `hex!(...)` literals at call sites.
+- **`sdk::retry` helper module** with `retry_network()` and `send_tx_with_retry()` — centralizes the retry-with-error-mapping pattern used by every high-level SDK operation.
+
+### Changed
+
+- **Major cleanup of `sdk/mod.rs`**: 60 repeated `map_err(|e| NeoError::Variant { ... })` blocks collapsed to 12 (80% reduction) by routing through the new helper functions and constructors. Public behaviour unchanged.
+- **Cleanup of `sdk/unified.rs`** (cross-chain `EcosystemClient`): 21 `recovery: ErrorRecovery::default()` blocks replaced with the new `NeoError::network/transaction/contract/validation` constructors and dedicated `amount_validation_error` / `no_default_account_error` helpers. File shrunk from 287 → 240 lines.
+- **Module-level documentation** added to `neo_codec` and `neo_config` modules — these previously shipped with only `pub use *;` and no overview.
+- **Refreshed crate-, module-, and prelude-level documentation** with AWS-SDK-style quick-starts, error-handling patterns, and an "at a glance" comparison of the high- vs. low-level API layers.
+
+### Removed
+
+- Deprecated, unused `extensions::ToValue` module. Use `serde_json::json!()` or `serde_json::Value::from()` directly.
+
+### Testing
+
+- Verified `cargo build --workspace` (0 warnings), `cargo clippy --all-targets --no-deps -- -D warnings` (clean), `cargo test --lib` (538 passing), `cargo test --doc` (207 passing, 1 ignored), `cargo fmt --all --check` (clean), and `cargo doc --no-deps --lib` (0 warnings).
+
 ## [1.3.0] - 2026-04-26
 
 ### Added

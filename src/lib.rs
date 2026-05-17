@@ -15,6 +15,53 @@
 //! [![Documentation](https://docs.rs/neo3/badge.svg)](https://docs.rs/neo3)
 //! [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 //!
+//! ## At a glance
+//!
+//! ```no_run
+//! use neo3::sdk::Neo;
+//!
+//! # #[tokio::main]
+//! # async fn main() -> Result<(), Box<dyn std::error::Error>> {
+//! // Quick start: connect to a public TestNet node.
+//! let neo = Neo::testnet().await?;
+//!
+//! // Or read $NEO_RPC_URL from the environment (TestNet fallback).
+//! let neo = Neo::from_env().await?;
+//!
+//! // Or point at any RPC endpoint, including private nodes.
+//! let neo = Neo::connect("https://my-node.example.com:443").await?;
+//!
+//! let height = neo.get_block_height().await?;
+//! println!("Tip: {}", height);
+//! # Ok(()) }
+//! ```
+//!
+//! Every fallible operation returns
+//! [`neo_error::unified::NeoError`][crate::neo_error::unified::NeoError], which
+//! exposes
+//! [`kind()`][crate::neo_error::unified::NeoError::kind] and
+//! [`is_retryable()`][crate::neo_error::unified::NeoError::is_retryable] for
+//! ergonomic retry/telemetry decisions — the same convention used by the AWS
+//! Rust SDK's `ProvideErrorMetadata` trait. See
+//! [`neo_error::unified::NeoErrorKind`][crate::neo_error::unified::NeoErrorKind]
+//! for the stable error taxonomy.
+//!
+//! ## Choosing an API layer
+//!
+//! The crate is structured as two complementary layers:
+//!
+//! 1. **High-level (`neo3::sdk`)** — opinionated, batteries-included client
+//!    (`Neo`, `NeoBuilder`, `SdkConfig`, `Token`, `Balance`). Designed for
+//!    application code that wants idiomatic builders, automatic retry, and
+//!    cached lookups out of the box.
+//! 2. **Low-level (`neo_clients`, `neo_builder`, `neo_protocol`, `neo_crypto`,
+//!    `neo_wallets`, …)** — direct access to JSON-RPC, transaction
+//!    construction, signing, and cryptography. Use this when you need full
+//!    control over byte-level Neo N3 protocol details.
+//!
+//! Most users should start with `neo3::sdk` and drop down to the lower-level
+//! modules only for advanced cases.
+//!
 //! ## Features
 //!
 //! This crate provides several feature flags to customize functionality:
@@ -635,49 +682,6 @@ mod tests {
 		};
 
 		Ok((rpc_client, Some(mock_server)))
-	}
-}
-
-/// Trait implementations for serde JSON serialization.
-///
-/// **Deprecated:** Use `serde_json::json!()` macro or `serde_json::Value::from()` instead.
-/// This module will be removed in a future major release.
-#[deprecated(since = "1.2.0", note = "Use serde_json::json!() or Value::from() instead")]
-pub mod extensions {
-	use serde_json::Value;
-
-	pub trait ToValue {
-		fn to_value(&self) -> Value;
-	}
-
-	impl ToValue for String {
-		fn to_value(&self) -> Value {
-			serde_json::Value::String(self.clone())
-		}
-	}
-
-	impl ToValue for &str {
-		fn to_value(&self) -> Value {
-			serde_json::Value::String((*self).to_string())
-		}
-	}
-
-	impl ToValue for u32 {
-		fn to_value(&self) -> Value {
-			serde_json::Value::Number(serde_json::Number::from(*self))
-		}
-	}
-
-	impl ToValue for i32 {
-		fn to_value(&self) -> Value {
-			serde_json::Value::Number(serde_json::Number::from(*self))
-		}
-	}
-
-	impl ToValue for bool {
-		fn to_value(&self) -> Value {
-			serde_json::Value::Bool(*self)
-		}
 	}
 }
 

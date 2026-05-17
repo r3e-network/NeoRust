@@ -1,9 +1,37 @@
+#![deny(missing_docs)]
+//! Error types for the Neo3 SDK.
+//!
+//! Two error families live here:
+//!
+//! - **[`unified::NeoError`]** (recommended) — the modern, structured error
+//!   used by the high-level [`crate::sdk`] module. Carries source-error
+//!   chaining, optional contract/method/tx context, retryability hints, and
+//!   AWS-style [`unified::NeoErrorKind`] classification.
+//! - **[`Neo3Error`]** (legacy) — an older flat enum still returned by some
+//!   low-level helpers. It implements `Into<NeoError>` so callers can convert
+//!   transparently with the `?` operator.
+//!
+//! New code should prefer `unified::NeoError`. The legacy type is kept to
+//! avoid breaking downstream APIs and will be revisited in a future major
+//! release.
+
 use thiserror::Error;
 
 // Include the unified error module for improved developer experience
 pub mod unified;
 
-/// Comprehensive error types for the Neo3 SDK
+// Legacy error hierarchy retained for backward compatibility. New code should
+// use `unified::NeoError`; documenting every variant here is deliberately
+// skipped — each `#[error(...)]` message is its public contract.
+
+/// Legacy comprehensive error type for the Neo3 SDK.
+///
+/// New code should prefer [`unified::NeoError`], which carries retryability
+/// metadata, recovery hints, and matches the AWS-SDK `ProvideErrorMetadata`
+/// pattern. This enum is kept so existing call sites that match on
+/// `Neo3Error::Crypto(_)`, etc. continue to work; the [`unified::NeoError`]
+/// type has a `From<Neo3Error>` impl for seamless interop.
+#[allow(missing_docs)]
 #[derive(Error, Debug)]
 #[non_exhaustive]
 pub enum Neo3Error {
@@ -44,6 +72,8 @@ pub enum Neo3Error {
 	UnsupportedOperation(String),
 }
 
+/// Legacy crypto error subset of [`Neo3Error`]. See [`unified::NeoError`] for the modern API.
+#[allow(missing_docs)]
 #[derive(Error, Debug)]
 pub enum CryptoError {
 	#[error("Invalid private key: {0}")]
@@ -68,6 +98,8 @@ pub enum CryptoError {
 	DecryptionFailed(String),
 }
 
+/// Legacy wallet error subset of [`Neo3Error`]. See [`unified::NeoError`] for the modern API.
+#[allow(missing_docs)]
 #[derive(Error, Debug)]
 pub enum WalletError {
 	#[error("Wallet not found: {0}")]
@@ -98,6 +130,8 @@ pub enum WalletError {
 	Io(#[from] std::io::Error),
 }
 
+/// Legacy network error subset of [`Neo3Error`]. See [`unified::NeoError`] for the modern API.
+#[allow(missing_docs)]
 #[derive(Error, Debug)]
 #[non_exhaustive]
 pub enum NetworkError {
@@ -123,6 +157,8 @@ pub enum NetworkError {
 	Http(#[from] reqwest::Error),
 }
 
+/// Legacy transaction error subset of [`Neo3Error`]. See [`unified::NeoError`] for the modern API.
+#[allow(missing_docs)]
 #[derive(Error, Debug)]
 pub enum TransactionError {
 	#[error("Invalid transaction: {0}")]
@@ -147,6 +183,8 @@ pub enum TransactionError {
 	GasLimitExceeded { used: u64, limit: u64 },
 }
 
+/// Legacy contract error subset of [`Neo3Error`]. See [`unified::NeoError`] for the modern API.
+#[allow(missing_docs)]
 #[derive(Error, Debug)]
 #[non_exhaustive]
 pub enum ContractError {
@@ -169,6 +207,8 @@ pub enum ContractError {
 	DeploymentFailed(String),
 }
 
+/// Legacy serialization error subset of [`Neo3Error`]. See [`unified::NeoError`] for the modern API.
+#[allow(missing_docs)]
 #[derive(Error, Debug)]
 pub enum SerializationError {
 	#[error("JSON error: {0}")]
@@ -205,6 +245,10 @@ impl From<serde_json::Error> for Neo3Error {
 
 /// Trait for adding context to errors
 pub trait ErrorContext<T> {
+	/// Wraps the existing error with an additional context message.
+	///
+	/// The closure is invoked lazily and only on the error path so the
+	/// happy-path cost is a single function pointer.
 	fn with_context<F>(self, f: F) -> Neo3Result<T>
 	where
 		F: FnOnce() -> String;

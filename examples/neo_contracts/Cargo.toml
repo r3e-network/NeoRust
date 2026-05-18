@@ -7,7 +7,7 @@ publish = false
 
 [dependencies]
 neo3 = { path = "../../", package = "neo3", features = [] }
-tokio = { version = "1.50", features = ["full"] }
+tokio = { version = "1.52", features = ["full"] }
 hex = "0.4.3"
 
 [features]

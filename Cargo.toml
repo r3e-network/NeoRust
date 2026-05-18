@@ -91,7 +91,7 @@ url = { version = "2.5", default-features = false }
 elliptic-curve = { version = "0.13.5", default-features = false }
 k256 = { version = "0.13.1", default-features = false, features = ["ecdsa", "std", "ecdsa-core"] }
 sha2 = { version = "0.11", default-features = false }
-sha3 = { version = "0.10.8", default-features = false, features = ["std"] }
+sha3 = { version = "0.10.9", default-features = false, features = ["std"] }
 blake2 = { version = "0.10.6", default-features = false, features = ["std"] }
 ed25519-dalek = { version = "2.1.1", default-features = false, features = ["std", "rand_core"] }
 hmac = "0.13.0"
@@ -109,10 +109,10 @@ bytes = "1.4"
 hex = { package = "const-hex", version = "1.6", features = ["hex"] }
 hex-literal = "1.1"
 once_cell = "1.21"
-rand = "0.9.3"
-rayon = "1.7"
+rand = "0.10.1"
+rayon = "1.12"
 # tempfile: moved to [dev-dependencies]
-thiserror = "2.0.17"
+thiserror = "2.0.18"
 
 # tracing
 tracing = "0.1.44"
@@ -121,13 +121,13 @@ tracing-futures = "0.2.5"
 
 # wasm
 # instant = "0.1.12"  # REMOVED: Unmaintained (RUSTSEC-2024-0384)
-serde_with = "3.18.0"
+serde_with = "3.20.0"
 # For base64 encoding
 bs58 = "0.5.1"
-aes = "0.8.3"
+aes = "0.9.0"
 # For JSON manipulation
 # json = "0.12"  # REMOVED: Unmaintained and vulnerable (RUSTSEC-2022-0081)
-rust_decimal = "1.41"
+rust_decimal = "1.42"
 # JSON encode
 
 ripemd = "0.2.0"
@@ -152,15 +152,15 @@ derive_more = { version = "2.1.1", features = ["full"] }
 getset = "0.1.2"
 rustc-hash = { version = "2.1", optional = true }
 
-scrypt = "0.11.0"
-signature   = "2.1.0"
-rand_core = "0.9.3"
+scrypt = "0.12.0"
+signature   = "3.0.0"
+rand_core = "0.10.1"
 #openssl = "0.10"
 
 # log removed: use `tracing` exclusively for structured logging
-ecb = "0.1.2"
+ecb = "0.2.0"
 http = "1.4.0"
-jsonwebtoken = { version = "10.3.0", default-features = false, features = ["rust_crypto"] }
+jsonwebtoken = { version = "10.4.0", default-features = false, features = ["rust_crypto"] }
 
 # ledger
 coins-ledger = { version = "0.13.0", default-features = false, optional = true }
@@ -174,11 +174,11 @@ ethers = { version = "2.0.14", default-features = false, features = ["abigen", "
 # These are commented out by default as they require special SGX environment
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-tokio = { version = "1.50", features = ["full"] }
+tokio = { version = "1.52", features = ["full"] }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 # Tokio restricts supported features on wasm targets (including WASI).
-tokio = { version = "1.45", default-features = false, features = ["sync", "macros", "io-util", "rt", "time"] }
+tokio = { version = "1.52", default-features = false, features = ["sync", "macros", "io-util", "rt", "time"] }
 # Uncomment when building for SGX:
 # sgx_tstd = { git = "https://github.com/apache/teaclave-sgx-sdk.git", rev = "v2.0.0", optional = true }
 # sgx_types = { git = "https://github.com/apache/teaclave-sgx-sdk.git", rev = "v2.0.0", optional = true }

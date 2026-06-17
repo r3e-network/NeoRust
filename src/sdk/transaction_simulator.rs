@@ -811,18 +811,21 @@ impl TransactionSimulatorBuilder {
 	}
 
 	/// Set the RPC client
+	#[must_use]
 	pub fn client(mut self, client: Arc<RpcClient<HttpProvider>>) -> Self {
 		self.client = Some(client);
 		self
 	}
 
 	/// Set cache duration
+	#[must_use]
 	pub fn cache_duration(mut self, duration: std::time::Duration) -> Self {
 		self.cache_duration = duration;
 		self
 	}
 
 	/// Add optimization rule
+	#[must_use]
 	pub fn add_optimization_rule(mut self, rule: OptimizationRule) -> Self {
 		self.optimization_rules.push(rule);
 		self

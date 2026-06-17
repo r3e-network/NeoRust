@@ -49,36 +49,43 @@ pub struct MonitoringConfigBuilder {
 }
 
 impl MonitoringConfigBuilder {
+	#[must_use]
 	pub fn metrics_enabled(mut self, val: bool) -> Self {
 		self.metrics_enabled = Some(val);
 		self
 	}
 
+	#[must_use]
 	pub fn metrics_port(mut self, val: u16) -> Self {
 		self.metrics_port = Some(val);
 		self
 	}
 
+	#[must_use]
 	pub fn tracing_enabled(mut self, val: bool) -> Self {
 		self.tracing_enabled = Some(val);
 		self
 	}
 
+	#[must_use]
 	pub fn tracing_endpoint(mut self, val: String) -> Self {
 		self.tracing_endpoint = Some(val);
 		self
 	}
 
+	#[must_use]
 	pub fn log_level(mut self, val: String) -> Self {
 		self.log_level = Some(val);
 		self
 	}
 
+	#[must_use]
 	pub fn health_check_enabled(mut self, val: bool) -> Self {
 		self.health_check_enabled = Some(val);
 		self
 	}
 
+	#[must_use]
 	pub fn health_check_port(mut self, val: u16) -> Self {
 		self.health_check_port = Some(val);
 		self

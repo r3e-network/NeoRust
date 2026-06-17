@@ -7,7 +7,7 @@ const darkCodeTheme = themes.dracula;
 
 /** @type {import('@docusaurus/types').Config} */
 const config = {
-  title: 'NeoRust v1.4.0',
+  title: 'NeoRust v2.0.0',
   tagline: 'Production-ready Neo N3 blockchain development toolkit built in Rust',
   favicon: 'img/favicon.png',
 
@@ -48,7 +48,7 @@ const config = {
           includeCurrentVersion: true,
           versions: {
             current: {
-              label: 'v1.4.0',
+              label: 'v2.0.0',
               path: '',
             },
           },
@@ -82,7 +82,7 @@ const config = {
       image: 'img/neorust-social-card.jpg',
       metadata: [
         { name: 'keywords', content: 'neo, blockchain, rust, sdk, neo3, cryptocurrency, smart-contracts, defi' },
-        { name: 'description', content: 'NeoRust v1.4.0 - A production-ready Rust SDK for Neo N3 blockchain development. Build high-performance dApps with type-safe, modern Rust. Optimized and production-ready.' },
+        { name: 'description', content: 'NeoRust v2.0.0 - A production-ready Rust SDK for Neo N3 blockchain development. Build high-performance dApps with type-safe, modern Rust. Optimized and production-ready.' },
         { property: 'og:image', content: 'https://neorust.netlify.app/img/neorust-social-card.jpg' },
         { property: 'og:type', content: 'website' },
         { name: 'twitter:card', content: 'summary_large_image' },
@@ -243,7 +243,7 @@ const config = {
         copyright: `
           <div style="margin-top: 16px; padding-top: 16px; border-top: 1px solid #333;">
             <p>Copyright © ${new Date().getFullYear()} R3E Network. Built with ❤️ and Docusaurus.</p>
-            <p>NeoRust v1.4.0 - Production-Ready Neo N3 Development Suite - Optimized and Enhanced</p>
+            <p>NeoRust v2.0.0 - Production-Ready Neo N3 Development Suite - Optimized and Enhanced</p>
           </div>
         `,
       },
@@ -269,9 +269,9 @@ const config = {
         respectPrefersColorScheme: true,
       },
       announcementBar: {
-        id: 'v1.4.0-release',
+        id: 'v2.0.0-release',
         content:
-          '🎉 <strong>NeoRust v1.4.0</strong> is now available! AWS-SDK-style error metadata, unified high-level API, and production hardening. <a target="_blank" rel="noopener noreferrer" href="https://github.com/R3E-Network/NeoRust/releases/tag/v1.4.0">See what\'s new</a>',
+          '🎉 <strong>NeoRust v2.0.0</strong> is now available! AWS-SDK-style error metadata, unified high-level API, and production hardening. <a target="_blank" rel="noopener noreferrer" href="https://github.com/R3E-Network/NeoRust/releases/tag/v2.0.0">See what\'s new</a>',
         backgroundColor: '#059669',
         textColor: '#ffffff',
         isCloseable: true,

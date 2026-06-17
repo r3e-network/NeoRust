@@ -9,6 +9,101 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 _No changes yet._
 
+## [2.0.0] - 2026-06-17
+
+v2.0.0 is a **breaking release** focused on SDK quality, user-friendliness, and
+bringing the entire documentation set into sync with the shipped code. The Neo
+N3 protocol surface itself is unchanged — the breaking change is the
+`prelude::NeoError` type alias (see Breaking Changes).
+
+### Breaking Changes
+
+- **`prelude::NeoError` now resolves to `neo_error::unified::NeoError`** instead
+  of the legacy `Neo3Error` alias. The high-level `sdk::Neo` API already
+  returned the unified type, so the two were different types and mixing
+  `use neo3::prelude::*` with `sdk::Neo` calls produced confusing type-mismatch
+  errors. The unified type has `From` impls for every domain error
+  (`ProviderError`, `BuilderError`, `ContractError`, `WalletError`,
+  `CryptoError`, `Neo3Error`, `io`, `serde`, …), so a single
+  `fn() -> Result<T, NeoError>` boundary composes with `?` across the whole SDK.
+  - **Migration:** if you matched on the legacy `Neo3Error::Crypto(_)` /
+    `Wallet(_)` / `Network(_)` variants via the prelude alias, switch to the
+    unified `NeoError` accessors (`kind()`, `is_retryable()`, `recovery()`) or
+    match on `NeoErrorKind`. See `docs/guides/choosing-an-api.md`.
+- **`NeoError::Generic { message }`** (legacy tuple variant used in a couple of
+  doc examples) is removed from the prelude path; use `NeoError::validation(..)`.
+
+### Added
+
+- **`#[must_use]` on every consuming-self builder setter** across the crate
+  (SdkConfigBuilder, NeoBuilder, Transfer, TransactionSimulatorBuilder,
+  WebSocketConfigBuilder, HdWalletBuilder, Wallet, NeoError builders,
+  CacheConfigBuilder, CircuitBreakerConfigBuilder, ConnectionPoolConfigBuilder,
+  ProductionClientBuilder, RateLimiterConfigBuilder, RetryConfigBuilder,
+  NeoFS object/container/config builders, MonitoringConfigBuilder). Dropped
+  builder calls now fail at compile time, matching the AWS Rust SDK convention.
+  (~80 setters annotated.)
+- **High-level SDK types in the prelude**: `Neo`, `NeoBuilder`, `SdkConfig`,
+  `Token`, `Balance`, `Network`. Following the getting-started guide now needs
+  only `use neo3::prelude::*;`.
+- **"Choosing an API Layer" decision guide** (`docs/guides/choosing-an-api.md`)
+  with a goal-to-layer table and explicit "when to drop down" rules, linked
+  from the crate-level docs.
+- **`examples/standalone`** workspace crate wiring the four long-form examples
+  (high-level SDK, gas estimation, production client, v1 feature tour) into the
+  build so they are compile-checked on every CI run.
+- **`wallet_benchmarks`** registered in `Cargo.toml` `[[bench]]` (the file
+  existed but was orphaned; `cargo bench` silently skipped it).
+
+### Changed
+
+- All version stamps across `README.md`, `docs/`, and `website/` (docusaurus
+  config, docs/cli/sdk pages, sidebars, package.json) unified to the shipped
+  version. The website had been frozen at v1.0.1/v1.0.9; docs at v1.3.0.
+- Docusaurus `editUrl` entries repointed from the non-existent `tree/main/`
+  branch to `tree/master/` (every "edit this page" link was 404).
+- Website feature-flag examples corrected to match `Cargo.toml`: `websocket`
+  → `ws`; the fabricated `aws` feature flag removed.
+
+### Removed
+
+- **`test_script`** (3.9 MB Linux ELF binary), **`test_script.rs`**,
+  **`test_script.sh`** — stray build/test artifacts committed at the repo root.
+- **`website/build/`** (143 files) and **`docs/book/`** (74 files) — generated
+  docusaurus / mdbook output that had been checked in. `.gitignore` rules added
+  so they cannot return.
+- **`neo-gui/`** — the GUI was removed in `8178fcd8` but the directory lingered
+  as 5.5 GB of untracked `node_modules`; the `dependabot.yml` npm entry for
+  `/neo-gui` is dropped.
+- Three one-off performance/debug scripts (`test_debug_vs_release`,
+  `test_encryption_performance`, `analyze_encryption_bottleneck`); their purpose
+  is now served by `benches/wallet_benchmarks.rs`.
+- Stale doc links to non-existent `PERFORMANCE_ANALYSIS.md` and
+  `SECURITY_AUDIT_v1.0.9.md` replaced with real
+  `SYSTEM_ARCHITECTURE_DESIGN.md` / `docs/SECURITY_AUDIT.md` links.
+
+### Fixed
+
+- `clippy::items_after_test_module` warning in `src/lib.rs` (re-exports placed
+  after the test module). Workspace `clippy --workspace --all-targets
+  -D warnings` is now clean.
+
+### Documentation
+
+- Every guide under `docs/` and every page under `website/{docs,cli,sdk}` now
+  references the shipped version and the real feature flags.
+- Prelude docs gained a "Quick start via the prelude" example.
+- 208 doctests pass (was 207); 538 lib unit tests pass.
+
+### Upgrade notes
+
+This is a SemVer-major release. For most users the only change is that
+`use neo3::prelude::*` now brings the unified `NeoError` (the same type
+`sdk::Neo` already returned). If you wrote `Result<_, NeoError>` boundaries
+using the prelude alias, they keep working; if you matched on legacy
+`Neo3Error` variants through that alias, port them to `NeoErrorKind` / the
+unified accessors.
+
 ## [1.4.0] - 2026-05-17
 
 ### Added

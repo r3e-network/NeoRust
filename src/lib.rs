@@ -62,6 +62,9 @@
 //! Most users should start with `neo3::sdk` and drop down to the lower-level
 //! modules only for advanced cases.
 //!
+//! For a full decision table and concrete "when to switch" rules, see the
+//! [Choosing an API Layer](https://github.com/R3E-Network/NeoRust/blob/master/docs/guides/choosing-an-api.md) guide.
+//!
 //! ## Features
 //!
 //! This crate provides several feature flags to customize functionality:

@@ -1,4 +1,5 @@
-use ethers::types::U256;
+use alloy::primitives::{Address as AlloyAddress, U256};
+use alloy::sol_types::SolCall;
 
 use crate::neo_clients::HttpProvider as N3HttpProvider;
 use crate::neo_error::unified::{ErrorRecovery, NeoError};
@@ -130,12 +131,12 @@ impl<'a> EcosystemClient<'a> {
 					NeoError::validation("to", Some(to.to_string()), &e.to_string())
 				})?;
 				let value =
-					U256::from_dec_str(amount).map_err(|e| amount_validation_error(amount, e))?;
+					U256::from_str(amount).map_err(|e| amount_validation_error(amount, e))?;
 
 				let tx = NeoXTransaction::new(
 					Some(to_addr),
 					vec![],
-					value.as_u64(),
+					value.to::<u64>(),
 					NEOX_TRANSFER_GAS_LIMIT,
 					NEOX_GAS_PRICE_WEI,
 				);
@@ -198,8 +199,8 @@ impl<'a> EcosystemClient<'a> {
 			},
 			Self::NeoX { client } => {
 				let amount_wei =
-					U256::from_dec_str(amount).map_err(|e| amount_validation_error(amount, e))?;
-				let token_addr: ethers::types::Address = ethers::types::Address::zero();
+					U256::from_str(amount).map_err(|e| amount_validation_error(amount, e))?;
+				let token_addr = AlloyAddress::ZERO;
 
 				let evm =
 					client.provider.evm_provider().ok_or_else(|| NeoError::Configuration {
@@ -217,20 +218,20 @@ impl<'a> EcosystemClient<'a> {
 					)
 				})?;
 
-				let call = bridge.withdraw(token_addr, amount_wei, destination_address.to_string());
-
-				let req = call.tx;
-				let data = req.data().map(|d| d.to_vec()).unwrap_or_default();
-				let value = req.value().map(|v| v.as_u64()).unwrap_or_default();
-				let to_addr = req.to().map(|to| match to {
-					ethers::types::NameOrAddress::Address(a) => primitive_types::H160::from(a.0),
-					_ => primitive_types::H160::zero(),
-				});
+				// ABI-encode the withdraw calldata without broadcasting, then wrap it
+				// in a NeoXTransaction addressed to the bridge contract.
+				let withdraw_call = crate::neo_x::bridge::evm_bridge::NeoXBridgeEVM::withdrawCall {
+					token: token_addr,
+					amount: amount_wei,
+					destination: destination_address.to_string(),
+				};
+				let data = withdraw_call.abi_encode();
+				let to_addr = primitive_types::H160::from(bridge.address().into_array());
 
 				let tx = NeoXTransaction::new(
-					to_addr,
+					Some(to_addr),
 					data,
-					value,
+					0,
 					NEOX_BRIDGE_GAS_LIMIT,
 					NEOX_GAS_PRICE_WEI,
 				);

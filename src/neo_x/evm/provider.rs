@@ -1,7 +1,7 @@
-use ethers::providers::{Http, Middleware, Provider};
+use alloy::primitives::U256 as AlloyU256;
+use alloy::providers::{Provider, RootProvider};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use std::convert::TryFrom;
 use std::sync::Arc;
 
 use crate::{
@@ -12,14 +12,16 @@ use crate::{
 /// Neo X MainNet Anti-MEV RPC endpoint.
 pub const NEO_X_MAINNET_MEV_RPC: &str = "https://mainnet-1.rpc.banelabs.org";
 
-/// Neo X EVM provider for interacting with the Neo X EVM-compatible chain
+/// Neo X EVM provider for interacting with the Neo X EVM-compatible chain.
+///
+/// The EVM side is powered by alloy (the maintained successor to ethers-rs).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct NeoXProvider<'a, P: JsonRpcProvider> {
 	rpc_url: String,
 	#[serde(skip)]
 	provider: Option<&'a RpcClient<P>>,
 	#[serde(skip)]
-	evm_provider: Option<Arc<Provider<Http>>>,
+	evm_provider: Option<Arc<RootProvider>>,
 }
 
 impl<'a, P: JsonRpcProvider + 'static> NeoXProvider<'a, P> {
@@ -34,7 +36,7 @@ impl<'a, P: JsonRpcProvider + 'static> NeoXProvider<'a, P> {
 	///
 	/// A new NeoXProvider instance
 	pub fn new(rpc_url: &str, provider: Option<&'a RpcClient<P>>) -> Self {
-		let evm_provider = Provider::<Http>::try_from(rpc_url).map(Arc::new).ok();
+		let evm_provider = rpc_url.parse().ok().map(RootProvider::new_http).map(Arc::new);
 		Self { rpc_url: rpc_url.to_string(), provider, evm_provider }
 	}
 
@@ -60,11 +62,11 @@ impl<'a, P: JsonRpcProvider + 'static> NeoXProvider<'a, P> {
 	/// * `rpc_url` - The new RPC URL
 	pub fn set_rpc_url(&mut self, rpc_url: &str) {
 		self.rpc_url = rpc_url.to_string();
-		self.evm_provider = Provider::<Http>::try_from(rpc_url).map(Arc::new).ok();
+		self.evm_provider = rpc_url.parse().ok().map(RootProvider::new_http).map(Arc::new);
 	}
 
-	/// Returns the underlying Ethers provider for advanced EVM operations
-	pub fn evm_provider(&self) -> Option<Arc<Provider<Http>>> {
+	/// Returns the underlying alloy provider for advanced EVM operations
+	pub fn evm_provider(&self) -> Option<Arc<RootProvider>> {
 		self.evm_provider.clone()
 	}
 
@@ -80,8 +82,8 @@ impl<'a, P: JsonRpcProvider + 'static> NeoXProvider<'a, P> {
 	pub async fn chain_id(&self) -> Result<u64, ContractError> {
 		// Prefer standard EVM RPC if evm_provider is available
 		if let Some(evm) = &self.evm_provider {
-			if let Ok(id) = evm.get_chainid().await {
-				return Ok(id.as_u64());
+			if let Ok(id) = evm.get_chain_id().await {
+				return Ok(id);
 			}
 		}
 
@@ -95,6 +97,16 @@ impl<'a, P: JsonRpcProvider + 'static> NeoXProvider<'a, P> {
 			provider.request("neo_chainId", ()).await.map_err(ContractError::from)?;
 
 		Self::parse_chain_id_value(value)
+	}
+
+	/// Gets the native balance for an EVM address via the alloy provider.
+	pub async fn get_balance(&self, address: alloy::primitives::Address) -> Result<AlloyU256, ContractError> {
+		let evm = self.evm_provider.as_ref().ok_or_else(|| {
+			ContractError::ProviderNotSet("EVM provider required for balance query".to_string())
+		})?;
+		evm.get_balance(address).await.map_err(|e| {
+			ContractError::InvalidStateError(format!("alloy balance query failed: {e}"))
+		})
 	}
 
 	fn parse_chain_id_value(value: Value) -> Result<u64, ContractError> {

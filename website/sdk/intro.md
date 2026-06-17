@@ -34,7 +34,7 @@ Add NeoRust to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-neo3 = "1.0.9"
+neo3 = "1.4.0"
 ```
 
 ### Basic Usage
@@ -69,13 +69,16 @@ Customize your installation with feature flags:
 
 ```toml
 [dependencies]
-neo3 = { version = "1.0.9", features = ["futures", "ledger", "aws"] }
+neo3 = { version = "1.4.0", features = ["futures", "ledger"] }
 ```
 
 **Available Features:**
 - `futures`: Async/await support (recommended)
 - `ledger`: Hardware wallet support via Ledger devices
-- `aws`: AWS integration for cloud deployments
+- `ws`: Modern WebSocket transport for real-time events
+- `ipc`: IPC transport (Unix sockets / Windows named pipes)
+- `mock`: In-memory mock client for offline tests/CI
+- `yubi` / `mock-hsm`: YubiHSM support, or the YubiHSM mock backend for tests
 - `default`: Minimal setup with core functionality
 
 ## 🏗️ Core Features
@@ -688,8 +691,8 @@ async fn enterprise_asset_management() -> Result<(), Box<dyn std::error::Error>>
 - **[Quick Start](./quick-start)**: Get up and running in 5 minutes
 - **[Examples](./examples)**: Real-world usage examples
 - **[API Reference](https://docs.rs/neo3)**: Complete API documentation
-- **[Performance Guide](https://github.com/R3E-Network/NeoRust/blob/v1.0.9/PERFORMANCE_ANALYSIS.md)**: Optimization techniques
-- **[Security Best Practices](https://github.com/R3E-Network/NeoRust/blob/v1.0.9/SECURITY_AUDIT_v1.0.9.md)**: Keep your applications secure
+- **[System Architecture](https://github.com/R3E-Network/NeoRust/blob/master/SYSTEM_ARCHITECTURE_DESIGN.md)**: Core architecture and components
+- **[Security Audit](https://github.com/R3E-Network/NeoRust/blob/master/docs/SECURITY_AUDIT.md)**: Security review and best practices
 
 ---
 

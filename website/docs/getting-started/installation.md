@@ -29,7 +29,7 @@ Add NeoRust to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-neo3 = "1.0.9"
+neo3 = "1.4.0"
 tokio = { version = "1.0", features = ["full"] }
 ```
 
@@ -39,15 +39,19 @@ NeoRust provides several optional features:
 
 ```toml
 [dependencies]
-neo3 = { version = "1.0.9", features = ["futures", "ledger", "websocket"] }
+neo3 = { version = "1.4.0", features = ["futures", "ledger"] }
 ```
 
 ### Available Features
 
-- **`futures`** - Async/await support (recommended)
-- **`ledger`** - Hardware wallet support
-- **`websocket`** - WebSocket client support
-- **`serde`** - Serialization support
+- **`futures`** — Async/await support (re-exports the `futures` crate; recommended for most apps)
+- **`ledger`** — Ledger hardware wallet types (feature gate is compile-checked; production use should include real-device signing tests in your release environment)
+- **`ws`** — Modern WebSocket transport (`tokio-tungstenite`), for real-time blockchain events
+- **`legacy-ws`** — Legacy WebSocket compatibility layer (fallback)
+- **`ipc`** — IPC transport (Unix domain sockets / Windows named pipes)
+- **`mock`** — `MockClient` and in-memory providers for offline tests/CI
+- **`yubi`** / **`mock-hsm`** — YubiHSM support, or the YubiHSM mock backend for tests
+- **`sgx`** / **`no_std`** — Experimental Intel SGX / specialized `no_std` build gates; not certified as general embedded or `wasm32-unknown-unknown` support
 
 ## Verify Installation
 
@@ -58,7 +62,7 @@ Create a simple test to verify everything works:
 use neo3::prelude::*;
 
 fn main() {
-    println!("NeoRust SDK v1.0.9 is ready!");
+    println!("NeoRust SDK v1.4.0 is ready!");
     
     // Create a simple account
     let account = Account::create().expect("Failed to create account");
@@ -74,7 +78,7 @@ cargo run
 
 You should see output like:
 ```
-NeoRust SDK v1.0.9 is ready!
+NeoRust SDK v1.4.0 is ready!
 Generated address: NXXXXxxxXXXxxxXXXxxxXXXxxxXXXxxx
 ```
 

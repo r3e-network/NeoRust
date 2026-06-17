@@ -11,6 +11,7 @@
 //!
 //! | Category | Highlights |
 //! |----------|------------|
+//! | **High-level SDK** | [`Neo`], [`NeoBuilder`], [`SdkConfig`], [`Token`], [`Balance`], [`Network`] |
 //! | Primitives | [`Address`], [`ScriptHash`], [`Bytes`], `H160`, `H256`, `U256` |
 //! | Contracts | [`ContractManifest`], [`ContractParameter`], [`InvocationResult`], [`NefFile`] |
 //! | VM | [`OpCode`], [`StackItem`], [`VMState`] |
@@ -18,6 +19,23 @@
 //! | Errors | [`NeoError`] — unified error with `kind()` / `is_retryable()` / recovery hints |
 //! | Module aliases | `builder`, `providers`, `codec`, `config`, `crypto`, `protocol`, `wallets`, `x` |
 //! | Encoding helpers | [`Base64Encode`], [`StringExt`], `ToBase58`, `ToHexString`, … |
+//!
+//! ## Quick start via the prelude
+//!
+//! The high-level entry point is available straight from the prelude, so a
+//! working client is a one-liner:
+//!
+//! ```no_run
+//! use neo3::prelude::*;
+//!
+//! # #[tokio::main]
+//! # async fn main() -> Result<(), NeoError> {
+//! let neo = Neo::testnet().await?;
+//! let height = neo.get_block_height().await?;
+//! println!("tip = {height}");
+//! # Ok(())
+//! # }
+//! ```
 //!
 //! ## When to import the prelude vs explicit paths
 //!
@@ -27,6 +45,12 @@
 //!   two types — it keeps namespaces clean and helps incremental compilation.
 //!
 //! [`NeoError`]: crate::neo_error::unified::NeoError
+//! [`Neo`]: crate::sdk::Neo
+//! [`NeoBuilder`]: crate::sdk::NeoBuilder
+//! [`SdkConfig`]: crate::sdk::SdkConfig
+//! [`Token`]: crate::sdk::Token
+//! [`Balance`]: crate::sdk::Balance
+//! [`Network`]: crate::sdk::Network
 // Unified error type (modern). Carries kind()/is_retryable()/recovery hints,
 // and has From impls for every domain error (ProviderError, BuilderError,
 // ContractError, WalletError, CryptoError, Neo3Error, io, serde, ...), so a
@@ -103,3 +127,9 @@ pub use crate::neo_types::ValueExtension;
 // === Utility Traits ===
 // Hex and base64 encoding/decoding utilities
 pub use crate::neo_crypto::utils::{FromBase64String, FromHexString, ToHexString};
+
+// === High-level SDK API ===
+// The opinionated, batteries-included entry point. `Neo::testnet()`,
+// `Neo::from_env()`, `Neo::connect(url)` — see the crate-level docs for
+// guidance on when to use this layer versus the lower-level `providers::RpcClient`.
+pub use crate::sdk::{Balance, Neo, NeoBuilder, Network, SdkConfig, Token};

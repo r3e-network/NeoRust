@@ -1,8 +1,8 @@
 {
   "name": "neorust-website",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "private": true,
-  "description": "Official website and documentation for NeoRust v2.0.0 - A comprehensive Rust SDK for Neo N3 blockchain development",
+  "description": "Official website and documentation for NeoRust v2.0.1 - A comprehensive Rust SDK for Neo N3 blockchain development",
   "keywords": [
     "neo",
     "blockchain",

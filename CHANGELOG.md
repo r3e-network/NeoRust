@@ -9,6 +9,43 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 _No changes yet._
 
+## [2.0.1] - 2026-06-18
+
+Security patch release. No public API changes — only dependency hardening.
+
+### Security
+
+- **Eliminated all known Rust vulnerabilities** (3 → 0, per `cargo audit`).
+  The unmaintained `ethers` crate (2.0.14) pulled in the vulnerable
+  `rustls-webpki 0.101.7` via `reqwest 0.11` → `rustls 0.21`, affecting every
+  SDK consumer. Migrated the Neo X EVM layer to `alloy` 2.1 (the maintained
+  ethers successor). `ethers` and `rustls-webpki 0.101.7` are no longer in the
+  dependency tree.
+- **Website npm**: upgraded `@docusaurus/*` 3.5.2 → 3.10.1 and added npm
+  `overrides` to force-patch transitive dev-toolchain deps that Docusaurus
+  pins to vulnerable versions (webpack-dev-server, copy-webpack-plugin,
+  serialize-javascript, uuid, sockjs, css-minimizer-webpack-plugin). Result:
+  0 critical, 0 high (was 1 critical, 21 high). The remaining 22 moderate all
+  stem from a single root cause (`gray-matter` → `js-yaml 3.14.2` DoS,
+  GHSA-h67p-54hq-rp68) which has no upstream fix and only affects parsing of
+  in-repo markdown — documented as accepted.
+
+### Changed
+
+- Neo X EVM internals now use alloy instead of ethers. The public
+  `neo_x::evm::{NeoXWallet, NeoXProvider, NeoXTransaction, NeoXClient}` and
+  `NeoXBridgeContractEVM` APIs are unchanged in shape; only the returned EVM
+  types (`Address`, `U256`, `TransactionReceipt`) now come from
+  `alloy::primitives` / `alloy::rpc::types` instead of `ethers::types`.
+- `website/.docusaurus/` build cache (80 files) removed from git history
+  tracking; it was committed before the `.gitignore` rule existed.
+
+### Verified
+
+- `cargo audit`: 0 vulnerabilities. `cargo clippy --workspace --all-targets
+  -D warnings`: clean. 538 lib tests + 208 doctests pass.
+- `website`: `npm run build` succeeds on Docusaurus 3.10.1.
+
 ## [2.0.0] - 2026-06-17
 
 v2.0.0 is a **breaking release** focused on SDK quality, user-friendliness, and

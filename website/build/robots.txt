@@ -1,4 +1,0 @@
-User-agent: *
-Allow: /
-
-Sitemap: https://neo-rust-sdk.netlify.app/sitemap.xml

@@ -842,12 +842,14 @@ impl WebSocketClientBuilder {
 	}
 
 	/// Set reconnection interval
+	#[must_use]
 	pub fn reconnect_interval(mut self, interval: Duration) -> Self {
 		self.reconnect_interval = interval;
 		self
 	}
 
 	/// Set maximum reconnection attempts
+	#[must_use]
 	pub fn max_reconnect_attempts(mut self, attempts: u32) -> Self {
 		self.max_reconnect_attempts = attempts;
 		self

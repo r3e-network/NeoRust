@@ -936,24 +936,28 @@ impl HDWalletBuilder {
 	}
 
 	/// Set word count for mnemonic generation
+	#[must_use]
 	pub fn word_count(mut self, count: usize) -> Self {
 		self.word_count = count;
 		self
 	}
 
 	/// Set BIP-39 passphrase
+	#[must_use]
 	pub fn passphrase(mut self, passphrase: impl Into<String>) -> Self {
 		self.passphrase = Some(passphrase.into());
 		self
 	}
 
 	/// Set mnemonic language
+	#[must_use]
 	pub fn language(mut self, language: Language) -> Self {
 		self.language = language;
 		self
 	}
 
 	/// Set existing mnemonic phrase
+	#[must_use]
 	pub fn mnemonic(mut self, mnemonic: impl Into<String>) -> Self {
 		self.mnemonic = Some(mnemonic.into());
 		self

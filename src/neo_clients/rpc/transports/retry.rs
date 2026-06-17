@@ -133,12 +133,14 @@ impl RetryClientBuilder {
 	/// Sets the number of retries after a connection times out
 	///
 	/// **Note:** this will only be used for `request::Error::TimedOut`
+	#[must_use]
 	pub fn timeout_retries(mut self, timeout_retries: u32) -> Self {
 		self.timeout_retries = timeout_retries;
 		self
 	}
 
 	/// How many retries for rate limited responses
+	#[must_use]
 	pub fn rate_limit_retries(mut self, rate_limit_retries: u32) -> Self {
 		self.rate_limit_retries = rate_limit_retries;
 		self
@@ -147,12 +149,14 @@ impl RetryClientBuilder {
 	/// Sets the number of assumed available compute units per second
 	///
 	/// See also, <https://github.com/alchemyplatform/alchemy-docs/blob/master/documentation/compute-units.md#rate-limits-cups>
+	#[must_use]
 	pub fn compute_units_per_second(mut self, compute_units_per_second: u64) -> Self {
 		self.compute_units_per_second = compute_units_per_second;
 		self
 	}
 
 	/// Sets the duration to wait initially before retrying
+	#[must_use]
 	pub fn initial_backoff(mut self, initial_backoff: Duration) -> Self {
 		self.initial_backoff = initial_backoff;
 		self

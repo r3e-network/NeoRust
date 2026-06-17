@@ -54,30 +54,35 @@ pub struct ProductionClientConfigBuilder {
 
 impl ProductionClientConfigBuilder {
 	/// Sets the connection pool configuration
+	#[must_use]
 	pub fn pool_config(mut self, config: PoolConfig) -> Self {
 		self.pool_config = Some(config);
 		self
 	}
 
 	/// Sets the cache configuration
+	#[must_use]
 	pub fn cache_config(mut self, config: CacheConfig) -> Self {
 		self.cache_config = Some(config);
 		self
 	}
 
 	/// Sets the circuit breaker configuration
+	#[must_use]
 	pub fn circuit_breaker_config(mut self, config: CircuitBreakerConfig) -> Self {
 		self.circuit_breaker_config = Some(config);
 		self
 	}
 
 	/// Enables or disables request/response logging
+	#[must_use]
 	pub fn enable_logging(mut self, enable: bool) -> Self {
 		self.enable_logging = Some(enable);
 		self
 	}
 
 	/// Enables or disables metrics collection
+	#[must_use]
 	pub fn enable_metrics(mut self, enable: bool) -> Self {
 		self.enable_metrics = Some(enable);
 		self

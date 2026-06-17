@@ -56,30 +56,35 @@ pub struct CircuitBreakerConfigBuilder {
 
 impl CircuitBreakerConfigBuilder {
 	/// Sets the failure threshold
+	#[must_use]
 	pub fn failure_threshold(mut self, val: u32) -> Self {
 		self.failure_threshold = Some(val);
 		self
 	}
 
 	/// Sets the timeout
+	#[must_use]
 	pub fn timeout(mut self, val: Duration) -> Self {
 		self.timeout = Some(val);
 		self
 	}
 
 	/// Sets the success threshold
+	#[must_use]
 	pub fn success_threshold(mut self, val: u32) -> Self {
 		self.success_threshold = Some(val);
 		self
 	}
 
 	/// Sets the failure window
+	#[must_use]
 	pub fn failure_window(mut self, val: Duration) -> Self {
 		self.failure_window = Some(val);
 		self
 	}
 
 	/// Sets the maximum number of requests allowed in HalfOpen state
+	#[must_use]
 	pub fn half_open_max_requests(mut self, val: u32) -> Self {
 		self.half_open_max_requests = Some(val);
 		self

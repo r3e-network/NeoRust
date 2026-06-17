@@ -157,18 +157,21 @@ impl RateLimiterBuilder {
 	}
 
 	/// Set maximum requests per window
+	#[must_use]
 	pub fn max_requests(mut self, max: u32) -> Self {
 		self.max_requests = max;
 		self
 	}
 
 	/// Set time window
+	#[must_use]
 	pub fn window(mut self, window: Duration) -> Self {
 		self.window = window;
 		self
 	}
 
 	/// Set maximum concurrent requests
+	#[must_use]
 	pub fn max_concurrent(mut self, max: usize) -> Self {
 		self.max_concurrent = max;
 		self

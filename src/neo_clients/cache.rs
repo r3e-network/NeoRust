@@ -40,24 +40,28 @@ pub struct CacheConfigBuilder {
 
 impl CacheConfigBuilder {
 	/// Sets the maximum number of entries
+	#[must_use]
 	pub fn max_entries(mut self, val: usize) -> Self {
 		self.max_entries = Some(val);
 		self
 	}
 
 	/// Sets the default TTL
+	#[must_use]
 	pub fn default_ttl(mut self, val: Duration) -> Self {
 		self.default_ttl = Some(val);
 		self
 	}
 
 	/// Sets the cleanup interval
+	#[must_use]
 	pub fn cleanup_interval(mut self, val: Duration) -> Self {
 		self.cleanup_interval = Some(val);
 		self
 	}
 
 	/// Enables or disables LRU eviction
+	#[must_use]
 	pub fn enable_lru(mut self, val: bool) -> Self {
 		self.enable_lru = Some(val);
 		self

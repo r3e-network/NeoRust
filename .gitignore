@@ -19,3 +19,15 @@ neo_csharp/
 /my_wallet.json
 /wallet.json
 .omx/
+
+# Stray test binaries/scripts — committed by mistake once, must not return.
+# `test_script` was a 3.9 MB Linux ELF binary; `.rs`/`.sh` were throwaway timers.
+/test_script
+/test_script.rs
+/test_script.sh
+
+# Documentation site build outputs — regenerated from source by mdbook / docusaurus.
+# Sources live in docs/src (+ docs/*.md) and website/{docs,cli,sdk,blog,src}.
+docs/book/
+website/build/
+

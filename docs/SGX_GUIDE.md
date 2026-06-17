@@ -86,7 +86,7 @@ chmod +x sgx_linux_x64_sdk_2.19.100.3.bin
 ```toml
 # Cargo.toml
 [dependencies]
-neo3 = { version = "1.3.0", features = ["sgx", "no_std"] }
+neo3 = { version = "1.4.0", features = ["sgx", "no_std"] }
 
 [target.'cfg(target_env = "sgx")'.dependencies]
 sgx_tstd = { git = "https://github.com/apache/teaclave-sgx-sdk.git", rev = "v2.0.0" }
@@ -420,7 +420,7 @@ let config = EnclaveConfig {
 
 ## Summary
 
-SGX support in NeoRust v1.3.0 provides:
+SGX support in NeoRust v1.4.0 provides:
 
 - **Hardware Security**: CPU-based memory encryption and isolation
 - **Key Protection**: Secure key generation and sealed storage

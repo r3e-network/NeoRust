@@ -217,7 +217,7 @@ Enable these features in your Cargo.toml:
 
 ```toml
 [dependencies]
-neo3 = { version = "1.3.0", features = ["ledger", "ws"] }
+neo3 = { version = "1.4.0", features = ["ledger", "ws"] }
 ```
 
 ## Error Handling

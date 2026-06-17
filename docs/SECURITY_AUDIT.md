@@ -3,7 +3,7 @@
 **Audit Date**: April 2026
 **Auditor**: AI Assistant
 **Scope**: Core SDK, CLI, and dependencies
-**Version**: v1.3.0
+**Version**: v1.4.0
 
 ---
 

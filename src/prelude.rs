@@ -15,7 +15,7 @@
 //! | Contracts | [`ContractManifest`], [`ContractParameter`], [`InvocationResult`], [`NefFile`] |
 //! | VM | [`OpCode`], [`StackItem`], [`VMState`] |
 //! | NNS | [`NNSName`] |
-//! | Errors | Legacy `NeoError` alias (see [`crate::neo_error::unified::NeoError`] for the modern type) |
+//! | Errors | [`NeoError`] — unified error with `kind()` / `is_retryable()` / recovery hints |
 //! | Module aliases | `builder`, `providers`, `codec`, `config`, `crypto`, `protocol`, `wallets`, `x` |
 //! | Encoding helpers | [`Base64Encode`], [`StringExt`], `ToBase58`, `ToHexString`, … |
 //!
@@ -26,9 +26,13 @@
 //! - **Use explicit imports** in library code, or when you only need one or
 //!   two types — it keeps namespaces clean and helps incremental compilation.
 //!
-//! [`neo_error::unified::NeoError`]: crate::neo_error::unified::NeoError
-// Core error type (legacy alias)
-pub use crate::neo_error::NeoError;
+//! [`NeoError`]: crate::neo_error::unified::NeoError
+// Unified error type (modern). Carries kind()/is_retryable()/recovery hints,
+// and has From impls for every domain error (ProviderError, BuilderError,
+// ContractError, WalletError, CryptoError, Neo3Error, io, serde, ...), so a
+// single `fn() -> Result<T, NeoError>` boundary composes with `?` across the
+// whole SDK. This is the same type returned by the high-level `sdk::Neo`.
+pub use crate::neo_error::unified::NeoError;
 
 // SDK version
 pub use crate::VERSION;

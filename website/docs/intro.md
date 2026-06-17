@@ -2,9 +2,9 @@
 
 <div className="hero hero--primary">
   <div className="container">
-    <h1 className="hero__title">🚀 NeoRust v1.0.9</h1>
+    <h1 className="hero__title">🚀 NeoRust v1.4.0</h1>
     <p className="hero__subtitle">
-      Production-Ready Neo N3 Development Suite with 135 Passing Doc Tests
+      Production-Ready Neo N3 Development Suite with 207+ Passing Doc Tests
     </p>
     <p>
       The most comprehensive toolkit for Neo N3 blockchain development.
@@ -79,7 +79,7 @@
 <div className="row">
   <div className="col col--3">
     <div className="text--center">
-      <h2 className="gradient-text">135/150</h2>
+      <h2 className="gradient-text">207+</h2>
       <p><strong>Doc Tests Passing</strong></p>
     </div>
   </div>
@@ -125,7 +125,7 @@ cargo build --release
 
 ```toml
 [dependencies]
-neo3 = "1.0.9"
+neo3 = "1.4.0"
 ```
 
 ```rust
@@ -191,9 +191,9 @@ This documentation is organized into several sections:
 - **Documentation**: [Comprehensive guides and API docs](https://neorust.netlify.app)
 
 ### 🤝 **Contributing**
-- **[Contributing Guide](https://github.com/R3E-Network/NeoRust/blob/v1.0.9/CONTRIBUTING.md)**: How to contribute to NeoRust
-- **[System Architecture](https://github.com/R3E-Network/NeoRust/blob/v1.0.9/SYSTEM_ARCHITECTURE_DESIGN.md)**: Core architecture and components
-- **[API Guidelines](https://github.com/R3E-Network/NeoRust/blob/v1.0.9/API_GUIDELINES.md)**: API design standards and guidance
+- **[Contributing Guide](https://github.com/R3E-Network/NeoRust/blob/master/CONTRIBUTING.md)**: How to contribute to NeoRust
+- **[System Architecture](https://github.com/R3E-Network/NeoRust/blob/master/SYSTEM_ARCHITECTURE_DESIGN.md)**: Core architecture and components
+- **[API Guidelines](https://github.com/R3E-Network/NeoRust/blob/master/API_GUIDELINES.md)**: API design standards and guidance
 
 ### 🔗 **Links**
 - **Website**: [https://neorust.netlify.app](https://neorust.netlify.app)

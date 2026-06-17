@@ -592,6 +592,17 @@ pub use crate::neo_types::serde_value::ValueExtension;
 /// ```
 pub mod prelude;
 
+// Re-export optional external dependencies at the crate root so downstream
+// crates can reference them without declaring a direct dependency. These MUST
+// stay above `mod tests` — placing items after the test module triggers
+// clippy::items_after_test_module.
+// Explicitly mark external dependencies with cfg_attr for docs.rs
+#[cfg(feature = "futures")]
+pub use futures;
+
+#[cfg(feature = "ledger")]
+pub use coins_ledger;
+
 #[cfg(test)]
 mod tests {
 	use super::prelude::*;
@@ -684,10 +695,3 @@ mod tests {
 		Ok((rpc_client, Some(mock_server)))
 	}
 }
-
-// Explicitly mark external dependencies with cfg_attr for docs.rs
-#[cfg(feature = "futures")]
-pub use futures;
-
-#[cfg(feature = "ledger")]
-pub use coins_ledger;

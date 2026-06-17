@@ -71,7 +71,8 @@ members = [
     "examples/neo_nep17_tokens",
     "examples/queries",
     "examples/neo_wallets",
-    "examples/neo_crypto"
+    "examples/neo_crypto",
+    "examples/standalone"
 ]
 exclude = [
     "examples/sgx_enclave",

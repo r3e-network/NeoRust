@@ -208,6 +208,10 @@ harness = false
 name = "gas_estimator_benchmarks"
 harness = false
 
+[[bench]]
+name = "wallet_benchmarks"
+harness = false
+
 [features]
 futures = []
 ledger = ["coins-ledger"]

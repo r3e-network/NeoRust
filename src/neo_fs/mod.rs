@@ -139,24 +139,28 @@ pub struct NeoFSConfigBuilder {
 
 impl NeoFSConfigBuilder {
 	/// Sets the endpoint
+	#[must_use]
 	pub fn endpoint(mut self, val: String) -> Self {
 		self.endpoint = Some(val);
 		self
 	}
 
 	/// Sets the authentication information
+	#[must_use]
 	pub fn auth(mut self, val: NeoFSAuth) -> Self {
 		self.auth = Some(val);
 		self
 	}
 
 	/// Sets the timeout in seconds
+	#[must_use]
 	pub fn timeout_sec(mut self, val: u64) -> Self {
 		self.timeout_sec = Some(val);
 		self
 	}
 
 	/// Sets whether to use insecure connections
+	#[must_use]
 	pub fn insecure(mut self, val: bool) -> Self {
 		self.insecure = Some(val);
 		self

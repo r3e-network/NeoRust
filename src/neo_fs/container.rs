@@ -81,30 +81,35 @@ impl Container {
 	}
 
 	/// Sets the basic ACL for the container
+	#[must_use]
 	pub fn with_basic_acl(mut self, acl: u32) -> Self {
 		self.basic_acl = acl;
 		self
 	}
 
 	/// Sets the container name
+	#[must_use]
 	pub fn with_name(mut self, name: String) -> Self {
 		self.name = name;
 		self
 	}
 
 	/// Sets the container creation timestamp
+	#[must_use]
 	pub fn with_creation(mut self, creation: DateTime<Utc>) -> Self {
 		self.creation = Some(creation);
 		self
 	}
 
 	/// Sets the container version
+	#[must_use]
 	pub fn with_version(mut self, version: Version) -> Self {
 		self.version = Some(version);
 		self
 	}
 
 	/// Adds an attribute to the container
+	#[must_use]
 	pub fn with_attribute(mut self, key: impl Into<String>, value: impl Into<String>) -> Self {
 		self.attributes.add(key, value);
 		self

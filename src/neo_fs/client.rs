@@ -134,6 +134,7 @@ impl NeoFSClient {
 	}
 
 	/// Sets the account to use for authentication
+	#[must_use]
 	pub fn with_account(mut self, account: Account) -> Self {
 		self.account = Some(account);
 		self

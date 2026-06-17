@@ -1188,6 +1188,7 @@ impl Wallet {
 	/// let mut wallet = wallets::Wallet::new();
 	/// wallet = wallet.with_network(0x334F454E); // MainNet magic number
 	/// ```
+	#[must_use]
 	pub fn with_network(mut self, network: u32) -> Self {
 		let mut extra = self.extra.unwrap_or_default();
 		extra.insert("network".to_string(), network.to_string());

@@ -15,7 +15,7 @@ neorust config init
 
 # Verify installation
 neorust --version
-# Output: neorust 1.4.0
+# Output: neorust 2.0.0
 ```
 
 ### First-time Configuration
@@ -52,7 +52,7 @@ export NEORUST_CONFIG_PATH="/custom/path/config.toml"
 ### Structure
 
 ```toml
-# NeoRust CLI Configuration v1.4.0
+# NeoRust CLI Configuration v2.0.0
 
 [general]
 # Default network for operations

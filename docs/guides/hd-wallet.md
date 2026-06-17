@@ -1,4 +1,4 @@
-# HD Wallet Guide (v1.4.0)
+# HD Wallet Guide (v2.0.0)
 
 NeoRust ships a BIP-39/44 compatible HD wallet in `neo3::sdk::hd_wallet`.
 

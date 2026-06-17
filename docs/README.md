@@ -1,4 +1,4 @@
-# NeoRust v1.4.0 - Complete Neo N3 Development Suite
+# NeoRust v2.0.0 - Complete Neo N3 Development Suite
 
 <div align="center">
   <h1>🚀 NeoRust - Production-Ready Neo N3 SDK</h1>
@@ -58,7 +58,7 @@ cargo build --release
 
 ```toml
 [dependencies]
-neo3 = "1.4.0"
+neo3 = "2.0.0"
 ```
 
 ```rust,no_run
@@ -192,7 +192,7 @@ cargo build --release
 #### For Integration (SDK)
 ```toml
 [dependencies]
-neo3 = "1.4.0"
+neo3 = "2.0.0"
 ```
 
 ### Step 2: Create Your First Wallet

@@ -58,18 +58,21 @@ impl Object {
 	}
 
 	/// Sets the object payload from a byte array
+	#[must_use]
 	pub fn with_payload(mut self, payload: Vec<u8>) -> Self {
 		self.payload = payload;
 		self
 	}
 
 	/// Sets the object type
+	#[must_use]
 	pub fn with_type(mut self, object_type: ObjectType) -> Self {
 		self.object_type = object_type;
 		self
 	}
 
 	/// Adds an attribute to the object
+	#[must_use]
 	pub fn with_attribute(mut self, key: impl Into<String>, value: impl Into<String>) -> Self {
 		self.attributes.add(key, value);
 		self

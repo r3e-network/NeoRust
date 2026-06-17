@@ -53,42 +53,49 @@ pub struct PoolConfigBuilder {
 
 impl PoolConfigBuilder {
 	/// Sets the maximum number of concurrent connections
+	#[must_use]
 	pub fn max_connections(mut self, val: usize) -> Self {
 		self.max_connections = Some(val);
 		self
 	}
 
 	/// Sets the minimum number of idle connections
+	#[must_use]
 	pub fn min_idle(mut self, val: usize) -> Self {
 		self.min_idle = Some(val);
 		self
 	}
 
 	/// Sets the maximum idle time
+	#[must_use]
 	pub fn max_idle_time(mut self, val: Duration) -> Self {
 		self.max_idle_time = Some(val);
 		self
 	}
 
 	/// Sets the connection timeout
+	#[must_use]
 	pub fn connection_timeout(mut self, val: Duration) -> Self {
 		self.connection_timeout = Some(val);
 		self
 	}
 
 	/// Sets the request timeout
+	#[must_use]
 	pub fn request_timeout(mut self, val: Duration) -> Self {
 		self.request_timeout = Some(val);
 		self
 	}
 
 	/// Sets the maximum number of retries
+	#[must_use]
 	pub fn max_retries(mut self, val: u32) -> Self {
 		self.max_retries = Some(val);
 		self
 	}
 
 	/// Sets the retry delay
+	#[must_use]
 	pub fn retry_delay(mut self, val: Duration) -> Self {
 		self.retry_delay = Some(val);
 		self

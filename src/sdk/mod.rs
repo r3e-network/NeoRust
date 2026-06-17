@@ -185,24 +185,28 @@ pub struct SdkConfigBuilder {
 
 impl SdkConfigBuilder {
 	/// Sets the request timeout
+	#[must_use]
 	pub fn timeout(mut self, val: Duration) -> Self {
 		self.timeout = Some(val);
 		self
 	}
 
 	/// Sets the number of retries
+	#[must_use]
 	pub fn retries(mut self, val: u32) -> Self {
 		self.retries = Some(val);
 		self
 	}
 
 	/// Enables or disables caching
+	#[must_use]
 	pub fn cache_enabled(mut self, val: bool) -> Self {
 		self.cache_enabled = Some(val);
 		self
 	}
 
 	/// Enables or disables metrics
+	#[must_use]
 	pub fn metrics_enabled(mut self, val: bool) -> Self {
 		self.metrics_enabled = Some(val);
 		self
@@ -1216,6 +1220,7 @@ impl Default for NeoBuilder {
 
 impl NeoBuilder {
 	/// Set the network to connect to
+	#[must_use]
 	pub fn network(mut self, network: Network) -> Self {
 		self.network = network;
 		self
@@ -1225,6 +1230,7 @@ impl NeoBuilder {
 	///
 	/// Shorthand for `.network(Network::Custom(endpoint.into()))`. Useful when
 	/// pointing the SDK at a private node, local sandbox, or load balancer.
+	#[must_use]
 	pub fn endpoint(mut self, endpoint: impl Into<String>) -> Self {
 		self.network = Network::Custom(endpoint.into());
 		self
@@ -1236,30 +1242,35 @@ impl NeoBuilder {
 	/// shared application settings) and want to apply it wholesale. Subsequent
 	/// builder methods like [`timeout`](Self::timeout) override fields on the
 	/// supplied config.
+	#[must_use]
 	pub fn config(mut self, config: SdkConfig) -> Self {
 		self.config = config;
 		self
 	}
 
 	/// Set the request timeout
+	#[must_use]
 	pub fn timeout(mut self, timeout: Duration) -> Self {
 		self.config.timeout = timeout;
 		self
 	}
 
 	/// Set the number of retries for failed requests
+	#[must_use]
 	pub fn retries(mut self, retries: u32) -> Self {
 		self.config.retries = retries;
 		self
 	}
 
 	/// Enable or disable caching
+	#[must_use]
 	pub fn cache(mut self, enabled: bool) -> Self {
 		self.config.cache_enabled = enabled;
 		self
 	}
 
 	/// Enable or disable metrics collection
+	#[must_use]
 	pub fn metrics(mut self, enabled: bool) -> Self {
 		self.config.metrics_enabled = enabled;
 		self
@@ -1325,6 +1336,7 @@ impl Transfer {
 	}
 
 	/// Add an optional memo to the transfer
+	#[must_use]
 	pub fn with_memo(mut self, memo: impl Into<String>) -> Self {
 		self.memo = Some(memo.into());
 		self

@@ -159,18 +159,21 @@ impl ErrorRecovery {
 	}
 
 	/// Add a suggestion
+	#[must_use]
 	pub fn suggest(mut self, suggestion: impl Into<String>) -> Self {
 		self.suggestions.push(suggestion.into());
 		self
 	}
 
 	/// Mark as retryable
+	#[must_use]
 	pub fn retryable(mut self, retryable: bool) -> Self {
 		self.retryable = retryable;
 		self
 	}
 
 	/// Set retry delay
+	#[must_use]
 	pub fn retry_after(mut self, duration: std::time::Duration) -> Self {
 		self.retry_after = Some(duration);
 		self.retryable = true;
@@ -178,6 +181,7 @@ impl ErrorRecovery {
 	}
 
 	/// Add documentation link
+	#[must_use]
 	pub fn doc(mut self, link: impl Into<String>) -> Self {
 		self.docs.push(link.into());
 		self
@@ -583,30 +587,35 @@ impl ErrorBuilder {
 	}
 
 	/// Add source error
+	#[must_use]
 	pub fn source(mut self, source: impl std::error::Error + Send + Sync + 'static) -> Self {
 		self.source = Some(Box::new(source));
 		self
 	}
 
 	/// Add contract context
+	#[must_use]
 	pub fn with_contract(mut self, contract: impl Into<String>) -> Self {
 		self.context.contract = Some(contract.into());
 		self
 	}
 
 	/// Add method context
+	#[must_use]
 	pub fn with_method(mut self, method: impl Into<String>) -> Self {
 		self.context.method = Some(method.into());
 		self
 	}
 
 	/// Add recovery suggestion
+	#[must_use]
 	pub fn suggest(mut self, suggestion: impl Into<String>) -> Self {
 		self.recovery = self.recovery.suggest(suggestion);
 		self
 	}
 
 	/// Mark as retryable
+	#[must_use]
 	pub fn retryable(mut self) -> Self {
 		self.recovery = self.recovery.retryable(true);
 		self

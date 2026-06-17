@@ -1,7 +1,7 @@
-use ethers::types::{TransactionRequest, H160 as EthersH160, U256};
+use alloy::primitives::{Address as AlloyAddress, U256 as AlloyU256};
+use alloy::rpc::types::eth::TransactionRequest;
 use primitive_types::H160;
 use serde::{Deserialize, Serialize};
-
 /// Neo X EVM transaction for interacting with the Neo X EVM-compatible chain
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct NeoXTransaction {
@@ -61,28 +61,23 @@ impl NeoXTransaction {
 		self.gas_price
 	}
 
-	/// Converts this transaction into an ethers-rs `TransactionRequest`.
-	/// This makes it simple to submit the transaction via an Ethers provider.
-	pub fn into_ethers_request(self) -> TransactionRequest {
-		let mut req = TransactionRequest::new()
-			.data(self.data)
-			.value(U256::from(self.value))
-			.gas(U256::from(self.gas_limit))
-			.gas_price(U256::from(self.gas_price));
-
-		if let Some(to) = self.to {
-			// Convert primitive_types::H160 to ethers::types::H160 via raw bytes
-			let to_ethers = EthersH160::from(to.0);
-			req = req.to(to_ethers);
+	/// Converts this transaction into an alloy `TransactionRequest`.
+	/// This makes it simple to submit the transaction via an alloy provider.
+	pub fn into_alloy_request(self) -> TransactionRequest {
+		TransactionRequest {
+			to: self.to.map(|h| alloy::primitives::TxKind::Call(AlloyAddress::from(h.0))),
+			input: self.data.into(),
+			value: Some(AlloyU256::from(self.value)),
+			gas: Some(self.gas_limit),
+			max_fee_per_gas: Some(self.gas_price as u128),
+			..Default::default()
 		}
-
-		req
 	}
 }
 
 impl From<NeoXTransaction> for TransactionRequest {
 	fn from(tx: NeoXTransaction) -> Self {
-		tx.into_ethers_request()
+		tx.into_alloy_request()
 	}
 }
 
@@ -91,13 +86,13 @@ mod tests {
 	use super::*;
 
 	#[test]
-	fn test_into_ethers_request() {
-		let tx = NeoXTransaction::new(None, vec![1, 2, 3], 1000, 21000, 1000000000);
+	fn test_into_alloy_request() {
+		let tx = NeoXTransaction::new(None, vec![1, 2, 3], 1000, 21000, 1_000_000_000);
 
-		let req = tx.into_ethers_request();
-		assert!(req.to.is_none());
-		assert_eq!(req.value.unwrap(), U256::from(1000));
-		assert_eq!(req.gas.unwrap(), U256::from(21000));
-		assert_eq!(req.gas_price.unwrap(), U256::from(1000000000));
+		let req = tx.into_alloy_request();
+		assert!(matches!(req.to, None | Some(alloy::primitives::TxKind::Create)));
+		assert_eq!(req.value, Some(AlloyU256::from(1000)));
+		assert_eq!(req.gas, Some(21000));
+		assert_eq!(req.max_fee_per_gas, Some(1_000_000_000));
 	}
 }

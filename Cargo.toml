@@ -110,7 +110,7 @@ bytes = "1.4"
 hex = { package = "const-hex", version = "1.6", features = ["hex"] }
 hex-literal = "1.1"
 once_cell = "1.21"
-rand = "0.9.3"
+rand = "0.10.2"
 rayon = "1.7"
 # tempfile: moved to [dev-dependencies]
 thiserror = "2.0.17"
@@ -125,7 +125,7 @@ tracing-futures = "0.2.5"
 serde_with = "3.18.0"
 # For base64 encoding
 bs58 = "0.5.1"
-aes = "0.8.3"
+aes = "0.9.1"
 # For JSON manipulation
 # json = "0.12"  # REMOVED: Unmaintained and vulnerable (RUSTSEC-2022-0081)
 rust_decimal = "1.41"
@@ -136,7 +136,7 @@ ripemd = "0.2.0"
 # Data structures
 p256 = "0.13.2"
 # Big integer math
-num-bigint = "0.4"
+num-bigint = "0.5"
 # Byte array utils
 byte-slice-cast = "1.2"
 primitive-types = { version = "0.14.0", features = ["serde"] }
@@ -153,13 +153,13 @@ derive_more = { version = "2.1.1", features = ["full"] }
 getset = "0.1.2"
 rustc-hash = { version = "2.1", optional = true }
 
-scrypt = "0.11.0"
-signature   = "2.1.0"
-rand_core = "0.9.3"
+scrypt = "0.12.0"
+signature   = "3.0.0"
+rand_core = "0.10.1"
 #openssl = "0.10"
 
 # log removed: use `tracing` exclusively for structured logging
-ecb = "0.1.2"
+ecb = "0.2.0"
 http = "1.4.0"
 jsonwebtoken = { version = "10.3.0", default-features = false, features = ["rust_crypto"] }
 
@@ -192,7 +192,7 @@ tokio = { version = "1.45", default-features = false, features = ["sync", "macro
 
 
 [dev-dependencies]
-mockall = "0.14.0"
+mockall = "0.15.0"
 tracing = "0.1"
 tracing-subscriber = "0.3.23"
 criterion = { version = "0.8", features = ["html_reports"] }

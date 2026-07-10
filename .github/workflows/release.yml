@@ -4,10 +4,16 @@ on:
   push:
     tags:
       - "v*.*.*"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Retry an existing annotated vX.Y.Z release tag"
+        required: true
+        type: string
 
 # Cancel in-progress runs when a new run is triggered
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: ${{ github.workflow }}-${{ inputs.version || github.ref_name }}
   cancel-in-progress: false
 
 env:
@@ -24,47 +30,105 @@ jobs:
     timeout-minutes: 15
     outputs:
       version: ${{ steps.version.outputs.version }}
+      prerelease: ${{ steps.version.outputs.prerelease }}
+      commit: ${{ steps.tag.outputs.commit }}
+      tag_oid: ${{ steps.tag.outputs.tag_oid }}
 
     steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Validate release tag
+      - name: Determine release version
         id: version
+        shell: bash
+        env:
+          DISPATCH_VERSION: ${{ inputs.version }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
         run: |
-          if [ "$GITHUB_EVENT_NAME" != "push" ] || [ "$GITHUB_REF_TYPE" != "tag" ]; then
-            echo "Error: releases must be triggered by a pushed version tag"
-            exit 1
-          fi
+          case "$GITHUB_EVENT_NAME" in
+            push)
+              if [ "$GITHUB_REF_TYPE" != "tag" ]; then
+                echo "Error: release pushes must target a version tag"
+                exit 1
+              fi
+              VERSION="$GITHUB_REF_NAME"
+              ;;
+            workflow_dispatch)
+              if [ "$GITHUB_REF_TYPE" != "branch" ] || [ "$GITHUB_REF_NAME" != "$DEFAULT_BRANCH" ]; then
+                echo "Error: manual release retries must run from the default branch (${DEFAULT_BRANCH})"
+                exit 1
+              fi
+              VERSION="$DISPATCH_VERSION"
+              ;;
+            *)
+              echo "Error: releases must be triggered by a pushed tag or manual retry"
+              exit 1
+              ;;
+          esac
 
-          VERSION="$GITHUB_REF_NAME"
-          if [[ ! "$VERSION" =~ ^v[0-9]+\.[0-9]+\.[0-9]+([+-][0-9A-Za-z.-]+)?$ ]]; then
+          SEMVER_PATTERN='^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-(0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*)(\.(0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*))*)?(\+[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?$'
+          if [ "${#VERSION}" -gt 128 ] || [[ ! "$VERSION" =~ $SEMVER_PATTERN ]]; then
             echo "Error: release version must be valid v-prefixed SemVer"
             exit 1
           fi
 
-          if ! git cat-file -e "refs/tags/${VERSION}^{tag}" 2>/dev/null; then
+          VERSION_WITHOUT_BUILD="${VERSION%%+*}"
+          if [[ "$VERSION_WITHOUT_BUILD" == *-* ]]; then
+            PRERELEASE=true
+          else
+            PRERELEASE=false
+          fi
+
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "prerelease=${PRERELEASE}" >> "$GITHUB_OUTPUT"
+          echo "Version: ${VERSION}"
+
+      - uses: actions/checkout@v4
+        with:
+          ref: refs/tags/${{ steps.version.outputs.version }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Validate release tag
+        id: tag
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          VERIFIED_TAG_REF="refs/release-tags/${VERSION}"
+          git fetch --no-tags --force origin "refs/tags/${VERSION}:${VERIFIED_TAG_REF}"
+
+          if ! git cat-file -e "${VERIFIED_TAG_REF}^{tag}" 2>/dev/null; then
             echo "Error: ${VERSION} must be an annotated tag"
             exit 1
           fi
 
-          TAG_COMMIT="$(git rev-parse "refs/tags/${VERSION}^{commit}")"
-          CHECKOUT_COMMIT="$(git rev-parse HEAD)"
-          EVENT_COMMIT="$(git rev-parse "${GITHUB_SHA}^{commit}")"
-          if [ "$TAG_COMMIT" != "$CHECKOUT_COMMIT" ] || [ "$TAG_COMMIT" != "$EVENT_COMMIT" ]; then
-            echo "Error: release tag, workflow event, and checkout do not resolve to the same commit"
+          TAG_OID="$(git rev-parse "${VERIFIED_TAG_REF}")"
+          TAG_NAME="$(git cat-file -p "${VERIFIED_TAG_REF}" | sed -n 's/^tag //p' | head -1)"
+          TAG_TARGET_TYPE="$(git cat-file -p "${VERIFIED_TAG_REF}" | sed -n 's/^type //p' | head -1)"
+          if [ "$TAG_NAME" != "$VERSION" ] || [ "$TAG_TARGET_TYPE" != "commit" ]; then
+            echo "Error: ${VERSION} must be an annotated tag with a matching name and commit target"
             exit 1
           fi
 
-          git fetch --no-tags origin master:refs/remotes/origin/master
+          TAG_COMMIT="$(git rev-parse "${VERIFIED_TAG_REF}^{commit}")"
+          CHECKOUT_COMMIT="$(git rev-parse "HEAD^{commit}")"
+          if [ "$TAG_COMMIT" != "$CHECKOUT_COMMIT" ]; then
+            echo "Error: release tag and checkout do not resolve to the same commit"
+            exit 1
+          fi
+
+          if [ "$GITHUB_EVENT_NAME" = "push" ]; then
+            EVENT_COMMIT="$(git rev-parse "${GITHUB_SHA}^{commit}")"
+            if [ "$TAG_COMMIT" != "$EVENT_COMMIT" ]; then
+              echo "Error: release tag and workflow event do not resolve to the same commit"
+              exit 1
+            fi
+          fi
+
+          git fetch --no-tags --force origin "refs/heads/master:refs/remotes/origin/master"
           if ! git merge-base --is-ancestor "$TAG_COMMIT" refs/remotes/origin/master; then
             echo "Error: release tag commit must be reachable from origin/master"
             exit 1
           fi
 
-          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
-          echo "Version: ${VERSION}"
+          echo "commit=${TAG_COMMIT}" >> "$GITHUB_OUTPUT"
+          echo "tag_oid=${TAG_OID}" >> "$GITHUB_OUTPUT"
 
       - name: Verify Cargo.toml version
         run: |
@@ -114,6 +178,9 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.prepare.outputs.commit }}
+          persist-credentials: false
 
       - name: Setup Rust 1.91
         uses: dtolnay/rust-toolchain@1.91
@@ -164,6 +231,9 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.prepare.outputs.commit }}
+          persist-credentials: false
 
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
@@ -178,10 +248,14 @@ jobs:
       - name: Package artifacts (Unix)
         if: runner.os != 'Windows'
         run: |
-          mkdir -p dist
-          if [ -f target/${{ matrix.target }}/release/neo-cli ]; then
-            cp target/${{ matrix.target }}/release/neo-cli dist/
+          BINARY="target/${{ matrix.target }}/release/neo-cli"
+          if [ ! -f "$BINARY" ]; then
+            echo "Error: release binary not found at ${BINARY}"
+            exit 1
           fi
+
+          mkdir -p dist
+          cp "$BINARY" dist/
           cp README.md LICENSE CHANGELOG.md dist/
           tar -czf ${{ matrix.artifact }}.tar.gz -C dist .
 
@@ -189,10 +263,13 @@ jobs:
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
-          New-Item -ItemType Directory -Force -Path dist
-          if (Test-Path target\${{ matrix.target }}\release\neo-cli.exe) {
-            Copy-Item target\${{ matrix.target }}\release\neo-cli.exe dist\
+          $Binary = "target\${{ matrix.target }}\release\neo-cli.exe"
+          if (-not (Test-Path $Binary)) {
+            throw "Release binary not found at $Binary"
           }
+
+          New-Item -ItemType Directory -Force -Path dist
+          Copy-Item $Binary dist\
           Copy-Item README.md, LICENSE, CHANGELOG.md dist\
           Compress-Archive -Path dist\* -DestinationPath ${{ matrix.artifact }}.zip
 
@@ -203,6 +280,7 @@ jobs:
           path: |
             *.tar.gz
             *.zip
+          if-no-files-found: error
 
   # Create GitHub release
   release:
@@ -215,6 +293,9 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.prepare.outputs.commit }}
+          persist-credentials: false
 
       - name: Download all artifacts
         uses: actions/download-artifact@v6
@@ -240,6 +321,22 @@ jobs:
           echo "Release notes:"
           cat release-notes.md
 
+      - name: Revalidate remote tag
+        env:
+          EXPECTED_COMMIT: ${{ needs.prepare.outputs.commit }}
+          EXPECTED_TAG_OID: ${{ needs.prepare.outputs.tag_oid }}
+        run: |
+          VERSION="${{ needs.prepare.outputs.version }}"
+          VERIFIED_TAG_REF="refs/release-tags/${VERSION}"
+          git fetch --no-tags --force origin "refs/tags/${VERSION}:${VERIFIED_TAG_REF}"
+
+          TAG_OID="$(git rev-parse "${VERIFIED_TAG_REF}")"
+          TAG_COMMIT="$(git rev-parse "${VERIFIED_TAG_REF}^{commit}")"
+          if [ "$TAG_OID" != "$EXPECTED_TAG_OID" ] || [ "$TAG_COMMIT" != "$EXPECTED_COMMIT" ]; then
+            echo "Error: ${VERSION} changed after release preparation"
+            exit 1
+          fi
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
@@ -247,7 +344,7 @@ jobs:
           name: NeoRust ${{ needs.prepare.outputs.version }}
           body_path: release-notes.md
           draft: false
-          prerelease: ${{ contains(needs.prepare.outputs.version, '-') }}
+          prerelease: ${{ needs.prepare.outputs.prerelease == 'true' }}
           files: |
             artifacts/**/*.tar.gz
             artifacts/**/*.zip
@@ -259,13 +356,12 @@ jobs:
     needs: [prepare, build, verify]
     runs-on: ubuntu-latest
     timeout-minutes: 20
-    env:
-      # Accept both repository secret names, but expose the token through the
-      # environment variable Cargo uses for crates.io authentication.
-      CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_TOKEN || secrets.CRATES_IO_TOKEN }}
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.prepare.outputs.commit }}
+          persist-credentials: false
 
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
@@ -316,19 +412,42 @@ jobs:
               ;;
           esac
 
+      - name: Require crates.io token
+        if: steps.crates.outputs.published != 'true'
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_TOKEN || secrets.CRATES_IO_TOKEN }}
+        run: |
+          if [ -z "$CARGO_REGISTRY_TOKEN" ]; then
+            echo "CARGO_TOKEN or CRATES_IO_TOKEN must be configured to publish this release."
+            exit 1
+          fi
+
       - name: Verify package
         if: steps.crates.outputs.published != 'true'
         run: cargo publish --dry-run --locked -p neo3
 
-      - name: Publish to crates.io
-        if: steps.crates.outputs.published != 'true' && env.CARGO_REGISTRY_TOKEN != ''
-        run: cargo publish --locked -p neo3
-
-      - name: Require crates.io token
-        if: steps.crates.outputs.published != 'true' && env.CARGO_REGISTRY_TOKEN == ''
+      - name: Revalidate remote tag
+        if: steps.crates.outputs.published != 'true'
+        env:
+          EXPECTED_COMMIT: ${{ needs.prepare.outputs.commit }}
+          EXPECTED_TAG_OID: ${{ needs.prepare.outputs.tag_oid }}
         run: |
-          echo "CARGO_TOKEN or CRATES_IO_TOKEN must be configured to publish this release."
-          exit 1
+          VERSION="${{ needs.prepare.outputs.version }}"
+          VERIFIED_TAG_REF="refs/release-tags/${VERSION}"
+          git fetch --no-tags --force origin "refs/tags/${VERSION}:${VERIFIED_TAG_REF}"
+
+          TAG_OID="$(git rev-parse "${VERIFIED_TAG_REF}")"
+          TAG_COMMIT="$(git rev-parse "${VERIFIED_TAG_REF}^{commit}")"
+          if [ "$TAG_OID" != "$EXPECTED_TAG_OID" ] || [ "$TAG_COMMIT" != "$EXPECTED_COMMIT" ]; then
+            echo "Error: ${VERSION} changed after release preparation"
+            exit 1
+          fi
+
+      - name: Publish to crates.io
+        if: steps.crates.outputs.published != 'true'
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_TOKEN || secrets.CRATES_IO_TOKEN }}
+        run: cargo publish --locked -p neo3
 
       - name: Skip already published crate
         if: steps.crates.outputs.published == 'true'

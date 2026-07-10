@@ -182,24 +182,25 @@ jobs:
           ref: ${{ needs.prepare.outputs.commit }}
           persist-credentials: false
 
-      - name: Setup Rust 1.91
-        uses: dtolnay/rust-toolchain@1.91
+      - name: Setup Rust 1.96.0
+        id: rust
+        uses: dtolnay/rust-toolchain@1.96.0
         with:
           components: rustfmt, clippy
 
       - name: Check formatting
-        run: cargo fmt --all -- --check
+        run: cargo +${{ steps.rust.outputs.name }} fmt --all -- --check
 
       - name: Run Clippy
-        run: cargo clippy --workspace --locked --all-features --all-targets -- -D warnings
+        run: cargo +${{ steps.rust.outputs.name }} clippy --workspace --locked --all-features --all-targets -- -D warnings
 
       - name: Run workspace tests
-        run: cargo test --workspace --locked
+        run: cargo +${{ steps.rust.outputs.name }} test --workspace --locked
 
       - name: Build API documentation
         env:
           RUSTDOCFLAGS: -D warnings
-        run: cargo doc -p neo3 --locked --all-features --no-deps
+        run: cargo +${{ steps.rust.outputs.name }} doc -p neo3 --locked --all-features --no-deps
 
       - name: Audit dependencies
         uses: rustsec/audit-check@v2.0.0

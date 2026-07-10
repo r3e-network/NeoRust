@@ -77,6 +77,9 @@ and release automation fails closed before publishing incomplete releases.
 - Dependency policy rejects yanked packages and narrows advisory exceptions.
   `RUSTSEC-2023-0071` remains explicitly documented because `jsonwebtoken`
   enables RSA transitively while NeoRust's JWT API exposes HS256 only.
+- The lockfile updates `openssl` and `cmov` past all currently published GitHub
+  security advisories, including the high-severity OpenSSL advisories reported
+  against 0.10.75.
 - The website lockfile updates `http-proxy-middleware` and `js-yaml` past their
   moderate-severity advisories; `npm audit` reports no remaining findings.
 - Example and CLI manifests are explicitly non-publishable; only the `neo3`

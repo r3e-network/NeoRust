@@ -1,5 +1,5 @@
 /**
- * NeoRust Documentation Sidebar Configuration v2.0.0
+ * NeoRust Documentation Sidebar Configuration v2.1.0
  * Creating a simplified navigation structure for the documentation
  * @type {import('@docusaurus/plugin-content-docs').SidebarsConfig}
  */
@@ -34,4 +34,4 @@ const sidebars = {
   ],
 };
 
-module.exports = sidebars; 
+module.exports = sidebars;

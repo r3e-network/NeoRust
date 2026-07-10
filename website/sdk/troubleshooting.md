@@ -4,7 +4,7 @@ Common issues and solutions for NeoRust SDK.
 
 ## Installation Issues
 
-- Ensure Rust 1.70+ is installed
+- Ensure Rust 1.91+ is installed
 - Check Cargo.toml syntax
 
 ## Runtime Issues

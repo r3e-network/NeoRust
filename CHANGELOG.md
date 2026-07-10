@@ -9,6 +9,99 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 _No changes yet._
 
+## [2.1.0] - 2026-07-11
+
+NeoRust 2.1.0 makes production failures explicit and recoverable while keeping
+the existing 2.x entry points available. Provider errors now retain useful
+retry metadata, malformed numeric data is rejected instead of silently wrapped,
+and release automation fails closed before publishing incomplete releases.
+
+### Added
+
+- **Checked amount construction:** `DecimalAmount::try_from_raw` validates raw
+  base-unit values from RPC responses, caches, configuration, and user input.
+  Deserialization now uses the same validation path, preventing malformed
+  amounts from entering application state.
+- **Provider-aware unified errors:** `NeoError::provider` preserves rate-limit,
+  retry, validation, wallet, configuration, and network classifications.
+  `CodecError` also converts directly into the unified SDK boundary.
+- **Structured retry classification:** JSON-RPC and provider errors expose
+  retryability, rate limits, server backoff hints, unknown transactions,
+  already-known transactions, and deterministic transaction rejection helpers.
+- **Full-width Neo X transactions:** callers can build and submit Alloy
+  `TransactionRequest` values without the legacy transaction wrapper's `u64`
+  value limit. Existing `NeoXTransaction` serialization and send methods remain
+  available.
+
+### Changed
+
+- **Retries follow provider intent:** deterministic failures return immediately;
+  transient failures use capped exponential backoff, honor bounded
+  `Retry-After` guidance, and release queue capacity correctly after completion
+  or cancellation.
+- **Transaction rebroadcasts are outcome-aware:** an already-known transaction
+  is treated as accepted, deterministic node rejections become transaction
+  errors with the transaction hash, and only transient provider failures are
+  retried.
+- **HTTP failures retain protocol context:** non-success HTTP statuses and
+  JSON-RPC error envelopes keep safe request IDs and retry metadata instead of
+  collapsing into generic transport strings.
+- **Neo X remains source-compatible:** the Alloy-backed provider, wallet,
+  bridge, and transaction paths preserve legacy accessors while adding checked
+  conversions and full-width request APIs.
+- **Release publication is fail-closed:** tagged releases validate package and
+  changelog versions, run formatting, Clippy, tests, rustdoc, audit, and
+  supply-chain policy checks, and require crates.io credentials before creating
+  the GitHub release.
+
+### Fixed
+
+- Contract, policy, bridge, transaction, and string conversions now reject
+  negative or oversized values instead of wrapping through unchecked integer
+  casts. Iterator batch sizes are validated before RPC calls.
+- High-level balance and CLI rendering paths reject malformed decimal counts
+  and amounts, while token filters continue to ignore unrelated malformed
+  entries.
+- Confirmation polling stops on deterministic provider errors rather than
+  converting every failure into a timeout.
+- Name service, notary, token, and smart-contract helpers now propagate
+  provider and script-building failures through their declared error types.
+- Retry classification no longer lowercases and duplicates complete
+  provider-controlled error messages.
+
+### Security
+
+- Provider URLs redact usernames, passwords, query strings, and fragments from
+  `Display` and `Debug`; JSON-RPC error data and HTTP response bodies are not
+  exposed through general-purpose formatting.
+- Dependency policy rejects yanked packages and narrows advisory exceptions.
+  `RUSTSEC-2023-0071` remains explicitly documented because `jsonwebtoken`
+  enables RSA transitively while NeoRust's JWT API exposes HS256 only.
+- The website lockfile updates `http-proxy-middleware` and `js-yaml` past their
+  moderate-severity advisories; `npm audit` reports no remaining findings.
+- Example and CLI manifests are explicitly non-publishable; only the `neo3`
+  package can be released to crates.io.
+
+### Compatibility
+
+- The minimum supported Rust version is now **1.91** (previously 1.83). This is
+  enforced in CI and applies to both `neo3` and the bundled CLI.
+- `DecimalAmount::from_raw` is deprecated in favor of the checked constructor;
+  its zero fallback remains for 2.x source and behavior compatibility.
+- Error `Display`/`Debug` output intentionally omits sensitive provider data.
+  Applications should use structured fields and error helpers instead of
+  parsing formatted error strings.
+
+### Verified
+
+- Strict all-feature and no-default-feature Clippy, the Rust 1.91 all-feature
+  check, the locked workspace test suite, and warnings-as-errors rustdoc pass.
+- `cargo audit` and `cargo deny` pass with the documented RSA exception and
+  unmaintained transitive warnings; `npm audit` reports zero vulnerabilities.
+- The production documentation site builds successfully, GitHub workflows pass
+  `actionlint`, and the `neo3 2.1.0` crates.io dry run verifies a 279-file
+  package including its declared tests and benchmarks.
+
 ## [2.0.1] - 2026-06-18
 
 Security patch release. No public API changes — only dependency hardening.

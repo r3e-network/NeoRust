@@ -4,19 +4,19 @@
   <img src="./assets/neo_rust_banner.png" alt="NeoRust SDK Banner" width="100%">
 </p>
 
-[![Build & Test](https://github.com/r3e-network/NeoRust/actions/workflows/build-test.yml/badge.svg)](https://github.com/r3e-network/NeoRust/actions/workflows/build-test.yml)
-[![Release](https://github.com/r3e-network/NeoRust/actions/workflows/release.yml/badge.svg)](https://github.com/r3e-network/NeoRust/actions/workflows/release.yml)
+[![Build & Test](https://github.com/r3e-network/neo-rust-sdk/actions/workflows/build-test.yml/badge.svg)](https://github.com/r3e-network/neo-rust-sdk/actions/workflows/build-test.yml)
+[![Release](https://github.com/r3e-network/neo-rust-sdk/actions/workflows/release.yml/badge.svg)](https://github.com/r3e-network/neo-rust-sdk/actions/workflows/release.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Crates.io](https://img.shields.io/crates/v/neo3.svg)](https://crates.io/crates/neo3)
 [![Documentation](https://docs.rs/neo3/badge.svg)](https://docs.rs/neo3)
-[![MSRV](https://img.shields.io/badge/MSRV-1.83.0-blue)](https://blog.rust-lang.org/2024/11/28/Rust-1.83.0.html)
+[![MSRV](https://img.shields.io/badge/MSRV-1.91.0-blue)](https://blog.rust-lang.org/2025/10/30/Rust-1.91.0.html)
 
 A comprehensive Rust SDK for the Neo N3 blockchain platform. NeoRust provides a production-focused toolkit with simplified APIs, real-time features, and developer tools for building blockchain applications.
 
 ## 📊 Project Status
 
-- **Version**: 2.0.1
-- **Rust Version**: 1.83.0+
+- **Version**: 2.1.0
+- **Rust Version**: 1.91.0+
 - **Neo Version**: Neo N3 compatible
 - **Platform Support**: Linux verified locally; Windows and macOS are intended targets and should be validated in your CI before release
 - **Security**: Dependency auditing via `cargo deny`; wallet exports use authenticated encryption
@@ -35,8 +35,8 @@ A comprehensive Rust SDK for the Neo N3 blockchain platform. NeoRust provides a 
 - 🌐 **Network Support** - Mainnet, Testnet, and custom network configurations
 
 ### Highlights
-- 🌉 **Neo X EVM Integration** - Full `ethers-rs` compatibility with unified cross-chain `EcosystemClient`
-- 🛡️ **Anti-MEV Support** - Built-in secure mempool routing for Neo X to prevent front-running
+- 🌉 **Neo X EVM Integration** - Alloy-backed EVM providers and transactions through the unified cross-chain `EcosystemClient`
+- 🛡️ **Protected RPC Routing** - Optional Neo X routing through a third-party Anti-MEV endpoint; protection depends on the service and is not guaranteed
 - 🌐 **WebSocket Support** - Real-time blockchain events with auto-reconnection
 - 🔑 **HD Wallet (BIP-39/44)** - Hierarchical deterministic wallets with mnemonic phrases
 - 🔮 **Transaction Simulation** - Preview effects and estimate gas before submission
@@ -56,7 +56,7 @@ Add NeoRust to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-neo3 = "2.0.1"
+neo3 = "2.1.0"
 ```
 
 ## Basic Usage
@@ -140,7 +140,7 @@ let client = RpcClient::new(http);
 Requires the `ws` feature:
 
 ```toml
-neo3 = { version = "2.0.1", features = ["ws"] }
+neo3 = { version = "2.1.0", features = ["ws"] }
 ```
 
 ```rust
@@ -214,7 +214,7 @@ if result.success {
 
 ### Neo X & EVM Integration
 
-NeoRust natively supports **Neo X** (the EVM-compatible sidechain) and bridges the gap between NeoVM and EVM environments via `ethers-rs`.
+NeoRust natively supports **Neo X** (the EVM-compatible sidechain) and bridges the gap between NeoVM and EVM environments via Alloy.
 
 ```rust
 use neo3::sdk::unified::EcosystemClient;
@@ -223,10 +223,10 @@ use neo3::neo_x::NeoXWallet;
 // Create a randomized secure EVM wallet
 let wallet = NeoXWallet::create_random();
 
-// Initialize an Anti-MEV protected EcosystemClient for Neo X
+// Route Neo X requests through the configured third-party protected RPC endpoint
 let client = EcosystemClient::new_neox_anti_mev(wallet);
 
-// Query balance using standard ethers-rs providers underneath
+// Query balance using the Alloy-backed provider
 let balance = client.get_balance().await?;
 println!("EVM Balance: {} Wei", balance);
 

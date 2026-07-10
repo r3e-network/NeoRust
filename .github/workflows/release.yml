@@ -14,10 +14,13 @@ on:
 # Cancel in-progress runs when a new run is triggered
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 env:
   CARGO_TERM_COLOR: always
+
+permissions:
+  contents: read
 
 jobs:
   # Validate and prepare release
@@ -39,17 +42,85 @@ jobs:
           else
             VERSION="${GITHUB_REF#refs/tags/}"
           fi
-          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+          if [[ ! "$VERSION" =~ ^v[0-9]+\.[0-9]+\.[0-9]+([+-][0-9A-Za-z.-]+)?$ ]]; then
+            echo "Error: release version must be valid v-prefixed SemVer"
+            exit 1
+          fi
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
           echo "Version: ${VERSION}"
 
       - name: Verify Cargo.toml version
         run: |
           VERSION="${{ steps.version.outputs.version }}"
+          VERSION_NUM="${VERSION#v}"
           CARGO_VERSION="v$(grep '^version' Cargo.toml | head -1 | cut -d'"' -f2)"
           if [ "$VERSION" != "$CARGO_VERSION" ]; then
             echo "Error: Tag version ($VERSION) doesn't match Cargo.toml version ($CARGO_VERSION)"
             exit 1
           fi
+
+          CLI_VERSION="$(grep '^version' neo-cli/Cargo.toml | head -1 | cut -d'"' -f2)"
+          if [ "$VERSION_NUM" != "$CLI_VERSION" ]; then
+            echo "Error: neo-cli version ($CLI_VERSION) doesn't match release version ($VERSION_NUM)"
+            exit 1
+          fi
+
+          EXPECTED_CLI_DEPENDENCY="neo3 = { path = \"..\", version = \"${VERSION_NUM}\""
+          if ! grep -Fq "$EXPECTED_CLI_DEPENDENCY" neo-cli/Cargo.toml; then
+            echo "Error: neo-cli must require neo3 ${VERSION_NUM}"
+            exit 1
+          fi
+
+          LOCK_NEO3_VERSION="$(awk '/^name = "neo3"$/ { getline; gsub(/"/, "", $3); print $3; exit }' Cargo.lock)"
+          LOCK_CLI_VERSION="$(awk '/^name = "neo-cli"$/ { getline; gsub(/"/, "", $3); print $3; exit }' Cargo.lock)"
+          if [ "$LOCK_NEO3_VERSION" != "$VERSION_NUM" ] || [ "$LOCK_CLI_VERSION" != "$VERSION_NUM" ]; then
+            echo "Error: Cargo.lock package versions ($LOCK_NEO3_VERSION, $LOCK_CLI_VERSION) don't match $VERSION_NUM"
+            exit 1
+          fi
+
+          if ! grep -q "^## \[${VERSION_NUM}\] - " CHANGELOG.md; then
+            echo "Error: CHANGELOG.md has no dated ${VERSION_NUM} release section"
+            exit 1
+          fi
+
+      - name: Verify locked workspace metadata
+        run: cargo metadata --locked --no-deps --format-version 1 > /dev/null
+
+  verify:
+    name: Verify Release Candidate
+    needs: prepare
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Rust 1.91
+        uses: dtolnay/rust-toolchain@1.91
+        with:
+          components: rustfmt, clippy
+
+      - name: Check formatting
+        run: cargo fmt --all -- --check
+
+      - name: Run Clippy
+        run: cargo clippy --workspace --locked --all-features --all-targets -- -D warnings
+
+      - name: Run workspace tests
+        run: cargo test --workspace --locked
+
+      - name: Build API documentation
+        env:
+          RUSTDOCFLAGS: -D warnings
+        run: cargo doc -p neo3 --locked --all-features --no-deps
+
+      - name: Audit dependencies
+        uses: rustsec/audit-check@v2.0.0
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Check supply-chain policy
+        uses: EmbarkStudios/cargo-deny-action@v2
 
   # Build release artifacts
   build:
@@ -81,8 +152,8 @@ jobs:
 
       - name: Build release binary
         run: |
-          cargo build --release --target ${{ matrix.target }} --no-default-features --workspace
-          cargo build --release --target ${{ matrix.target }} -p neo-cli --bin neo-cli
+          cargo build --release --locked --target ${{ matrix.target }} --no-default-features --workspace
+          cargo build --release --locked --target ${{ matrix.target }} -p neo-cli --bin neo-cli
 
       - name: Package artifacts (Unix)
         if: runner.os != 'Windows'
@@ -119,6 +190,8 @@ jobs:
     needs: [prepare, build, publish]
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    permissions:
+      contents: write
 
     steps:
       - uses: actions/checkout@v4
@@ -163,7 +236,7 @@ jobs:
   # Publish crate
   publish:
     name: Publish neo3 crate
-    needs: [prepare, build]
+    needs: [prepare, build, verify]
     runs-on: ubuntu-latest
     timeout-minutes: 20
     env:
@@ -195,16 +268,17 @@ jobs:
 
       - name: Verify package
         if: steps.crates.outputs.published != 'true'
-        run: cargo publish --dry-run --locked
+        run: cargo publish --dry-run --locked -p neo3
 
       - name: Publish to crates.io
         if: steps.crates.outputs.published != 'true' && env.CARGO_TOKEN != ''
-        run: cargo publish --locked --token "$CARGO_TOKEN"
+        run: cargo publish --locked -p neo3
 
-      - name: Skip publish without token
+      - name: Require crates.io token
         if: steps.crates.outputs.published != 'true' && env.CARGO_TOKEN == ''
         run: |
-          echo "CARGO_TOKEN is not configured; skipping crates.io publish."
+          echo "CARGO_TOKEN or CRATES_IO_TOKEN must be configured to publish this release."
+          exit 1
 
       - name: Skip already published crate
         if: steps.crates.outputs.published == 'true'

@@ -4,7 +4,7 @@ This guide will help you get started with the NeoRust SDK for interacting with t
 
 ## Prerequisites
 
-- Rust 1.83.0 or later
+- Rust 1.91.0 or later
 - Cargo package manager
 - Basic knowledge of the Neo blockchain
 
@@ -14,7 +14,7 @@ Add the NeoRust SDK to your Cargo.toml:
 
 ```toml
 [dependencies]
-neo3 = { git = "https://github.com/R3E-Network/NeoRust" }
+neo3 = { git = "https://github.com/r3e-network/neo-rust-sdk" }
 ```
 
 Or if you prefer to use a specific version:

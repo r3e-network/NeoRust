@@ -42,6 +42,22 @@ The GitHub Actions workflow will automatically:
 - Publish `neo3` to crates.io, failing if credentials are unavailable
 - Create the GitHub release only after publication succeeds
 
+### 4. Retry a Failed Release
+
+Manual dispatch is a recovery path for an existing release tag, not an alternative to the normal
+tag-based release process. Never move, replace, or delete a public release tag.
+
+1. Confirm the tag is annotated, points to the reviewed commit on `master`, and has not changed.
+2. Confirm crates.io and GitHub release state before retrying. A missing crate version must return an
+   unambiguous `404`; otherwise, stop rather than risk publishing twice.
+3. From the repository's default branch, open **Actions > Release > Run workflow** and enter the exact
+   existing tag, including the `v` prefix (for example, `v2.1.0`).
+4. Monitor every release job and repeat the manual verification checklist below.
+
+The workflow fetches the remote annotated tag into an isolated ref, validates its commit and `master`
+ancestry, pins build and publication jobs to that commit, and revalidates the tag immediately before
+crates.io publication and GitHub release creation.
+
 ## 🔄 Automated Workflow Details
 
 ## 🎯 Release Strategy
@@ -150,7 +166,8 @@ Runs on pushes and pull requests:
 - Optional code coverage (main/master only)
 
 ### Release Automation (`release.yml`)
-Triggered by version tags:
+Triggered by version tags, with manual dispatch available only to retry an existing tag from the
+default branch:
 - Version validation
 - Comprehensive testing
 - Multi-platform binary builds

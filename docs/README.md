@@ -1,4 +1,4 @@
-# NeoRust v2.0.0 - Complete Neo N3 Development Suite
+# NeoRust v2.1.0 - Complete Neo N3 Development Suite
 
 <div align="center">
   <h1>🚀 NeoRust - Production-Ready Neo N3 SDK</h1>

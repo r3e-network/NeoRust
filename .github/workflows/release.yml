@@ -276,14 +276,45 @@ jobs:
         run: |
           VERSION="${{ needs.prepare.outputs.version }}"
           VERSION_NUM="${VERSION#v}"
+          RESPONSE_FILE="${RUNNER_TEMP}/neo3-${VERSION_NUM}.json"
 
-          if cargo search neo3 --limit 1 | grep -q "^neo3 = \"${VERSION_NUM}\""; then
-            echo "published=true" >> "$GITHUB_OUTPUT"
-            echo "neo3 ${VERSION_NUM} is already published on crates.io."
-          else
-            echo "published=false" >> "$GITHUB_OUTPUT"
-            echo "neo3 ${VERSION_NUM} is not published on crates.io."
-          fi
+          STATUS="$(
+            curl --silent --show-error --location \
+              --user-agent "neo-rust-sdk-release/${VERSION_NUM}" \
+              --header "Accept: application/json" \
+              --connect-timeout 15 \
+              --max-time 60 \
+              --retry 3 \
+              --retry-all-errors \
+              --retry-delay 2 \
+              --output "$RESPONSE_FILE" \
+              --write-out "%{http_code}" \
+              "https://crates.io/api/v1/crates/neo3/${VERSION_NUM}"
+          )" || {
+            echo "Error: unable to determine whether neo3 ${VERSION_NUM} is published."
+            exit 1
+          }
+
+          case "$STATUS" in
+            200)
+              if ! jq -e --arg version "$VERSION_NUM" '.version.num == $version' "$RESPONSE_FILE" > /dev/null; then
+                echo "Error: crates.io returned unexpected metadata for neo3 ${VERSION_NUM}."
+                cat "$RESPONSE_FILE"
+                exit 1
+              fi
+              echo "published=true" >> "$GITHUB_OUTPUT"
+              echo "neo3 ${VERSION_NUM} is already published on crates.io."
+              ;;
+            404)
+              echo "published=false" >> "$GITHUB_OUTPUT"
+              echo "neo3 ${VERSION_NUM} is not published on crates.io."
+              ;;
+            *)
+              echo "Error: Unexpected crates.io response ${STATUS}; refusing to publish blindly."
+              cat "$RESPONSE_FILE"
+              exit 1
+              ;;
+          esac
 
       - name: Verify package
         if: steps.crates.outputs.published != 'true'

@@ -37,8 +37,10 @@ and release automation fails closed before publishing incomplete releases.
 
 - **Retries follow provider intent:** deterministic failures return immediately;
   transient failures use capped exponential backoff, honor bounded
-  `Retry-After` guidance, and release queue capacity correctly after completion
-  or cancellation.
+  `Retry-After` guidance from JSON-RPC error envelopes, and release queue
+  capacity correctly after completion or cancellation. Plain HTTP 429 responses
+  retain rate-limit classification and use configured backoff for 2.x error
+  compatibility.
 - **Transaction rebroadcasts are outcome-aware:** an already-known transaction
   is treated as accepted, deterministic node rejections become transaction
   errors with the transaction hash, and only transient provider failures are
@@ -50,9 +52,10 @@ and release automation fails closed before publishing incomplete releases.
   bridge, and transaction paths preserve legacy accessors while adding checked
   conversions and full-width request APIs.
 - **Release publication is fail-closed:** tagged releases validate package and
-  changelog versions, run formatting, Clippy, tests, rustdoc, audit, and
-  supply-chain policy checks, and require crates.io credentials before creating
-  the GitHub release.
+  changelog versions, require an annotated tag reachable from `master`, run
+  formatting, Clippy, tests, rustdoc, audit, and supply-chain policy checks,
+  distinguish an absent crate from registry failures, and require crates.io
+  credentials before creating the GitHub release.
 
 ### Fixed
 

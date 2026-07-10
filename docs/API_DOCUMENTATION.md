@@ -516,7 +516,7 @@ let gas = GasEstimator::new(&client)
 ## Support
 
 For issues, questions, or contributions:
-- GitHub: https://github.com/R3E-Network/NeoRust
+- GitHub: https://github.com/r3e-network/neo-rust-sdk
 - Documentation: https://docs.rs/neo3
 - Examples: See `/examples` directory in repository
 

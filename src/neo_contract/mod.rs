@@ -148,5 +148,34 @@ mod role_management;
 mod traits;
 mod treasury;
 
+pub(crate) fn checked_vm_integer<T>(value: i64, field: &str) -> Result<T, ContractError>
+where
+	T: TryFrom<i64>,
+{
+	T::try_from(value).map_err(|_| {
+		ContractError::InvalidResponse(format!(
+			"{field} value {value} is outside the supported range"
+		))
+	})
+}
+
 #[cfg(test)]
 mod tests;
+
+#[cfg(test)]
+mod checked_integer_tests {
+	use super::*;
+
+	#[test]
+	fn checked_vm_integer_rejects_negative_and_oversized_values() {
+		assert!(matches!(
+			checked_vm_integer::<u32>(-1, "block height"),
+			Err(ContractError::InvalidResponse(message)) if message.contains("block height")
+		));
+		assert!(matches!(
+			checked_vm_integer::<u8>(256, "decimals"),
+			Err(ContractError::InvalidResponse(message)) if message.contains("decimals")
+		));
+		assert_eq!(checked_vm_integer::<u32>(42, "block height").unwrap(), 42);
+	}
+}

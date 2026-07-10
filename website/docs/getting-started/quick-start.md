@@ -4,7 +4,7 @@ Get up and running with NeoRust SDK in just a few minutes. This guide will walk 
 
 ## Prerequisites
 
-- Rust 1.70+ installed
+- Rust 1.91+ installed
 - NeoRust SDK added to your project
 
 If you haven't installed NeoRust yet, see the [Installation Guide](./installation.md).
@@ -277,7 +277,7 @@ impl NeoService {
 1. **📚 [Explore Documentation](../intro.md)** - Learn about advanced features
 2. **🔍 [View Examples](/examples)** - See more practical code examples  
 3. **🛠️ [Try the CLI Tool](/cli/intro)** - Use command-line tools for development
-4. **🤝 [Join Community](https://github.com/R3E-Network/NeoRust/discussions)** - Get help and share projects
+4. **🤝 [Join Community](https://github.com/r3e-network/neo-rust-sdk/discussions)** - Get help and share projects
 
 ### Useful Resources
 

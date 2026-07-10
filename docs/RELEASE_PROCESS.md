@@ -4,37 +4,43 @@ This document describes the release process for NeoRust using GitHub Actions and
 
 ## 🚀 Quick Start for New Releases
 
-### 1. Add Crates.io API Key to GitHub Secrets
+### 1. Add the crates.io API key to GitHub Secrets
 
 **⚠️ SECURITY**: Never commit API keys to the repository!
 
 1. Go to your GitHub repository → **Settings** → **Secrets and variables** → **Actions**
 2. Click **"New repository secret"**
-3. Name: `CARGO_TOKEN`
+3. Name it `CARGO_TOKEN` (preferred) or `CRATES_IO_TOKEN` (legacy fallback)
 4. Value: Your crates.io API token
 5. Click **"Add secret"**
 
 ### 2. Create a New Release
 
 ```bash
-# 1) Update Cargo.toml version + CHANGELOG.md
+# 1) Update Cargo.toml, neo-cli/Cargo.toml, Cargo.lock, and CHANGELOG.md
 # 2) Run local quality checks
-cargo fmt --all
-cargo clippy --workspace --all-features --all-targets
-cargo test --workspace --all-features --all-targets
+cargo fmt --all -- --check
+cargo clippy --workspace --locked --all-features --all-targets -- -D warnings
+cargo test --workspace --locked
+RUSTDOCFLAGS="-D warnings" cargo doc -p neo3 --locked --all-features --no-deps
+cargo audit
+cargo deny check --hide-inclusion-graph
+cargo publish --dry-run --locked
 
 # 3) Tag and push (release workflow triggers on vX.Y.Z tags)
-git tag -a v2.0.0 -m "Release version 2.0.0"
-git push origin v2.0.0
+VERSION=2.1.0
+git tag -a "v${VERSION}" -m "Release neo3 v${VERSION}"
+git push origin "v${VERSION}"
 ```
 
 ### 3. Monitor the Automated Release
 
 The GitHub Actions workflow will automatically:
-- ✅ Validate version format
-- ✅ Run comprehensive quality checks
-- ✅ Create GitHub release
-- ✅ Publish `neo3` to crates.io (best-effort)
+- Validate root/CLI versions, locked metadata, and the dated changelog section
+- Run formatting, Clippy, workspace tests, rustdoc, security audit, and supply-chain policy checks
+- Build Linux, macOS, and Windows CLI artifacts
+- Publish `neo3` to crates.io, failing if credentials are unavailable
+- Create the GitHub release only after publication succeeds
 
 ## 🔄 Automated Workflow Details
 
@@ -97,17 +103,18 @@ Examples: `2.0.0-alpha.1`, `2.0.0-beta.2`, `2.0.0-rc.1`
 
 #### 1. Version Tagging
 ```bash
-# Create and push version tag
-git tag -a v2.0.0 -m "Release version 2.0.0"
-git push origin v2.0.0
+# Set the release version, then create and push the version tag
+VERSION=2.1.0
+git tag -a "v${VERSION}" -m "Release neo3 v${VERSION}"
+git push origin "v${VERSION}"
 ```
 
 #### 2. Automated Release (GitHub Actions)
 The release workflow automatically:
 - [ ] Validates version format and changelog
-- [ ] Runs comprehensive test suite
+- [ ] Runs the release verification suite
 - [ ] Builds binaries for all platforms
-- [ ] Publishes `neo3` to crates.io (best-effort)
+- [ ] Publishes `neo3` to crates.io
 - [ ] Creates GitHub release with artifacts
 - [ ] Extracts release notes from `CHANGELOG.md`
 
@@ -191,8 +198,8 @@ For critical security issues or major bugs:
 6. **Communication**: Immediate security advisory if needed
 
 ### Hotfix Version Numbers
-- Increment PATCH version: `2.0.0` → `1.3.1`
-- For security fixes, consider pre-release: `1.3.1-security.1`
+- Increment PATCH version: `2.1.0` → `2.1.1`
+- For security fixes that require validation before general availability, use a standard pre-release such as `2.1.1-rc.1`
 
 ## 📊 Release Metrics
 
@@ -213,11 +220,13 @@ For critical security issues or major bugs:
 
 ### Local Validation
 ```bash
-# Quick pre-push checks (fmt/clippy + core tests)
-./check-ci.sh
-
-# More thorough checks (includes neo3 doc tests + neo-cli tests)
-./run-ci-checks.sh
+cargo fmt --all -- --check
+cargo clippy --workspace --locked --all-features --all-targets -- -D warnings
+cargo test --workspace --locked
+RUSTDOCFLAGS="-D warnings" cargo doc -p neo3 --locked --all-features --no-deps
+cargo audit
+cargo deny check --hide-inclusion-graph
+cargo publish --dry-run --locked
 ```
 
 ## 🔗 Related Documentation

@@ -13,7 +13,7 @@ use serde::{Deserialize, Serialize};
 use crate::{
 	neo_builder::TransactionBuilder,
 	neo_clients::{JsonRpcProvider, RpcClient},
-	neo_contract::{traits::SmartContractTrait, ContractError},
+	neo_contract::{checked_vm_integer, traits::SmartContractTrait, ContractError},
 	neo_types::{
 		serde_with_utils::{deserialize_script_hash, serialize_script_hash},
 		ScriptHash, StackItem,
@@ -38,7 +38,11 @@ impl NotaryDeposit {
 			StackItem::Struct { value } | StackItem::Array { value } if value.len() >= 2 => {
 				let amount = value[0].as_int().ok_or_else(|| "Invalid amount".to_string())?;
 
-				let till = value[1].as_int().ok_or_else(|| "Invalid till".to_string())? as u32;
+				let till = value[1]
+					.as_int()
+					.ok_or_else(|| "Invalid till".to_string())?
+					.try_into()
+					.map_err(|_| "Invalid till: value is outside the u32 range".to_string())?;
 
 				Ok(Self { amount, till })
 			},
@@ -91,7 +95,7 @@ impl<'a, P: JsonRpcProvider + 'static> NotaryContract<'a, P> {
 	///
 	/// The amount of GAS deposited by the account (in smallest units, 1 GAS = 10^8).
 	pub async fn balance_of(&self, account: &H160) -> Result<i64, ContractError> {
-		Ok(self.call_function_returning_int("balanceOf", vec![account.into()]).await? as i64)
+		self.call_function_returning_int("balanceOf", vec![account.into()]).await
 	}
 
 	/// Gets the deposit lock expiration height for the specified account.
@@ -105,7 +109,10 @@ impl<'a, P: JsonRpcProvider + 'static> NotaryContract<'a, P> {
 	/// The block height at which the deposit can be withdrawn.
 	/// Returns 0 if no deposit exists.
 	pub async fn expiration_of(&self, account: &H160) -> Result<u32, ContractError> {
-		Ok(self.call_function_returning_int("expirationOf", vec![account.into()]).await? as u32)
+		checked_vm_integer(
+			self.call_function_returning_int("expirationOf", vec![account.into()]).await?,
+			"notary deposit expiration",
+		)
 	}
 
 	/// Gets the maximum NotValidBefore delta value.
@@ -117,7 +124,10 @@ impl<'a, P: JsonRpcProvider + 'static> NotaryContract<'a, P> {
 	///
 	/// The maximum NotValidBefore delta in blocks.
 	pub async fn get_max_not_valid_before_delta(&self) -> Result<u32, ContractError> {
-		Ok(self.call_function_returning_int("getMaxNotValidBeforeDelta", vec![]).await? as u32)
+		checked_vm_integer(
+			self.call_function_returning_int("getMaxNotValidBeforeDelta", vec![]).await?,
+			"maximum not-valid-before delta",
+		)
 	}
 
 	/// Locks the deposit until the specified block height.
@@ -252,5 +262,16 @@ mod tests {
 		let deposit = NotaryDeposit::from_stack_item(&item).unwrap();
 		assert_eq!(deposit.amount, 1000000000i64);
 		assert_eq!(deposit.till, 100000);
+	}
+
+	#[test]
+	fn notary_deposit_rejects_invalid_block_height() {
+		for till in [-1_i64, i64::from(u32::MAX) + 1] {
+			let item = StackItem::Struct {
+				value: vec![StackItem::Integer { value: 1 }, StackItem::Integer { value: till }],
+			};
+
+			assert!(NotaryDeposit::from_stack_item(&item).is_err());
+		}
 	}
 }

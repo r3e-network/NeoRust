@@ -25,7 +25,7 @@ cargo install neo3-cli
 
 # Verify installation
 neorust --version
-# Output: neorust 2.0.1
+# Output: neo-cli 2.1.0
 
 # Initialize configuration
 neorust config init
@@ -430,7 +430,7 @@ neorust config show
 - **[Examples](../examples)**: Real-world usage examples
 
 ### Community Support
-- **GitHub Issues**: [Report bugs and request features](https://github.com/R3E-Network/NeoRust/issues)
+- **GitHub Issues**: [Report bugs and request features](https://github.com/r3e-network/neo-rust-sdk/issues)
 - **Discord Chat**: [Join our community](https://discord.gg/neo-rust)
 - **Forum**: [Ask questions and share knowledge](https://forum.neorust.org)
 
@@ -441,4 +441,4 @@ neorust config show
 
 ---
 
-**Ready to master the command line?** Start with the [Commands Reference](./commands) and explore the full power of NeoRust CLI! ⚡🦀 
+**Ready to master the command line?** Start with the [Commands Reference](./commands) and explore the full power of NeoRust CLI! ⚡🦀

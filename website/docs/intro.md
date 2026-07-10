@@ -2,7 +2,7 @@
 
 <div className="hero hero--primary">
   <div className="container">
-    <h1 className="hero__title">🚀 NeoRust v2.0.1</h1>
+    <h1 className="hero__title">🚀 NeoRust v2.1.0</h1>
     <p className="hero__subtitle">
       Production-Ready Neo N3 Development Suite with 207+ Passing Doc Tests
     </p>
@@ -125,7 +125,7 @@ cargo build --release
 
 ```toml
 [dependencies]
-neo3 = "2.0.1"
+neo3 = "2.1.0"
 ```
 
 ```rust
@@ -186,20 +186,20 @@ This documentation is organized into several sections:
 ## 🌐 Community & Support
 
 ### 📞 **Getting Help**
-- **GitHub Issues**: [Report bugs and request features](https://github.com/R3E-Network/NeoRust/issues)
-- **Discussions**: [Community discussions and Q&A](https://github.com/R3E-Network/NeoRust/discussions)
+- **GitHub Issues**: [Report bugs and request features](https://github.com/r3e-network/neo-rust-sdk/issues)
+- **Discussions**: [Community discussions and Q&A](https://github.com/r3e-network/neo-rust-sdk/discussions)
 - **Documentation**: [Comprehensive guides and API docs](https://neorust.netlify.app)
 
 ### 🤝 **Contributing**
-- **[Contributing Guide](https://github.com/R3E-Network/NeoRust/blob/master/CONTRIBUTING.md)**: How to contribute to NeoRust
-- **[System Architecture](https://github.com/R3E-Network/NeoRust/blob/master/SYSTEM_ARCHITECTURE_DESIGN.md)**: Core architecture and components
-- **[API Guidelines](https://github.com/R3E-Network/NeoRust/blob/master/API_GUIDELINES.md)**: API design standards and guidance
+- **[Contributing Guide](https://github.com/r3e-network/neo-rust-sdk/blob/master/CONTRIBUTING.md)**: How to contribute to NeoRust
+- **[System Architecture](https://github.com/r3e-network/neo-rust-sdk/blob/master/SYSTEM_ARCHITECTURE_DESIGN.md)**: Core architecture and components
+- **[API Guidelines](https://github.com/r3e-network/neo-rust-sdk/blob/master/API_GUIDELINES.md)**: API design standards and guidance
 
 ### 🔗 **Links**
 - **Website**: [https://neorust.netlify.app](https://neorust.netlify.app)
 - **Crate**: [https://crates.io/crates/neo3](https://crates.io/crates/neo3)
 - **API Docs**: [https://docs.rs/neo3](https://docs.rs/neo3)
-- **GitHub**: [https://github.com/R3E-Network/NeoRust](https://github.com/R3E-Network/NeoRust)
+- **GitHub**: [https://github.com/r3e-network/neo-rust-sdk](https://github.com/r3e-network/neo-rust-sdk)
 
 ---
 

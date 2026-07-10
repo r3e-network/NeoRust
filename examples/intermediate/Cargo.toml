@@ -2,6 +2,7 @@
 name = "intermediate-examples"
 version = "0.1.0"
 edition = "2021"
+publish = false
 description = "Intermediate Neo N3 examples for application developers"
 
 [[example]]

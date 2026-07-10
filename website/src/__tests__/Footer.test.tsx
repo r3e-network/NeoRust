@@ -77,7 +77,7 @@ describe('Footer Component', () => {
     // Check for GitHub link
     const githubLink = screen.getByLabelText('GitHub Repository');
     expect(githubLink).toBeInTheDocument();
-    expect(githubLink).toHaveAttribute('href', 'https://github.com/R3E-Network/NeoRust');
+    expect(githubLink).toHaveAttribute('href', 'https://github.com/r3e-network/neo-rust-sdk');
     
     // Check for Twitter link
     const twitterLink = screen.getByLabelText('Neo Twitter');

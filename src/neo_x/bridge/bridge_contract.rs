@@ -6,7 +6,7 @@ use std::str::FromStr;
 use crate::{
 	neo_builder::{AccountSigner, TransactionBuilder},
 	neo_clients::{JsonRpcProvider, RpcClient},
-	neo_contract::{ContractError, SmartContractTrait},
+	neo_contract::{checked_vm_integer, ContractError, SmartContractTrait},
 	neo_protocol::Account,
 	neo_types::{
 		serde_with_utils::{deserialize_script_hash, serialize_script_hash},
@@ -183,7 +183,7 @@ impl<'a, P: JsonRpcProvider + 'static> NeoXBridgeContract<'a, P> {
 	/// The bridge fee as a u64
 	pub async fn get_fee(&self, token: &ScriptHash) -> Result<u64, ContractError> {
 		let result = self.call_function_returning_int(Self::GET_FEE, vec![token.into()]).await?;
-		Ok(result as u64)
+		checked_vm_integer(result, "bridge fee")
 	}
 
 	/// Gets the bridge cap for a specific token
@@ -197,7 +197,7 @@ impl<'a, P: JsonRpcProvider + 'static> NeoXBridgeContract<'a, P> {
 	/// The bridge cap as a u64
 	pub async fn get_cap(&self, token: &ScriptHash) -> Result<u64, ContractError> {
 		let result = self.call_function_returning_int(Self::GET_CAP, vec![token.into()]).await?;
-		Ok(result as u64)
+		checked_vm_integer(result, "bridge cap")
 	}
 }
 

@@ -300,6 +300,77 @@ pub enum NeoErrorKind {
 }
 
 impl NeoError {
+	/// Convert a provider error while preserving whether it is transient and which SDK domain it
+	/// belongs to.
+	pub fn provider(context: &str, err: crate::neo_clients::ProviderError) -> Self {
+		use crate::neo_clients::ProviderError;
+
+		let message = format!("{}: {}", context, err);
+		if err.is_rate_limited() {
+			let retry_after = err.retry_after();
+			let mut recovery = ErrorRecovery::new()
+				.suggest("Retry after backing off")
+				.suggest("Reduce request concurrency")
+				.retryable(true);
+			if let Some(delay) = retry_after {
+				recovery = recovery.retry_after(delay);
+			}
+			return NeoError::RateLimit { message, retry_after, recovery };
+		}
+
+		let retryable = err.is_retryable();
+		match err {
+			ProviderError::InvalidAddress => NeoError::Validation {
+				message,
+				field: "address".to_string(),
+				value: None,
+				recovery: ErrorRecovery::new().suggest("Provide a valid Neo address"),
+			},
+			ProviderError::NnsError(_) | ProviderError::NnsNotOwned(_) => NeoError::Validation {
+				message,
+				field: "name".to_string(),
+				value: None,
+				recovery: ErrorRecovery::new().suggest("Check the NNS name and ownership"),
+			},
+			ProviderError::TypeError(_) => NeoError::Validation {
+				message,
+				field: "provider_input".to_string(),
+				value: None,
+				recovery: ErrorRecovery::new().suggest("Check the provider request values"),
+			},
+			ProviderError::InvalidPassword
+			| ProviderError::SignerUnavailable
+			| ProviderError::CryptoError(_) => NeoError::Wallet {
+				message,
+				source: None,
+				recovery: ErrorRecovery::new().suggest("Check wallet credentials and signer setup"),
+			},
+			ProviderError::UnsupportedRPC
+			| ProviderError::UnsupportedNodeClient
+			| ProviderError::ProtocolNotFound
+			| ProviderError::NetworkNotFound => NeoError::Configuration {
+				message,
+				field: Some("provider".to_string()),
+				recovery: ErrorRecovery::new()
+					.suggest("Use an endpoint that supports the requested RPC operation"),
+			},
+			error @ (ProviderError::HTTPError(_) | ProviderError::JsonRpcError(_)) => {
+				NeoError::Network {
+					message,
+					source: Some(Box::new(error)),
+					recovery: ErrorRecovery::new()
+						.suggest("Check network connectivity and the RPC endpoint")
+						.retryable(retryable),
+				}
+			},
+			error => NeoError::Other {
+				message,
+				source: Some(Box::new(error)),
+				recovery: ErrorRecovery::new(),
+			},
+		}
+	}
+
 	/// Returns the coarse [`NeoErrorKind`] for this error.
 	///
 	/// Stable across non-exhaustive variant additions — prefer this in
@@ -963,16 +1034,27 @@ impl From<crate::neo_types::TypeError> for NeoError {
 	}
 }
 
+impl From<crate::codec::CodecError> for NeoError {
+	fn from(err: crate::codec::CodecError) -> Self {
+		match err {
+			crate::codec::CodecError::InvalidPassphrase(message) => NeoError::Wallet {
+				message: format!("Invalid passphrase: {message}"),
+				source: None,
+				recovery: ErrorRecovery::new().suggest("Verify the wallet passphrase"),
+			},
+			other => NeoError::Validation {
+				message: other.to_string(),
+				field: "encoded_data".to_string(),
+				value: None,
+				recovery: ErrorRecovery::new().suggest("Verify the encoded data format"),
+			},
+		}
+	}
+}
+
 impl From<crate::neo_clients::ProviderError> for NeoError {
 	fn from(err: crate::neo_clients::ProviderError) -> Self {
-		NeoError::Network {
-			message: err.to_string(),
-			source: None,
-			recovery: ErrorRecovery::new()
-				.suggest("Check network connectivity")
-				.suggest("Verify the RPC endpoint is accessible")
-				.retryable(true),
-		}
+		NeoError::provider("provider request failed", err)
 	}
 }
 
@@ -1152,6 +1234,61 @@ mod tests {
 		let err = NeoError::validation("amount", Some("-1"), "must be positive");
 		assert_eq!(err.kind(), NeoErrorKind::Validation);
 		assert!(!err.is_retryable());
+	}
+
+	#[test]
+	fn provider_conversion_preserves_retry_and_domain_classification() {
+		let invalid_address = NeoError::from(crate::neo_clients::ProviderError::InvalidAddress);
+		assert_eq!(invalid_address.kind(), NeoErrorKind::Validation);
+		assert!(!invalid_address.is_retryable());
+
+		let rate_limited = NeoError::from(crate::neo_clients::ProviderError::JsonRpcError(
+			crate::neo_clients::JsonRpcError {
+				code: 429,
+				message: "too many requests".to_string(),
+				data: None,
+			},
+		));
+		assert_eq!(rate_limited.kind(), NeoErrorKind::RateLimit);
+		assert!(rate_limited.is_retryable());
+
+		let rate_limited = NeoError::from(crate::neo_clients::ProviderError::JsonRpcError(
+			crate::neo_clients::JsonRpcError {
+				code: 429,
+				message: "too many requests".to_string(),
+				data: Some(serde_json::json!({ "rate": { "backoff_seconds": 2 } })),
+			},
+		));
+		assert_eq!(rate_limited.retry_after(), Some(std::time::Duration::from_secs(2)));
+	}
+
+	#[test]
+	fn provider_debug_redacts_json_rpc_data_through_unified_error() {
+		let error = NeoError::from(crate::neo_clients::ProviderError::JsonRpcError(
+			crate::neo_clients::JsonRpcError {
+				code: -32000,
+				message: "provider rejected request".to_string(),
+				data: Some(serde_json::json!({ "token": "super-secret" })),
+			},
+		));
+
+		let debug = format!("{error:?}");
+		assert!(debug.contains("provider rejected request"));
+		assert!(!debug.contains("super-secret"));
+	}
+
+	#[test]
+	fn codec_errors_convert_into_the_unified_boundary() {
+		let malformed = NeoError::from(crate::codec::CodecError::InvalidEncoding(
+			"truncated payload".to_string(),
+		));
+		assert_eq!(malformed.kind(), NeoErrorKind::Validation);
+		assert!(!malformed.is_retryable());
+
+		let passphrase = NeoError::from(crate::codec::CodecError::InvalidPassphrase(
+			"decryption failed".to_string(),
+		));
+		assert_eq!(passphrase.kind(), NeoErrorKind::Wallet);
 	}
 
 	#[test]

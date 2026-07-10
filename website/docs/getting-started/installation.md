@@ -4,7 +4,7 @@ Get started with NeoRust SDK by installing it in your development environment.
 
 ## System Requirements
 
-- **Rust**: Version 1.70 or later
+- **Rust**: Version 1.91 or later
 - **Cargo**: Rust's package manager (included with Rust)
 - **Operating System**: Windows, macOS, or Linux
 
@@ -29,7 +29,7 @@ Add NeoRust to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-neo3 = "2.0.1"
+neo3 = "2.1.0"
 tokio = { version = "1.0", features = ["full"] }
 ```
 
@@ -39,7 +39,7 @@ NeoRust provides several optional features:
 
 ```toml
 [dependencies]
-neo3 = { version = "2.0.1", features = ["futures", "ledger"] }
+neo3 = { version = "2.1.0", features = ["futures", "ledger"] }
 ```
 
 ### Available Features
@@ -62,7 +62,7 @@ Create a simple test to verify everything works:
 use neo3::prelude::*;
 
 fn main() {
-    println!("NeoRust SDK v2.0.1 is ready!");
+    println!("NeoRust SDK v2.1.0 is ready!");
     
     // Create a simple account
     let account = Account::create().expect("Failed to create account");
@@ -78,7 +78,7 @@ cargo run
 
 You should see output like:
 ```
-NeoRust SDK v2.0.1 is ready!
+NeoRust SDK v2.1.0 is ready!
 Generated address: NXXXXxxxXXXxxxXXXxxxXXXxxxXXXxxx
 ```
 
@@ -116,4 +116,4 @@ sudo yum groupinstall "Development Tools"
 ## Next Steps
 
 - [Quick Start Guide](./quick-start.md) - Your first Neo application
-- [Examples](/examples) - Practical code examples 
+- [Examples](/examples) - Practical code examples

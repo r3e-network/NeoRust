@@ -2,6 +2,7 @@
 name = "advanced-examples"
 version = "0.1.0"
 edition = "2021"
+publish = false
 description = "Advanced Neo N3 examples for enterprise applications"
 
 [[example]]

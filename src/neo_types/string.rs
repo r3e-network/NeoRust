@@ -129,7 +129,7 @@ impl StringExt for String {
 	}
 
 	fn is_valid_hex(&self) -> bool {
-		self.len() % 2 == 0 && self.chars().all(|c| c.is_ascii_hexdigit())
+		self.len().is_multiple_of(2) && self.chars().all(|c| c.is_ascii_hexdigit())
 	}
 
 	fn address_to_scripthash(&self) -> Result<ScriptHash, &'static str> {

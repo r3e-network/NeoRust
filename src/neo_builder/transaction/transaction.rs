@@ -455,10 +455,7 @@ impl<'a, T: JsonRpcProvider + 'static> Transaction<'a, T> {
 		})?);
 		// self.throw()?;
 		self.block_count_when_sent = Some(network.get_block_count().await?);
-		network
-			.send_raw_transaction(hex)
-			.await
-			.map_err(|e| TransactionError::IllegalState(e.to_string()))
+		network.send_raw_transaction(hex).await.map_err(TransactionError::ProviderError)
 	}
 
 	/// Tracks a transaction until it appears in a block.

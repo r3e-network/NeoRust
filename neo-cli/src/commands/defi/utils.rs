@@ -259,7 +259,9 @@ pub fn format_token_amount(raw_amount: i64, decimals: u8) -> String {
 		("", raw_amount.to_string())
 	};
 
-	let formatted = DecimalAmount::from_raw(raw, decimals).to_fixed_string();
+	let formatted = DecimalAmount::try_from_raw(raw, decimals)
+		.expect("the absolute value of an i64 is a valid raw amount")
+		.to_fixed_string();
 	format!("{}{}", sign, formatted)
 }
 

@@ -1,13 +1,13 @@
-use alloy::primitives::Address as AlloyAddress;
-use alloy::primitives::U256 as AlloyU256;
-use alloy::providers::{Provider, ProviderBuilder};
-use alloy::rpc::types::eth::TransactionReceipt;
-use alloy::signers::local::{PrivateKeySigner, LocalSignerError};
-use alloy::signers::Signer;
-use std::str::FromStr;
 use crate::neo_clients::JsonRpcProvider;
 use crate::neo_x::evm::provider::NeoXProvider;
 use crate::neo_x::evm::transaction::NeoXTransaction;
+use alloy::primitives::Address as AlloyAddress;
+use alloy::primitives::U256 as AlloyU256;
+use alloy::providers::{Provider, ProviderBuilder};
+use alloy::rpc::types::eth::{TransactionReceipt, TransactionRequest};
+use alloy::signers::local::{LocalSignerError, PrivateKeySigner};
+use alloy::signers::Signer;
+use std::str::FromStr;
 
 /// Neo X EVM Wallet for managing accounts and signing transactions on Neo X.
 /// This wraps an alloy `PrivateKeySigner` to provide seamless integration.
@@ -62,7 +62,21 @@ impl<'a, P: JsonRpcProvider + 'static> NeoXClient<'a, P> {
 	}
 
 	/// Sends a `NeoXTransaction` using the configured wallet and provider
-	pub async fn send_transaction(&self, tx: NeoXTransaction) -> Result<TransactionReceipt, String> {
+	pub async fn send_transaction(
+		&self,
+		tx: NeoXTransaction,
+	) -> Result<TransactionReceipt, String> {
+		self.send_transaction_request(tx.into_alloy_request()).await
+	}
+
+	/// Sends an Alloy transaction request using the configured wallet and provider.
+	///
+	/// Use this method when the request needs EVM values wider than the legacy
+	/// [`NeoXTransaction`] representation supports.
+	pub async fn send_transaction_request(
+		&self,
+		request: TransactionRequest,
+	) -> Result<TransactionReceipt, String> {
 		// Ensure an EVM provider is configured (validates the RPC URL early).
 		let _evm = self.provider.evm_provider().ok_or("No EVM provider configured")?;
 
@@ -79,9 +93,7 @@ impl<'a, P: JsonRpcProvider + 'static> NeoXClient<'a, P> {
 			.map_err(|e: url::ParseError| format!("Invalid Neo X RPC URL: {e}"))?;
 		let client = ProviderBuilder::new().wallet(signer).connect_http(url);
 
-		let req = tx.into_alloy_request();
-
-		let pending_tx = client.send_transaction(req).await.map_err(|e| e.to_string())?;
+		let pending_tx = client.send_transaction(request).await.map_err(|e| e.to_string())?;
 
 		let receipt = pending_tx.get_receipt().await.map_err(|e| e.to_string())?;
 

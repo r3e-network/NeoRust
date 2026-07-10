@@ -20,10 +20,11 @@ jobs:
     timeout-minutes: 15
     steps:
     - uses: actions/checkout@v4
-    - name: Setup Rust 1.91
-      uses: dtolnay/rust-toolchain@1.91
+    - name: Setup Rust 1.91.0
+      id: msrv
+      uses: dtolnay/rust-toolchain@1.91.0
     - name: Check library with MSRV
-      run: cargo check -p neo3 --lib --locked --all-features
+      run: cargo +${{ steps.msrv.outputs.name }} check -p neo3 --lib --locked --all-features
 
   lint:
     name: Lint

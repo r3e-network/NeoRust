@@ -7,10 +7,12 @@ use std::{
 	time::Duration,
 };
 
-use super::{common::JsonRpcError, http_provider::ClientError};
+use super::{
+	common::{JsonRpcError, MAX_PROVIDER_RETRY_AFTER},
+	http_provider::ClientError,
+};
 use crate::neo_clients::{JsonRpcProvider, ProviderError};
 use async_trait::async_trait;
-use reqwest::StatusCode;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use thiserror::Error;
 use tracing::trace;
@@ -21,7 +23,9 @@ pub trait RetryPolicy<E>: Send + Sync + Debug {
 	/// Whether to retry the request based on the given `error`
 	fn should_retry(&self, error: &E) -> bool;
 
-	/// Providers may include the `backoff` in the error response directly
+	/// Providers may include the `backoff` in the error response directly.
+	///
+	/// The retry client caps hints to 60 seconds.
 	fn backoff_hint(&self, error: &E) -> Option<Duration>;
 }
 
@@ -155,7 +159,9 @@ impl RetryClientBuilder {
 		self
 	}
 
-	/// Sets the duration to wait initially before retrying
+	/// Sets the duration to wait initially before retrying.
+	///
+	/// Subsequent delays double up to a 60-second cap.
 	#[must_use]
 	pub fn initial_backoff(mut self, initial_backoff: Duration) -> Self {
 		self.initial_backoff = initial_backoff;
@@ -217,6 +223,46 @@ pub enum RetryClientError {
 	SerdeJson(serde_json::Error),
 }
 
+struct EnqueuedRequest<'a> {
+	counter: &'a AtomicU32,
+}
+
+impl<'a> EnqueuedRequest<'a> {
+	fn new(counter: &'a AtomicU32) -> (Self, u64) {
+		let ahead = u64::from(counter.fetch_add(1, Ordering::SeqCst));
+		(Self { counter }, ahead)
+	}
+}
+
+impl Drop for EnqueuedRequest<'_> {
+	fn drop(&mut self) {
+		self.counter.fetch_sub(1, Ordering::SeqCst);
+	}
+}
+
+fn retry_backoff(initial: Duration, retry_number: u32) -> Duration {
+	let exponent = retry_number.saturating_sub(1).min(u32::BITS - 1);
+	initial.saturating_mul(1_u32 << exponent).min(MAX_PROVIDER_RETRY_AFTER)
+}
+
+fn with_jitter(backoff: Duration) -> Duration {
+	let jitter_bound = u64::try_from(backoff.as_millis() / 4).unwrap_or(u64::MAX);
+	if jitter_bound == 0 {
+		return backoff;
+	}
+
+	let jitter = Duration::from_millis(rand::random::<u64>() % jitter_bound);
+	backoff.saturating_add(jitter).min(MAX_PROVIDER_RETRY_AFTER)
+}
+
+async fn sleep_backoff(backoff: Duration) {
+	#[cfg(target_arch = "wasm32")]
+	futures_timer::Delay::new(backoff).await;
+
+	#[cfg(not(target_arch = "wasm32"))]
+	tokio::time::sleep(backoff).await;
+}
+
 impl From<RetryClientError> for ProviderError {
 	fn from(src: RetryClientError) -> Self {
 		match src {
@@ -256,7 +302,7 @@ where
 			RetryParams::Value(params)
 		};
 
-		let ahead_in_queue = u64::from(self.requests_enqueued.fetch_add(1, Ordering::SeqCst));
+		let (_enqueued_request, ahead_in_queue) = EnqueuedRequest::new(&self.requests_enqueued);
 
 		let mut rate_limit_retry_number: u32 = 0;
 		let mut timeout_retries: u32 = 0;
@@ -272,10 +318,7 @@ where
 					RetryParams::Zst(unit) => self.inner.fetch(method, unit).await,
 				};
 				match resp {
-					Ok(ret) => {
-						self.requests_enqueued.fetch_sub(1, Ordering::SeqCst);
-						return Ok(ret);
-					},
+					Ok(ret) => return Ok(ret),
 					Err(err_) => err = err_,
 				}
 			}
@@ -293,11 +336,13 @@ where
 
 				// try to extract the requested backoff from the error or compute the next backoff
 				// based on retry count
-				let mut next_backoff = self.policy.backoff_hint(&err).unwrap_or_else(|| {
-					Duration::from_millis(
-						u64::try_from(self.initial_backoff.as_millis()).unwrap_or(u64::MAX),
-					)
-				});
+				let mut next_backoff = self
+					.policy
+					.backoff_hint(&err)
+					.map(|hint| hint.min(MAX_PROVIDER_RETRY_AFTER))
+					.unwrap_or_else(|| {
+						retry_backoff(self.initial_backoff, rate_limit_retry_number)
+					});
 
 				// requests are usually weighted and can vary from 10 CU to several 100 CU, cheaper
 				// requests are more common some example alchemy weights:
@@ -314,30 +359,25 @@ where
 					current_queued_requests,
 					ahead_in_queue,
 				);
-				next_backoff += Duration::from_secs(seconds_to_wait_for_compute_budget);
-
-				// Add jitter (up to 25% of backoff) to prevent thundering herd
-				let jitter_ms = (next_backoff.as_millis() as u64 / 4).max(1);
-				let jitter = Duration::from_millis(rand::random::<u64>() % jitter_ms);
-				next_backoff += jitter;
+				next_backoff = next_backoff
+					.saturating_add(Duration::from_secs(seconds_to_wait_for_compute_budget))
+					.min(MAX_PROVIDER_RETRY_AFTER);
+				next_backoff = with_jitter(next_backoff);
 
 				trace!("retrying and backing off for {:?}", next_backoff);
-
-				#[cfg(target_arch = "wasm32")]
-				futures_timer::Delay::new(next_backoff).await;
-
-				#[cfg(not(target_arch = "wasm32"))]
-				tokio::time::sleep(next_backoff).await;
+				sleep_backoff(next_backoff).await;
 			} else {
 				let err: ProviderError = err.into();
 				if timeout_retries < self.timeout_retries && maybe_connectivity(&err) {
 					timeout_retries += 1;
-					trace!(err = ?err, "retrying due to spurious network");
+					let next_backoff =
+						with_jitter(retry_backoff(self.initial_backoff, timeout_retries));
+					trace!(error = %err, delay = ?next_backoff, "retrying due to spurious network");
+					sleep_backoff(next_backoff).await;
 					continue;
 				}
 
-				trace!(err = ?err, "should not retry");
-				self.requests_enqueued.fetch_sub(1, Ordering::SeqCst);
+				trace!(error = %err, "should not retry");
 				return Err(RetryClientError::ProviderError(err));
 			}
 		}
@@ -354,32 +394,11 @@ pub struct HttpRateLimitRetryPolicy;
 
 impl RetryPolicy<ClientError> for HttpRateLimitRetryPolicy {
 	fn should_retry(&self, error: &ClientError) -> bool {
-		fn should_retry_json_rpc_error(err: &JsonRpcError) -> bool {
-			let JsonRpcError { code, message, .. } = err;
-			// Some gateways surface rate limits as JSON-RPC code 429.
-			if *code == 429 {
-				return true;
-			}
-
-			// Some gateways use -32005 for "exceeded project rate limit".
-			if *code == -32005 {
-				return true;
-			}
-
-			// Some gateways use -32016 + "rate limit" in the message (e.g., per-IP throttling).
-			if *code == -32016 && message.contains("rate limit") {
-				return true;
-			}
-
-			matches!(
-				message.as_str(),
-				"header not found" | "daily request count exceeded, request rate limited"
-			)
-		}
-
 		match error {
-			ClientError::ReqwestError(err) => err.status() == Some(StatusCode::TOO_MANY_REQUESTS),
-			ClientError::JsonRpcError(err) => should_retry_json_rpc_error(err),
+			ClientError::ReqwestError(err) => {
+				err.status() == Some(reqwest::StatusCode::TOO_MANY_REQUESTS)
+			},
+			ClientError::JsonRpcError(err) => err.is_retryable(),
 			ClientError::SerdeJson { text, .. } => {
 				// some providers send invalid JSON RPC in the error case (no `id:u64`), but the
 				// text should be a `JsonRpcError`
@@ -389,7 +408,7 @@ impl RetryPolicy<ClientError> for HttpRateLimitRetryPolicy {
 				}
 
 				if let Ok(resp) = serde_json::from_str::<Resp>(text) {
-					return should_retry_json_rpc_error(&resp.error);
+					return resp.error.is_retryable();
 				}
 				false
 			},
@@ -397,20 +416,10 @@ impl RetryPolicy<ClientError> for HttpRateLimitRetryPolicy {
 	}
 
 	fn backoff_hint(&self, error: &ClientError) -> Option<Duration> {
-		if let ClientError::JsonRpcError(JsonRpcError { data, .. }) = error {
-			let data = data.as_ref()?;
-
-			// Some gateways include a recommended backoff in the error payload.
-			let backoff_seconds = &data["rate"]["backoff_seconds"];
-			if let Some(seconds) = backoff_seconds.as_u64() {
-				return Some(Duration::from_secs(seconds));
-			}
-			if let Some(seconds) = backoff_seconds.as_f64() {
-				return Some(Duration::from_secs(seconds.max(0.0).ceil() as u64));
-			}
+		match error {
+			ClientError::JsonRpcError(error) => error.retry_after(),
+			_ => None,
 		}
-
-		None
 	}
 }
 
@@ -431,7 +440,8 @@ fn compute_unit_offset_in_secs(
 	current_queued_requests: u64,
 	ahead_in_queue: u64,
 ) -> u64 {
-	let request_capacity_per_second = compute_units_per_second.saturating_div(avg_cost);
+	let request_capacity_per_second =
+		compute_units_per_second.checked_div(avg_cost).unwrap_or_default().max(1);
 	if current_queued_requests > request_capacity_per_second {
 		current_queued_requests
 			.min(ahead_in_queue)
@@ -444,30 +454,15 @@ fn compute_unit_offset_in_secs(
 /// Checks whether the `error` is the result of a connectivity issue, like
 /// `request::Error::TimedOut`
 fn maybe_connectivity(err: &ProviderError) -> bool {
-	if let ProviderError::HTTPError(reqwest_err) = err {
-		if reqwest_err.is_timeout() {
-			return true;
-		}
-
-		#[cfg(not(target_arch = "wasm32"))]
-		if reqwest_err.is_connect() {
-			return true;
-		}
-
-		// Error HTTP codes (5xx) are considered connectivity issues and will prompt retry
-		if let Some(status) = reqwest_err.status() {
-			let code = status.as_u16();
-			if (500..600).contains(&code) {
-				return true;
-			}
-		}
-	}
-	false
+	matches!(err, ProviderError::HTTPError(_)) && err.is_retryable()
 }
 
 #[cfg(test)]
 mod tests {
 	use super::*;
+	use crate::neo_clients::HttpProvider;
+	use tokio::io::{AsyncReadExt, AsyncWriteExt};
+	use url::Url;
 
 	// assumed average cost of a request
 	const AVG_COST: u64 = 17u64;
@@ -517,6 +512,104 @@ mod tests {
 		let to_wait = compute_offset(current_queued_requests, ahead_in_queue);
 		// need to wait 1 second
 		assert_eq!(to_wait, 1);
+	}
+
+	#[test]
+	fn zero_compute_units_do_not_panic() {
+		assert_eq!(compute_unit_offset_in_secs(AVG_COST, 0, 1, 0), 0);
+		assert_eq!(compute_unit_offset_in_secs(AVG_COST, 0, 3, 2), 2);
+	}
+
+	#[test]
+	fn exponential_backoff_doubles_and_caps() {
+		let initial = Duration::from_millis(500);
+		assert_eq!(retry_backoff(initial, 1), Duration::from_millis(500));
+		assert_eq!(retry_backoff(initial, 2), Duration::from_secs(1));
+		assert_eq!(retry_backoff(initial, 8), Duration::from_secs(60));
+		assert_eq!(retry_backoff(initial, u32::MAX), Duration::from_secs(60));
+	}
+
+	async fn retry_client_for_responses(
+		responses: Vec<String>,
+	) -> (RetryClient<HttpProvider>, tokio::task::JoinHandle<()>) {
+		retry_client_for_responses_with_backoff(responses, Duration::ZERO).await
+	}
+
+	async fn retry_client_for_responses_with_backoff(
+		responses: Vec<String>,
+		initial_backoff: Duration,
+	) -> (RetryClient<HttpProvider>, tokio::task::JoinHandle<()>) {
+		let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+		let address = listener.local_addr().unwrap();
+		let server = tokio::spawn(async move {
+			for response in responses {
+				let (mut stream, _) = listener.accept().await.unwrap();
+				let mut request = [0_u8; 2048];
+				let _ = stream.read(&mut request).await.unwrap();
+				stream.write_all(response.as_bytes()).await.unwrap();
+			}
+		});
+		let provider =
+			HttpProvider::new(Url::parse(&format!("http://{address}")).unwrap()).unwrap();
+		let client = RetryClientBuilder::default()
+			.timeout_retries(1)
+			.rate_limit_retries(0)
+			.initial_backoff(initial_backoff)
+			.build(provider, Box::<HttpRateLimitRetryPolicy>::default());
+		(client, server)
+	}
+
+	#[tokio::test]
+	async fn retries_truncated_response_then_succeeds() {
+		let truncated = "HTTP/1.1 200 OK\r\nContent-Length: 128\r\nConnection: close\r\n\r\n{\"jsonrpc\":\"2.0\"}".to_string();
+		let body = r#"{"jsonrpc":"2.0","id":2,"result":42}"#;
+		let success = format!(
+			"HTTP/1.1 200 OK\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}",
+			body.len()
+		);
+		let (client, server) = retry_client_for_responses(vec![truncated, success]).await;
+
+		let result: u64 = client.fetch("getblockcount", Vec::<u8>::new()).await.unwrap();
+
+		assert_eq!(result, 42);
+		server.await.unwrap();
+	}
+
+	#[tokio::test]
+	async fn connectivity_retries_wait_before_retrying() {
+		let truncated = "HTTP/1.1 200 OK\r\nContent-Length: 128\r\nConnection: close\r\n\r\n{\"jsonrpc\":\"2.0\"}".to_string();
+		let body = r#"{"jsonrpc":"2.0","id":2,"result":42}"#;
+		let success = format!(
+			"HTTP/1.1 200 OK\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}",
+			body.len()
+		);
+		let initial_backoff = Duration::from_millis(25);
+		let (client, server) =
+			retry_client_for_responses_with_backoff(vec![truncated, success], initial_backoff)
+				.await;
+		let started = tokio::time::Instant::now();
+
+		let result: u64 = client.fetch("getblockcount", Vec::<u8>::new()).await.unwrap();
+
+		assert_eq!(result, 42);
+		assert!(started.elapsed() >= initial_backoff);
+		server.await.unwrap();
+	}
+
+	#[tokio::test]
+	async fn retry_exhaustion_releases_queue_accounting() {
+		let body = "rate limited";
+		let response = format!(
+			"HTTP/1.1 429 Too Many Requests\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}",
+			body.len()
+		);
+		let (client, server) = retry_client_for_responses(vec![response]).await;
+
+		let result = client.fetch::<_, serde_json::Value>("getblockcount", Vec::<u8>::new()).await;
+
+		assert!(matches!(result, Err(RetryClientError::TimeoutError)));
+		assert_eq!(client.requests_enqueued.load(Ordering::SeqCst), 0);
+		server.await.unwrap();
 	}
 
 	#[test]

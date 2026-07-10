@@ -8,18 +8,15 @@ version = 2
 # Note: vulnerability, unsound, and notice are no longer configurable in newer versions
 # They always emit errors and can only be ignored via the ignore field
 unmaintained = "workspace"
-yanked = "warn"
+yanked = "deny"
 
 # Temporarily ignored advisories (no upstream fix available)
 ignore = [
     # RUSTSEC-2023-0071: rsa crate Marvin Attack timing sidechannel.
-    # Transitive dep via jsonwebtoken -> rsa 0.9.x; no patched version exists yet.
+    # jsonwebtoken's RustCrypto provider enables rsa 0.9.x, but the SDK only exposes HS256.
+    # No patched rsa 0.9.x version exists yet.
     # Tracked: https://rustsec.org/advisories/RUSTSEC-2023-0071
     "RUSTSEC-2023-0071",
-    
-    # RUSTSEC-2025-0009: ring crate panic on overflow checks.
-    # Transitive dep via ethers -> jsonwebtoken -> ring; no patched version exists in ethers tree yet.
-    "RUSTSEC-2025-0009",
 ]
 
 # This section is considered when running `cargo deny check bans`.
@@ -67,13 +64,9 @@ allow = [
     "BSD-3-Clause",
     "CC0-1.0",
     "ISC",
-    "Unicode-DFS-2016",
     "Unicode-3.0",
     "Unlicense",
     "Zlib",
-    "MPL-2.0",
-    # https://github.com/briansmith/ring/issues/902
-    "LicenseRef-ring",
     # https://github.com/briansmith/webpki/issues/148
     "LicenseRef-webpki",
 ]
@@ -81,8 +74,9 @@ allow = [
 # Allow 1 or more licenses on a per-crate basis, so that particular licenses
 # aren't accepted for every possible crate as with the normal allow list
 exceptions = [
-    # root certificate bundle used by rustls/reqwest
+    # root certificate bundles used by rustls/reqwest
     { allow = ["CDLA-Permissive-2.0"], name = "webpki-roots" },
+    { allow = ["CDLA-Permissive-2.0"], name = "webpki-root-certs" },
 ]
 
 [[licenses.clarify]]
@@ -110,8 +104,3 @@ unknown-registry = "deny"
 # Lint level for what to happen when a crate from a git repository that is not
 # in the allow list is encountered
 unknown-git = "deny"
-
-# List of URLs for allowed Git repositories
-allow-git = [
-    "https://github.com/paritytech/parity-common",
-]

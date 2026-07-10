@@ -50,7 +50,7 @@ const NEOX_BRIDGE_GAS_LIMIT: u64 = 200_000;
 const GAS_DECIMALS: u8 = 8;
 
 /// Unified Ecosystem Client that pairs a Provider with a Wallet for either Neo N3 or Neo X.
-/// Designed with an ethers-rs style interface for cross-chain consistency.
+/// Uses the SDK's native Neo N3 APIs and Alloy-backed Neo X APIs behind one interface.
 pub enum EcosystemClient<'a> {
 	/// N3 Network Client
 	N3 {
@@ -78,8 +78,10 @@ impl<'a> EcosystemClient<'a> {
 		Self::NeoX { client }
 	}
 
-	/// Connects to Neo X using an Anti-MEV configured endpoint.
-	/// This guards transactions against mempool sandwich attacks and front-running.
+	/// Connects to Neo X through the configured third-party protected RPC endpoint.
+	///
+	/// Protection characteristics are determined by the endpoint operator; routing through this
+	/// endpoint does not guarantee prevention of front-running or sandwich attacks.
 	pub fn new_neox_anti_mev(wallet: NeoXWallet) -> Self {
 		let provider = NeoXProvider::new_anti_mev(None);
 		let client = NeoXClient::new(wallet, provider);
@@ -95,10 +97,7 @@ impl<'a> EcosystemClient<'a> {
 					.ok_or_else(no_default_account_error)?
 					.address_or_scripthash
 					.address();
-				let balance = provider
-					.get_balance(&address)
-					.await
-					.map_err(|e| NeoError::network("Neo X balance lookup", e))?;
+				let balance = provider.get_balance(&address).await?;
 				Ok(balance.gas.to_string())
 			},
 			Self::NeoX { client } => {
@@ -120,10 +119,7 @@ impl<'a> EcosystemClient<'a> {
 					.map_err(|e| amount_validation_error(amount, e))?;
 				let amount_u64 =
 					parsed.raw().parse::<u64>().map_err(|e| amount_validation_error(amount, e))?;
-				let tx_hash = provider
-					.transfer(wallet, to, amount_u64, Token::GAS)
-					.await
-					.map_err(|e| NeoError::transaction("N3 transfer failed", e))?;
+				let tx_hash = provider.transfer(wallet, to, amount_u64, Token::GAS).await?;
 				Ok(tx_hash)
 			},
 			Self::NeoX { client } => {
@@ -133,15 +129,15 @@ impl<'a> EcosystemClient<'a> {
 				let value =
 					U256::from_str(amount).map_err(|e| amount_validation_error(amount, e))?;
 
-				let tx = NeoXTransaction::new(
+				let request = NeoXTransaction::build_alloy_request(
 					Some(to_addr),
 					vec![],
-					value.to::<u64>(),
+					value,
 					NEOX_TRANSFER_GAS_LIMIT,
 					NEOX_GAS_PRICE_WEI,
 				);
 				let receipt = client
-					.send_transaction(tx)
+					.send_transaction_request(request)
 					.await
 					.map_err(|e| NeoError::transaction("Neo X transfer failed", e))?;
 				Ok(format!("{:?}", receipt.transaction_hash))

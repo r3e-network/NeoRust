@@ -1,6 +1,9 @@
 // Code adapted from: https://github.com/althea-net/guac_rs/tree/master/web3/src/jsonrpc
 
-use std::sync::atomic::{AtomicU64, Ordering};
+use std::{
+	sync::atomic::{AtomicU64, Ordering},
+	time::Duration,
+};
 
 use async_trait::async_trait;
 use futures_util::StreamExt;
@@ -11,7 +14,7 @@ use thiserror::Error;
 use tracing::debug;
 use url::Url;
 
-use super::common::{JsonRpcError, Request, Response};
+use super::common::{JsonRpcError, Request, Response, MAX_PROVIDER_RETRY_AFTER};
 use crate::neo_clients::{Authorization, JsonRpcProvider, ProviderError};
 use neo3::config::NeoConstants;
 
@@ -33,15 +36,38 @@ const MAX_ERROR_TEXT_BYTES: usize = 4 * 1024;
 /// # Ok(())
 /// # }
 /// ```
-#[derive(Debug)]
 pub struct HttpProvider {
 	id: AtomicU64,
 	client: Client,
 	url: Url,
 }
 
+impl std::fmt::Debug for HttpProvider {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		f.debug_struct("HttpProvider")
+			.field("scheme", &self.url.scheme())
+			.field("host", &self.url.host_str())
+			.field("port", &self.url.port_or_known_default())
+			.finish_non_exhaustive()
+	}
+}
+
 #[derive(Error)]
 /// Error thrown when sending an HTTP request
+///
+/// The variants remain exhaustive for compatibility with NeoRust SDK 2.x clients.
+///
+/// ```no_run
+/// use neo3::neo_clients::HttpClientError;
+///
+/// fn classify(error: HttpClientError) -> &'static str {
+///     match error {
+///         HttpClientError::ReqwestError(_) => "transport",
+///         HttpClientError::JsonRpcError(_) => "json-rpc",
+///         HttpClientError::SerdeJson { .. } => "invalid-response",
+///     }
+/// }
+/// ```
 pub enum ClientError {
 	/// Thrown if the request failed
 	#[error(transparent)]
@@ -105,15 +131,35 @@ impl JsonRpcProvider for HttpProvider {
 		if let Some(timeout) = NeoConstants::rpc_request_timeout() {
 			request = request.timeout(timeout);
 		}
-		let res = request.send().await?;
+		let res = request
+			.send()
+			.await
+			.map_err(|error| ClientError::ReqwestError(error.without_url()))?;
+		let status_error = res.error_for_status_ref().err().map(reqwest::Error::without_url);
+		let retry_after = parse_retry_after(res.headers());
 		let max_response_size = NeoConstants::max_rpc_message_size();
-		let body =
-			collect_body_with_limit(res.content_length(), res.bytes_stream(), max_response_size)
-				.await?;
+		let body = match collect_body_with_limit(
+			res.content_length(),
+			res.bytes_stream(),
+			max_response_size,
+		)
+		.await
+		{
+			Ok(body) => body,
+			Err(error) => return Err(status_error.map_or(error, ClientError::ReqwestError)),
+		};
 
 		let raw = match serde_json::from_slice(&body) {
+			Ok(Response::Error { mut error, .. }) => {
+				attach_retry_after(&mut error, retry_after);
+				return Err(error.into());
+			},
+			_ if status_error.is_some() => {
+				return Err(ClientError::ReqwestError(
+					status_error.expect("status error checked above"),
+				))
+			},
 			Ok(Response::Success { result, .. }) => result.to_owned(),
-			Ok(Response::Error { error, .. }) => return Err(error.into()),
 			Ok(_) => {
 				let err = ClientError::SerdeJson {
 					err: serde::de::Error::custom("unexpected notification over HTTP transport"),
@@ -144,6 +190,44 @@ impl JsonRpcProvider for HttpProvider {
 	}
 }
 
+fn parse_retry_after(headers: &reqwest::header::HeaderMap) -> Option<Duration> {
+	let seconds = headers
+		.get(reqwest::header::RETRY_AFTER)?
+		.to_str()
+		.ok()?
+		.trim()
+		.parse::<u64>()
+		.ok()?;
+	Some(Duration::from_secs(seconds.min(MAX_PROVIDER_RETRY_AFTER.as_secs())))
+}
+
+fn attach_retry_after(error: &mut JsonRpcError, retry_after: Option<Duration>) {
+	let Some(retry_after) = retry_after else {
+		return;
+	};
+	if error.retry_after().is_some() {
+		return;
+	}
+
+	let backoff = serde_json::Value::from(retry_after.as_secs());
+	match &mut error.data {
+		None => {
+			error.data = Some(serde_json::json!({
+				"rate": { "backoff_seconds": backoff }
+			}));
+		},
+		Some(serde_json::Value::Object(data)) => {
+			let rate = data
+				.entry("rate")
+				.or_insert_with(|| serde_json::Value::Object(Default::default()));
+			if let serde_json::Value::Object(rate) = rate {
+				rate.entry("backoff_seconds").or_insert(backoff);
+			}
+		},
+		Some(_) => {},
+	}
+}
+
 async fn collect_body_with_limit<S>(
 	content_length: Option<u64>,
 	mut stream: S,
@@ -167,7 +251,7 @@ where
 
 	let mut body: Vec<u8> = Vec::new();
 	while let Some(chunk) = stream.next().await {
-		let chunk = chunk.map_err(ClientError::ReqwestError)?;
+		let chunk = chunk.map_err(|error| ClientError::ReqwestError(error.without_url()))?;
 		if body.len().saturating_add(chunk.len()) > max_response_size {
 			let preview_len = body.len().min(MAX_ERROR_TEXT_BYTES);
 			return Err(ClientError::SerdeJson {
@@ -297,6 +381,150 @@ mod tests {
 		pin::Pin,
 		task::{Context, Poll},
 	};
+	use tokio::io::{AsyncReadExt, AsyncWriteExt};
+
+	async fn provider_returning_status(status: &str, body: &str) -> HttpProvider {
+		let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+		let address = listener.local_addr().unwrap();
+		let status = status.to_string();
+		let body = body.to_string();
+
+		tokio::spawn(async move {
+			let (mut stream, _) = listener.accept().await.unwrap();
+			let mut request = [0_u8; 2048];
+			let _ = stream.read(&mut request).await.unwrap();
+			let response = format!(
+				"HTTP/1.1 {status}\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}",
+				body.len()
+			);
+			stream.write_all(response.as_bytes()).await.unwrap();
+		});
+
+		HttpProvider::new(Url::parse(&format!("http://{address}")).unwrap()).unwrap()
+	}
+
+	async fn provider_returning_response(response: String, path: &str) -> HttpProvider {
+		let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+		let address = listener.local_addr().unwrap();
+		tokio::spawn(async move {
+			let (mut stream, _) = listener.accept().await.unwrap();
+			let mut request = [0_u8; 2048];
+			let _ = stream.read(&mut request).await.unwrap();
+			stream.write_all(response.as_bytes()).await.unwrap();
+		});
+
+		HttpProvider::new(Url::parse(&format!("http://{address}{path}")).unwrap()).unwrap()
+	}
+
+	#[test]
+	fn provider_debug_redacts_url_credentials_and_paths() {
+		let provider = HttpProvider::new(
+			Url::parse("https://user:password@example.com/private/key?api_key=secret").unwrap(),
+		)
+		.unwrap();
+
+		let debug = format!("{provider:?}");
+		assert!(debug.contains("example.com"));
+		for secret in ["user", "password", "private", "api_key", "secret"] {
+			assert!(!debug.contains(secret), "debug output exposed {secret}: {debug}");
+		}
+	}
+
+	#[tokio::test]
+	async fn preserves_retryable_http_error_statuses() {
+		for (status, expected) in [("429 Too Many Requests", 429), ("503 Unavailable", 503)] {
+			let provider = provider_returning_status(status, "gateway unavailable").await;
+			let error = provider
+				.fetch::<_, serde_json::Value>("getblockcount", Vec::<u8>::new())
+				.await
+				.unwrap_err();
+			let provider_error: ProviderError = error.into();
+
+			assert_eq!(provider_error.http_status().map(|status| status.as_u16()), Some(expected));
+			assert!(provider_error.is_retryable());
+		}
+	}
+
+	#[tokio::test]
+	async fn sanitizes_status_error_urls_with_compatible_error_variant() {
+		let body = "rate limited";
+		let response = format!(
+			"HTTP/1.1 429 Too Many Requests\r\nContent-Length: {}\r\nRetry-After: 3600\r\nConnection: close\r\n\r\n{body}",
+			body.len()
+		);
+		let provider =
+			provider_returning_response(response, "/rpc?api_key=super-secret-value").await;
+		let error = provider
+			.fetch::<_, serde_json::Value>("getblockcount", Vec::<u8>::new())
+			.await
+			.unwrap_err();
+
+		assert!(matches!(
+			&error,
+			ClientError::ReqwestError(error)
+				if error.status() == Some(reqwest::StatusCode::TOO_MANY_REQUESTS)
+		));
+		let error: ProviderError = error.into();
+
+		assert!(error.is_rate_limited());
+		assert_eq!(error.retry_after(), None);
+		assert!(!error.to_string().contains("super-secret-value"));
+		assert!(!format!("{error:?}").contains("super-secret-value"));
+	}
+
+	#[tokio::test]
+	async fn preserves_json_rpc_errors_from_http_error_responses() {
+		let body = r#"{"jsonrpc":"2.0","id":1,"error":{"code":-32000,"message":"project rate limit","data":null}}"#;
+		let response = format!(
+			"HTTP/1.1 429 Too Many Requests\r\nContent-Length: {}\r\nRetry-After: 5\r\nConnection: close\r\n\r\n{body}",
+			body.len()
+		);
+		let provider = provider_returning_response(response, "/").await;
+		let error: ProviderError = provider
+			.fetch::<_, serde_json::Value>("getblockcount", Vec::<u8>::new())
+			.await
+			.unwrap_err()
+			.into();
+
+		assert!(matches!(&error, ProviderError::JsonRpcError(JsonRpcError { code: -32000, .. })));
+		assert!(error.is_rate_limited());
+		assert_eq!(error.retry_after(), Some(Duration::from_secs(5)));
+	}
+
+	#[tokio::test]
+	async fn classifies_truncated_response_body_as_retryable() {
+		let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+		let address = listener.local_addr().unwrap();
+		let server = tokio::spawn(async move {
+			let (mut stream, _) = listener.accept().await.unwrap();
+			let mut request = [0_u8; 2048];
+			let _ = stream.read(&mut request).await.unwrap();
+			stream
+				.write_all(
+					b"HTTP/1.1 200 OK\r\nContent-Length: 128\r\nConnection: close\r\n\r\n{\"jsonrpc\":\"2.0\"}",
+				)
+				.await
+				.unwrap();
+		});
+
+		let provider =
+			HttpProvider::new(Url::parse(&format!("http://{address}")).unwrap()).unwrap();
+		let error = provider
+			.fetch::<_, serde_json::Value>("getblockcount", Vec::<u8>::new())
+			.await
+			.unwrap_err();
+		server.await.unwrap();
+		let provider_error: ProviderError = error.into();
+
+		assert!(
+			matches!(
+				&provider_error,
+				ProviderError::HTTPError(error) if error.is_body() || error.is_decode()
+			),
+			"expected a response body read error, got {provider_error:?}"
+		);
+		assert!(provider_error.is_retryable());
+	}
 
 	#[tokio::test]
 	async fn rejects_oversized_content_length_without_reading_body() {

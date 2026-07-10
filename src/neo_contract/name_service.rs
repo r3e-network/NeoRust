@@ -5,7 +5,8 @@ use crate::{
 	deserialize_script_hash, deserialize_script_hash_option,
 	neo_clients::{APITrait, JsonRpcProvider, RpcClient},
 	neo_contract::{
-		ContractError, NeoIterator, NonFungibleTokenTrait, SmartContractTrait, TokenTrait,
+		checked_vm_integer, ContractError, NeoIterator, NonFungibleTokenTrait, SmartContractTrait,
+		TokenTrait,
 	},
 	serialize_script_hash, serialize_script_hash_option, ContractParameter, NNSName, ScriptHash,
 	ScriptHashExtension, StackItem,
@@ -243,7 +244,8 @@ impl<'a, P: JsonRpcProvider + 'static> NeoNameService<'a, P> {
 				"Invalid {} property type",
 				Self::EXPIRATION_PROPERTY
 			))
-		})? as u32;
+		})?;
+		let expiration = checked_vm_integer(expiration, "NNS expiration")?;
 
 		// Find the admin property in the map
 		let admin_key = StackItem::ByteString { value: Self::ADMIN_PROPERTY.to_string() };

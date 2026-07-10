@@ -1,6 +1,6 @@
 // Code adapted from: https://github.com/althea-net/guac_rs/tree/master/web3/src/jsonrpc
 
-use std::fmt;
+use std::{fmt, time::Duration};
 
 use base64::{engine::general_purpose, Engine};
 use jsonwebtoken::{encode, errors::Error, get_current_timestamp, Algorithm, EncodingKey, Header};
@@ -14,8 +14,10 @@ use thiserror::Error;
 
 use neo3::prelude::Bytes;
 
+pub(crate) const MAX_PROVIDER_RETRY_AFTER: Duration = Duration::from_secs(60);
+
 /// A JSON-RPC 2.0 error
-#[derive(Deserialize, Debug, Clone, Error, PartialEq)]
+#[derive(Deserialize, Clone, Error, PartialEq)]
 pub struct JsonRpcError {
 	/// The error code
 	pub code: i64,
@@ -23,6 +25,16 @@ pub struct JsonRpcError {
 	pub message: String,
 	/// Additional data
 	pub data: Option<Value>,
+}
+
+impl fmt::Debug for JsonRpcError {
+	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+		f.debug_struct("JsonRpcError")
+			.field("code", &self.code)
+			.field("message", &self.message)
+			.field("data", &self.data.as_ref().map(|_| "<redacted>"))
+			.finish()
+	}
 }
 
 /// Recursively traverses the value, looking for hex data that it can extract.
@@ -38,6 +50,69 @@ fn spelunk_revert(value: &Value) -> Option<Bytes> {
 }
 
 impl JsonRpcError {
+	/// Returns `true` when the provider indicates that the caller should retry after backoff.
+	pub fn is_retryable(&self) -> bool {
+		self.is_rate_limited()
+			|| self.code == -502
+			|| self.message.eq_ignore_ascii_case("header not found")
+			|| self
+				.message
+				.eq_ignore_ascii_case("daily request count exceeded, request rate limited")
+	}
+
+	/// Returns `true` for JSON-RPC responses that represent provider throttling.
+	pub fn is_rate_limited(&self) -> bool {
+		if matches!(self.code, 429 | -32005) {
+			return true;
+		}
+
+		(self.code == -32016
+			&& self
+				.message
+				.as_bytes()
+				.windows(b"rate limit".len())
+				.any(|window| window.eq_ignore_ascii_case(b"rate limit")))
+			|| self.retry_after().is_some()
+	}
+
+	/// Returns a provider-suggested delay before retrying, when present.
+	///
+	/// Untrusted hints are clamped to 60 seconds.
+	pub fn retry_after(&self) -> Option<Duration> {
+		let seconds = self.data.as_ref()?.get("rate")?.get("backoff_seconds")?;
+		if let Some(seconds) = seconds.as_u64() {
+			return Some(Duration::from_secs(seconds.min(MAX_PROVIDER_RETRY_AFTER.as_secs())));
+		}
+
+		let seconds = seconds.as_f64()?;
+		(seconds.is_finite() && seconds >= 0.0)
+			.then(|| seconds.ceil().min(MAX_PROVIDER_RETRY_AFTER.as_secs() as f64))
+			.map(|seconds| Duration::from_secs(seconds as u64))
+	}
+
+	/// Returns `true` when a Neo node reports that a transaction is not known yet.
+	///
+	/// Current Neo nodes use `-103` for an unknown transaction and `-105` for an unknown script
+	/// container; older nodes and gateways have also returned `-100`. These responses are useful
+	/// while polling for confirmation, but are not generally retryable request failures.
+	pub fn is_unknown_transaction(&self) -> bool {
+		matches!(self.code, -100 | -103 | -105)
+	}
+
+	/// Returns `true` when a Neo node reports that a submitted transaction is already known.
+	///
+	/// Neo uses `-501` when the transaction already exists in the ledger and `-503` when it is
+	/// already present in the memory pool. During rebroadcast, either response confirms that the
+	/// exact signed transaction reached the node.
+	pub fn is_already_known_transaction(&self) -> bool {
+		matches!(self.code, -501 | -503)
+	}
+
+	/// Returns `true` for deterministic Neo transaction-submission rejections.
+	pub fn is_transaction_rejection(&self) -> bool {
+		matches!(self.code, -500 | -504 | -505 | -507 | -508 | -509 | -510 | -511 | -512)
+	}
+
 	/// Determine if the error output of the `neo_call` RPC request is a revert
 	///
 	/// Note that this may return false positives if called on an error from
@@ -71,7 +146,7 @@ impl JsonRpcError {
 
 impl fmt::Display for JsonRpcError {
 	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-		write!(f, "(code: {}, message: {}, data: {:?})", self.code, self.message, self.data)
+		write!(f, "(code: {}, message: {})", self.code, self.message)
 	}
 }
 
@@ -393,6 +468,106 @@ pub struct Claims {
 #[cfg(test)]
 mod tests {
 	use super::*;
+
+	#[test]
+	fn classifies_transient_and_unknown_transaction_errors() {
+		let rate_limited =
+			JsonRpcError { code: -32016, message: "Rate limit exceeded".to_string(), data: None };
+		assert!(rate_limited.is_retryable());
+		assert!(!rate_limited.is_unknown_transaction());
+
+		for message in ["Header Not Found", "Daily Request Count Exceeded, Request Rate Limited"] {
+			let gateway_error =
+				JsonRpcError { code: -32000, message: message.to_string(), data: None };
+			assert!(gateway_error.is_retryable());
+		}
+
+		for (code, message) in [
+			(-100, "Unknown transaction/blockhash"),
+			(-103, "Unknown transaction"),
+			(-105, "Unknown script container"),
+		] {
+			let unknown_transaction =
+				JsonRpcError { code, message: message.to_string(), data: None };
+			assert!(!unknown_transaction.is_retryable());
+			assert!(unknown_transaction.is_unknown_transaction());
+		}
+
+		let invalid_request =
+			JsonRpcError { code: -32602, message: "Invalid params".to_string(), data: None };
+		assert!(!invalid_request.is_retryable());
+		assert!(!invalid_request.is_unknown_transaction());
+
+		for code in [-501, -503] {
+			let already_known =
+				JsonRpcError { code, message: "already known".to_string(), data: None };
+			assert!(already_known.is_already_known_transaction());
+			assert!(!already_known.is_transaction_rejection());
+		}
+
+		let pool_full = JsonRpcError {
+			code: -502,
+			message: "Memory pool capacity reached".to_string(),
+			data: None,
+		};
+		assert!(pool_full.is_retryable());
+		assert!(!pool_full.is_transaction_rejection());
+
+		for code in [-500, -504, -505, -511, -512] {
+			let rejected = JsonRpcError { code, message: "rejected".to_string(), data: None };
+			assert!(rejected.is_transaction_rejection());
+			assert!(!rejected.is_already_known_transaction());
+		}
+
+		let reserved = JsonRpcError { code: -506, message: "reserved".to_string(), data: None };
+		assert!(!reserved.is_transaction_rejection());
+	}
+
+	#[test]
+	fn extracts_non_negative_provider_backoff() {
+		for (value, expected) in [
+			(serde_json::json!(2), Some(Duration::from_secs(2))),
+			(serde_json::json!(1.1), Some(Duration::from_secs(2))),
+			(serde_json::json!(3_600), Some(Duration::from_secs(60))),
+			(serde_json::json!(-1), None),
+			(serde_json::json!("later"), None),
+		] {
+			let error = JsonRpcError {
+				code: 429,
+				message: "rate limited".to_string(),
+				data: Some(serde_json::json!({ "rate": { "backoff_seconds": value } })),
+			};
+			assert_eq!(error.retry_after(), expected);
+		}
+	}
+
+	#[test]
+	fn json_rpc_error_display_redacts_provider_data() {
+		let error = JsonRpcError {
+			code: -32000,
+			message: "request failed".to_string(),
+			data: Some(serde_json::json!({ "token": "super-secret" })),
+		};
+
+		let display = error.to_string();
+		assert!(display.contains("-32000"));
+		assert!(display.contains("request failed"));
+		assert!(!display.contains("super-secret"));
+	}
+
+	#[test]
+	fn json_rpc_error_debug_redacts_provider_data() {
+		let error = JsonRpcError {
+			code: -32000,
+			message: "request failed".to_string(),
+			data: Some(serde_json::json!({ "token": "super-secret" })),
+		};
+
+		let debug = format!("{error:?}");
+		assert!(debug.contains("-32000"));
+		assert!(debug.contains("request failed"));
+		assert!(!debug.contains("super-secret"));
+	}
 
 	#[test]
 	fn deser_response() {

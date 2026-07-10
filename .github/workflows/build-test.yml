@@ -14,6 +14,17 @@ env:
   CARGO_INCREMENTAL: 0
 
 jobs:
+  msrv:
+    name: Minimum Supported Rust
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+    - uses: actions/checkout@v4
+    - name: Setup Rust 1.91
+      uses: dtolnay/rust-toolchain@1.91
+    - name: Check library with MSRV
+      run: cargo check -p neo3 --lib --locked --all-features
+
   lint:
     name: Lint
     runs-on: ubuntu-latest

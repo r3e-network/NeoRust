@@ -62,6 +62,76 @@ pub enum ProviderError {
 	NetworkNotFound,
 }
 
+impl ProviderError {
+	/// Returns `true` when repeating the same provider request may succeed.
+	pub fn is_retryable(&self) -> bool {
+		match self {
+			Self::HTTPError(error) => is_retryable_http_error(error),
+			Self::JsonRpcError(error) => error.is_retryable(),
+			_ => false,
+		}
+	}
+
+	/// Returns `true` when this error represents provider throttling.
+	pub fn is_rate_limited(&self) -> bool {
+		match self {
+			Self::HTTPError(error) => {
+				error.status() == Some(reqwest::StatusCode::TOO_MANY_REQUESTS)
+			},
+			Self::JsonRpcError(error) => error.is_rate_limited(),
+			_ => false,
+		}
+	}
+
+	/// Returns a provider-suggested delay before retrying, when present.
+	///
+	/// Untrusted hints are clamped to 60 seconds by the built-in transports.
+	pub fn retry_after(&self) -> Option<std::time::Duration> {
+		match self {
+			Self::JsonRpcError(error) => error.retry_after(),
+			_ => None,
+		}
+	}
+
+	/// Returns the HTTP response status when this error carries one.
+	pub fn http_status(&self) -> Option<reqwest::StatusCode> {
+		match self {
+			Self::HTTPError(error) => error.status(),
+			_ => None,
+		}
+	}
+
+	/// Returns `true` when a Neo node does not know a polled transaction yet.
+	pub fn is_unknown_transaction(&self) -> bool {
+		matches!(self, Self::JsonRpcError(error) if error.is_unknown_transaction())
+	}
+
+	/// Returns `true` when a Neo node already has a submitted transaction.
+	pub fn is_already_known_transaction(&self) -> bool {
+		matches!(self, Self::JsonRpcError(error) if error.is_already_known_transaction())
+	}
+
+	/// Returns `true` for deterministic Neo transaction-submission rejections.
+	pub fn is_transaction_rejection(&self) -> bool {
+		matches!(self, Self::JsonRpcError(error) if error.is_transaction_rejection())
+	}
+}
+
+pub(crate) fn is_retryable_http_error(error: &reqwest::Error) -> bool {
+	if error.is_timeout() || error.is_request() || error.is_body() || error.is_decode() {
+		return true;
+	}
+
+	#[cfg(not(target_arch = "wasm32"))]
+	if error.is_connect() {
+		return true;
+	}
+
+	error.status().is_some_and(|status| {
+		status == reqwest::StatusCode::TOO_MANY_REQUESTS || status.is_server_error()
+	})
+}
+
 impl PartialEq for ProviderError {
 	fn eq(&self, other: &Self) -> bool {
 		match (self, other) {
@@ -116,6 +186,32 @@ impl Clone for ProviderError {
 			ProviderError::LockError => ProviderError::LockError,
 			ProviderError::ProtocolNotFound => ProviderError::ProtocolNotFound,
 			ProviderError::NetworkNotFound => ProviderError::NetworkNotFound,
+		}
+	}
+}
+
+#[cfg(test)]
+mod tests {
+	use super::*;
+
+	#[test]
+	fn deterministic_provider_errors_are_not_retryable() {
+		assert!(!ProviderError::InvalidAddress.is_retryable());
+		assert!(!ProviderError::InvalidPassword.is_retryable());
+		assert!(!ProviderError::UnsupportedRPC.is_retryable());
+	}
+
+	#[test]
+	fn provider_preserves_unknown_transaction_classification() {
+		for code in [-100, -103, -105] {
+			let error = ProviderError::JsonRpcError(JsonRpcError {
+				code,
+				message: "transaction is not indexed yet".to_string(),
+				data: None,
+			});
+
+			assert!(error.is_unknown_transaction());
+			assert!(!error.is_retryable());
 		}
 	}
 }

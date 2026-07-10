@@ -9,8 +9,8 @@
   </p>
 </div>
 
-[![Build & Test](https://github.com/r3e-network/NeoRust/actions/workflows/build-test.yml/badge.svg)](https://github.com/r3e-network/NeoRust/actions/workflows/build-test.yml)
-[![Release](https://github.com/r3e-network/NeoRust/actions/workflows/release.yml/badge.svg)](https://github.com/r3e-network/NeoRust/actions/workflows/release.yml)
+[![Build & Test](https://github.com/r3e-network/neo-rust-sdk/actions/workflows/build-test.yml/badge.svg)](https://github.com/r3e-network/neo-rust-sdk/actions/workflows/build-test.yml)
+[![Release](https://github.com/r3e-network/neo-rust-sdk/actions/workflows/release.yml/badge.svg)](https://github.com/r3e-network/neo-rust-sdk/actions/workflows/release.yml)
 [![Crates.io](https://img.shields.io/crates/v/neo3.svg)](https://crates.io/crates/neo3)
 [![Documentation](https://docs.rs/neo3/badge.svg)](https://docs.rs/neo3)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
@@ -58,7 +58,7 @@ cargo build --release
 
 ```toml
 [dependencies]
-neo3 = "2.0.0"
+neo3 = "2.1.0"
 ```
 
 ```rust,no_run
@@ -192,7 +192,7 @@ cargo build --release
 #### For Integration (SDK)
 ```toml
 [dependencies]
-neo3 = "2.0.0"
+neo3 = "2.1.0"
 ```
 
 ### Step 2: Create Your First Wallet
@@ -409,8 +409,8 @@ neo-cli contract invoke --hash "0x..." --method "test" --network testnet
 ## 🌐 Community & Support
 
 ### 📞 Getting Help
-- **GitHub Issues**: [Report bugs and request features](https://github.com/R3E-Network/NeoRust/issues)
-- **Discussions**: [Community discussions and Q&A](https://github.com/R3E-Network/NeoRust/discussions)
+- **GitHub Issues**: [Report bugs and request features](https://github.com/r3e-network/neo-rust-sdk/issues)
+- **Discussions**: [Community discussions and Q&A](https://github.com/r3e-network/neo-rust-sdk/discussions)
 - **Documentation**: [Comprehensive guides and API docs](https://neorust.netlify.app)
 
 ### 🤝 Contributing
@@ -422,7 +422,7 @@ neo-cli contract invoke --hash "0x..." --method "test" --network testnet
 - **Website**: [https://neorust.netlify.app](https://neorust.netlify.app)
 - **Crate**: [https://crates.io/crates/neo3](https://crates.io/crates/neo3)
 - **Documentation**: [https://docs.rs/neo3](https://docs.rs/neo3)
-- **GitHub**: [https://github.com/R3E-Network/NeoRust](https://github.com/R3E-Network/NeoRust)
+- **GitHub**: [https://github.com/r3e-network/neo-rust-sdk](https://github.com/r3e-network/neo-rust-sdk)
 
 ## 📄 License
 

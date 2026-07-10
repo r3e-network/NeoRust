@@ -9,8 +9,9 @@
 //!
 //! - EVM compatibility layer for interacting with Neo X as an Ethereum-compatible chain
 //! - Bridge functionality for transferring tokens between Neo N3 and Neo X
-//! - EVM Wallet and client wrappers powered by `ethers-rs`
-//! - Anti-MEV RPC support
+//! - EVM wallet and client wrappers powered by Alloy
+//! - Optional routing through a third-party Anti-MEV RPC endpoint; mitigation is
+//!   service-dependent and does not guarantee prevention of front-running or sandwich attacks
 //! - Transaction creation and signing for Neo X
 //! - Provider interfaces for connecting to Neo X nodes
 //!
@@ -31,10 +32,10 @@
 //!     let neo_provider = HttpProvider::new("https://mainnet1.neo.org:443")?;
 //!     let neo_client = RpcClient::new(neo_provider);
 //!
-//!     // Initialize the Neo X EVM provider (Standard or Anti-MEV)
+//!     // Initialize the Neo X EVM provider with the third-party protected RPC endpoint
 //!     let neo_x_provider = NeoXProvider::new_anti_mev(Some(&neo_client));
 //!
-//!     // Get the chain ID for Neo X natively via ethers-rs or fallback to N3 node
+//!     // Get the chain ID for Neo X via Alloy or fall back to the N3 node
 //!     let chain_id = neo_x_provider.chain_id().await?;
 //!     println!("Neo X Chain ID: {}", chain_id);
 //!

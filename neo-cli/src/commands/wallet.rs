@@ -1306,11 +1306,6 @@ async fn handle_balance(
 		let mut rows = 0usize;
 		for bal in balances.balances {
 			let symbol = bal.symbol.clone().unwrap_or_else(|| "<unknown>".to_string());
-			let decimals_str = bal.decimals.clone().unwrap_or_else(|| "0".to_string());
-			let decimals = decimals_str.parse::<u8>().unwrap_or(0);
-			let amount =
-				neo3::sdk::DecimalAmount::from_raw(bal.amount.clone(), decimals).to_fixed_string();
-
 			if let Some(filter_upper) = token_filter_upper.as_deref() {
 				let asset_hex = format!("{:x}", bal.asset_hash);
 				let filter_hex = token_filter_hex.as_deref().unwrap_or("");
@@ -1320,6 +1315,22 @@ async fn handle_balance(
 					continue;
 				}
 			}
+
+			let decimals_str = bal.decimals.clone().unwrap_or_else(|| "0".to_string());
+			let decimals = decimals_str.parse::<u8>().map_err(|err| {
+				CliError::Rpc(format!(
+					"Invalid decimals '{}' for token {}: {}",
+					decimals_str, bal.asset_hash, err
+				))
+			})?;
+			let amount = neo3::sdk::DecimalAmount::try_from_raw(bal.amount.clone(), decimals)
+				.map_err(|err| {
+					CliError::Rpc(format!(
+						"Invalid balance '{}' for token {}: {}",
+						bal.amount, bal.asset_hash, err
+					))
+				})?
+				.to_fixed_string();
 
 			rows += 1;
 			if detailed {
@@ -1671,4 +1682,69 @@ async fn handle_transaction_simulation(
 	}
 
 	Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+	use super::*;
+	use tokio::{
+		io::{AsyncReadExt, AsyncWriteExt},
+		net::TcpListener,
+	};
+
+	async fn state_returning_balances(body: String) -> (CliState, tokio::task::JoinHandle<()>) {
+		let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+		let endpoint = format!("http://{}", listener.local_addr().unwrap());
+		let server = tokio::spawn(async move {
+			let (mut stream, _) = listener.accept().await.unwrap();
+			let mut request = vec![0_u8; 4096];
+			let _ = stream.read(&mut request).await.unwrap();
+
+			let response = format!(
+				"HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}",
+				body.len(),
+				body
+			);
+			stream.write_all(response.as_bytes()).await.unwrap();
+		});
+		let provider = HttpProvider::new(endpoint.as_str()).unwrap();
+		let state = CliState { rpc_client: Some(RpcClient::new(provider)), ..CliState::default() };
+		(state, server)
+	}
+
+	#[tokio::test]
+	async fn balance_filter_ignores_malformed_unrelated_token() {
+		let body = r#"{"jsonrpc":"2.0","id":0,"result":{"address":"NUrPrFLETzoe7N2FLi2dqTvLwc9L2Em84K","balance":[{"assethash":"0xd2a4cff31913016155e38e474a2c06d08be276cf","symbol":"BAD","decimals":"not-a-number","amount":"also-invalid","lastupdatedblock":1},{"assethash":"0xef4073a0f2b305a38ec4050e4d3d28bc40ea63f5","symbol":"GAS","decimals":"8","amount":"100000000","lastupdatedblock":2}]}}"#;
+		let (state, server) = state_returning_balances(body.to_string()).await;
+		let result = handle_balance(
+			Some("NUrPrFLETzoe7N2FLi2dqTvLwc9L2Em84K".to_string()),
+			Some("GAS".to_string()),
+			false,
+			&state,
+		)
+		.await;
+		server.await.unwrap();
+
+		assert!(
+			result.is_ok(),
+			"filtered balance should ignore malformed unrelated tokens: {result:?}"
+		);
+	}
+
+	#[tokio::test]
+	async fn selected_malformed_balance_is_an_rpc_error() {
+		let body = r#"{"jsonrpc":"2.0","id":0,"result":{"address":"NUrPrFLETzoe7N2FLi2dqTvLwc9L2Em84K","balance":[{"assethash":"0xd2a4cff31913016155e38e474a2c06d08be276cf","symbol":"BAD","decimals":"not-a-number","amount":"also-invalid","lastupdatedblock":1}]}}"#;
+		let (state, server) = state_returning_balances(body.to_string()).await;
+
+		let result = handle_balance(
+			Some("NUrPrFLETzoe7N2FLi2dqTvLwc9L2Em84K".to_string()),
+			Some("BAD".to_string()),
+			false,
+			&state,
+		)
+		.await;
+		server.await.unwrap();
+
+		assert!(matches!(result, Err(CliError::Rpc(_))));
+	}
 }

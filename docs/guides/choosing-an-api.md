@@ -15,10 +15,10 @@ switch.
 | You want to… | Use | Returns |
 |---|---|---|
 | Connect in one line, query block height / balance | `sdk::Neo` | `Balance`, `u32`, … |
-| Send or transfer NEP-17 tokens with retry + signing handled | `sdk::Neo::transfer` | `TxHash` |
-| Read a contract method without sending a tx | `sdk::Neo::invoke_read` | `InvocationResult` |
-| Write/call a contract method (broadcasts a tx) | `sdk::Neo::invoke_write` | `TxHash` |
-| Deploy a contract | `sdk::Neo::deploy_contract` | `TxHash` |
+| Send or transfer NEP-17 tokens with retry + signing handled | `sdk::Neo::transfer` | `sdk::TxHash` |
+| Read a contract method without sending a tx | `sdk::Neo::invoke_read` | `serde_json::Value` |
+| Write/call a contract method (broadcasts a tx) | `sdk::Neo::invoke_write` | `sdk::TxHash` |
+| Deploy a contract | `sdk::Neo::deploy_contract` | `neo_types::ScriptHash` |
 | Wait for a tx to confirm | `sdk::Neo::wait_for_confirmation` | `()` |
 | HD / BIP-39 wallet generation | `sdk::hd_wallet::HDWallet` | `Account` |
 | Preview a tx's fees/state-changes before sending | `sdk::transaction_simulator` | `SimulationResult` |
@@ -27,6 +27,9 @@ switch.
 | Build a raw script / sign manually / control every byte | `builder::TransactionBuilder` + `builder::ScriptBuilder` | `Transaction` |
 | Work with Neo X (EVM sidechain) | `neo_x::NeoXWallet`, `sdk::unified::EcosystemClient` | EVM types |
 | Store/retrieve on NeoFS | `neo_fs::client` | NeoFS objects |
+
+The high-level `sdk::TxHash` is a hex-encoded `String`. It is distinct from
+`neo_types::TxHash`, the low-level alias for `H256`.
 
 ---
 

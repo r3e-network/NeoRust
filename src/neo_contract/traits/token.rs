@@ -5,7 +5,7 @@ use rust_decimal::Decimal;
 
 use crate::{
 	neo_clients::JsonRpcProvider,
-	neo_contract::{ContractError, SmartContractTrait},
+	neo_contract::{checked_vm_integer, ContractError, SmartContractTrait},
 	neo_types::NNSName,
 };
 
@@ -32,7 +32,10 @@ pub trait TokenTrait<'a, P: JsonRpcProvider>: SmartContractTrait<'a, P = P> {
 			return Ok(*supply);
 		}
 
-		let supply = self.call_function_returning_int(Self::TOTAL_SUPPLY, vec![]).await? as u64;
+		let supply = checked_vm_integer(
+			self.call_function_returning_int(Self::TOTAL_SUPPLY, vec![]).await?,
+			"token total supply",
+		)?;
 
 		self.set_total_supply(supply);
 		Ok(supply)
@@ -43,7 +46,10 @@ pub trait TokenTrait<'a, P: JsonRpcProvider>: SmartContractTrait<'a, P = P> {
 			return Ok(*decimals);
 		}
 
-		let decimals = self.call_function_returning_int(Self::DECIMALS, vec![]).await? as u8;
+		let decimals = checked_vm_integer(
+			self.call_function_returning_int(Self::DECIMALS, vec![]).await?,
+			"token decimals",
+		)?;
 
 		self.set_decimals(decimals);
 		Ok(decimals)

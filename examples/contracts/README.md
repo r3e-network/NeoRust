@@ -1,56 +1,22 @@
-# Contracts
+# Contract Examples
 
-In this guide, we will go over some examples of using ethers-rs to work with contracts, including using abigen to
-generate Rust bindings for a contract, listening for contract events, calling contract methods, and instantiating
-contracts.
+These examples demonstrate Neo N3 contract manifests, script construction, method invocation,
+events, deployment concepts, and the SDK's typed native and token contract wrappers.
 
-## Generating Rust bindings with abigen
+Neo N3 contracts use a manifest ABI and NeoVM parameters rather than an Ethereum Solidity ABI.
+Start with these SDK surfaces:
 
-To use a contract with ethers-rs, you will need to generate Rust bindings using the abigen tool. abigen is included with
-the ethers-rs library and can be used to generate Rust bindings for any Solidity contract.
+- `SmartContractTrait` for low-level read and invoke helpers.
+- `FungibleTokenContract` and `NonFungibleTokenContract` for NEP-17 and NEP-11 contracts.
+- `ContractParameter` and `ScriptBuilder` for explicit NeoVM calls.
+- `ContractManagement` for native deployment and update operations.
 
-### Generate a Rust file
+Run an example from the workspace root:
 
-This method takes a smart contract's Application Binary Interface (ABI) file and generates a Rust file to interact with
-it. This is useful if the smart contract is referenced in different places in a project. File generation from ABI can
-also be easily included as a build step of your application.
-
-Running the code below will generate a file called `token.rs` containing the bindings inside, which exports an
-`ERC20Token` struct, along with all its events and methods. Put into a `build.rs` file this will generate the bindings
-during cargo build.
-
-```rust
-Abigen::new("ERC20Token", "./abi.json")?.generate()?.write_to_file("token.rs")?;
+```bash
+cargo run -p examples-contracts --example neo_contract_interaction
+cargo run -p examples-contracts --example methods
 ```
 
-### Generate inline Rust bindings
-
-This method takes a smart contract's solidity definition and generates inline Rust code to interact with it. This is
-useful for fast prototyping and for tight scoped use-cases of your contracts. Inline Rust generation uses the `abigen!`
-macro to expand Rust contract bindings.
-
-Running the code below will generate bindings for the `ERC20Token` struct, along with all its events and methods.
-
-```rust
-abigen!(
-    ERC20Token,
-    r#"[
-        function approve(address spender, uint256 amount) external returns (bool)
-        event Transfer(address indexed from, address indexed to, uint256 value)
-        event Approval(address indexed owner, address indexed spender, uint256 value)
-    ]"#,
-);
-```
-
-Another way to get the same result, is to provide the ABI contract's definition as follows.
-
-```rust 
-abigen!(ERC20Token, "./abi.json",);
-```
-
-## Contract instances
-
-## Contract methods
-
-## Contract events
-
+For Neo X EVM contracts, use the Alloy-backed APIs in `neo3::neo_x`; the bridge binding in
+`src/neo_x/bridge/evm_bridge.rs` is a compact `alloy::sol!` example.

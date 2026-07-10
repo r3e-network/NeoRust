@@ -40,8 +40,9 @@ impl<'a, P: JsonRpcProvider + 'static> NeoXProvider<'a, P> {
 		Self { rpc_url: rpc_url.to_string(), provider, evm_provider }
 	}
 
-	/// Creates a new NeoXProvider instance configured for Anti-MEV
-	/// Uses a protected RPC endpoint that obfuscates transaction ordering.
+	/// Creates a provider using a third-party RPC endpoint marketed as Anti-MEV.
+	///
+	/// This only selects the endpoint; any MEV mitigation is service-dependent and not guaranteed.
 	pub fn new_anti_mev(provider: Option<&'a RpcClient<P>>) -> Self {
 		Self::new(NEO_X_MAINNET_MEV_RPC, provider)
 	}
@@ -100,7 +101,10 @@ impl<'a, P: JsonRpcProvider + 'static> NeoXProvider<'a, P> {
 	}
 
 	/// Gets the native balance for an EVM address via the alloy provider.
-	pub async fn get_balance(&self, address: alloy::primitives::Address) -> Result<AlloyU256, ContractError> {
+	pub async fn get_balance(
+		&self,
+		address: alloy::primitives::Address,
+	) -> Result<AlloyU256, ContractError> {
 		let evm = self.evm_provider.as_ref().ok_or_else(|| {
 			ContractError::ProviderNotSet("EVM provider required for balance query".to_string())
 		})?;

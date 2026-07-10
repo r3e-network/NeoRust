@@ -8,11 +8,11 @@ use crate::neo_contract::ContractError;
 // sol! binding for the Neo X EVM Bridge Contract.
 // (alloy::sol! is the maintained successor to ethers::contract::abigen!.)
 sol! {
-    #[sol(rpc)]
-    interface NeoXBridgeEVM {
-        function withdraw(address token, uint256 amount, string memory destination) external payable;
-        function getFee(address token) external view returns (uint256);
-    }
+	#[sol(rpc)]
+	interface NeoXBridgeEVM {
+		function withdraw(address token, uint256 amount, string memory destination) external payable;
+		function getFee(address token) external view returns (uint256);
+	}
 }
 
 /// A wrapper around the Neo X bridge contract on the EVM side.
@@ -56,10 +56,7 @@ impl NeoXBridgeContractEVM {
 	}
 
 	/// Gets the required bridge fee for a given token
-	pub async fn get_fee(
-		&self,
-		token: Address,
-	) -> Result<U256, alloy::contract::Error> {
+	pub async fn get_fee(&self, token: Address) -> Result<U256, alloy::contract::Error> {
 		self.contract.getFee(token).call().await
 	}
 }

@@ -2,6 +2,7 @@
 name = "contract_interaction_example"
 version = "0.1.0"
 edition = "2021"
+publish = false
 
 [dependencies]
 tokio = { version = "1.50", features = ["full"] }

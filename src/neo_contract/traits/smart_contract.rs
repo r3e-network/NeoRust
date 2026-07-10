@@ -243,11 +243,16 @@ pub trait SmartContractTrait<'a>: Send + Sync {
 		_max_items: usize,
 		mapper: impl Fn(StackItem) -> Result<U, ContractError> + Send,
 	) -> Result<Vec<U>, ContractError> {
+		let max_items = u32::try_from(_max_items).map_err(|_| {
+			ContractError::InvalidArgError(format!(
+				"Iterator item limit {_max_items} exceeds the supported u32 range"
+			))
+		})?;
 		let script = ScriptBuilder::build_contract_call_and_unwrap_iterator(
 			&self.script_hash(),
 			function,
 			&params,
-			_max_items as u32, // Use the max_items parameter provided to the function
+			max_items,
 			Some(CallFlags::All),
 		)
 		.map_err(|e| {

@@ -75,7 +75,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 cargo build --release -p neo-cli
 
 # Docker deployment
-FROM rust:1.83 as builder
+FROM rust:1.91 AS builder
 WORKDIR /app
 COPY . .
 RUN cargo build --release -p neo-cli

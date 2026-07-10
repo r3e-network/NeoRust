@@ -306,7 +306,7 @@ export default function Home(): JSX.Element {
               </Link>
               <Link
                 className={clsx('btn btn-secondary', styles.heroButton)}
-                href="https://github.com/R3E-Network/NeoRust">
+                href="https://github.com/r3e-network/neo-rust-sdk">
                 <span className={styles.githubIcon}>⭐</span>
                 View on GitHub
               </Link>

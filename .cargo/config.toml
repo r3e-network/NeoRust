@@ -1,7 +1,3 @@
-[package]
-# Prevent accidental publishing to crates.io
-publish = false
-
 [registry]
 default = "crates-io"
 

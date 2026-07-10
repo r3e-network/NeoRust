@@ -2,13 +2,13 @@
 
 ## Overview
 
-Neo X is an EVM-compatible chain maintained by Neo, enabling developers to leverage Ethereum compatibility while benefiting from Neo's infrastructure and security. The Neo X module in NeoRust provides interfaces for interacting with this EVM-compatible environment directly utilizing `ethers-rs`.
+Neo X is an EVM-compatible chain maintained by Neo, enabling developers to leverage Ethereum compatibility while benefiting from Neo's infrastructure and security. The Neo X module in NeoRust provides interfaces for interacting with this EVM-compatible environment using Alloy.
 
 ## Key Features
 
-- **EVM Compatibility Layer**: Interact with Neo X as an Ethereum-compatible chain via `ethers-rs`
+- **EVM Compatibility Layer**: Interact with Neo X as an Ethereum-compatible chain via Alloy
 - **Unified Ecosystem Client**: Seamlessly write code that operates across Neo N3 and Neo X
-- **Anti-MEV Protection**: Connect directly to obfuscated/protected mempools to prevent front-running
+- **Protected RPC Routing**: Optionally route requests through a third-party Anti-MEV endpoint; the service may mitigate MEV exposure but does not guarantee prevention
 - **Bridge Functionality**: Transfer tokens seamlessly between Neo N3 and Neo X natively
 - **Transaction Support**: Create, sign, and send EVM transactions on Neo X
 
@@ -27,8 +27,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Create a new randomized EVM Wallet (or load from PK)
     let evm_wallet = NeoXWallet::create_random();
 
-    // Initialize an Anti-MEV protected EcosystemClient for Neo X
-    // This routes your transactions through a protected mempool endpoint
+    // Route requests through the configured third-party protected RPC endpoint
     let client = EcosystemClient::new_neox_anti_mev(evm_wallet);
 
     // Get Balance directly via the Unified Interface
@@ -41,7 +40,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 ### Neo X Provider & Wallet
 
-If you need deeper access, you can work directly with the `NeoXProvider` and `NeoXWallet`. The `NeoXProvider` wraps an `ethers::providers::Provider<Http>` for executing low-level EVM requests.
+If you need deeper access, you can work directly with the `NeoXProvider` and `NeoXWallet`. The `NeoXProvider` exposes an Alloy `RootProvider` for executing low-level EVM requests.
 
 ```rust,no_run
 use neo3::neo_clients::{HttpProvider, RpcClient};
@@ -51,9 +50,9 @@ use neo3::neo_x::{NeoXProvider, NeoXWallet, NeoXClient};
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let neo_x_provider: NeoXProvider<'_, HttpProvider> = NeoXProvider::new("https://rpc.neo-x.org", None);
     
-    // Extract the raw ethers provider if you need native EVM interactions
-    let raw_evm = neo_x_provider.evm_provider().unwrap();
-    let chain_id = raw_evm.get_chainid().await.unwrap();
+    // Extract the Alloy provider if you need native EVM interactions
+    let _raw_evm = neo_x_provider.evm_provider().unwrap();
+    let chain_id = neo_x_provider.chain_id().await?;
 
     let wallet = NeoXWallet::create_random();
     let client = NeoXClient::new(wallet, neo_x_provider);
@@ -88,7 +87,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 Neo X's EVM compatibility enables integration with popular Ethereum development tools:
 
-- **ethers-rs**: NeoRust utilizes `ethers-rs` under the hood for all EVM logic, providing maximum reliability and compatibility.
+- **Alloy**: NeoRust uses Alloy for EVM providers, signing, transaction types, and RPC interoperability.
 - **Metamask**: Connect Metamask to Neo X by adding it as a custom network.
 - **Hardhat/Foundry**: Deploy Solidity contracts to Neo X.
 - **Web3.js/ethers.js**: Interact with Neo X using JavaScript libraries.
@@ -97,7 +96,7 @@ Neo X's EVM compatibility enables integration with popular Ethereum development 
 
 - **Gas Costs**: Neo X uses a gas model similar to Ethereum. Transactions cost native GAS token.
 - **Cross-Chain Operations**: Bridge operations require network confirmations and may take a few minutes to finalize.
-- **Security**: The Anti-MEV endpoint prevents sandwich attacks and front-running on decentralized exchanges deployed on Neo X.
+- **Security**: The optional Anti-MEV mode routes through a third-party protected RPC endpoint. Its effectiveness depends on that service and does not guarantee prevention of front-running or sandwich attacks.
 
 ## Related Documentation
 

@@ -7,7 +7,7 @@ const darkCodeTheme = themes.dracula;
 
 /** @type {import('@docusaurus/types').Config} */
 const config = {
-  title: 'NeoRust v2.0.1',
+  title: 'NeoRust v2.1.0',
   tagline: 'Production-ready Neo N3 blockchain development toolkit built in Rust',
   favicon: 'img/favicon.png',
 
@@ -23,7 +23,11 @@ const config = {
   projectName: 'NeoRust', // Usually your repo name.
 
   onBrokenLinks: 'warn',
-  onBrokenMarkdownLinks: 'warn',
+  markdown: {
+    hooks: {
+      onBrokenMarkdownLinks: 'warn',
+    },
+  },
 
   // Even if you don't use internalization, you can use this field to set useful
   // metadata like html lang. For example, if your site is Chinese, you may want
@@ -42,13 +46,13 @@ const config = {
           sidebarPath: require.resolve('./sidebars.js'),
           // Please change this to your repo.
           // Remove this to remove the "edit this page" links.
-          editUrl: 'https://github.com/R3E-Network/NeoRust/tree/master/website/',
+          editUrl: 'https://github.com/r3e-network/neo-rust-sdk/tree/master/website/',
           showLastUpdateAuthor: true,
           showLastUpdateTime: true,
           includeCurrentVersion: true,
           versions: {
             current: {
-              label: 'v2.0.1',
+              label: 'v2.1.0',
               path: '',
             },
           },
@@ -60,7 +64,7 @@ const config = {
           postsPerPage: 'ALL',
           // Please change this to your repo.
           // Remove this to remove the "edit this page" links.
-          editUrl: 'https://github.com/R3E-Network/NeoRust/tree/master/website/',
+          editUrl: 'https://github.com/r3e-network/neo-rust-sdk/tree/master/website/',
         },
         theme: {
           customCss: require.resolve('./src/css/custom.css'),
@@ -82,7 +86,7 @@ const config = {
       image: 'img/neorust-social-card.jpg',
       metadata: [
         { name: 'keywords', content: 'neo, blockchain, rust, sdk, neo3, cryptocurrency, smart-contracts, defi' },
-        { name: 'description', content: 'NeoRust v2.0.1 - A production-ready Rust SDK for Neo N3 blockchain development. Build high-performance dApps with type-safe, modern Rust. Optimized and production-ready.' },
+        { name: 'description', content: 'NeoRust v2.1.0 - A production-ready Rust SDK for Neo N3 blockchain development. Build high-performance dApps with type-safe, modern Rust. Optimized and production-ready.' },
         { property: 'og:image', content: 'https://neorust.netlify.app/img/neorust-social-card.jpg' },
         { property: 'og:type', content: 'website' },
         { name: 'twitter:card', content: 'summary_large_image' },
@@ -147,7 +151,7 @@ const config = {
               },
               {
                 label: '⭐ GitHub Repository',
-                href: 'https://github.com/R3E-Network/NeoRust',
+                href: 'https://github.com/r3e-network/neo-rust-sdk',
                 className: 'dropdown-divider-top',
               },
             ],
@@ -196,7 +200,7 @@ const config = {
             items: [
               {
                 label: 'GitHub',
-                href: 'https://github.com/R3E-Network/NeoRust',
+                href: 'https://github.com/r3e-network/neo-rust-sdk',
               },
               {
                 label: 'Discord',
@@ -243,7 +247,7 @@ const config = {
         copyright: `
           <div style="margin-top: 16px; padding-top: 16px; border-top: 1px solid #333;">
             <p>Copyright © ${new Date().getFullYear()} R3E Network. Built with ❤️ and Docusaurus.</p>
-            <p>NeoRust v2.0.1 - Production-Ready Neo N3 Development Suite - Optimized and Enhanced</p>
+            <p>NeoRust v2.1.0 - Production-Ready Neo N3 Development Suite - Optimized and Enhanced</p>
           </div>
         `,
       },
@@ -269,9 +273,9 @@ const config = {
         respectPrefersColorScheme: true,
       },
       announcementBar: {
-        id: 'v2.0.1-release',
+        id: 'v2.1.0-release',
         content:
-          '🎉 <strong>NeoRust v2.0.1</strong> is now available! AWS-SDK-style error metadata, unified high-level API, and production hardening. <a target="_blank" rel="noopener noreferrer" href="https://github.com/R3E-Network/NeoRust/releases/tag/v2.0.1">See what\'s new</a>',
+          '🎉 <strong>NeoRust v2.1.0</strong> is now available! Checked amounts, provider-aware retries, secret-safe errors, and stronger release validation. <a target="_blank" rel="noopener noreferrer" href="https://github.com/r3e-network/neo-rust-sdk/releases/tag/v2.1.0">See what\'s new</a>',
         backgroundColor: '#059669',
         textColor: '#ffffff',
         isCloseable: true,
@@ -312,7 +316,7 @@ const config = {
         path: 'sdk',
         routeBasePath: 'sdk',
         sidebarPath: require.resolve('./sidebars-sdk.js'),
-        editUrl: 'https://github.com/R3E-Network/NeoRust/tree/master/website/',
+        editUrl: 'https://github.com/r3e-network/neo-rust-sdk/tree/master/website/',
         showLastUpdateAuthor: true,
         showLastUpdateTime: true,
       },
@@ -324,7 +328,7 @@ const config = {
         path: 'cli',
         routeBasePath: 'cli',
         sidebarPath: require.resolve('./sidebars-cli.js'),
-        editUrl: 'https://github.com/R3E-Network/NeoRust/tree/master/website/',
+        editUrl: 'https://github.com/r3e-network/neo-rust-sdk/tree/master/website/',
         showLastUpdateAuthor: true,
         showLastUpdateTime: true,
       },

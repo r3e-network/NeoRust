@@ -20,7 +20,7 @@ use std::sync::Arc;
 use crate::{
 	neo_builder::TransactionBuilder,
 	neo_clients::{JsonRpcProvider, RpcClient},
-	neo_contract::{traits::SmartContractTrait, ContractError, NeoIterator},
+	neo_contract::{checked_vm_integer, traits::SmartContractTrait, ContractError, NeoIterator},
 	neo_types::{
 		serde_with_utils::{deserialize_script_hash, serialize_script_hash},
 		ScriptHash, StackItem, WhitelistedContract,
@@ -87,7 +87,7 @@ impl<'a, P: JsonRpcProvider + 'static> PolicyContract<'a, P> {
 
 	/// Gets the network fee per transaction byte (in datoshi).
 	pub async fn get_fee_per_byte(&self) -> Result<i64, ContractError> {
-		Ok(self.call_function_returning_int("getFeePerByte", vec![]).await? as i64)
+		self.call_function_returning_int("getFeePerByte", vec![]).await
 	}
 
 	/// Gets the execution fee factor.
@@ -96,19 +96,25 @@ impl<'a, P: JsonRpcProvider + 'static> PolicyContract<'a, P> {
 	/// After HF_Faun, this returns the factor without decimals (use `get_exec_pico_fee_factor`
 	/// for the full precision value).
 	pub async fn get_exec_fee_factor(&self) -> Result<u32, ContractError> {
-		Ok(self.call_function_returning_int("getExecFeeFactor", vec![]).await? as u32)
+		checked_vm_integer(
+			self.call_function_returning_int("getExecFeeFactor", vec![]).await?,
+			"execution fee factor",
+		)
 	}
 
 	/// Gets the execution fee factor in pico-GAS (1 pico-GAS = 1e-12 GAS).
 	///
 	/// This method is available after HF_Faun and returns the fee factor with full decimal precision.
 	pub async fn get_exec_pico_fee_factor(&self) -> Result<i64, ContractError> {
-		Ok(self.call_function_returning_int("getExecPicoFeeFactor", vec![]).await? as i64)
+		self.call_function_returning_int("getExecPicoFeeFactor", vec![]).await
 	}
 
 	/// Gets the storage price (cost per byte of storage).
 	pub async fn get_storage_price(&self) -> Result<u32, ContractError> {
-		Ok(self.call_function_returning_int("getStoragePrice", vec![]).await? as u32)
+		checked_vm_integer(
+			self.call_function_returning_int("getStoragePrice", vec![]).await?,
+			"storage price",
+		)
 	}
 
 	// ========== Block Time and Limits (HF_Echidna) ==========
@@ -117,7 +123,10 @@ impl<'a, P: JsonRpcProvider + 'static> PolicyContract<'a, P> {
 	///
 	/// This method is available after HF_Echidna.
 	pub async fn get_milliseconds_per_block(&self) -> Result<u32, ContractError> {
-		Ok(self.call_function_returning_int("getMillisecondsPerBlock", vec![]).await? as u32)
+		checked_vm_integer(
+			self.call_function_returning_int("getMillisecondsPerBlock", vec![]).await?,
+			"milliseconds per block",
+		)
 	}
 
 	/// Sets the block generation time in milliseconds.
@@ -137,9 +146,11 @@ impl<'a, P: JsonRpcProvider + 'static> PolicyContract<'a, P> {
 	///
 	/// This method is available after HF_Echidna.
 	pub async fn get_max_valid_until_block_increment(&self) -> Result<u32, ContractError> {
-		Ok(self
-			.call_function_returning_int("getMaxValidUntilBlockIncrement", vec![])
-			.await? as u32)
+		checked_vm_integer(
+			self.call_function_returning_int("getMaxValidUntilBlockIncrement", vec![])
+				.await?,
+			"maximum valid-until-block increment",
+		)
 	}
 
 	/// Sets the maximum ValidUntilBlock increment.
@@ -160,7 +171,10 @@ impl<'a, P: JsonRpcProvider + 'static> PolicyContract<'a, P> {
 	///
 	/// This method is available after HF_Echidna.
 	pub async fn get_max_traceable_blocks(&self) -> Result<u32, ContractError> {
-		Ok(self.call_function_returning_int("getMaxTraceableBlocks", vec![]).await? as u32)
+		checked_vm_integer(
+			self.call_function_returning_int("getMaxTraceableBlocks", vec![]).await?,
+			"maximum traceable blocks",
+		)
 	}
 
 	/// Sets the maximum number of traceable blocks.
@@ -187,9 +201,11 @@ impl<'a, P: JsonRpcProvider + 'static> PolicyContract<'a, P> {
 	///
 	/// * `attribute_type` - The transaction attribute type (as a byte value).
 	pub async fn get_attribute_fee(&self, attribute_type: u8) -> Result<u32, ContractError> {
-		Ok(self
-			.call_function_returning_int("getAttributeFee", vec![attribute_type.into()])
-			.await? as u32)
+		checked_vm_integer(
+			self.call_function_returning_int("getAttributeFee", vec![attribute_type.into()])
+				.await?,
+			"attribute fee",
+		)
 	}
 
 	/// Sets the fee for a specific transaction attribute type.
@@ -250,6 +266,7 @@ impl<'a, P: JsonRpcProvider + 'static> PolicyContract<'a, P> {
 		&self,
 		batch_size: usize,
 	) -> Result<Vec<H160>, ContractError> {
+		let batch_size = Self::checked_iterator_batch_size(batch_size)?;
 		let iterator = self.get_blocked_accounts().await?;
 		self.collect_all(iterator, batch_size).await
 	}
@@ -373,26 +390,33 @@ impl<'a, P: JsonRpcProvider + 'static> PolicyContract<'a, P> {
 		&self,
 		batch_size: usize,
 	) -> Result<Vec<WhitelistedContract>, ContractError> {
+		let batch_size = Self::checked_iterator_batch_size(batch_size)?;
 		let iterator = self.get_whitelist_fee_contracts().await?;
 		self.collect_all(iterator, batch_size).await
 	}
 
-	async fn collect_all<T>(
-		&self,
-		iterator: NeoIterator<'_, T, P>,
-		batch_size: usize,
-	) -> Result<Vec<T>, ContractError> {
+	fn checked_iterator_batch_size(batch_size: usize) -> Result<i32, ContractError> {
 		if batch_size == 0 {
 			return Err(ContractError::InvalidArgError(
 				"Batch size must be greater than zero".to_string(),
 			));
 		}
 
+		i32::try_from(batch_size).map_err(|_| {
+			ContractError::InvalidArgError(format!("Batch size must not exceed {}", i32::MAX))
+		})
+	}
+
+	async fn collect_all<T>(
+		&self,
+		iterator: NeoIterator<'_, T, P>,
+		batch_size: i32,
+	) -> Result<Vec<T>, ContractError> {
 		let mut all_items = Vec::new();
 		let mut traverse_error: Option<ContractError> = None;
 
 		loop {
-			match iterator.traverse(batch_size as i32).await {
+			match iterator.traverse(batch_size).await {
 				Ok(batch) => {
 					if batch.is_empty() {
 						break;
@@ -601,5 +625,33 @@ mod tests {
 			Err(ContractError::UnexpectedReturnType(message))
 				if message.contains("WhitelistedContract")
 		));
+	}
+
+	#[tokio::test]
+	async fn blocked_accounts_reject_invalid_batch_sizes_before_opening_iterator() {
+		for batch_size in [0, i32::MAX as usize + 1] {
+			let provider = MockProvider::new();
+			let client = RpcClient::new(provider.clone());
+			let contract = PolicyContract::new(Some(&client));
+
+			let result = contract.get_blocked_accounts_all_with_batch(batch_size).await;
+
+			assert!(matches!(result, Err(ContractError::InvalidArgError(_))));
+			assert!(provider.take_requests().is_empty());
+		}
+	}
+
+	#[tokio::test]
+	async fn whitelist_rejects_invalid_batch_sizes_before_opening_iterator() {
+		for batch_size in [0, i32::MAX as usize + 1] {
+			let provider = MockProvider::new();
+			let client = RpcClient::new(provider.clone());
+			let contract = PolicyContract::new(Some(&client));
+
+			let result = contract.get_whitelist_fee_contracts_all_with_batch(batch_size).await;
+
+			assert!(matches!(result, Err(ContractError::InvalidArgError(_))));
+			assert!(provider.take_requests().is_empty());
+		}
 	}
 }

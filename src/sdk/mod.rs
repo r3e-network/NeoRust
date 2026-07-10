@@ -89,7 +89,7 @@ pub mod transaction_simulator;
 /// Cross-chain unified client bridging Neo N3 and Neo X (EVM).
 ///
 /// See [`unified::EcosystemClient`] for the entry point. This is currently
-/// the only ethers-rs-style cross-chain wrapper the SDK ships with.
+/// the SDK's Alloy-backed cross-chain wrapper.
 pub mod unified;
 #[cfg(feature = "ws")]
 pub mod websocket;
@@ -239,10 +239,26 @@ impl Default for SdkConfig {
 ///
 /// Neo N3 NEP-17 balances are returned as raw integers (base units). This type keeps the raw
 /// amount exact and provides safe, deterministic formatting without floating-point rounding.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct DecimalAmount {
 	raw: String,
 	decimals: u8,
+}
+
+impl<'de> Deserialize<'de> for DecimalAmount {
+	fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+	where
+		D: serde::Deserializer<'de>,
+	{
+		#[derive(Deserialize)]
+		struct DecimalAmountRepr {
+			raw: String,
+			decimals: u8,
+		}
+
+		let value = DecimalAmountRepr::deserialize(deserializer)?;
+		Self::try_from_raw(value.raw, value.decimals).map_err(serde::de::Error::custom)
+	}
 }
 
 /// Reasons [`DecimalAmount::parse`] can reject a string input.
@@ -283,26 +299,45 @@ impl fmt::Display for DecimalAmountParseError {
 impl std::error::Error for DecimalAmountParseError {}
 
 impl DecimalAmount {
-	/// Create an amount from a raw (base-unit) integer string and a decimal scale.
+	/// Try to create an amount from a raw (base-unit) integer string and a decimal scale.
 	///
-	/// `raw` must be a non-negative base-10 integer. Leading zeros are normalized.
-	pub fn from_raw(raw: impl Into<String>, decimals: u8) -> Self {
+	/// `raw` must be a non-negative base-10 integer. Surrounding whitespace and a leading `+`
+	/// are accepted, and leading zeros are normalized.
+	pub fn try_from_raw(
+		raw: impl Into<String>,
+		decimals: u8,
+	) -> Result<Self, DecimalAmountParseError> {
 		let raw = raw.into();
 		let raw = raw.trim();
-		let raw = raw.trim_start_matches('+');
+		if raw.is_empty() {
+			return Err(DecimalAmountParseError::Empty);
+		}
+		if raw.starts_with('-') {
+			return Err(DecimalAmountParseError::NegativeNotAllowed);
+		}
 
-		let raw = if raw.chars().all(|c| c.is_ascii_digit()) {
-			let raw = raw.trim_start_matches('0');
-			if raw.is_empty() {
-				"0".to_string()
-			} else {
-				raw.to_string()
-			}
-		} else {
-			"0".to_string()
-		};
+		let raw = raw.strip_prefix('+').unwrap_or(raw);
+		if raw.is_empty() {
+			return Err(DecimalAmountParseError::InvalidFormat);
+		}
+		if !raw.chars().all(|c| c.is_ascii_digit()) {
+			return Err(DecimalAmountParseError::InvalidCharacter);
+		}
 
-		Self { raw, decimals }
+		let raw = raw.trim_start_matches('0');
+		let raw = if raw.is_empty() { "0" } else { raw };
+		Ok(Self { raw: raw.to_string(), decimals })
+	}
+
+	/// Create an amount from a raw (base-unit) integer string and a decimal scale.
+	///
+	/// `raw` must be a non-negative base-10 integer. Prefer [`Self::try_from_raw`] when the
+	/// value comes from an RPC response, cache, configuration, or user input. Malformed input
+	/// produces zero here for backward compatibility with this deprecated constructor.
+	#[deprecated(note = "use DecimalAmount::try_from_raw to handle malformed input")]
+	pub fn from_raw(raw: impl Into<String>, decimals: u8) -> Self {
+		Self::try_from_raw(raw, decimals)
+			.unwrap_or_else(|_| Self { raw: "0".to_string(), decimals })
 	}
 
 	/// Parse a human-formatted decimal string into base units with a fixed `decimals` scale.
@@ -356,7 +391,7 @@ impl DecimalAmount {
 		let whole = whole.trim_start_matches('0');
 		let whole = if whole.is_empty() { "0" } else { whole };
 		let raw = format!("{}{}", whole, frac);
-		Ok(Self::from_raw(raw, decimals))
+		Self::try_from_raw(raw, decimals)
 	}
 
 	/// Raw base-unit integer as a base-10 string.
@@ -487,26 +522,66 @@ async fn send_tx_with_retry<'a>(
 	context: &str,
 ) -> Result<crate::neo_protocol::RawTransaction, NeoError> {
 	let attempts = attempts.max(1);
-	let mut last_err: Option<String> = None;
+	let tx_id = tx.tx_id().map_err(|err| NeoError::transaction(context, err))?;
 	for attempt in 1..=attempts {
 		match tx.send_tx().await {
 			Ok(result) => return Ok(result),
 			Err(err) => {
-				if attempt < attempts {
-					tracing::warn!(
-						attempt = attempt,
-						max_attempts = attempts,
-						context = %context,
-						error = %err,
-						"send_tx failed; retrying"
-					);
-					tokio::time::sleep(delay).await;
+				if matches!(
+					&err,
+					crate::neo_builder::TransactionError::ProviderError(error)
+						if error.is_already_known_transaction()
+				) {
+					tracing::debug!(transaction_hash = %tx_id, "transaction already accepted by node");
+					return Ok(crate::neo_protocol::RawTransaction::new(tx_id));
 				}
-				last_err = Some(err.to_string());
+
+				let retryable = matches!(
+					&err,
+					crate::neo_builder::TransactionError::ProviderError(error)
+						if error.is_retryable()
+				);
+				let retry_delay = match &err {
+					crate::neo_builder::TransactionError::ProviderError(error) => {
+						error.retry_after().unwrap_or(delay)
+					},
+					_ => delay,
+				};
+				if !retryable || attempt == attempts {
+					return Err(match err {
+						crate::neo_builder::TransactionError::ProviderError(error)
+							if error.is_transaction_rejection() =>
+						{
+							NeoError::Transaction {
+								message: format!("{}: {}", context, error),
+								tx_hash: Some(format!("{tx_id:#x}")),
+								source: Some(Box::new(error)),
+								recovery: ErrorRecovery::new().suggest(
+									"Review the transaction fees, policy, script, and signatures",
+								),
+							}
+						},
+						crate::neo_builder::TransactionError::ProviderError(error) => {
+							NeoError::provider(context, error)
+						},
+						other => NeoError::transaction(context, other),
+					});
+				}
+
+				tracing::warn!(
+					attempt = attempt,
+					max_attempts = attempts,
+					context = %context,
+					error = %err,
+					retry_delay = ?retry_delay,
+					"send_tx failed; retrying"
+				);
+				tokio::time::sleep(retry_delay).await;
 			},
 		}
 	}
-	Err(NeoError::network(context, last_err.expect("loop ran at least once")))
+
+	unreachable!("the retry loop executes at least once")
 }
 
 impl Neo {
@@ -692,7 +767,8 @@ impl Neo {
 			.first()
 			.ok_or_else(|| invalid_balance_response("GAS", "missing stack item"))?;
 		let gas_raw = parse_balance_stack_item_u64(gas_raw, "GAS")?;
-		let gas = DecimalAmount::from_raw(gas_raw.to_string(), 8); // GAS has 8 decimals
+		let gas = DecimalAmount::try_from_raw(gas_raw.to_string(), 8)
+			.map_err(|err| invalid_balance_response("GAS", err.to_string()))?;
 
 		let nep17 =
 			retry_network("fetch NEP-17 balances", max_attempts, DEFAULT_RETRY_DELAY, || async {
@@ -706,7 +782,9 @@ impl Neo {
 			.filter(|b| b.asset_hash != neo_hash && b.asset_hash != gas_hash)
 			.map(|b| {
 				let decimals = parse_nep17_decimals(b.decimals.as_deref(), &b.asset_hash)?;
-				let amount = DecimalAmount::from_raw(b.amount, decimals);
+				let amount = DecimalAmount::try_from_raw(b.amount, decimals).map_err(|err| {
+					invalid_balance_response(&b.asset_hash.to_hex(), err.to_string())
+				})?;
 
 				Ok(TokenBalance {
 					contract: b.asset_hash,
@@ -1166,7 +1244,10 @@ impl Neo {
 		while start.elapsed() < timeout {
 			match self.client.get_application_log(tx_h256).await {
 				Ok(_) => return Ok(()),
-				Err(_) => tokio::time::sleep(Duration::from_secs(1)).await,
+				Err(err) if err.is_unknown_transaction() || err.is_retryable() => {
+					tokio::time::sleep(Duration::from_secs(1)).await;
+				},
+				Err(err) => return Err(NeoError::provider("poll transaction confirmation", err)),
 			}
 		}
 
@@ -1389,7 +1470,7 @@ impl Transfer {
 		let current_height = client
 			.get_block_count()
 			.await
-			.map_err(|e| NeoError::network("Failed to fetch current block height", e))?;
+			.map_err(|e| NeoError::provider("fetch current block height", e))?;
 
 		let mut tb = TransactionBuilder::with_client(client);
 		tb.extend_script(sb.to_bytes());
@@ -1458,6 +1539,119 @@ fn parse_nep17_decimals(decimals: Option<&str>, asset_hash: &ScriptHash) -> Resu
 #[cfg(test)]
 mod tests {
 	use super::*;
+	use tokio::io::{AsyncReadExt, AsyncWriteExt};
+
+	#[test]
+	fn decimal_amount_rejects_invalid_raw_values() {
+		assert_eq!(
+			DecimalAmount::try_from_raw("not-a-number", 8),
+			Err(DecimalAmountParseError::InvalidCharacter)
+		);
+		assert_eq!(
+			DecimalAmount::try_from_raw("-1", 8),
+			Err(DecimalAmountParseError::NegativeNotAllowed)
+		);
+	}
+
+	#[test]
+	fn decimal_amount_deserialization_validates_raw_value() {
+		let error = serde_json::from_str::<DecimalAmount>(r#"{"raw":"invalid","decimals":8}"#)
+			.expect_err("invalid raw amounts must not enter the SDK through cached JSON");
+		assert!(error.to_string().contains("invalid"));
+	}
+
+	#[test]
+	#[allow(deprecated)]
+	fn deprecated_decimal_amount_constructor_preserves_invalid_input_fallback() {
+		let amount = DecimalAmount::from_raw("not-a-number", 8);
+
+		assert_eq!(amount.raw(), "0");
+		assert_eq!(amount.to_fixed_string(), "0.00000000");
+	}
+
+	async fn transaction_with_broadcast_responses(
+		broadcast_responses: Vec<(&'static str, String)>,
+		attempts: u32,
+	) -> (Result<crate::neo_protocol::RawTransaction, NeoError>, primitive_types::H256) {
+		let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+		let address = listener.local_addr().unwrap();
+		let server = tokio::spawn(async move {
+			let mut responses = broadcast_responses.into_iter();
+			loop {
+				let (mut stream, _) = listener.accept().await.unwrap();
+				let mut request = [0_u8; 16 * 1024];
+				let bytes_read = stream.read(&mut request).await.unwrap();
+				let request = String::from_utf8_lossy(&request[..bytes_read]);
+
+				let (status, body) = if request.contains("getblockcount") {
+					("200 OK", r#"{"jsonrpc":"2.0","id":1,"result":100}"#.to_string())
+				} else {
+					responses.next().expect("unexpected broadcast request")
+				};
+
+				let response = format!(
+					"HTTP/1.1 {status}\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}",
+					body.len()
+				);
+				stream.write_all(response.as_bytes()).await.unwrap();
+				if responses.len() == 0 {
+					break;
+				}
+			}
+		});
+
+		let endpoint = url::Url::parse(&format!("http://{address}")).unwrap();
+		let provider = HttpProvider::new(endpoint).unwrap();
+		let client = RpcClient::new(provider);
+		let mut transaction = crate::neo_builder::Transaction::<HttpProvider> {
+			network: Some(&client),
+			..Default::default()
+		};
+		let expected_hash = transaction.tx_id().unwrap();
+
+		let result = send_tx_with_retry(
+			&mut transaction,
+			attempts,
+			Duration::ZERO,
+			"broadcast test transaction",
+		)
+		.await;
+
+		server.await.unwrap();
+		(result, expected_hash)
+	}
+
+	#[tokio::test]
+	async fn send_retry_accepts_transactions_already_known_by_the_node() {
+		for code in [-501, -503] {
+			let responses = vec![
+				("503 Service Unavailable", "response lost after submission".to_string()),
+				(
+					"200 OK",
+					format!(
+						r#"{{"jsonrpc":"2.0","id":4,"error":{{"code":{code},"message":"already known","data":null}}}}"#
+					),
+				),
+			];
+			let (result, expected_hash) = transaction_with_broadcast_responses(responses, 2).await;
+			assert_eq!(result.unwrap().hash, expected_hash);
+		}
+	}
+
+	#[tokio::test]
+	async fn send_retry_classifies_node_rejection_as_transaction_error() {
+		let response = r#"{"jsonrpc":"2.0","id":2,"error":{"code":-504,"message":"Insufficient network fee","data":null}}"#;
+		let (result, expected_hash) =
+			transaction_with_broadcast_responses(vec![("200 OK", response.to_string())], 1).await;
+
+		match result.unwrap_err() {
+			NeoError::Transaction { tx_hash, recovery, .. } => {
+				assert_eq!(tx_hash.as_deref(), Some(format!("{expected_hash:#x}").as_str()));
+				assert!(!recovery.retryable);
+			},
+			other => panic!("expected transaction rejection, got {other:?}"),
+		}
+	}
 	use crate::neo_types::StackItem;
 
 	#[test]

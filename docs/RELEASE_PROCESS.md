@@ -143,10 +143,10 @@ The release workflow automatically:
 ### Build & Test (`build-test.yml`)
 Runs on pushes and pull requests:
 - Multi-platform build/test (Linux, Windows, macOS)
-- `cargo fmt` / `cargo clippy` (best-effort; see workflow settings)
+- `cargo fmt` / strict `cargo clippy`
 - `cargo build` / `cargo test` (no-default-features)
 - `cargo doc` build
-- Security audit (`cargo audit`, best-effort)
+- Security audit (RustSec advisories fail; configured informational warnings are reported)
 - Optional code coverage (main/master only)
 
 ### Release Automation (`release.yml`)
@@ -167,8 +167,8 @@ If/when the SDK is split into multiple crates, update this document and `release
 See `WORKSPACE_REORGANIZATION.md` for the tracked plan.
 
 ### Version Synchronization
-The release tag and crates.io publish target the `neo3` crate version. Workspace applications may use
-their own versions, but should depend on a compatible `neo3` version.
+The release tag, `neo3` crate, bundled `neo-cli` artifact, and CLI dependency requirement use the same
+version. `neo-cli` remains explicitly non-publishable and is distributed only through release artifacts.
 
 ## 🔍 Quality Gates
 

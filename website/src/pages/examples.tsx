@@ -542,7 +542,7 @@ export default function Examples(): JSX.Element {
                     🦀 Explore SDK
                   </Link>
                   <a 
-                    href="https://github.com/R3E-Network/NeoRust" 
+                    href="https://github.com/r3e-network/neo-rust-sdk"
                     className={clsx('btn btn-secondary', styles.ctaButton)}
                     target="_blank" 
                     rel="noopener noreferrer"
@@ -585,7 +585,7 @@ export default function Examples(): JSX.Element {
                   <p className={styles.resourceDescription}>
                     Join our community for help, discussions, and contributions.
                   </p>
-                  <a href="https://github.com/R3E-Network/NeoRust/discussions" className={styles.resourceLink}>
+                  <a href="https://github.com/r3e-network/neo-rust-sdk/discussions" className={styles.resourceLink}>
                     Join Discussion →
                   </a>
                 </div>

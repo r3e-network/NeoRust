@@ -29,7 +29,7 @@ NeoRust exposes compile gates and scaffolding for Intel SGX (Software Guard Exte
 - Ubuntu 18.04/20.04/22.04 or Windows 10/11
 - Intel SGX SDK 2.15+
 - Intel SGX PSW (Platform Software)
-- Rust 1.75+ with `no_std` support
+- Rust 1.91+ with `no_std` support
 
 ### Installation
 
@@ -86,7 +86,7 @@ chmod +x sgx_linux_x64_sdk_2.19.100.3.bin
 ```toml
 # Cargo.toml
 [dependencies]
-neo3 = { version = "2.0.0", features = ["sgx", "no_std"] }
+neo3 = { version = "2.1.0", features = ["sgx", "no_std"] }
 
 [target.'cfg(target_env = "sgx")'.dependencies]
 sgx_tstd = { git = "https://github.com/apache/teaclave-sgx-sdk.git", rev = "v2.0.0" }
@@ -416,7 +416,7 @@ let config = EnclaveConfig {
 - [Intel SGX Developer Guide](https://software.intel.com/content/www/us/en/develop/topics/software-guard-extensions.html)
 - [Teaclave SGX SDK](https://github.com/apache/teaclave-sgx-sdk)
 - [SGX Developer Reference](https://download.01.org/intel-sgx/latest/linux-latest/docs/)
-- [NeoRust SGX Examples](https://github.com/R3E-Network/NeoRust/tree/master/examples/sgx_enclave)
+- [NeoRust SGX Examples](https://github.com/r3e-network/neo-rust-sdk/tree/master/examples/sgx_enclave)
 
 ## Summary
 

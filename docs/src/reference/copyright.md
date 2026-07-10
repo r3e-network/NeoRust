@@ -8,8 +8,8 @@ NeoRust is Copyright © 2020-2025 R3E Network and contributors.
 
 NeoRust is dual-licensed under:
 
-- MIT License ([LICENSE-MIT](https://github.com/R3E-Network/NeoRust/blob/master/LICENSE-MIT))
-- Apache License, Version 2.0 ([LICENSE-APACHE](https://github.com/R3E-Network/NeoRust/blob/master/LICENSE-APACHE))
+- MIT License ([LICENSE-MIT](https://github.com/r3e-network/neo-rust-sdk/blob/master/LICENSE-MIT))
+- Apache License, Version 2.0 ([LICENSE-APACHE](https://github.com/r3e-network/neo-rust-sdk/blob/master/LICENSE-APACHE))
 
 ## Copyright Format
 

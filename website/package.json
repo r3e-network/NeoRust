@@ -25,12 +25,12 @@
     "typecheck": "tsc"
   },
   "dependencies": {
-    "@docusaurus/core": "^3.10.1",
-    "@docusaurus/plugin-content-blog": "^3.10.1",
-    "@docusaurus/plugin-content-docs": "^3.10.1",
-    "@docusaurus/plugin-content-pages": "^3.10.1",
-    "@docusaurus/plugin-sitemap": "^3.10.1",
-    "@docusaurus/preset-classic": "^3.10.1",
+    "@docusaurus/core": "^3.10.2",
+    "@docusaurus/plugin-content-blog": "^3.10.2",
+    "@docusaurus/plugin-content-docs": "^3.10.2",
+    "@docusaurus/plugin-content-pages": "^3.10.2",
+    "@docusaurus/plugin-sitemap": "^3.10.2",
+    "@docusaurus/preset-classic": "^3.10.2",
     "@docusaurus/theme-classic": "^3.10.1",
     "@docusaurus/theme-search-algolia": "^3.10.1",
     "@mdx-js/react": "^3.0.1",
@@ -41,7 +41,7 @@
   },
   "devDependencies": {
     "@docusaurus/module-type-aliases": "^3.10.1",
-    "@docusaurus/tsconfig": "^3.10.1",
+    "@docusaurus/tsconfig": "^3.10.2",
     "@docusaurus/types": "^3.10.1",
     "@types/react": "^18.3.3",
     "@types/react-dom": "^18.3.0",

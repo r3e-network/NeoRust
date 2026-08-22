@@ -77,8 +77,13 @@ impl GasEstimator {
 		T::Error: Into<ProviderError>,
 	{
 		let base_gas = Self::estimate_gas_realtime(client, script, signers).await?;
-		let margin = (base_gas as f64 * (margin_percent as f64 / 100.0)) as i64;
-		Ok(base_gas + margin)
+		let margin =
+			base_gas.checked_mul(i64::from(margin_percent)).map(|value| value / 100).ok_or(
+				TransactionError::IllegalState("Gas margin calculation overflowed".to_string()),
+			)?;
+		base_gas.checked_add(margin).ok_or(TransactionError::IllegalState(
+			"Gas estimate calculation overflowed".to_string(),
+		))
 	}
 
 	/// Batch estimate gas for multiple scripts

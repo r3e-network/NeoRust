@@ -1,7 +1,10 @@
 // Code adapted from: https://github.com/althea-net/guac_rs/tree/master/web3/src/jsonrpc
 
 use std::{
-	sync::atomic::{AtomicU64, Ordering},
+	sync::{
+		atomic::{AtomicU64, Ordering},
+		Arc,
+	},
 	time::Duration,
 };
 
@@ -37,7 +40,11 @@ const MAX_ERROR_TEXT_BYTES: usize = 4 * 1024;
 /// # }
 /// ```
 pub struct HttpProvider {
-	id: AtomicU64,
+	/// Shared, monotonically increasing JSON-RPC request id counter.
+	///
+	/// Clones of an `HttpProvider` share this counter so that every request
+	/// (including those issued through a clone) receives a unique id.
+	id: Arc<AtomicU64>,
 	client: Client,
 	url: Url,
 }
@@ -363,13 +370,14 @@ impl HttpProvider {
 	/// let provider = HttpProvider::new_with_client(url, client);
 	/// ```
 	pub fn new_with_client(url: impl Into<Url>, client: reqwest::Client) -> Self {
-		Self { id: AtomicU64::new(1), client, url: url.into() }
+		Self { id: Arc::new(AtomicU64::new(1)), client, url: url.into() }
 	}
 }
 
 impl Clone for HttpProvider {
 	fn clone(&self) -> Self {
-		Self { id: AtomicU64::new(1), client: self.client.clone(), url: self.url.clone() }
+		// Share the request-id counter so clones never emit duplicate ids.
+		Self { id: Arc::clone(&self.id), client: self.client.clone(), url: self.url.clone() }
 	}
 }
 

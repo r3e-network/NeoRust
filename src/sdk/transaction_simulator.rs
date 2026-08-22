@@ -465,7 +465,11 @@ impl TransactionSimulator {
 
 		if let Ok(value) = gas_consumed.parse::<f64>() {
 			if value.is_finite() && value >= 0.0 {
-				return Ok(value as u64);
+				// Round up fractional GAS so fee estimates never under-charge.
+				let rounded = value.ceil();
+				if rounded <= u64::MAX as f64 {
+					return Ok(rounded as u64);
+				}
 			}
 		}
 
@@ -602,8 +606,8 @@ impl TransactionSimulator {
 
 	/// Calculate system fee
 	fn calculate_system_fee(&self, gas_consumed: u64) -> u64 {
-		// Add a small buffer for safety
-		(gas_consumed as f64 * 1.1) as u64
+		// Add a small buffer for safety (integer math: +10%, rounded up)
+		gas_consumed.checked_mul(11).map(|value| value.div_ceil(10)).unwrap_or(u64::MAX)
 	}
 
 	/// Calculate network fee

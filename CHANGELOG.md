@@ -9,6 +9,57 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 _No changes yet._
 
+## [2.2.0] - 2026-08-22
+
+NeoRust 2.2.0 is a security and reliability release: it removes the last
+vulnerable transitive dependency, fixes two correctness bugs in provider and
+fee handling, and hardens async runtime usage, WebSocket reconnection, and
+key-material debug output. All public APIs from 2.1.0 remain available.
+
+### Security
+
+- **Removed `rust_decimal`, eliminating vulnerable `rkyv` 0.7** (RUSTSEC-2026-0235,
+  out-of-bounds reads). The token trait's fraction conversion now uses checked
+  `u128` integer arithmetic; three unused `Decimal`-returning trait helpers were
+  removed (`to_fractions_decimal`, `to_decimals_u64`, `to_decimals`).
+- **Website dependencies upgraded** to Docusaurus 3.10.2, clearing all
+  remediable npm audit advisories (websocket-driver critical, body-parser,
+  brace-expansion, fast-uri, js-yaml, nanoid, postcss).
+
+### Fixed
+
+- **Duplicate JSON-RPC request ids:** `HttpProvider::clone()` no longer resets
+  the request-id counter; clones share an `Arc<AtomicU64>` so concurrent
+  requests through a cloned provider always receive unique ids.
+- **Fee under-quotes from float math:** gas-margin estimation and simulation
+  system-fee calculation now use checked integer arithmetic that rounds up
+  instead of truncating downward, so fee estimates never under-charge.
+- **Silent gas truncation:** fractional `gasConsumed` values in simulation
+  responses are rounded up rather than silently truncated.
+
+### Added
+
+- **Non-blocking NEP-2 operations:** `NEP2::encrypt_async`,
+  `NEP2::decrypt_async`, `NEP2::encrypt_with_params_async`, and
+  `NEP2::decrypt_with_params_async` run scrypt key derivation on the blocking
+  thread pool so wallet unlock/lock never stalls async runtime workers
+  (non-wasm targets).
+
+### Changed
+
+- **WebSocket reconnect backoff:** reconnection now uses exponential backoff
+  (base interval doubling, capped at 60s) with ±25% jitter to prevent
+  synchronized reconnect storms across many clients.
+- **Hardened fee arithmetic:** production network/system fee calculations use
+  checked multiplication with saturating addition instead of unchecked casts.
+
+### Internal
+
+- `KeyPair` has a manual redacting `Debug` implementation so private key
+  material can never leak through debug formatting.
+- Test-only builder test module is now gated behind `cfg(test)` and no longer
+  compiles into release builds.
+
 ## [2.1.0] - 2026-07-11
 
 NeoRust 2.1.0 makes production failures explicit and recoverable while keeping

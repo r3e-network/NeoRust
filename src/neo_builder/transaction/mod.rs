@@ -25,6 +25,7 @@ mod signers;
 mod transaction;
 mod transaction_attribute;
 mod transaction_builder;
+#[cfg(test)]
 mod transaction_builder_tests;
 mod transaction_error;
 mod transaction_send_token;

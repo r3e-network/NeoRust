@@ -24,13 +24,25 @@ use crate::{
 use p256::elliptic_curve::zeroize::{Zeroize, ZeroizeOnDrop};
 
 /// Represents an elliptic-curve key pair or a public-key-only identity.
-#[derive(Debug, Clone)]
+///
+/// The `Debug` impl is manually written to guarantee private key material can
+/// never leak through debug formatting, even if the inner key type changes.
+#[derive(Clone)]
 pub struct KeyPair {
 	/// The private key component of the key pair.
 	private_key: Option<Secp256r1PrivateKey>,
 
 	/// The public key component of the key pair.
 	public_key: Secp256r1PublicKey,
+}
+
+impl std::fmt::Debug for KeyPair {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		f.debug_struct("KeyPair")
+			.field("has_private_key", &self.private_key.is_some())
+			.field("public_key", &self.public_key)
+			.finish()
+	}
 }
 
 impl KeyPair {

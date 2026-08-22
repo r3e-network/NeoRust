@@ -589,6 +589,78 @@ impl NEP2 {
 		KeyPair::from_private_key(&key_array)
 			.map_err(|e| Nep2Error::InvalidPrivateKey(e.to_string()))
 	}
+
+	/// Asynchronously encrypts a KeyPair with a password using default scrypt parameters.
+	///
+	/// The CPU-intensive scrypt key derivation runs on the blocking thread pool
+	/// (non-wasm targets), so calling this from async code never stalls the
+	/// async runtime's worker threads.
+	///
+	/// # Arguments
+	///
+	/// * `password` - The password to encrypt the key with
+	/// * `key_pair` - The KeyPair containing the private key to encrypt
+	///
+	/// # Returns
+	///
+	/// A NEP2-formatted string containing the encrypted key, or an error if encryption fails
+	#[cfg(not(target_arch = "wasm32"))]
+	pub async fn encrypt_async(password: &str, key_pair: &KeyPair) -> Result<String, Nep2Error> {
+		let params = Self::get_default_scrypt_params()?;
+		Self::encrypt_with_params_async(password, key_pair, params).await
+	}
+
+	/// Asynchronously encrypts a KeyPair with a password using custom scrypt parameters.
+	///
+	/// See [`NEP2::encrypt_async`] for why this offloads to the blocking pool.
+	#[cfg(not(target_arch = "wasm32"))]
+	pub async fn encrypt_with_params_async(
+		password: &str,
+		key_pair: &KeyPair,
+		params: Params,
+	) -> Result<String, Nep2Error> {
+		let password = password.to_string();
+		let key_pair = key_pair.clone();
+		tokio::task::spawn_blocking(move || Self::encrypt_with_params(&password, &key_pair, params))
+			.await
+			.map_err(|e| Nep2Error::EncryptionError(format!("encryption task panicked: {e}")))?
+	}
+
+	/// Asynchronously decrypts a NEP2-formatted string using default scrypt parameters.
+	///
+	/// The CPU-intensive scrypt key derivation runs on the blocking thread pool
+	/// (non-wasm targets), so calling this from async code never stalls the
+	/// async runtime's worker threads.
+	///
+	/// # Arguments
+	///
+	/// * `password` - The password used for encryption
+	/// * `nep2` - The NEP2-formatted string containing the encrypted key
+	///
+	/// # Returns
+	///
+	/// The decrypted KeyPair, or an error if decryption fails
+	#[cfg(not(target_arch = "wasm32"))]
+	pub async fn decrypt_async(password: &str, nep2: &str) -> Result<KeyPair, Nep2Error> {
+		let params = Self::get_default_scrypt_params()?;
+		Self::decrypt_with_params_async(password, nep2, params).await
+	}
+
+	/// Asynchronously decrypts a NEP2-formatted string using custom scrypt parameters.
+	///
+	/// See [`NEP2::decrypt_async`] for why this offloads to the blocking pool.
+	#[cfg(not(target_arch = "wasm32"))]
+	pub async fn decrypt_with_params_async(
+		password: &str,
+		nep2: &str,
+		params: Params,
+	) -> Result<KeyPair, Nep2Error> {
+		let password = password.to_string();
+		let nep2 = nep2.to_string();
+		tokio::task::spawn_blocking(move || Self::decrypt_with_params(&password, &nep2, params))
+			.await
+			.map_err(|e| Nep2Error::ScryptError(format!("decryption task panicked: {e}")))?
+	}
 }
 
 /// Compatibility functions to maintain backward compatibility with existing code
@@ -651,6 +723,25 @@ pub fn get_private_key_from_nep2(
 mod tests {
 	use super::*;
 	use crate::config::TestConstants;
+
+	#[cfg(not(target_arch = "wasm32"))]
+	#[tokio::test]
+	async fn test_async_encrypt_decrypt_roundtrip_matches_sync() {
+		use crate::crypto::Secp256r1PrivateKey;
+		use p256::elliptic_curve::rand_core::OsRng;
+
+		let key_pair = KeyPair::from_secret_key(&Secp256r1PrivateKey::random(&mut OsRng));
+
+		let encrypted = NEP2::encrypt_async("roundtrip-passphrase", &key_pair)
+			.await
+			.expect("async encryption failed");
+
+		let decrypted = NEP2::decrypt_async("roundtrip-passphrase", &encrypted)
+			.await
+			.expect("async decryption failed");
+
+		assert_eq!(decrypted.private_key_bytes().unwrap(), key_pair.private_key_bytes().unwrap());
+	}
 
 	#[test]
 	fn test_decrypt_with_default_scrypt_params() {

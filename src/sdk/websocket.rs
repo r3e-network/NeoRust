@@ -42,6 +42,7 @@ use crate::config::NeoConstants;
 use crate::neo_error::unified::{ErrorRecovery, NeoError};
 use crate::neo_types::{Address, ScriptHash};
 use futures_util::{SinkExt, StreamExt};
+use rand::Rng;
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
@@ -484,7 +485,9 @@ impl WebSocketClient {
 							continue;
 						}
 
-						// Attempt reconnection
+							// Attempt reconnection with exponential backoff + jitter:
+							// delay = min(interval * 2^attempt, 60s) ± 25% random jitter,
+							// so many clients never reconnect in lockstep.
 						if reconnect_attempts < max_reconnect_attempts {
 							reconnect_attempts += 1;
 							sent_subscriptions.clear();
@@ -494,7 +497,18 @@ impl WebSocketClient {
 								"Attempting WebSocket reconnection"
 							);
 
-							tokio::time::sleep(reconnect_interval).await;
+								let exponent = reconnect_attempts.saturating_sub(1).min(6);
+								let backoff =
+									reconnect_interval.saturating_mul(1u32 << exponent);
+								let backoff = backoff.min(Duration::from_secs(60));
+								let jitter_range = (backoff.as_millis() / 4).max(1) as u64;
+								let jitter = rand::rng().random_range(0..=jitter_range);
+								let delay = if rand::rng().random_bool(0.5) {
+									backoff + Duration::from_millis(jitter)
+								} else {
+									backoff.saturating_sub(Duration::from_millis(jitter))
+								};
+								tokio::time::sleep(delay).await;
 
 							let config = limited_websocket_config(max_message_size);
 							let connect_fut =

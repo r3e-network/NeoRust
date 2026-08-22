@@ -59,9 +59,15 @@ impl FeeCalculator {
     ///
     /// The estimated network fee in GAS (as integer, divide by 10^8 for decimal)
     pub fn calculate_network_fee(&self, transaction_size: usize, witness_count: usize) -> u64 {
-        let base_fee = transaction_size as u64 * self.base_fee_per_byte;
-        let witness_fees = witness_count as u64 * self.witness_fee;
-        base_fee + witness_fees
+        let base_fee = u64::from_usize(transaction_size)
+            .and_then(|size| size.checked_mul(self.base_fee_per_byte));
+        let witness_fees = u64::from_usize(witness_count)
+            .and_then(|count| count.checked_mul(self.witness_fee));
+
+        match (base_fee, witness_fees) {
+            (Some(base), Some(witnesses)) => base.saturating_add(witnesses),
+            _ => u64::MAX,
+        }
     }
 
     /// Calculates the system fee for a transaction.
@@ -76,12 +82,17 @@ impl FeeCalculator {
     /// The estimated system fee in GAS (as integer, divide by 10^8 for decimal)
     pub fn calculate_system_fee(&self, script_length: usize, storage_changes: usize) -> u64 {
         // Base execution fee
-        let execution_fee = script_length as u64 * 10; // 0.00001 GAS per script byte
+        let execution_fee = u64::from_usize(script_length)
+            .and_then(|length| length.checked_mul(10)); // 0.00001 GAS per script byte
 
         // Storage fee for state changes
-        let storage_fee = storage_changes as u64 * self.storage_fee_per_byte;
+        let storage_fee = u64::from_usize(storage_changes)
+            .and_then(|changes| changes.checked_mul(self.storage_fee_per_byte));
 
-        execution_fee + storage_fee
+        match (execution_fee, storage_fee) {
+            (Some(execution), Some(storage)) => execution.saturating_add(storage),
+            _ => u64::MAX,
+        }
     }
 }
 

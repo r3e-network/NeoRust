@@ -1,7 +1,5 @@
 use async_trait::async_trait;
-use num_traits::ToPrimitive;
 use primitive_types::H160;
-use rust_decimal::Decimal;
 
 use crate::{
 	neo_clients::JsonRpcProvider,
@@ -69,40 +67,22 @@ pub trait TokenTrait<'a, P: JsonRpcProvider>: SmartContractTrait<'a, P = P> {
 	}
 
 	fn to_fractions(&self, amount: u64, decimals: u32) -> Result<i64, ContractError> {
-		let scaled = Decimal::from(amount) * Decimal::from(10i32.pow(decimals));
-		scaled.trunc().to_i64().ok_or_else(|| {
+		let multiplier = 10_u64
+			.checked_pow(decimals)
+			.ok_or_else(|| ContractError::RuntimeError("Decimals exponent overflow".to_string()))?;
+
+		let scaled = (amount as u128)
+			.checked_mul(multiplier as u128)
+			.filter(|value| *value <= i64::MAX as u128)
+			.ok_or_else(|| {
+				ContractError::RuntimeError(
+					"Amount is too large to fit into i64 fractions".to_string(),
+				)
+			})?;
+
+		i64::try_from(scaled).map_err(|_| {
 			ContractError::RuntimeError("Amount is too large to fit into i64 fractions".to_string())
 		})
-	}
-
-	fn to_fractions_decimal(&self, amount: Decimal, decimals: u32) -> Result<u64, ContractError> {
-		if amount.scale() > decimals {
-			return Err(ContractError::RuntimeError(
-				"Amount has too many decimal places".to_string(),
-			));
-		}
-
-		let mut scaled = amount;
-		scaled *= Decimal::from(10_u32.pow(decimals));
-
-		scaled.trunc().to_u64().ok_or_else(|| {
-			ContractError::RuntimeError("Amount is too large to fit into u64 fractions".to_string())
-		})
-	}
-
-	fn to_decimals_u64(&self, fractions: u64, decimals: u32) -> Decimal {
-		let divisor = Decimal::from(10_u32.pow(decimals));
-		let amount = Decimal::from(fractions);
-
-		amount / divisor
-	}
-
-	fn to_decimals(&self, amount: i64, decimals: u32) -> Decimal {
-		let divisor = Decimal::from(10_u32.pow(decimals));
-		let decimal_amount = Decimal::from(amount);
-
-		// u32 is always non-negative, so this check is redundant
-		decimal_amount / divisor
 	}
 
 	/// Resolves an NNS name to a script hash.

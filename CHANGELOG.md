@@ -5,7 +5,30 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [3.0.0] - 2026-08-29
+
+NeoRust 3.0.0 is a correctness and hardening release across the high-level
+SDK, wallet handling, and WebSocket lifecycle. It fixes an order-of-magnitude
+gas estimation error, makes balance queries work against standard nodes,
+decodes real transfer data in state previews, and removes several
+fund-safety footguns. All fixes from 2.2.0 remain included. Three changes
+are semver-breaking and are called out below.
+
+### Breaking changes
+
+- **`DerivationPath::new_neo` now returns `Result<Self, NeoError>`.** It
+  previously overflowed for account indexes at or above 2^31 (panic in
+  debug builds, silently wrong derivation paths in release). Callers that
+  passed valid indexes only need to add an unwrap or `?`.
+- **`EventData` gained a `Disconnected { reason }` variant.** The event loop
+  emits it when reconnect attempts are exhausted instead of letting
+  consumers block on `recv()` forever; exhaustive matches must handle it.
+- **`EcosystemClient` uses human-decimal units on both chains.** The Neo X
+  arms of `transfer` and `bridge_to_other_chain` now parse amounts with 18
+  decimals instead of raw Wei, and `get_balance` returns a decimal GAS
+  string on Neo X instead of base units — `"1.5"` now means 1.5 GAS on
+  both Neo N3 and Neo X. Callers passing Wei to the Neo X arms must
+  convert to decimal first.
 
 ### Security
 

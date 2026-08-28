@@ -5,7 +5,7 @@ Real-time blockchain events are available through `neo3::sdk::websocket`. The cl
 Requires the `ws` feature:
 
 ```toml
-neo3 = { version = "2.1.0", features = ["ws"] }
+neo3 = { version = "3.0.0", features = ["ws"] }
 ```
 
 ## Quickstart

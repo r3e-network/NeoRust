@@ -102,7 +102,7 @@ mod imp {
 	pub(super) type WriteHalf<'a> = tokio::io::WriteHalf<&'a mut Stream>;
 
 	impl Stream {
-		pub async fn connect(addr: impl AsRef<Path>) -> Result<Self, io::Error> {
+		pub(super) async fn connect(addr: impl AsRef<Path>) -> Result<Self, io::Error> {
 			let addr = addr.as_ref().as_os_str();
 			loop {
 				match ClientOptions::new().open(addr) {

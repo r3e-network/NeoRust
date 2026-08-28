@@ -38,14 +38,14 @@ Example of enabling specific features:
 
 ```toml
 [dependencies]
-neo3 = { version = "2.1.0", features = ["futures", "ws", "ledger"] }
+neo3 = { version = "3.0.0", features = ["futures", "ws", "ledger"] }
 ```
 
 You can disable default features with:
 
 ```toml
 [dependencies]
-neo3 = { version = "2.1.0", default-features = false, features = ["futures"] }
+neo3 = { version = "3.0.0", default-features = false, features = ["futures"] }
 ```
 
 ## Verifying Installation

@@ -140,7 +140,7 @@ let client = RpcClient::new(http);
 Requires the `ws` feature:
 
 ```toml
-neo3 = { version = "2.1.0", features = ["ws"] }
+neo3 = { version = "3.0.0", features = ["ws"] }
 ```
 
 ```rust

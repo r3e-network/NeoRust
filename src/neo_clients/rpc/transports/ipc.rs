@@ -88,7 +88,9 @@ mod imp {
 		time::sleep,
 	};
 
-	use winapi::shared::winerror;
+	/// Win32 `ERROR_PIPE_BUSY` (231): all named-pipe instances are busy.
+	/// Inlined instead of pulling in `winapi` for a single constant.
+	const ERROR_PIPE_BUSY: u32 = 231;
 
 	/// Wrapper around [NamedPipeClient] to have the same methods as a UnixStream.
 	///
@@ -105,7 +107,7 @@ mod imp {
 			loop {
 				match ClientOptions::new().open(addr) {
 					Ok(client) => break Ok(Self(client)),
-					Err(e) if e.raw_os_error() == Some(winerror::ERROR_PIPE_BUSY as i32) => (),
+					Err(e) if e.raw_os_error() == Some(ERROR_PIPE_BUSY as i32) => (),
 					Err(e) => break Err(e),
 				}
 

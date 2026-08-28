@@ -7,7 +7,74 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-_No changes yet._
+### Security
+
+- **NEP-6 wallet and backup files are created owner-only (0600) on Unix.**
+  `Wallet::save_to_file` and `WalletBackup::backup` previously relied on
+  `File::create`'s default mode, leaving files with encrypted key material
+  world-readable.
+
+### Fixed
+
+- **`ipc` feature failed to compile on Windows**: the named-pipe transport
+  referenced the `winapi` crate without declaring it. The single constant it
+  used (`ERROR_PIPE_BUSY`) is now inlined, so no new dependency is added.
+- **Gas estimation off by ~1e8 in the transaction simulator.** Nodes return
+  `gasconsumed` as a decimal GAS string (e.g. `"0.0295453"`); the simulator
+  parsed it with `f64` and `ceil()`, collapsing sub-1-GAS fees to a single
+  base unit. Parsing now uses exact decimal-to-base-unit conversion
+  (`DecimalAmount`), and the 10% safety margin uses integer `div_ceil`.
+- **`get_balance` failed on standard nodes** whenever an address held a
+  third-party NEP-17 token: standard `getnep17balances` responses omit
+  `symbol`/`decimals`, and the missing metadata aborted the whole request.
+  Token metadata is now fetched from the token contract per token.
+- **Fabricated transfer previews.** `preview_state_changes` reported
+  `from: "sender"`, `to: "receiver"`, `amount: "0"` for every NEP-17
+  transfer. Notification state is now decoded into real addresses and
+  amounts; non-NEP-17 shapes are skipped instead of misreported.
+- **HD derivation path overflow.** Path components at or above 2^31 wrapped
+  or panicked (`0x80000000 + index`), silently deriving keys at unintended
+  paths in release builds. Indexes are now validated with checked
+  arithmetic; `DerivationPath::new_neo` returns `Result` and rejects
+  accounts that cannot be hardened.
+- **WebSocket subscriptions went silent after a reconnect cycle ended.**
+  Reconnecting after the event loop exited left previously-registered
+  subscriptions unsent; `connect()` now re-sends all registered
+  subscriptions. Exhausted reconnect attempts emit a terminal
+  `EventData::Disconnected` event instead of hanging consumers on
+  `recv()` forever.
+- **`wait_for_confirmation` treated FAULT as success.** Any application log
+  counted as confirmation, including reverted invocations. The VM state is
+  now checked and failures return `NeoError::Transaction` with the
+  node's exception message.
+- **`Transfer::with_memo` silently dropped the memo.** The memo is now
+  passed as the NEP-17 transfer `data` parameter.
+- **HD wallet WIF intermediate is zeroized** after account derivation, and
+  the `bip39` dependency now enables its `zeroize` feature so mnemonic
+  entropy is scrubbed from memory on drop.
+
+### Changed
+
+- **Unified `EcosystemClient` uses consistent human-decimal units on both
+  chains.** `transfer` and `bridge_to_other_chain` now parse amounts as
+  human-readable decimals on Neo X (18 decimals) instead of raw Wei, and
+  `get_balance` returns a decimal GAS string on Neo X instead of raw Wei.
+  `"1.5"` now means 1.5 GAS on both Neo N3 (8 decimals) and Neo X.
+- **`SdkConfig::metrics_enabled` is now wired to the monitoring registry.**
+  When enabled, high-level `Neo` operations (`get_balance`,
+  `get_block_height`, `transfer`, `invoke_write`, `deploy_contract`)
+  record RPC/transaction metrics via `crate::monitoring::metrics`;
+  it previously had no effect.
+- **Simulation cache keys include signers.** Fees depend on signer scopes
+  and count, so cached simulations are no longer shared across different
+  signer sets. The cache also enforces a bounded size with oldest-entry
+  eviction, and `TransactionSimulatorBuilder::cache_duration` is honored.
+- **Balance cache is invalidated after sends.** `transfer`,
+  `invoke_write`, and `deploy_contract` clear cached balances so
+  read-after-write does not observe pre-transaction amounts.
+- **Transaction simulator drops a wasted `getblockcount` round-trip** per
+  simulation and caches token symbols across multiple transfer
+  notifications.
 
 ## [2.2.0] - 2026-08-22
 

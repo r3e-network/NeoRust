@@ -19,8 +19,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 	let ecosystem_client = EcosystemClient::new_neox(evm_wallet, neo_x_provider);
 
 	// 4. Get Balance directly via the Unified Interface
+	// Returns a human-readable GAS amount (18 decimals on Neo X).
 	match ecosystem_client.get_balance().await {
-		Ok(balance) => println!("Neo X Balance: {} Wei", balance),
+		Ok(balance) => println!("Neo X Balance: {} GAS", balance),
 		Err(e) => println!("Error getting balance: {}", e),
 	}
 

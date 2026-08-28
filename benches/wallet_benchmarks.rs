@@ -47,13 +47,17 @@ fn benchmark_wallet_backup(c: &mut Criterion) {
 
 	c.bench_function("wallet_backup_5_accounts", |b| {
 		b.iter_batched(
+			// Keep the TempDir alive through the routine: dropping it in this
+			// setup closure deletes the directory before the backup is written.
 			|| {
 				let temp_dir = TempDir::new().unwrap();
-				temp_dir.path().join("benchmark_wallet.json")
+				let backup_path = temp_dir.path().join("benchmark_wallet.json");
+				(temp_dir, backup_path)
 			},
-			|backup_path| {
+			|(temp_dir, backup_path)| {
 				WalletBackup::backup(&wallet, backup_path).unwrap();
 				std::hint::black_box(());
+				drop(temp_dir);
 			},
 			criterion::BatchSize::SmallInput,
 		);
@@ -100,11 +104,13 @@ fn benchmark_large_wallet_operations(c: &mut Criterion) {
 		b.iter_batched(
 			|| {
 				let temp_dir = TempDir::new().unwrap();
-				temp_dir.path().join("large_benchmark_wallet.json")
+				let backup_path = temp_dir.path().join("large_benchmark_wallet.json");
+				(temp_dir, backup_path)
 			},
-			|backup_path| {
+			|(temp_dir, backup_path)| {
 				WalletBackup::backup(&large_wallet, backup_path).unwrap();
 				std::hint::black_box(());
+				drop(temp_dir);
 			},
 			criterion::BatchSize::SmallInput,
 		);

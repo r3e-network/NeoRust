@@ -96,9 +96,9 @@ pub mod websocket;
 
 use self::retry::{retry_network, DEFAULT_RETRY_DELAY};
 use crate::{
-	neo_types::VMState,
 	neo_clients::{APITrait, HttpProvider, RpcCache, RpcClient},
 	neo_error::unified::{ErrorRecovery, NeoError},
+	neo_types::VMState,
 	neo_types::{ContractParameter, ScriptHash, ScriptHashExtension, StackItem},
 	neo_wallets::wallet::Wallet,
 };
@@ -585,6 +585,91 @@ async fn send_tx_with_retry<'a>(
 	unreachable!("the retry loop executes at least once")
 }
 
+/// Build, sign, and send a NEP-17 transfer with retry-aware broadcast.
+///
+/// Shared by [`Neo::transfer`] and [`Transfer::execute`] so both paths get
+/// identical script construction, validity window, and send semantics. The
+/// 4th transfer argument carries `memo` when supplied (the receiving contract
+/// sees it); otherwise `any` is passed.
+async fn build_and_send_transfer(
+	client: &RpcClient<HttpProvider>,
+	from_account: &crate::neo_protocol::Account,
+	to: &str,
+	amount: u64,
+	token: Token,
+	memo: Option<&str>,
+	max_attempts: u32,
+) -> Result<TxHash, NeoError> {
+	use crate::neo_builder::{AccountSigner, CallFlags, ScriptBuilder, TransactionBuilder};
+	use crate::neo_types::ScriptHashExtension;
+
+	let to_hash = ScriptHash::from_address(to).map_err(|e| invalid_address_error("to", to, e))?;
+	let contract_hash = token.contract_hash();
+
+	let amount_i64 = i64::try_from(amount).map_err(|_| NeoError::Validation {
+		message: "Amount is too large to fit Neo VM integer".to_string(),
+		field: "amount".to_string(),
+		value: Some(amount.to_string()),
+		recovery: ErrorRecovery::new()
+			.suggest("Use a smaller amount")
+			.suggest("Split into multiple transfers if needed"),
+	})?;
+
+	let mut sb = ScriptBuilder::new();
+	// The 4th transfer argument is the NEP-17 `data` parameter: forward a
+	// supplied memo there instead of silently dropping it.
+	let data = match memo {
+		Some(memo) => ContractParameter::string(memo.to_string()),
+		None => ContractParameter::any(),
+	};
+	sb.contract_call(
+		&contract_hash,
+		"transfer",
+		&[
+			ContractParameter::h160(&from_account.get_script_hash()),
+			ContractParameter::h160(&to_hash),
+			ContractParameter::integer(amount_i64),
+			data,
+		],
+		Some(CallFlags::All),
+	)
+	.map_err(|e| {
+		NeoError::contract(
+			"Failed to build transfer script",
+			Some(contract_hash.to_hex()),
+			Some("transfer".into()),
+			e,
+		)
+	})?;
+
+	let signer = AccountSigner::called_by_entry(from_account)
+		.map_err(|e| NeoError::transaction("Failed to create signer", e))?;
+
+	let current_height =
+		retry_network("fetch current block height", max_attempts, DEFAULT_RETRY_DELAY, || async {
+			client.get_block_count().await
+		})
+		.await?;
+
+	let mut tb = TransactionBuilder::with_client(client);
+	tb.extend_script(sb.to_bytes());
+	tb.set_signers(vec![signer.into()])
+		.map_err(|e| NeoError::transaction("Failed to set signers", e))?;
+	tb.valid_until_block(current_height + 5760)
+		.map_err(|e| NeoError::transaction("Invalid valid-until-block", e))?;
+
+	let mut tx = tb
+		.sign()
+		.await
+		.map_err(|e| NeoError::transaction("Failed to sign transfer", e))?;
+
+	let result =
+		send_tx_with_retry(&mut tx, max_attempts, DEFAULT_RETRY_DELAY, "send transfer transaction")
+			.await?;
+
+	Ok(result.hash.to_string())
+}
+
 impl Neo {
 	/// Connect to Neo TestNet with default configuration
 	///
@@ -902,77 +987,19 @@ impl Neo {
 		amount: u64,
 		token: Token,
 	) -> Result<TxHash, NeoError> {
-		use crate::neo_builder::{AccountSigner, CallFlags, ScriptBuilder, TransactionBuilder};
-		use crate::neo_types::ScriptHashExtension;
 		use crate::neo_wallets::WalletTrait;
 
 		let max_attempts = self.config.retries.saturating_add(1);
-
 		let from_account = from.default_account().ok_or_else(no_default_account_error)?;
 
-		let to_hash =
-			ScriptHash::from_address(to).map_err(|e| invalid_address_error("to", to, e))?;
-
-		let contract_hash = token.contract_hash();
-
-		let amount_i64 = i64::try_from(amount).map_err(|_| NeoError::Validation {
-			message: "Amount is too large to fit Neo VM integer".to_string(),
-			field: "amount".to_string(),
-			value: Some(amount.to_string()),
-			recovery: ErrorRecovery::new()
-				.suggest("Use a smaller amount")
-				.suggest("Split into multiple transfers if needed"),
-		})?;
-
-		let mut sb = ScriptBuilder::new();
-		sb.contract_call(
-			&contract_hash,
-			"transfer",
-			&[
-				ContractParameter::h160(&from_account.get_script_hash()),
-				ContractParameter::h160(&to_hash),
-				ContractParameter::integer(amount_i64),
-				ContractParameter::any(),
-			],
-			Some(CallFlags::All),
-		)
-		.map_err(|e| {
-			NeoError::contract(
-				"Failed to build transfer script",
-				Some(contract_hash.to_hex()),
-				Some("transfer".into()),
-				e,
-			)
-		})?;
-
-		let signer = AccountSigner::called_by_entry(from_account)
-			.map_err(|e| NeoError::transaction("Failed to create signer", e))?;
-
-		let current_height = retry_network(
-			"fetch current block height",
+		let tx_hash = build_and_send_transfer(
+			&self.client,
+			from_account,
+			to,
+			amount,
+			token,
+			None,
 			max_attempts,
-			DEFAULT_RETRY_DELAY,
-			|| async { self.client.get_block_count().await },
-		)
-		.await?;
-
-		let mut tb = TransactionBuilder::with_client(self.client.as_ref());
-		tb.extend_script(sb.to_bytes());
-		tb.set_signers(vec![signer.into()])
-			.map_err(|e| NeoError::transaction("Failed to set signers", e))?;
-		tb.valid_until_block(current_height + 5760)
-			.map_err(|e| NeoError::transaction("Invalid valid-until-block", e))?;
-
-		let mut tx = tb
-			.sign()
-			.await
-			.map_err(|e| NeoError::transaction("Failed to sign transfer", e))?;
-
-		let result = send_tx_with_retry(
-			&mut tx,
-			max_attempts,
-			DEFAULT_RETRY_DELAY,
-			"send transfer transaction",
 		)
 		.await?;
 
@@ -982,7 +1009,7 @@ impl Neo {
 			cache.invalidate_by_prefix("balance:").await;
 		}
 
-		Ok(result.hash.to_string())
+		Ok(tx_hash)
 	}
 
 	/// Deploy a smart contract
@@ -1599,78 +1626,23 @@ impl Transfer {
 
 	/// Execute the transfer
 	pub async fn execute(self, client: &RpcClient<HttpProvider>) -> Result<TxHash, NeoError> {
-		use crate::neo_builder::{AccountSigner, CallFlags, ScriptBuilder, TransactionBuilder};
-		use crate::neo_types::ScriptHashExtension;
 		use crate::neo_wallets::WalletTrait;
 
 		let from_account = self.from.default_account().ok_or_else(no_default_account_error)?;
 
-		let to_hash = ScriptHash::from_address(&self.to)
-			.map_err(|e| invalid_address_error("to", &self.to, e))?;
-
-		let contract_hash = self.token.contract_hash();
-
-		let amount_i64 = i64::try_from(self.amount).map_err(|_| NeoError::Validation {
-			message: "Amount is too large to fit Neo VM integer".to_string(),
-			field: "amount".to_string(),
-			value: Some(self.amount.to_string()),
-			recovery: ErrorRecovery::new().suggest("Use a smaller amount"),
-		})?;
-
-		let mut sb = ScriptBuilder::new();
-		// The 4th transfer argument is the NEP-17 `data` parameter: forward a
-		// supplied memo there (the receiving contract sees it) instead of
-		// silently dropping it.
-		let data = match &self.memo {
-			Some(memo) => ContractParameter::string(memo.clone()),
-			None => ContractParameter::any(),
-		};
-		sb.contract_call(
-			&contract_hash,
-			"transfer",
-			&[
-				ContractParameter::h160(&from_account.get_script_hash()),
-				ContractParameter::h160(&to_hash),
-				ContractParameter::integer(amount_i64),
-				data,
-			],
-			Some(CallFlags::All),
+		build_and_send_transfer(
+			client,
+			from_account,
+			&self.to,
+			self.amount,
+			self.token,
+			self.memo.as_deref(),
+			// No retry budget configured on the standalone builder; a single
+			// attempt still benefits from retry-aware height fetch and
+			// already-known-transaction handling in the send path.
+			1,
 		)
-		.map_err(|e| {
-			NeoError::contract(
-				"Failed to build transfer script",
-				Some(contract_hash.to_hex()),
-				Some("transfer".into()),
-				e,
-			)
-		})?;
-
-		let signer = AccountSigner::called_by_entry(from_account)
-			.map_err(|e| NeoError::transaction("Failed to create signer", e))?;
-
-		let current_height = client
-			.get_block_count()
-			.await
-			.map_err(|e| NeoError::provider("fetch current block height", e))?;
-
-		let mut tb = TransactionBuilder::with_client(client);
-		tb.extend_script(sb.to_bytes());
-		tb.set_signers(vec![signer.into()])
-			.map_err(|e| NeoError::transaction("Failed to set signers", e))?;
-		tb.valid_until_block(current_height + 5760)
-			.map_err(|e| NeoError::transaction("Invalid valid-until-block", e))?;
-
-		let mut tx = tb
-			.sign()
-			.await
-			.map_err(|e| NeoError::transaction("Failed to sign transfer", e))?;
-
-		let result = tx
-			.send_tx()
-			.await
-			.map_err(|e| NeoError::transaction("Failed to send transfer", e))?;
-
-		Ok(result.hash.to_string())
+		.await
 	}
 }
 
@@ -1701,7 +1673,11 @@ fn parse_balance_stack_item_u64(item: &StackItem, token: &str) -> Result<u64, Ne
 
 fn parse_nep17_decimals(decimals: &str, asset_hash: &ScriptHash) -> Result<u8, NeoError> {
 	decimals.parse::<u8>().map_err(|_| NeoError::Other {
-		message: format!("Invalid decimals '{}' for NEP-17 token {}", decimals, asset_hash.to_hex()),
+		message: format!(
+			"Invalid decimals '{}' for NEP-17 token {}",
+			decimals,
+			asset_hash.to_hex()
+		),
 		source: None,
 		recovery: ErrorRecovery::new()
 			.suggest("Retry against another RPC endpoint")

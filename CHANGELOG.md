@@ -16,6 +16,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Wallet benchmarks wrote into deleted temp directories.** The
+  `iter_batched` setup closures dropped their `TempDir` before the
+  benchmark routine ran, so `wallet_backup_5_accounts` and
+  `large_wallet_backup_100_accounts` always panicked; the directory now
+  lives until the routine finishes.
 - **`ipc` feature failed to compile on Windows**: the named-pipe transport
   referenced the `winapi` crate without declaring it. The single constant it
   used (`ERROR_PIPE_BUSY`) is now inlined, so no new dependency is added.
@@ -75,6 +80,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Transaction simulator drops a wasted `getblockcount` round-trip** per
   simulation and caches token symbols across multiple transfer
   notifications.
+- **`Neo::transfer` and `Transfer::execute` share one send path.** The
+  duplicated script-build/sign/broadcast flow is consolidated into a single
+  internal helper; `Transfer::execute` inherits retry-aware block-height
+  fetch and already-known-transaction handling in the send path.
+- **SDK retries back off exponentially.** `retry_network` grows the delay
+  from 250ms with a 60s cap and ±25% jitter (explicit provider
+  `Retry-After` hints are still honored verbatim), instead of retrying at
+  a fixed interval.
 
 ## [2.2.0] - 2026-08-22
 

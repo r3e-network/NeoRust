@@ -14,13 +14,36 @@ use crate::{neo_clients::ProviderError, neo_error::unified::NeoError};
 /// Default base delay between retries used by the high-level SDK.
 pub(crate) const DEFAULT_RETRY_DELAY: Duration = Duration::from_millis(250);
 
+/// Upper bound for the exponentially growing retry backoff.
+const MAX_RETRY_BACKOFF: Duration = Duration::from_secs(60);
+
+/// Exponential backoff with ±25% random jitter.
+///
+/// `delay = min(base * 2^(attempt-1), 60s) ± 25%`, so a fleet of clients never
+/// retries in lockstep (mirrors the WebSocket reconnect loop).
+fn backoff_delay(base: Duration, attempt: u32) -> Duration {
+	use rand::Rng;
+
+	let exponent = attempt.saturating_sub(1).min(6);
+	let backoff = base.saturating_mul(1u32 << exponent).min(MAX_RETRY_BACKOFF);
+	let jitter_range = (backoff.as_millis() / 4).max(1) as u64;
+	let jitter = rand::rng().random_range(0..=jitter_range);
+	if rand::rng().random_bool(0.5) {
+		backoff + Duration::from_millis(jitter)
+	} else {
+		backoff.saturating_sub(Duration::from_millis(jitter))
+	}
+}
+
 /// Retry an asynchronous, fallible operation up to `attempts` total times.
 ///
 /// `attempts` is the total number of attempts (so `attempts = 1` means *no*
 /// retry — the operation runs exactly once). Failures are logged via
 /// `tracing` at `warn` level on every non-terminal attempt, and the final
 /// error keeps its provider classification with `context` woven into the message. Deterministic
-/// failures return immediately without consuming the retry budget.
+/// failures return immediately without consuming the retry budget. The delay
+/// grows exponentially from `delay` with jitter, unless the provider supplies
+/// an explicit `Retry-After` hint, which is honored verbatim.
 pub(crate) async fn retry_network<T, F, Fut>(
 	context: &str,
 	attempts: u32,
@@ -39,7 +62,8 @@ where
 				if !err.is_retryable() || attempt == attempts {
 					return Err(NeoError::provider(context, err));
 				}
-				let retry_delay = err.retry_after().unwrap_or(delay);
+				let retry_delay =
+					err.retry_after().unwrap_or_else(|| backoff_delay(delay, attempt));
 
 				tracing::warn!(
 					attempt = attempt,
@@ -62,6 +86,32 @@ mod tests {
 	use super::*;
 	use std::sync::atomic::{AtomicUsize, Ordering};
 	use std::sync::Arc;
+
+	#[test]
+	fn backoff_grows_exponentially_and_stays_bounded() {
+		let base = Duration::from_millis(100);
+
+		// Every sampled delay for a given attempt stays within ±25% of the
+		// nominal exponential schedule, and never exceeds the 60s cap.
+		for attempt in 1..=8u32 {
+			let nominal = base.saturating_mul(1u32 << (attempt - 1).min(6)).min(MAX_RETRY_BACKOFF);
+			let low = (nominal.as_millis() / 4) as u64;
+			let high = nominal.as_millis() as u64 + nominal.as_millis() as u64 / 4;
+			for _ in 0..25 {
+				let sampled = backoff_delay(base, attempt).as_millis() as u64;
+				assert!(sampled >= low.min(high), "sampled {sampled}ms below floor {low}ms");
+				assert!(
+					sampled <= high.max(low),
+					"sampled {sampled}ms above ceiling {high}ms for attempt {attempt}"
+				);
+			}
+		}
+
+		// A very late attempt with a large base hits the cap: 2s * 2^6 = 128s
+		// exceeds the 60s ceiling, so the sampled delay stays within 60s ±25%.
+		let capped = backoff_delay(Duration::from_secs(2), 10).as_millis() as u64;
+		assert!((45_000..=75_000).contains(&capped), "capped delay out of range: {capped}ms");
+	}
 
 	#[tokio::test]
 	async fn returns_first_success_without_extra_attempts() {

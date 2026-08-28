@@ -2,10 +2,14 @@
 
 use std::{
 	collections::HashMap,
-	fs::File,
 	io::Write,
 	path::{Path, PathBuf},
 };
+
+#[cfg(unix)]
+use std::{fs::OpenOptions, os::unix::fs::OpenOptionsExt};
+#[cfg(not(unix))]
+use std::fs::File;
 
 use primitive_types::H160;
 use rayon::prelude::*;
@@ -316,9 +320,21 @@ impl Wallet {
 			WalletError::AccountState(format!("Failed to serialize wallet to JSON: {e}"))
 		})?;
 
-		// Write to file at path
-		let mut file = File::create(path)
+		// Write to file at path. NEP-6 wallets hold encrypted key material, so
+		// the file is created owner-only (0600) on Unix instead of the default
+		// world-readable mode.
+		#[cfg(unix)]
+		let mut file = OpenOptions::new()
+			.write(true)
+			.create(true)
+			.truncate(true)
+			.mode(0o600)
+			.open(&path)
 			.map_err(|e| WalletError::FileError(format!("Failed to create wallet file: {e}")))?;
+		#[cfg(not(unix))]
+		let mut file = File::create(&path)
+			.map_err(|e| WalletError::FileError(format!("Failed to create wallet file: {e}")))?;
+
 		file.write_all(json.as_bytes())
 			.map_err(|e| WalletError::FileError(format!("Failed to write wallet file: {e}")))?;
 

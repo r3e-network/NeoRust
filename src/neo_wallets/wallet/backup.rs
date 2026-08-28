@@ -1,5 +1,10 @@
 use crate::neo_wallets::{Wallet, WalletError};
-use std::{fs::File, io::Write, path::PathBuf};
+use std::{io::Write, path::PathBuf};
+
+#[cfg(unix)]
+use std::{fs::OpenOptions, os::unix::fs::OpenOptionsExt};
+#[cfg(not(unix))]
+use std::fs::File;
 
 /// Provides functionality for backing up and recovering Neo wallets.
 pub struct WalletBackup;
@@ -37,8 +42,18 @@ impl WalletBackup {
 		let json = serde_json::to_string_pretty(&nep6)
 			.map_err(|e| WalletError::AccountState(format!("Serialization error: {e}")))?;
 
-		// Write to file at path
-		let mut file = File::create(path).map_err(WalletError::IoError)?;
+		// Write to file at path. Backups hold the same encrypted key material
+		// as the wallet itself, so they are created owner-only (0600) on Unix.
+		#[cfg(unix)]
+		let mut file = OpenOptions::new()
+			.write(true)
+			.create(true)
+			.truncate(true)
+			.mode(0o600)
+			.open(&path)
+			.map_err(WalletError::IoError)?;
+		#[cfg(not(unix))]
+		let mut file = File::create(&path).map_err(WalletError::IoError)?;
 
 		file.write_all(json.as_bytes()).map_err(WalletError::IoError)?;
 

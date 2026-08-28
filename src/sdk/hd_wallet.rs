@@ -94,20 +94,31 @@ impl DerivationPath {
 	///
 	/// # Arguments
 	///
-	/// * `account` - Account index (will be hardened)
+	/// * `account` - Account index (will be hardened; must be < 2^31)
 	/// * `index` - Address index within the account
 	///
 	/// # Returns
 	///
 	/// Default path: m/44'/888'/account'/0/index
-	pub fn new_neo(account: u32, index: u32) -> Self {
-		Self {
-			purpose: 0x80000000 + 44,      // 44' hardened
-			coin_type: 0x80000000 + 888,   // 888' for NEO
-			account: 0x80000000 + account, // account' hardened
-			change: 0,                     // external addresses
+	///
+	/// # Errors
+	///
+	/// Returns an error if `account` is >= 2^31 and cannot be hardened.
+	pub fn new_neo(account: u32, index: u32) -> Result<Self, NeoError> {
+		let account = account
+			.checked_add(0x80000000)
+			.ok_or_else(|| NeoError::Wallet {
+				message: format!("Account index {} cannot be hardened (max {})", account, 2_147_483_647),
+				source: None,
+				recovery: ErrorRecovery::new().suggest("Use an account index below 2147483648"),
+			})?;
+		Ok(Self {
+			purpose: 0x80000000 + 44,  // 44' hardened
+			coin_type: 0x80000000 + 888, // 888' for NEO
+			account,                   // account' hardened
+			change: 0,                 // external addresses
 			index,
-		}
+		})
 	}
 
 	/// Parse a derivation path string
@@ -136,7 +147,21 @@ impl DerivationPath {
 				recovery: ErrorRecovery::new(),
 			})?;
 
-			Ok(if hardened { 0x80000000 + num } else { num })
+			// BIP-32 indices must fit in 31 bits; hardening sets bit 31.
+			if hardened && num >= 0x80000000 {
+				return Err(NeoError::Wallet {
+					message: format!("Hardened index {} is out of range (max {})", num, 2_147_483_647),
+					source: None,
+					recovery: ErrorRecovery::new()
+						.suggest("Use an index below 2147483648"),
+				});
+			}
+			num.checked_add(if hardened { 0x80000000 } else { 0 })
+				.ok_or_else(|| NeoError::Wallet {
+					message: format!("Path component {} overflows the 32-bit index space", s),
+					source: None,
+					recovery: ErrorRecovery::new().suggest("Use an index below 2147483648"),
+				})
 		};
 
 		Ok(Self {
@@ -364,12 +389,16 @@ impl HDWallet {
 				recovery: ErrorRecovery::new(),
 			})?;
 
-		let wif = wif_from_private_key(&private_key);
+		// WIF encodes the private key: zeroize the intermediate copy instead of
+		// letting it linger in freed heap memory.
+		let mut wif = wif_from_private_key(&private_key);
 		let account = Account::from_wif(&wif).map_err(|e| NeoError::Wallet {
 			message: format!("Failed to create account from derived key: {}", e),
 			source: None,
 			recovery: ErrorRecovery::new(),
-		})?;
+		});
+		wif.zeroize();
+		let account = account?;
 
 		// Cache the account
 		self.accounts.insert(path.to_string(), account.clone());
@@ -390,7 +419,15 @@ impl HDWallet {
 		let mut accounts = Vec::new();
 
 		for i in 0..count {
-			let path = format!("m/44'/888'/{}'/0/0", account_index + i);
+			let index = account_index.checked_add(i).ok_or_else(|| NeoError::Wallet {
+				message: format!(
+					"Deriving {} accounts from index {} overflows the u32 account space",
+					count, account_index
+				),
+				source: None,
+				recovery: ErrorRecovery::new().suggest("Use a smaller count or starting index"),
+			})?;
+			let path = format!("m/44'/888'/{}'/0/0", index);
 			accounts.push(self.derive_account(&path)?);
 		}
 

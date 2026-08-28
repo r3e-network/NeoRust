@@ -170,7 +170,7 @@ coins-ledger = { version = "0.13.0", default-features = false, optional = true }
 # yubi - conditional compilation for release builds
 yubihsm = { version = "0.42", features = ["http", "usb"], optional = true }
 
-bip39 = { version = "2.2.2", features = ["rand"] }
+bip39 = { version = "2.2.2", features = ["rand", "zeroize"] }
 # Neo X EVM layer. Replaces the unmaintained `ethers` crate (which pulled in
 # vulnerable rustls-webpki 0.101 via reqwest 0.11). alloy is the maintained
 # successor; `essentials` bundles contract (sol!), provider-http, rpc-types

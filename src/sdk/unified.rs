@@ -44,8 +44,8 @@ const NEOX_NATIVE_DECIMALS: u8 = 18;
 
 /// Parse a human-readable decimal amount on the given scale into base units.
 fn parse_amount_base_units(amount: &str, decimals: u8) -> Result<U256, NeoError> {
-	let parsed = DecimalAmount::parse(amount, decimals)
-		.map_err(|e| amount_validation_error(amount, e))?;
+	let parsed =
+		DecimalAmount::parse(amount, decimals).map_err(|e| amount_validation_error(amount, e))?;
 	U256::from_str(parsed.raw()).map_err(|e| amount_validation_error(amount, e))
 }
 

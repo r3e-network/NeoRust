@@ -105,18 +105,19 @@ impl DerivationPath {
 	///
 	/// Returns an error if `account` is >= 2^31 and cannot be hardened.
 	pub fn new_neo(account: u32, index: u32) -> Result<Self, NeoError> {
-		let account = account
-			.checked_add(0x80000000)
-			.ok_or_else(|| NeoError::Wallet {
-				message: format!("Account index {} cannot be hardened (max {})", account, 2_147_483_647),
-				source: None,
-				recovery: ErrorRecovery::new().suggest("Use an account index below 2147483648"),
-			})?;
+		let account = account.checked_add(0x80000000).ok_or_else(|| NeoError::Wallet {
+			message: format!(
+				"Account index {} cannot be hardened (max {})",
+				account, 2_147_483_647
+			),
+			source: None,
+			recovery: ErrorRecovery::new().suggest("Use an account index below 2147483648"),
+		})?;
 		Ok(Self {
-			purpose: 0x80000000 + 44,  // 44' hardened
+			purpose: 0x80000000 + 44,    // 44' hardened
 			coin_type: 0x80000000 + 888, // 888' for NEO
-			account,                   // account' hardened
-			change: 0,                 // external addresses
+			account,                     // account' hardened
+			change: 0,                   // external addresses
 			index,
 		})
 	}
@@ -150,10 +151,12 @@ impl DerivationPath {
 			// BIP-32 indices must fit in 31 bits; hardening sets bit 31.
 			if hardened && num >= 0x80000000 {
 				return Err(NeoError::Wallet {
-					message: format!("Hardened index {} is out of range (max {})", num, 2_147_483_647),
+					message: format!(
+						"Hardened index {} is out of range (max {})",
+						num, 2_147_483_647
+					),
 					source: None,
-					recovery: ErrorRecovery::new()
-						.suggest("Use an index below 2147483648"),
+					recovery: ErrorRecovery::new().suggest("Use an index below 2147483648"),
 				});
 			}
 			num.checked_add(if hardened { 0x80000000 } else { 0 })

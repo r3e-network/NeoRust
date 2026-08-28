@@ -1,10 +1,10 @@
 use crate::neo_wallets::{Wallet, WalletError};
 use std::{io::Write, path::PathBuf};
 
-#[cfg(unix)]
-use std::{fs::OpenOptions, os::unix::fs::OpenOptionsExt};
 #[cfg(not(unix))]
 use std::fs::File;
+#[cfg(unix)]
+use std::{fs::OpenOptions, os::unix::fs::OpenOptionsExt};
 
 /// Provides functionality for backing up and recovering Neo wallets.
 pub struct WalletBackup;

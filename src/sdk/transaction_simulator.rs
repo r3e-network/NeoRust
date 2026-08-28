@@ -569,13 +569,7 @@ impl TransactionSimulator {
 			}
 		};
 
-		Some(TokenTransfer {
-			token: notification.contract,
-			symbol: token_symbol,
-			from,
-			to,
-			amount,
-		})
+		Some(TokenTransfer { token: notification.contract, symbol: token_symbol, from, to, amount })
 	}
 
 	/// Decode a 20-byte script hash stack item into a Neo N3 address.
@@ -1042,8 +1036,8 @@ mod tests {
 
 	#[tokio::test]
 	async fn test_transfer_notification_parses_real_state() {
-		use base64::Engine;
 		use crate::neo_types::Notification as ContractNotification;
+		use base64::Engine;
 
 		let client = Arc::new(RpcClient::new(HttpProvider::new("http://localhost:10332").unwrap()));
 		let mut simulator = TransactionSimulator::new(client);

@@ -6,10 +6,10 @@ use std::{
 	path::{Path, PathBuf},
 };
 
-#[cfg(unix)]
-use std::{fs::OpenOptions, os::unix::fs::OpenOptionsExt};
 #[cfg(not(unix))]
 use std::fs::File;
+#[cfg(unix)]
+use std::{fs::OpenOptions, os::unix::fs::OpenOptionsExt};
 
 use primitive_types::H160;
 use rayon::prelude::*;

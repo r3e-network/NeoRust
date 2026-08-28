@@ -61,9 +61,15 @@ use crate::neo_error::unified::{ErrorRecovery, NeoError};
 use crate::neo_types::{
 	ContractParameter, NeoVMStateType, ScriptHash, ScriptHashExtension, StackItem,
 };
+use crate::sdk::DecimalAmount;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
+
+/// Decimal places of the GAS token; `gasconsumed` strings are quoted in GAS.
+const GAS_DECIMALS: u8 = 8;
+/// Maximum number of simulation results kept in the in-memory cache.
+const SIMULATION_CACHE_MAX_ENTRIES: usize = 256;
 
 /// Transaction simulation result
 ///
@@ -246,6 +252,8 @@ pub enum OptimizationType {
 pub struct TransactionSimulator {
 	client: Arc<RpcClient<HttpProvider>>,
 	cache: HashMap<String, CachedSimulation>,
+	cache_ttl: std::time::Duration,
+	symbol_cache: HashMap<ScriptHash, String>,
 	optimization_rules: Vec<OptimizationRule>,
 }
 
@@ -255,6 +263,8 @@ impl TransactionSimulator {
 		Self {
 			client,
 			cache: HashMap::new(),
+			cache_ttl: std::time::Duration::from_secs(60),
+			symbol_cache: HashMap::new(),
 			optimization_rules: Self::default_optimization_rules(),
 		}
 	}
@@ -284,9 +294,10 @@ impl TransactionSimulator {
 		script: &[u8],
 		signers: Vec<Signer>,
 	) -> Result<SimulationResult, NeoError> {
-		// Check cache first
-		let tx_hash = self.calculate_script_hash(script);
-		if let Some(cached) = self.cache.get(&tx_hash) {
+		// Check cache first; the key must cover signers because fees and
+		// verification costs depend on their scopes and count.
+		let cache_key = Self::calculate_cache_key(script, &signers);
+		if let Some(cached) = self.cache.get(&cache_key) {
 			if cached.is_valid() {
 				return Ok(cached.result.clone());
 			}
@@ -295,36 +306,41 @@ impl TransactionSimulator {
 		// Perform simulation
 		let result = self.perform_simulation(script, signers).await?;
 
-		// Cache the result
+		// Drop expired entries before growing the cache further.
+		self.cache.retain(|_, cached| cached.is_valid());
+		if self.cache.len() >= SIMULATION_CACHE_MAX_ENTRIES {
+			if let Some(oldest) = self
+				.cache
+				.iter()
+				.min_by_key(|(_, cached)| cached.timestamp)
+				.map(|(key, _)| key.clone())
+			{
+				self.cache.remove(&oldest);
+			}
+		}
 		self.cache.insert(
-			tx_hash,
-			CachedSimulation { result: result.clone(), timestamp: std::time::SystemTime::now() },
+			cache_key,
+			CachedSimulation {
+				result: result.clone(),
+				timestamp: std::time::SystemTime::now(),
+				ttl: self.cache_ttl,
+			},
 		);
 
 		Ok(result)
 	}
 
 	/// Simulate a script execution
+	///
+	/// Same evaluation path as [`Self::simulate_transaction`] (cached,
+	/// with warnings and optimization suggestions). Kept as a separate
+	/// entry point for API compatibility.
 	pub async fn simulate_script(
 		&mut self,
 		script: &[u8],
 		signers: Vec<Signer>,
 	) -> Result<SimulationResult, NeoError> {
-		// Use invokecontractverify RPC method
-		let result = self
-			.client
-			.invoke_script(hex::encode(script), signers.clone())
-			.await
-			.map_err(|e| NeoError::Network {
-				message: format!("Failed to simulate script: {}", e),
-				source: None,
-				recovery: ErrorRecovery::new()
-					.suggest("Check script validity")
-					.suggest("Verify signers have sufficient balance"),
-			})?;
-
-		// Parse the invocation result
-		self.parse_invocation_result(result, script, signers).await
+		self.simulate_transaction(script, signers).await
 	}
 
 	/// Estimate gas for a contract call
@@ -369,7 +385,8 @@ impl TransactionSimulator {
 			network_fee: simulation.network_fee,
 			total_fee: simulation.total_fee,
 			gas_consumed: simulation.gas_consumed,
-			safety_margin: (simulation.total_fee as f64 * 0.1) as u64, // 10% safety margin
+			// Integer math: 10% margin rounded up so estimates never under-charge.
+			safety_margin: simulation.total_fee.div_ceil(10),
 			warnings: simulation.warnings,
 		})
 	}
@@ -386,17 +403,10 @@ impl TransactionSimulator {
 
 	/// Perform the actual simulation
 	async fn perform_simulation(
-		&self,
+		&mut self,
 		script: &[u8],
 		signers: Vec<Signer>,
 	) -> Result<SimulationResult, NeoError> {
-		// Get current blockchain state
-		let _block_height = self.client.get_block_count().await.map_err(|e| NeoError::Network {
-			message: format!("Failed to get block height: {}", e),
-			source: None,
-			recovery: ErrorRecovery::new(),
-		})?;
-
 		// Simulate the transaction script
 		let invocation_result = self
 			.client
@@ -424,9 +434,9 @@ impl TransactionSimulator {
 
 	/// Parse invocation result into simulation result
 	async fn parse_invocation_result(
-		&self,
+		&mut self,
 		result: crate::neo_types::InvocationResult,
-		script: &[u8],
+		_script: &[u8],
 		signers: Vec<Signer>,
 	) -> Result<SimulationResult, NeoError> {
 		// Determine success
@@ -436,12 +446,12 @@ impl TransactionSimulator {
 		let notifications = self.parse_notifications(&result);
 
 		// Parse state changes
-		let state_changes = self.analyze_state_changes(&result, script).await?;
+		let state_changes = self.analyze_state_changes(&result).await?;
 
 		// Calculate fees
 		let gas_consumed = self.parse_gas_consumed(&result.gas_consumed)?;
 		let system_fee = self.calculate_system_fee(gas_consumed);
-		let network_fee = self.calculate_network_fee(script.len(), signers.len());
+		let network_fee = self.calculate_network_fee(_script.len(), signers.len());
 
 		Ok(SimulationResult {
 			success,
@@ -459,29 +469,23 @@ impl TransactionSimulator {
 	}
 
 	fn parse_gas_consumed(&self, gas_consumed: &str) -> Result<u64, NeoError> {
-		if let Ok(value) = gas_consumed.parse::<u64>() {
-			return Ok(value);
-		}
-
-		if let Ok(value) = gas_consumed.parse::<f64>() {
-			if value.is_finite() && value >= 0.0 {
-				// Round up fractional GAS so fee estimates never under-charge.
-				let rounded = value.ceil();
-				if rounded <= u64::MAX as f64 {
-					return Ok(rounded as u64);
-				}
-			}
-		}
-
-		Err(NeoError::Other {
+		// Nodes return `gasconsumed` as a decimal GAS string (e.g. "0.0295453").
+		// Convert to integer base units (1 GAS = 1e8) with exact decimal math —
+		// floats would round sub-1-GAS fees to 1 base unit (~1e8 error).
+		let invalid = |detail: String| NeoError::Other {
 			message: format!(
-				"Invalid gas consumption value in simulation response: {gas_consumed}"
+				"Invalid gas consumption value in simulation response: {gas_consumed} ({detail})"
 			),
 			source: None,
 			recovery: ErrorRecovery::new()
 				.suggest("Inspect the raw invocation result from the RPC node")
 				.suggest("Verify the connected node returns a numeric gasconsumed field"),
-		})
+		};
+
+		let amount = DecimalAmount::parse(gas_consumed, GAS_DECIMALS)
+			.map_err(|err| invalid(err.to_string()))?;
+
+		amount.raw().parse::<u64>().map_err(|err| invalid(err.to_string()))
 	}
 
 	/// Parse notifications from invocation result
@@ -507,9 +511,8 @@ impl TransactionSimulator {
 
 	/// Analyze state changes from the invocation
 	async fn analyze_state_changes(
-		&self,
+		&mut self,
 		result: &crate::neo_types::InvocationResult,
-		_script: &[u8],
 	) -> Result<StateChanges, NeoError> {
 		let storage = HashMap::new();
 		let balances = HashMap::new();
@@ -521,21 +524,8 @@ impl TransactionSimulator {
 		if let Some(notifications) = &result.notifications {
 			for notification in notifications {
 				if notification.event_name == "Transfer" {
-					// Parse NEP-17 transfer
-					let parsed_notification = Notification {
-						contract: notification.contract,
-						event_name: notification.event_name.clone(),
-						state: serde_json::to_value(&notification.state)
-							.unwrap_or(serde_json::Value::Null),
-					};
-					if let Some(transfer) =
-						self.parse_transfer_notification(&parsed_notification).await
-					{
+					if let Some(transfer) = self.parse_transfer_notification(notification).await {
 						transfers.push(transfer);
-
-						// Update balance changes
-						// This is simplified - in production, track actual amounts
-						// In a real implementation, we would parse the StackItem properly
 					}
 				}
 			}
@@ -544,26 +534,55 @@ impl TransactionSimulator {
 		Ok(StateChanges { storage, balances, transfers, deployments, updates })
 	}
 
-	/// Parse a transfer notification  
+	/// Parse a NEP-17 `Transfer` notification
+	///
+	/// The notification state is a three-element array
+	/// `[from: ByteString(20), to: ByteString(20), amount: Integer]`.
+	/// Returns `None` when the state does not match that shape (e.g. NEP-11
+	/// transfers) instead of emitting fabricated data.
 	async fn parse_transfer_notification(
-		&self,
-		notification: &Notification,
+		&mut self,
+		notification: &crate::neo_types::Notification,
 	) -> Option<TokenTransfer> {
-		// Get token info
-		let token_symbol = self
-			.get_token_symbol(&notification.contract)
-			.await
-			.unwrap_or_else(|_| notification.contract.to_hex());
+		let state = notification.state.as_array_ref()?;
+		let [from_item, to_item, amount_item] = state else {
+			return None;
+		};
 
-		// Parse the state JSON - in a real implementation this would properly parse the StackItem
-		// For now, return a simplified version
+		// From/to are script hashes; resolve the token symbol via the cache
+		// so a multi-transfer script costs at most one `symbol()` RPC per token.
+		let from = Self::stack_item_to_address(from_item)?;
+		let to = Self::stack_item_to_address(to_item)?;
+		let amount = amount_item.as_int()?.to_string();
+
+		let token_symbol = if let Some(symbol) = self.symbol_cache.get(&notification.contract) {
+			symbol.clone()
+		} else {
+			match self.get_token_symbol(&notification.contract).await {
+				Ok(symbol) => {
+					self.symbol_cache.insert(notification.contract, symbol.clone());
+					symbol
+				},
+				// Do not cache the fallback: a transient RPC failure should not
+				// pin a hex string as the token's symbol for the simulator's lifetime.
+				Err(_) => notification.contract.to_hex(),
+			}
+		};
+
 		Some(TokenTransfer {
 			token: notification.contract,
 			symbol: token_symbol,
-			from: "sender".to_string(), // Would parse from state
-			to: "receiver".to_string(), // Would parse from state
-			amount: "0".to_string(),    // Would parse from state
+			from,
+			to,
+			amount,
 		})
+	}
+
+	/// Decode a 20-byte script hash stack item into a Neo N3 address.
+	fn stack_item_to_address(item: &StackItem) -> Option<String> {
+		let bytes = item.as_bytes()?;
+		let script_hash = ScriptHash::from_slice(&bytes);
+		Some(script_hash.to_address())
 	}
 
 	/// Get token symbol from contract
@@ -683,11 +702,15 @@ impl TransactionSimulator {
 		warnings
 	}
 
-	/// Calculate script hash for caching
-	fn calculate_script_hash(&self, script: &[u8]) -> String {
+	/// Calculate the simulation cache key
+	///
+	/// Covers both the script and the signers: fees depend on signer count and
+	/// scopes, so cached results must never be shared across signer sets.
+	fn calculate_cache_key(script: &[u8], signers: &[Signer]) -> String {
 		use sha2::{Digest, Sha256};
 		let mut hasher = Sha256::new();
 		hasher.update(script);
+		hasher.update(format!("{signers:?}").as_bytes());
 		hex::encode(hasher.finalize())
 	}
 
@@ -758,12 +781,12 @@ impl OptimizationRule {
 struct CachedSimulation {
 	result: SimulationResult,
 	timestamp: std::time::SystemTime,
+	ttl: std::time::Duration,
 }
 
 impl CachedSimulation {
 	fn is_valid(&self) -> bool {
-		// Cache valid for 60 seconds
-		self.timestamp.elapsed().map(|d| d.as_secs() < 60).unwrap_or(false)
+		self.timestamp.elapsed().map(|d| d < self.ttl).unwrap_or(false)
 	}
 }
 
@@ -846,6 +869,7 @@ impl TransactionSimulatorBuilder {
 		})?;
 
 		let mut simulator = TransactionSimulator::new(client);
+		simulator.cache_ttl = self.cache_duration;
 		if !self.optimization_rules.is_empty() {
 			simulator.optimization_rules = self.optimization_rules;
 		}
@@ -924,7 +948,7 @@ mod tests {
 	#[tokio::test]
 	async fn test_parse_invocation_result_rejects_invalid_gas_consumed() {
 		let client = Arc::new(RpcClient::new(HttpProvider::new("http://localhost:10332").unwrap()));
-		let simulator = TransactionSimulator::new(client);
+		let mut simulator = TransactionSimulator::new(client);
 		let result =
 			InvocationResult { gas_consumed: "not-a-number".to_string(), ..Default::default() };
 
@@ -963,5 +987,123 @@ mod tests {
 			},
 			other => panic!("expected contract error, got {other:?}"),
 		}
+	}
+
+	#[test]
+	fn test_gas_consumed_decimal_string_converts_to_base_units() {
+		let client = Arc::new(RpcClient::new(HttpProvider::new("http://localhost:10332").unwrap()));
+		let simulator = TransactionSimulator::new(client);
+
+		// "0.0295453" GAS must become 2_954_530 base units — not 1 (the old
+		// float fallback ceil'd sub-1-GAS values to a single base unit).
+		let gas = simulator.parse_gas_consumed("0.0295453").unwrap();
+		assert_eq!(gas, 2_954_530);
+
+		// gasconsumed is quoted in GAS: "123" means 123 GAS = 123e8 base units.
+		assert_eq!(simulator.parse_gas_consumed("123").unwrap(), 12_300_000_000);
+	}
+
+	#[test]
+	fn test_gas_consumed_rejects_overly_precise_decimals() {
+		let client = Arc::new(RpcClient::new(HttpProvider::new("http://localhost:10332").unwrap()));
+		let simulator = TransactionSimulator::new(client);
+
+		// 9 fractional digits exceed GAS' 8 decimals and are not silently rounded.
+		assert!(simulator.parse_gas_consumed("0.123456789").is_err());
+	}
+
+	#[test]
+	fn test_cache_key_covers_signers() {
+		let signer_a = Signer::TransactionSigner(
+			crate::neo_builder::TransactionSigner::new(
+				crate::neo_types::ScriptHash::zero(),
+				vec![crate::neo_builder::WitnessScope::CalledByEntry],
+			)
+			.unwrap(),
+		);
+		let signer_b = Signer::TransactionSigner(
+			crate::neo_builder::TransactionSigner::new(
+				crate::neo_types::ScriptHash::zero(),
+				vec![crate::neo_builder::WitnessScope::Global],
+			)
+			.unwrap(),
+		);
+
+		let same_script = b"\x00\x01";
+		assert_eq!(
+			TransactionSimulator::calculate_cache_key(same_script, std::slice::from_ref(&signer_a)),
+			TransactionSimulator::calculate_cache_key(same_script, std::slice::from_ref(&signer_a))
+		);
+		assert_ne!(
+			TransactionSimulator::calculate_cache_key(same_script, &[signer_a]),
+			TransactionSimulator::calculate_cache_key(same_script, &[signer_b])
+		);
+	}
+
+	#[tokio::test]
+	async fn test_transfer_notification_parses_real_state() {
+		use base64::Engine;
+		use crate::neo_types::Notification as ContractNotification;
+
+		let client = Arc::new(RpcClient::new(HttpProvider::new("http://localhost:10332").unwrap()));
+		let mut simulator = TransactionSimulator::new(client);
+
+		// NEP-17 Transfer state: [from(20 bytes), to(20 bytes), amount]
+		let from = [7u8; 20];
+		let to = [9u8; 20];
+		let state = StackItem::Array {
+			value: vec![
+				StackItem::ByteString {
+					value: base64::engine::general_purpose::STANDARD.encode(from),
+				},
+				StackItem::ByteString {
+					value: base64::engine::general_purpose::STANDARD.encode(to),
+				},
+				StackItem::Integer { value: 1_000_000 },
+			],
+		};
+		let notification = ContractNotification {
+			contract: crate::neo_types::ScriptHash::zero(),
+			event_name: "Transfer".to_string(),
+			state,
+		};
+
+		// symbol() RPC would fail against localhost; the fallback is the hex
+		// contract hash, but the parsed fields must be real data.
+		let transfer = simulator
+			.parse_transfer_notification(&notification)
+			.await
+			.expect("well-formed transfer state should parse");
+
+		assert_eq!(transfer.amount, "1000000");
+		assert_ne!(transfer.from, "sender");
+		assert_ne!(transfer.to, "receiver");
+		assert_eq!(transfer.from, crate::neo_types::ScriptHash::from_slice(&from).to_address());
+		assert_eq!(transfer.to, crate::neo_types::ScriptHash::from_slice(&to).to_address());
+	}
+
+	#[tokio::test]
+	async fn test_transfer_notification_rejects_non_transfer_shapes() {
+		use crate::neo_types::Notification as ContractNotification;
+
+		let client = Arc::new(RpcClient::new(HttpProvider::new("http://localhost:10332").unwrap()));
+		let mut simulator = TransactionSimulator::new(client);
+
+		// NEP-11 transfers carry a 4-element state; they must be skipped, not
+		// reported with fabricated from/to/amount.
+		let notification = ContractNotification {
+			contract: crate::neo_types::ScriptHash::zero(),
+			event_name: "Transfer".to_string(),
+			state: StackItem::Array {
+				value: vec![
+					StackItem::ByteString { value: "AAA=".to_string() },
+					StackItem::ByteString { value: "AAA=".to_string() },
+					StackItem::Integer { value: 1 },
+					StackItem::ByteString { value: "AAA=".to_string() },
+				],
+			},
+		};
+
+		assert!(simulator.parse_transfer_notification(&notification).await.is_none());
 	}
 }

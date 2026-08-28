@@ -96,6 +96,7 @@ pub mod websocket;
 
 use self::retry::{retry_network, DEFAULT_RETRY_DELAY};
 use crate::{
+	neo_types::VMState,
 	neo_clients::{APITrait, HttpProvider, RpcCache, RpcClient},
 	neo_error::unified::{ErrorRecovery, NeoError},
 	neo_types::{ContractParameter, ScriptHash, ScriptHashExtension, StackItem},
@@ -487,7 +488,7 @@ impl Token {
 }
 
 /// Recovery hints shared by every "no default account configured" error.
-fn no_default_account_error() -> NeoError {
+pub(crate) fn no_default_account_error() -> NeoError {
 	NeoError::Wallet {
 		message: "No default account set in wallet".to_string(),
 		source: None,
@@ -712,6 +713,13 @@ impl Neo {
 	/// # }
 	/// ```
 	pub async fn get_balance(&self, address: &str) -> Result<Balance, NeoError> {
+		let started = std::time::Instant::now();
+		let result = self.get_balance_inner(address).await;
+		self.record_operation("get_balance", started.elapsed(), result.is_ok());
+		result
+	}
+
+	async fn get_balance_inner(&self, address: &str) -> Result<Balance, NeoError> {
 		use crate::neo_types::ScriptHashExtension;
 
 		let script_hash = ScriptHash::from_address(address)
@@ -776,27 +784,33 @@ impl Neo {
 			})
 			.await?;
 
-		let tokens = nep17
-			.balances
-			.into_iter()
-			.filter(|b| b.asset_hash != neo_hash && b.asset_hash != gas_hash)
-			.map(|b| {
-				let decimals = parse_nep17_decimals(b.decimals.as_deref(), &b.asset_hash)?;
-				let amount = DecimalAmount::try_from_raw(b.amount, decimals).map_err(|err| {
-					invalid_balance_response(&b.asset_hash.to_hex(), err.to_string())
-				})?;
+		let mut tokens = Vec::new();
+		for b in nep17.balances {
+			if b.asset_hash == neo_hash || b.asset_hash == gas_hash {
+				continue;
+			}
 
-				Ok(TokenBalance {
-					contract: b.asset_hash,
-					symbol: b
-						.symbol
-						.clone()
-						.or_else(|| b.name.clone())
-						.unwrap_or_else(|| b.asset_hash.to_hex()),
-					amount,
-				})
-			})
-			.collect::<Result<Vec<_>, NeoError>>()?;
+			// Standard `getnep17balances` responses omit `symbol`/`decimals`;
+			// fall back to querying the token contract instead of failing the
+			// whole balance request for one unknown token.
+			let asset_hash = b.asset_hash;
+			let decimals = match b.decimals.as_deref() {
+				Some(raw) => parse_nep17_decimals(raw, &asset_hash)?,
+				None => self.fetch_nep17_decimals(&asset_hash).await?,
+			};
+			let amount = DecimalAmount::try_from_raw(b.amount, decimals)
+				.map_err(|err| invalid_balance_response(&asset_hash.to_hex(), err.to_string()))?;
+
+			let symbol = match b.symbol.or(b.name) {
+				Some(symbol) => symbol,
+				None => self
+					.fetch_nep17_symbol(&asset_hash)
+					.await
+					.unwrap_or_else(|| asset_hash.to_hex()),
+			};
+
+			tokens.push(TokenBalance { contract: asset_hash, symbol, amount });
+		}
 
 		let balance = Balance { neo, gas, tokens };
 
@@ -808,6 +822,38 @@ impl Neo {
 		}
 
 		Ok(balance)
+	}
+
+	/// Query a NEP-17 token's `decimals()` from the token contract itself.
+	///
+	/// Used when the node's `getnep17balances` response omits token metadata.
+	async fn fetch_nep17_decimals(&self, contract: &ScriptHash) -> Result<u8, NeoError> {
+		let result = self
+			.client
+			.invoke_function(contract, "decimals".to_string(), vec![], None)
+			.await
+			.map_err(|e| invalid_balance_response(&contract.to_hex(), e.to_string()))?;
+
+		let item = result
+			.stack
+			.first()
+			.ok_or_else(|| invalid_balance_response("decimals", "missing stack item"))?;
+		let decimals = item
+			.as_int()
+			.ok_or_else(|| invalid_balance_response("decimals", "not an integer stack item"))?;
+
+		u8::try_from(decimals)
+			.map_err(|_| invalid_balance_response("decimals", format!("out of range: {decimals}")))
+	}
+
+	/// Query a NEP-17 token's `symbol()` from the token contract itself.
+	async fn fetch_nep17_symbol(&self, contract: &ScriptHash) -> Option<String> {
+		let result = self
+			.client
+			.invoke_function(contract, "symbol".to_string(), vec![], None)
+			.await
+			.ok()?;
+		result.stack.first().and_then(|item| item.as_string())
 	}
 
 	/// Transfer tokens from one address to another
@@ -837,6 +883,19 @@ impl Neo {
 	/// # }
 	/// ```
 	pub async fn transfer(
+		&self,
+		from: &Wallet,
+		to: &str,
+		amount: u64,
+		token: Token,
+	) -> Result<TxHash, NeoError> {
+		let started = std::time::Instant::now();
+		let result = self.transfer_inner(from, to, amount, token).await;
+		self.record_transaction_metric("transfer", started.elapsed(), result.is_ok());
+		result
+	}
+
+	async fn transfer_inner(
 		&self,
 		from: &Wallet,
 		to: &str,
@@ -917,6 +976,12 @@ impl Neo {
 		)
 		.await?;
 
+		// Sent transactions change balances; drop stale cached balances so a
+		// read-after-write does not observe pre-transfer amounts.
+		if let Some(cache) = &self.cache {
+			cache.invalidate_by_prefix("balance:").await;
+		}
+
 		Ok(result.hash.to_string())
 	}
 
@@ -943,6 +1008,18 @@ impl Neo {
 	/// # }
 	/// ```
 	pub async fn deploy_contract(
+		&self,
+		deployer: &Wallet,
+		nef: Vec<u8>,
+		manifest: String,
+	) -> Result<ScriptHash, NeoError> {
+		let started = std::time::Instant::now();
+		let result = self.deploy_contract_inner(deployer, nef, manifest).await;
+		self.record_transaction_metric("deploy", started.elapsed(), result.is_ok());
+		result
+	}
+
+	async fn deploy_contract_inner(
 		&self,
 		deployer: &Wallet,
 		nef: Vec<u8>,
@@ -1062,6 +1139,11 @@ impl Neo {
 		)
 		.await?;
 
+		// Deploying/initializing a contract can mint or transfer tokens.
+		if let Some(cache) = &self.cache {
+			cache.invalidate_by_prefix("balance:").await;
+		}
+
 		Ok(expected_hash)
 	}
 
@@ -1155,6 +1237,19 @@ impl Neo {
 		method: &str,
 		params: Vec<ContractParameter>,
 	) -> Result<TxHash, NeoError> {
+		let started = std::time::Instant::now();
+		let result = self.invoke_write_inner(signer, contract, method, params).await;
+		self.record_transaction_metric("invoke", started.elapsed(), result.is_ok());
+		result
+	}
+
+	async fn invoke_write_inner(
+		&self,
+		signer: &Wallet,
+		contract: &ScriptHash,
+		method: &str,
+		params: Vec<ContractParameter>,
+	) -> Result<TxHash, NeoError> {
 		use crate::neo_builder::{AccountSigner, CallFlags, ScriptBuilder, TransactionBuilder};
 		use crate::neo_types::ScriptHashExtension;
 		use crate::neo_wallets::WalletTrait;
@@ -1205,6 +1300,11 @@ impl Neo {
 		)
 		.await?;
 
+		// Write invocations change balances; drop stale cached balances.
+		if let Some(cache) = &self.cache {
+			cache.invalidate_by_prefix("balance:").await;
+		}
+
 		Ok(result.hash.to_string())
 	}
 
@@ -1243,7 +1343,31 @@ impl Neo {
 		let start = Instant::now();
 		while start.elapsed() < timeout {
 			match self.client.get_application_log(tx_h256).await {
-				Ok(_) => return Ok(()),
+				Ok(log) => {
+					// A reverted invocation also produces an application log;
+					// only HALT executions mean the transaction succeeded.
+					if let Some(execution) =
+						log.executions.iter().find(|exec| exec.state != VMState::Halt)
+					{
+						return Err(NeoError::Transaction {
+							message: format!(
+								"Transaction failed with VM state {:?}{}",
+								execution.state,
+								execution
+									.exception
+									.as_deref()
+									.map(|e| format!(": {e}"))
+									.unwrap_or_default()
+							),
+							tx_hash: Some(tx_h256.to_string()),
+							source: None,
+							recovery: ErrorRecovery::new()
+								.suggest("Inspect the application log for the failure reason")
+								.suggest("Simulate the transaction before sending"),
+						});
+					}
+					return Ok(());
+				},
 				Err(err) if err.is_unknown_transaction() || err.is_retryable() => {
 					tokio::time::sleep(Duration::from_secs(1)).await;
 				},
@@ -1263,6 +1387,13 @@ impl Neo {
 
 	/// Get the current block height
 	pub async fn get_block_height(&self) -> Result<u32, NeoError> {
+		let started = std::time::Instant::now();
+		let result = self.get_block_height_inner().await;
+		self.record_operation("get_block_height", started.elapsed(), result.is_ok());
+		result
+	}
+
+	async fn get_block_height_inner(&self) -> Result<u32, NeoError> {
 		let max_attempts = self.config.retries.saturating_add(1);
 		retry_network("fetch block height", max_attempts, DEFAULT_RETRY_DELAY, || async {
 			self.client.get_block_count().await
@@ -1283,6 +1414,49 @@ impl Neo {
 	/// Get the current network
 	pub fn network(&self) -> &Network {
 		&self.network
+	}
+
+	/// Human-readable network label for metrics and diagnostics.
+	fn network_label(&self) -> String {
+		match &self.network {
+			Network::MainNet => "mainnet".to_string(),
+			Network::TestNet => "testnet".to_string(),
+			Network::Custom(endpoint) => endpoint.clone(),
+		}
+	}
+
+	/// Record an SDK read operation when metrics are enabled.
+	///
+	/// No-op unless [`SdkConfig::metrics_enabled`] was set and the process
+	/// initialized the monitoring registry (`crate::monitoring::metrics::init`).
+	fn record_operation(&self, operation: &str, duration: std::time::Duration, success: bool) {
+		if !self.config.metrics_enabled {
+			return;
+		}
+		crate::monitoring::metrics::record_rpc_request(
+			operation,
+			self.endpoint(),
+			duration.as_secs_f64(),
+			success,
+		);
+	}
+
+	/// Record an SDK transaction when metrics are enabled.
+	fn record_transaction_metric(
+		&self,
+		tx_type: &str,
+		duration: std::time::Duration,
+		success: bool,
+	) {
+		if !self.config.metrics_enabled {
+			return;
+		}
+		crate::monitoring::metrics::record_transaction(
+			tx_type,
+			&self.network_label(),
+			duration.as_secs_f64(),
+			success,
+		);
 	}
 }
 
@@ -1444,6 +1618,13 @@ impl Transfer {
 		})?;
 
 		let mut sb = ScriptBuilder::new();
+		// The 4th transfer argument is the NEP-17 `data` parameter: forward a
+		// supplied memo there (the receiving contract sees it) instead of
+		// silently dropping it.
+		let data = match &self.memo {
+			Some(memo) => ContractParameter::string(memo.clone()),
+			None => ContractParameter::any(),
+		};
 		sb.contract_call(
 			&contract_hash,
 			"transfer",
@@ -1451,7 +1632,7 @@ impl Transfer {
 				ContractParameter::h160(&from_account.get_script_hash()),
 				ContractParameter::h160(&to_hash),
 				ContractParameter::integer(amount_i64),
-				ContractParameter::any(),
+				data,
 			],
 			Some(CallFlags::All),
 		)
@@ -1518,17 +1699,9 @@ fn parse_balance_stack_item_u64(item: &StackItem, token: &str) -> Result<u64, Ne
 	}
 }
 
-fn parse_nep17_decimals(decimals: Option<&str>, asset_hash: &ScriptHash) -> Result<u8, NeoError> {
-	let raw = decimals.ok_or_else(|| NeoError::Other {
-		message: format!("Missing decimals for NEP-17 token {}", asset_hash.to_hex()),
-		source: None,
-		recovery: ErrorRecovery::new()
-			.suggest("Retry against another RPC endpoint")
-			.suggest("Verify the token metadata is available from the node"),
-	})?;
-
-	raw.parse::<u8>().map_err(|_| NeoError::Other {
-		message: format!("Invalid decimals '{}' for NEP-17 token {}", raw, asset_hash.to_hex()),
+fn parse_nep17_decimals(decimals: &str, asset_hash: &ScriptHash) -> Result<u8, NeoError> {
+	decimals.parse::<u8>().map_err(|_| NeoError::Other {
+		message: format!("Invalid decimals '{}' for NEP-17 token {}", decimals, asset_hash.to_hex()),
 		source: None,
 		recovery: ErrorRecovery::new()
 			.suggest("Retry against another RPC endpoint")
@@ -1775,7 +1948,7 @@ mod tests {
 	#[test]
 	fn test_parse_nep17_decimals_rejects_invalid_value() {
 		let asset_hash = ScriptHash::zero();
-		let err = parse_nep17_decimals(Some("not-a-u8"), &asset_hash).unwrap_err();
+		let err = parse_nep17_decimals("not-a-u8", &asset_hash).unwrap_err();
 
 		match err {
 			NeoError::Other { message, .. } => {

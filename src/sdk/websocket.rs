@@ -118,6 +118,10 @@ pub enum EventData {
 	},
 	/// Notification event
 	Notification { contract: String, event_name: String, state: serde_json::Value },
+	/// The event loop gave up reconnecting; no further events will arrive until
+	/// `connect()` is called again. Consumers blocking on `recv()` would hang
+	/// forever without this signal.
+	Disconnected { reason: String },
 }
 
 /// WebSocket subscription handle
@@ -266,6 +270,21 @@ impl WebSocketClient {
 		let (command_tx, command_rx) = mpsc::unbounded_channel();
 		self.command_tx = Some(command_tx);
 		self.start_event_loop(ws_stream, command_rx).await;
+
+		// A fresh connection starts with an empty node-side subscription set:
+		// re-send every subscription registered on this client, otherwise
+		// handles created before a disconnect stay silent forever. Entries are
+		// cloned first so sending never holds the map lock.
+		let pending: Vec<(String, SubscriptionType)> = {
+			let subs = self.subscriptions.read().await;
+			subs.iter().map(|(id, sub_type)| (id.clone(), sub_type.clone())).collect()
+		};
+		for (id, sub_type) in pending {
+			let request = self.create_subscription_request(&sub_type, &id);
+			if let Err(e) = self.send_message(request).await {
+				tracing::warn!(subscription_id = %id, error = %e, "Failed to restore subscription");
+			}
+		}
 
 		Ok(())
 	}
@@ -528,33 +547,40 @@ impl WebSocketClient {
 									connect_fut.await
 								};
 
-							match connect_result {
-								Ok((new_ws, _)) => {
-									(ws_write, ws_read) = new_ws.split();
-									tracing::info!("WebSocket reconnected successfully");
-									reconnect_attempts = 0;
+								match connect_result {
+									Ok((new_ws, _)) => {
+										(ws_write, ws_read) = new_ws.split();
+										tracing::info!("WebSocket reconnected successfully");
+										reconnect_attempts = 0;
 
-									// Resubscribe to all active subscriptions
-									let subs = subscriptions.read().await;
-									for (id, sub_type) in subs.iter() {
-										if sent_subscriptions.contains(id) {
-											continue;
+										// Resubscribe to all active subscriptions.
+										// Clone the entries first: sending on the socket
+										// must not hold the map lock, or cancel and
+										// unsubscribe writers stall.
+										let pending: Vec<(String, SubscriptionType)> = {
+											let subs = subscriptions.read().await;
+											subs.iter()
+												.filter(|(id, _)| !sent_subscriptions.contains(*id))
+												.map(|(id, sub_type)| (id.clone(), sub_type.clone()))
+												.collect()
+										};
+										for (id, sub_type) in pending {
+											let request =
+												Self::create_subscription_request_static(&sub_type, &id);
+											if let Err(e) = ws_write
+												.send(Message::Text(request.into()))
+												.await
+											{
+												tracing::warn!(
+													subscription_id = %id,
+													error = %e,
+													"Failed to resubscribe"
+												);
+											} else {
+												sent_subscriptions.insert(id);
+											}
 										}
-
-										let request = Self::create_subscription_request_static(sub_type, id);
-										if let Err(e) =
-											ws_write.send(Message::Text(request.into())).await
-										{
-											tracing::warn!(
-												subscription_id = %id,
-												error = %e,
-												"Failed to resubscribe"
-											);
-										} else {
-											sent_subscriptions.insert(id.clone());
-										}
-									}
-								},
+									},
 								Err(e) => {
 									tracing::warn!(error = %e, "WebSocket reconnection failed");
 								},
@@ -565,6 +591,17 @@ impl WebSocketClient {
 								max_attempts = max_reconnect_attempts,
 								"Max reconnection attempts reached, stopping event loop"
 							);
+							// Surface the terminal failure so consumers blocked on
+							// `recv()` observe it instead of hanging forever.
+							let _ = event_tx.send((
+								SubscriptionType::NewBlocks,
+								EventData::Disconnected {
+									reason: format!(
+										"gave up reconnecting after {} failed attempts",
+										max_reconnect_attempts
+									),
+								},
+							));
 							break;
 						}
 					}

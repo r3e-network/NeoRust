@@ -2,7 +2,7 @@
 
 <div className="hero hero--primary">
   <div className="container">
-    <h1 className="hero__title">🚀 NeoRust v2.1.0</h1>
+    <h1 className="hero__title">🚀 NeoRust v3.0.0</h1>
     <p className="hero__subtitle">
       Production-Ready Neo N3 Development Suite with 207+ Passing Doc Tests
     </p>
@@ -125,7 +125,7 @@ cargo build --release
 
 ```toml
 [dependencies]
-neo3 = "2.1.0"
+neo3 = "3.0.0"
 ```
 
 ```rust
